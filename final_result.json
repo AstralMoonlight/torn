@@ -1,0 +1,1 @@
+{"detail":[{"type":"value_error","loc":["body","rut_cliente"],"msg":"Value error, RUT inválido: dígito verificador incorrecto (esperado '9', recibido '4')","input":"11222333-4","ctx":{"error":{}}}]}
