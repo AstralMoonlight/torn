@@ -6,7 +6,7 @@ Punto de entrada principal de la aplicación FastAPI.
 from fastapi import FastAPI
 
 from app.database import Base, engine
-from app.routers import customers, health, products
+from app.routers import customers, health, products, sales
 
 # ── Crear tablas en la BD (si no existen) ────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -21,6 +21,7 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(customers.router)
 app.include_router(products.router)
+app.include_router(sales.router)
 
 
 @app.get("/")

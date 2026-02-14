@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -68,3 +68,52 @@ class ProductOut(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
+
+# ── Sale (Venta) ─────────────────────────────────────────────────────
+
+
+class SaleItem(BaseModel):
+    """Item de venta (producto y cantidad) para la creación de una venta."""
+
+    product_id: int
+    cantidad: Decimal
+
+
+class SaleCreate(BaseModel):
+    """Datos requeridos para registrar una nueva venta."""
+
+    rut_cliente: str
+    items: List[SaleItem]
+    descripcion: Optional[str] = None
+
+
+class SaleDetailOut(BaseModel):
+    """Detalle de venta (producto, precio, cantidad) para la salida."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    product_id: int
+    cantidad: Decimal
+    precio_unitario: Decimal
+    descuento: Decimal
+    subtotal: Decimal
+    product: ProductOut  # Nested product details
+
+
+class SaleOut(BaseModel):
+    """Representación completa de una venta."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    folio: int
+    fecha_emision: datetime
+    monto_neto: Decimal
+    iva: Decimal
+    monto_total: Decimal
+    descripcion: Optional[str] = None
+    created_at: datetime
+    
+    # Nested relationships
+    user: CustomerOut
+    details: List[SaleDetailOut]
