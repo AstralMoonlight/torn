@@ -1,10 +1,6 @@
-"""Modelos SQLAlchemy del proyecto Torn."""
-
-from app.models.user import User          # noqa: F401
-from app.models.product import Product    # noqa: F401
-from app.models.sale import Sale          # noqa: F401
-from app.models.sale import SaleDetail    # noqa: F401
-from app.models.dte import DTE           # noqa: F401
-from app.models.dte import CAF           # noqa: F401
-from app.models.issuer import Issuer     # noqa: F401
-
+from .product import Product
+from .user import User
+from .issuer import Issuer
+from .sale import Sale, SaleDetail
+from .dte import DTE, CAF
+from .inventory import StockMovement

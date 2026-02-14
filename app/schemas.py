@@ -58,6 +58,10 @@ class ProductCreate(BaseModel):
     descripcion: Optional[str] = None
     precio_neto: Decimal
     unidad_medida: str = "unidad"
+    codigo_barras: Optional[str] = None
+    controla_stock: bool = False
+    stock_actual: Decimal = Decimal(0)
+    stock_minimo: Decimal = Decimal(0)
 
 
 class ProductOut(BaseModel):
@@ -71,6 +75,10 @@ class ProductOut(BaseModel):
     descripcion: Optional[str] = None
     precio_neto: Decimal
     unidad_medida: str
+    codigo_barras: Optional[str] = None
+    controla_stock: bool
+    stock_actual: Decimal
+    stock_minimo: Decimal
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

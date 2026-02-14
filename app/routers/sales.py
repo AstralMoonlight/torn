@@ -59,6 +59,28 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Producto {product.nombre} (SKU {product.codigo_interno}) no está activo",
             )
+        
+        # Validar Stock
+        if product.controla_stock:
+            if product.stock_actual < item.cantidad:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Stock insuficiente para {product.nombre}. Disponible: {product.stock_actual}, Solicitado: {item.cantidad}"
+                )
+            
+            # Descontar Stock y Registrar Movimiento (se guardará al hacer commit de la venta)
+            product.stock_actual -= item.cantidad
+            
+            # Importar localmente para evitar dependencias circulares
+            from app.models.inventory import StockMovement
+            
+            movement = StockMovement(
+                product_id=product.id,
+                tipo="SALIDA",
+                motivo="VENTA",
+                cantidad=item.cantidad
+            )
+            db.add(movement)
 
         precio_unitario = product.precio_neto
         cantidad = item.cantidad

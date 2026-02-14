@@ -62,19 +62,27 @@ def seed_data():
         print("Creating Products...")
         p1 = Product(
             codigo_interno="SKU-001",
+            codigo_barras="7801234567890",
             nombre="Monitor 27'' IPS 4K",
             descripcion="Pantalla profesional para diseño",
             precio_neto=250000,
             unidad_medida="unidad",
             is_active=True,
+            controla_stock=True,
+            stock_actual=10,
+            stock_minimo=2,
         )
         p2 = Product(
             codigo_interno="SKU-002",
+            codigo_barras="7809876543210",
             nombre="Teclado Mecánico RGB",
             descripcion="Switch Blue, layout español",
             precio_neto=45000,
             unidad_medida="unidad",
             is_active=True,
+            controla_stock=True,
+            stock_actual=5,
+            stock_minimo=1,
         )
         db.add(p1)
         db.add(p2)
