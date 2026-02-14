@@ -62,6 +62,7 @@ class ProductCreate(BaseModel):
     controla_stock: bool = False
     stock_actual: Decimal = Decimal(0)
     stock_minimo: Decimal = Decimal(0)
+    parent_id: Optional[int] = None
 
 
 class ProductOut(BaseModel):
@@ -82,6 +83,10 @@ class ProductOut(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    # Jerarquía
+    parent_id: Optional[int] = None
+    variants: List["ProductOut"] = []
 
 
 # ── Sale (Venta) ─────────────────────────────────────────────────────

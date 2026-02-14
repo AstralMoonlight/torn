@@ -84,8 +84,44 @@ def seed_data():
             stock_actual=5,
             stock_minimo=1,
         )
+        # Producto Padre
+        p_zap = Product(
+            codigo_interno="ZAP-RUN-001",
+            nombre="Zapatilla Running Pro",
+            descripcion="Zapatilla de correr genérica",
+            precio_neto=0, # Padre puede no tener precio o ser referencial
+            unidad_medida="par",
+            is_active=True,
+            controla_stock=False,
+        )
+        db.add(p_zap)
+        db.flush() # Para obtener ID
+        
+        # Variantes
+        v1 = Product(
+            codigo_interno="ZAP-RUN-40",
+            parent_id=p_zap.id,
+            nombre="Zapatilla Running Pro - Talla 40",
+            precio_neto=50000,
+            unidad_medida="par",
+            is_active=True,
+            controla_stock=True,
+            stock_actual=20,
+        )
+        v2 = Product(
+            codigo_interno="ZAP-RUN-42",
+            parent_id=p_zap.id,
+            nombre="Zapatilla Running Pro - Talla 42",
+            precio_neto=52000, # Precio distinto por talla (ejemplo)
+            unidad_medida="par",
+            is_active=True,
+            controla_stock=True,
+            stock_actual=15,
+        )
         db.add(p1)
         db.add(p2)
+        db.add(v1)
+        db.add(v2)
 
     db.commit()
     db.close()

@@ -1,6 +1,7 @@
 """Modelo de Producto."""
 
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime, Text
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -10,6 +11,8 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True,
+                       comment="ID del producto padre (si es una variante)")
     codigo_interno = Column(String(50), unique=True, nullable=False, index=True,
                             comment="SKU / código interno del producto")
     codigo_barras = Column(String(50), unique=True, index=True,
@@ -28,6 +31,11 @@ class Product(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relación jerárquica
+    variants = relationship("Product", 
+                            backref=backref("parent", remote_side=[id]),
+                            cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Product(sku='{self.codigo_interno}', nombre='{self.nombre}')>"
