@@ -5,10 +5,10 @@
             <IdDoc>
                 <TipoDTE>{{ sale.tipo_dte }}</TipoDTE>
                 <Folio>{{ sale.folio }}</Folio>
-                <FchEmis>{{ sale.created_at.strftime('%Y-%m-%d') }}</FchEmis>
+                <FchEmis>{{ sale.fecha_emision.strftime('%Y-%m-%d') }}</FchEmis>
                 <TpoTranVenta>1</TpoTranVenta>
                 <FmaPago>2</FmaPago>
-                <FchVenc>{{ sale.created_at.strftime('%Y-%m-%d') }}</FchVenc>
+                <FchVenc>{{ sale.fecha_emision.strftime('%Y-%m-%d') }}</FchVenc>
             </IdDoc>
             <Emisor>
                 <RUTEmisor>{{ issuer.rut }}</RUTEmisor>
@@ -30,13 +30,13 @@
                 <CiudadRecep>{{ customer.ciudad }}</CiudadRecep>
             </Receptor>
             <Totales>
-                <MntNeto>{{ sale.net_amount | int }}</MntNeto>
+                <MntNeto>{{ sale.monto_neto | int }}</MntNeto>
                 <TasaIVA>19</TasaIVA>
-                <IVA>{{ sale.vat_amount | int }}</IVA>
-                <MntTotal>{{ sale.total_amount | int }}</MntTotal>
+                <IVA>{{ sale.iva | int }}</IVA>
+                <MntTotal>{{ sale.monto_total | int }}</MntTotal>
             </Totales>
         </Encabezado>
-        {% for detail in sale.items %}
+        {% for detail in sale.details %}
         <Detalle>
             <NroLinDet>{{ loop.index }}</NroLinDet>
             <NmbItem>{{ detail.product.nombre }}</NmbItem>
