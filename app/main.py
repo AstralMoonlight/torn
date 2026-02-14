@@ -8,14 +8,17 @@ from fastapi import FastAPI
 from app.database import Base, engine
 from app.routers import customers, health, issuer, products, sales
 
-# ── Crear tablas en la BD (si no existen) ────────────────────────────
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Torn - Facturador Electrónico",
     description="Sistema de facturación electrónica para el SII de Chile",
     version="0.1.0",
 )
+
+
+@app.on_event("startup")
+def on_startup():
+    """Crear tablas en la BD (si no existen) al iniciar la app."""
+    Base.metadata.create_all(bind=engine)
 
 # ── Routers ──────────────────────────────────────────────────────────
 app.include_router(health.router)

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.dte import CAF
@@ -32,7 +32,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         )
 
     # 2. Validar Productos y Calcular Totales
-    total_neto = 0
+    total_neto = Decimal("0")
     sale_details = []
 
     for item in sale_in.items:
@@ -104,6 +104,16 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
 
     db.add(new_sale)
     db.commit()
-    db.refresh(new_sale)
 
-    return new_sale
+    # Eager load para devolver detalles + producto en una sola query
+    sale_loaded = (
+        db.query(Sale)
+        .options(
+            joinedload(Sale.user),
+            joinedload(Sale.details).joinedload(SaleDetail.product),
+        )
+        .filter(Sale.id == new_sale.id)
+        .one()
+    )
+
+    return sale_loaded

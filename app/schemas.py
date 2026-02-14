@@ -4,7 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.utils.validators import validar_rut
 
 
 # ── Customer (Contribuyente) ─────────────────────────────────────────
@@ -20,6 +22,11 @@ class CustomerCreate(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: str) -> str:
+        return validar_rut(v)
 
 
 class CustomerOut(BaseModel):
@@ -87,6 +94,11 @@ class SaleCreate(BaseModel):
     items: List[SaleItem]
     descripcion: Optional[str] = None
 
+    @field_validator("rut_cliente")
+    @classmethod
+    def rut_valido(cls, v: str) -> str:
+        return validar_rut(v)
+
 
 class SaleDetailOut(BaseModel):
     """Detalle de venta (producto, precio, cantidad) para la salida."""
@@ -137,6 +149,11 @@ class IssuerCreate(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
 
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: str) -> str:
+        return validar_rut(v)
+
 
 class IssuerUpdate(BaseModel):
     """Datos opcionales para actualizar el emisor (actualización parcial)."""
@@ -150,6 +167,13 @@ class IssuerUpdate(BaseModel):
     ciudad: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
+
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validar_rut(v)
+        return v
 
 
 class IssuerOut(BaseModel):
