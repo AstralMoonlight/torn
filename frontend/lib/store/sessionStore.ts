@@ -1,25 +1,47 @@
+'use client'
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 interface SessionState {
-    token: string | null
-    user: string | null
-    setSession: (token: string, user: string) => void
-    clearSession: () => void
-    isAuthenticated: () => boolean
+    sessionId: number | null
+    status: 'OPEN' | 'CLOSED' | 'UNKNOWN'
+    startAmount: number
+    startTime: string | null
+
+    setSession: (id: number, amount: number, time: string) => void
+    closeSession: () => void
+    setStatus: (status: 'OPEN' | 'CLOSED' | 'UNKNOWN') => void
 }
 
 export const useSessionStore = create<SessionState>()(
     persist(
-        (set, get) => ({
-            token: null,
-            user: null,
-            setSession: (token, user) => set({ token, user }),
-            clearSession: () => set({ token: null, user: null }),
-            isAuthenticated: () => !!get().token,
+        (set) => ({
+            sessionId: null,
+            status: 'UNKNOWN',
+            startAmount: 0,
+            startTime: null,
+
+            setSession: (id, amount, time) =>
+                set({
+                    sessionId: id,
+                    status: 'OPEN',
+                    startAmount: amount,
+                    startTime: time,
+                }),
+
+            closeSession: () =>
+                set({
+                    sessionId: null,
+                    status: 'CLOSED',
+                    startAmount: 0,
+                    startTime: null,
+                }),
+
+            setStatus: (status) => set({ status }),
         }),
         {
-            name: 'session-storage',
+            name: 'torn-session',
         }
     )
 )

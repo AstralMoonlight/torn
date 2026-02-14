@@ -2,8 +2,9 @@
 
 from decimal import Decimal
 from pathlib import Path
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
@@ -16,7 +17,7 @@ from app.models.sale import Sale, SaleDetail
 from app.models.user import User
 from app.models.cash import CashSession
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import SaleCreate, SaleOut, ReturnCreate
+from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -27,6 +28,37 @@ _html_env = Environment(
     loader=FileSystemLoader(str(_HTML_TEMPLATES)),
     autoescape=True,
 )
+
+
+@router.get("/payment-methods/", response_model=List[PaymentMethodOut],
+            summary="Listar Medios de Pago",
+            description="Lista todos los medios de pago activos.")
+def list_payment_methods(db: Session = Depends(get_db)):
+    """Lista todos los medios de pago activos."""
+    return db.query(PaymentMethod).filter(PaymentMethod.is_active == True).all()  # noqa: E712
+
+
+@router.get("/", response_model=List[SaleOut],
+            summary="Listar Ventas",
+            description="Lista las ventas con filtros opcionales.")
+def list_sales(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """Lista ventas paginadas, ordenadas por fecha descendente."""
+    sales = (
+        db.query(Sale)
+        .options(
+            joinedload(Sale.user),
+            joinedload(Sale.details).joinedload(SaleDetail.product),
+        )
+        .order_by(Sale.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return sales
 
 
 @router.post("/", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
