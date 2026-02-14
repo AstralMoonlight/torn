@@ -4,17 +4,19 @@ import re
 
 
 def validar_rut(rut: str) -> str:
-    """
-    Valida un RUT chileno y lo retorna formateado (12345678-K).
+    """Valida y formatea un RUT chileno.
 
-    Algoritmo Módulo 11:
-    1. Toma los dígitos del cuerpo (sin DV).
-    2. Multiplica cada dígito de derecha a izquierda por 2,3,4,5,6,7 (cíclico).
-    3. Suma los productos, calcula 11 - (suma % 11).
-    4. Si el resultado es 11 → "0", si es 10 → "K", sino el dígito.
+    Implementa el algoritmo de Módulo 11 para verificar el dígito verificador.
+    Limpia y estandariza el formato de salida.
+
+    Args:
+        rut (str): RUT crudo (puede tener puntos, separadores o minúsculas).
+
+    Returns:
+        str: RUT limpio y formateado (ej: 12345678-K).
 
     Raises:
-        ValueError: Si el RUT es inválido.
+        ValueError: Si el RUT es muy corto, no numérico, fuera de rango o DV incorrecto.
     """
     # Limpiar: quitar puntos, espacios, guiones
     rut_limpio = re.sub(r"[\s.\-]", "", rut.strip().upper())

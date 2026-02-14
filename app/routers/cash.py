@@ -24,9 +24,25 @@ DEFAULT_USER_ID = 1
 def get_current_user_id():
     return DEFAULT_USER_ID
 
-@router.post("/open", response_model=CashSessionOut)
+@router.post("/open", response_model=CashSessionOut,
+             summary="Abrir Caja",
+             description="Inicia un nuevo turno de caja para el usuario actual.")
 def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
-    """Abre una nueva sesión de caja."""
+    """Abre una nueva sesión de caja.
+
+    Verifica que el usuario no tenga ya una sesión abierta. Registra el
+    monto inicial (fondo de caja).
+
+    Args:
+        session_in (CashSessionCreate): Datos iniciales (monto apertura).
+        db (Session): Sesión DB.
+
+    Returns:
+        CashSessionOut: La sesión creada.
+    
+    Raises:
+        HTTPException(400): Si ya existe una sesión abierta.
+    """
     user_id = get_current_user_id()
 
     # Verificar si ya tiene una abierta
@@ -52,9 +68,21 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
     return new_session
 
 
-@router.get("/status", response_model=CashSessionOut)
+@router.get("/status", response_model=CashSessionOut,
+             summary="Estado de Caja",
+             description="Consulta el estado actual de la caja del usuario.")
 def session_status(db: Session = Depends(get_db)):
-    """Obtiene el estado de la caja actual."""
+    """Obtiene el estado de la caja actual.
+    
+    Args:
+        db (Session): Sesión DB.
+        
+    Returns:
+        CashSessionOut: Objeto sesión activa.
+        
+    Raises:
+        HTTPException(404): Si no hay caja abierta.
+    """
     user_id = get_current_user_id()
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
@@ -87,9 +115,25 @@ def session_status(db: Session = Depends(get_db)):
     return active_session
 
 
-@router.post("/close", response_model=CashSessionOut)
+@router.post("/close", response_model=CashSessionOut,
+             summary="Cerrar Caja",
+             description="Cierra el turno y realiza el arqueo de caja.")
 def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
-    """Cierra la sesión de caja y realiza arqueo."""
+    """Cierra la sesión de caja y realiza arqueo (Blind Cash Count).
+
+    Calcula cuánto efectivo debería haber según las ventas registradas
+    y lo compara con lo declarado por el cajero.
+
+    Args:
+        close_in (CashSessionClose): Monto declarado por el cajero.
+        db (Session): Sesión DB.
+
+    Returns:
+        CashSessionOut: Sesión cerrada con detalle de diferencias.
+
+    Raises:
+        HTTPException(404): Si no hay caja abierta.
+    """
     user_id = get_current_user_id()
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,

@@ -18,16 +18,18 @@ _env = Environment(
 
 
 def render_factura_xml(sale, issuer, customer) -> str:
-    """
-    Renderiza el XML de una factura electrónica.
+    """Genera el XML de un Documento Tributario Electrónico (DTE).
+
+    Utiliza una plantilla Jinja2 para estructurar los datos de la venta,
+    emisor y receptor en formato XML estándar del SII.
 
     Args:
-        sale: Objeto Sale (con details cargados).
-        issuer: Objeto Issuer (datos del emisor).
-        customer: Objeto User (datos del receptor).
+        sale (Sale): Objeto de venta con sus detalles cargados.
+        issuer (Issuer): Datos de la empresa emisora.
+        customer (User): Datos del cliente receptor.
 
     Returns:
-        String con el XML del DTE.
+        str: Contenido XML renderizado (string).
     """
     template = _env.get_template("factura_template.xml")
     xml_str = template.render(

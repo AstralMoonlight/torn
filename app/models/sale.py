@@ -8,6 +8,24 @@ from app.database import Base
 
 
 class Sale(Base):
+    """Encabezado de Venta (Documento Tributario).
+
+    Representa una transacción comercial completa, ya sea Boleta, Factura
+    o Nota de Crédito. Agrupa los detalles de productos y pagos.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        user_id (int): ID del cliente (FK).
+        folio (int): Número de folio fiscal (consecutivo según DTE).
+        tipo_dte (int): Código SII del documento (33, 39, 61, etc.).
+        fecha_emision (datetime): Fecha y hora de emisión.
+        monto_neto (Numeric): Suma de valores netos de los ítems.
+        iva (Numeric): Impuesto al Valor Agregado (19%).
+        monto_total (Numeric): Total a pagar (Neto + IVA).
+        descripcion (str): Glosa u observación global.
+        created_at (datetime): Fecha de registro en sistema.
+        related_sale_id (int): ID de venta origen en caso de NC (FK).
+    """
     __tablename__ = "sales"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -29,12 +47,25 @@ class Sale(Base):
     user = relationship("User", backref="sales")
     details = relationship("SaleDetail", back_populates="sale", cascade="all, delete-orphan")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<Sale(folio={self.folio}, total={self.monto_total})>"
 
 
 class SaleDetail(Base):
-    """Línea de detalle dentro de una venta (producto vendido)."""
+    """Detalle de Venta (Línea de Producto).
+
+    Representa un ítem específico dentro de una venta.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        sale_id (int): ID de la venta padre (FK).
+        product_id (int): ID del producto vendido (FK).
+        cantidad (Numeric): Cantidad vendida.
+        precio_unitario (Numeric): Precio al momento de la venta.
+        descuento (Numeric): Monto de descuento aplicado.
+        subtotal (Numeric): Total de la línea (precio * cantidad - descuento).
+    """
     __tablename__ = "sale_details"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -49,5 +80,6 @@ class SaleDetail(Base):
     sale = relationship("Sale", back_populates="details")
     product = relationship("Product")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<SaleDetail(sale={self.sale_id}, product={self.product_id}, qty={self.cantidad})>"

@@ -8,8 +8,22 @@ from app.database import Base
 
 
 class StockMovement(Base):
-    """
-    Registro inmutable de movimientos de inventario.
+    """Movimiento de Inventario (Kardex).
+
+    Registro inmutable de cada cambio en el stock de un producto. Permite
+    trazabilidad completa y auditoría de inventario.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        product_id (int): Producto afectado (FK).
+        user_id (int): Usuario que generó el movimiento (FK).
+        tipo (str): Naturaleza del movimiento ('ENTRADA' o 'SALIDA').
+        motivo (str): Razón de negocio ('VENTA', 'COMPRA', 'AJUSTE', 'DEVOLUCION').
+        cantidad (Numeric): Cantidad movida (valor absoluto).
+        fecha (datetime): Timestamp del movimiento.
+        balance_after (Numeric): Stock resultante tras el movimiento (snapshot).
+        description (str): Glosa explicativa libre.
+        sale_id (int): Venta asociada si corresponde (FK).
     """
     __tablename__ = "stock_movements"
 
@@ -35,5 +49,6 @@ class StockMovement(Base):
     user = relationship("app.models.user.User")
     sale = relationship("app.models.sale.Sale", backref="stock_movements")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<StockMovement(prod={self.product_id}, tipo={self.tipo}, cant={self.cantidad})>"

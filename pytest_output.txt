@@ -1,0 +1,225 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/serphiente/Proyectos/torn
+plugins: anyio-4.12.1
+collected 8 items
+
+tests/test_inventory.py .FF                                              [ 37%]
+tests/test_pos.py .                                                      [ 50%]
+tests/test_sales.py F..                                                  [ 87%]
+tests/test_world_class.py .                                              [100%]
+
+=================================== FAILURES ===================================
+____________________ TestInventory.test_sale_deducts_stock _____________________
+
+self = <tests.test_inventory.TestInventory object at 0x7633a4923b00>
+client = <starlette.testclient.TestClient object at 0x7633a49d84a0>
+db_session = <sqlalchemy.orm.session.Session object at 0x7633a49d8350>
+
+    def test_sale_deducts_stock(self, client, db_session):
+        # 1. Setup Datos
+        # Emisor
+        issuer = Issuer(rut="76123456-K", razon_social="Emisor Test", giro="Giro", acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce")
+        db_session.add(issuer)
+        # CAF
+        caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
+        db_session.add(caf)
+        # Payment Method
+        pm = PaymentMethod(code="EFECTIVO", name="Efectivo")
+        db_session.add(pm)
+        # Cliente
+        user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
+        db_session.add(user)
+        # Producto (Stock 10)
+        prod = Product(
+            codigo_interno="PROD-STOCK",
+            nombre="Con Stock",
+            precio_neto=1000,
+            controla_stock=True,
+            stock_actual=10
+        )
+        db_session.add(prod)
+        db_session.commit()
+    
+        # 2. Venta de 3 unidades
+        sale_data = {
+            "rut_cliente": "12345678-5",
+            "tipo_dte": 33,
+            "items": [
+                {"product_id": prod.id, "cantidad": 3}
+            ],
+            "descripcion": "Venta con descuento de stock",
+            "payments": [
+                {"payment_method_id": 1, "amount": "3570", "transaction_code": "TEST"}
+            ]
+        }
+        resp = client.post("/sales/", json=sale_data)
+>       assert resp.status_code == 201
+E       assert 409 == 201
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_inventory.py:74: AssertionError
+__________________ TestInventory.test_sale_insufficient_stock __________________
+
+self = <tests.test_inventory.TestInventory object at 0x7633a4923dd0>
+client = <starlette.testclient.TestClient object at 0x7633a49d82c0>
+db_session = <sqlalchemy.orm.session.Session object at 0x7633a4920950>
+
+    def test_sale_insufficient_stock(self, client, db_session):
+        # 1. Setup
+        user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
+        db_session.add(user)
+        prod = Product(
+            codigo_interno="PROD-LOW",
+            nombre="Poco Stock",
+            precio_neto=1000,
+            controla_stock=True,
+            stock_actual=2
+        )
+        db_session.add(prod)
+        db_session.commit()
+    
+        # 2. Intentar vender 3 unidades (hay 2)
+        sale_data = {
+            "rut_cliente": "12345678-5",
+            "tipo_dte": 33,
+            "items": [
+                {"product_id": prod.id, "cantidad": 3}
+            ],
+            "payments": [
+                {"payment_method_id": 1, "amount": "3570", "transaction_code": "TEST"}
+            ]
+        }
+        resp = client.post("/sales/", json=sale_data)
+    
+        # 3. Validar Error
+        assert resp.status_code == 409
+>       assert "Stock insuficiente" in resp.json()["detail"]
+E       AssertionError: assert 'Stock insuficiente' in 'No hay turno de caja abierto. Debe abrir caja para vender.'
+
+tests/test_inventory.py:116: AssertionError
+______________________ TestSalesFlow.test_full_sale_flow _______________________
+
+self = <tests.test_sales.TestSalesFlow object at 0x7633a49a8bf0>
+client = <starlette.testclient.TestClient object at 0x7633a45ac740>
+db_session = <sqlalchemy.orm.session.Session object at 0x7633a45acef0>
+
+    def test_full_sale_flow(self, client, db_session):
+        """
+        Prueba de integración end-to-end:
+        1. Crear cliente
+        2. Crear producto
+        3. Insertar CAF
+        4. Realizar venta
+        5. Verificar totales e IVA exactos
+        """
+    
+        # ── 1. Crear cliente ─────────────────────────────────────────
+        customer_data = {
+            "rut": "12345678-5",
+            "razon_social": "Empresa Test SpA",
+            "giro": "Desarrollo de Software",
+            "direccion": "Av. Principal 100",
+            "comuna": "Santiago",
+        }
+        resp = client.post("/customers/", json=customer_data)
+        assert resp.status_code == 201, f"Error creando cliente: {resp.text}"
+        customer = resp.json()
+        assert customer["rut"] == "12345678-5"
+    
+        # ── 2. Crear productos ───────────────────────────────────────
+        product_a = {
+            "codigo_interno": "TEST-001",
+            "nombre": "Producto A",
+            "descripcion": "Producto de prueba A",
+            "precio_neto": "10000.00",
+            "unidad_medida": "unidad",
+        }
+        product_b = {
+            "codigo_interno": "TEST-002",
+            "nombre": "Producto B",
+            "precio_neto": "5000.00",
+        }
+    
+        resp_a = client.post("/products/", json=product_a)
+        assert resp_a.status_code == 201, f"Error creando producto A: {resp_a.text}"
+        prod_a = resp_a.json()
+    
+        resp_b = client.post("/products/", json=product_b)
+        assert resp_b.status_code == 201, f"Error creando producto B: {resp_b.text}"
+        prod_b = resp_b.json()
+    
+        # ── 3. Insertar CAF ──────────────────────────────────────────
+        _seed_caf(db_session)
+    
+        # ── 4. Realizar venta ────────────────────────────────────────
+        sale_data = {
+            "rut_cliente": "12345678-5",
+            "tipo_dte": 33,
+            "items": [
+                {"product_id": prod_a["id"], "cantidad": "3"},
+                {"product_id": prod_b["id"], "cantidad": "2"},
+            ],
+            "descripcion": "Venta de prueba integración",
+            "payments": [
+                {"payment_method_id": 1, "amount": "47600", "transaction_code": "TEST"}
+            ]
+        }
+        resp_sale = client.post("/sales/", json=sale_data)
+>       assert resp_sale.status_code == 201, f"Error creando venta: {resp_sale.text}"
+E       AssertionError: Error creando venta: {"detail":"No hay turno de caja abierto. Debe abrir caja para vender."}
+E       assert 409 == 201
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/test_sales.py:94: AssertionError
+=============================== warnings summary ===============================
+app/database.py:33
+  /home/serphiente/Proyectos/torn/app/database.py:33: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+app/main.py:18
+  /home/serphiente/Proyectos/torn/app/main.py:18: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+venv/lib/python3.12/site-packages/fastapi/applications.py:4573
+  /home/serphiente/Proyectos/torn/venv/lib/python3.12/site-packages/fastapi/applications.py:4573: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_pos.py::TestPOS::test_pos_flow
+tests/test_pos.py::TestPOS::test_pos_flow
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:199: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    pay_method = db.query(PaymentMethod).get(payment_in.payment_method_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:281: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    original_sale = db.query(Sale).get(return_in.original_sale_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:291: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    product = db.query(Product).get(item.product_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:363: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    method = db.query(PaymentMethod).get(return_in.return_method_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:369: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    customer = db.query(User).get(original_sale.user_id)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_inventory.py::TestInventory::test_sale_deducts_stock - asse...
+FAILED tests/test_inventory.py::TestInventory::test_sale_insufficient_stock
+FAILED tests/test_sales.py::TestSalesFlow::test_full_sale_flow - AssertionErr...
+=================== 3 failed, 5 passed, 10 warnings in 2.62s ===================

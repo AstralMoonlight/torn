@@ -7,6 +7,26 @@ from app.database import Base
 
 
 class User(Base):
+    """Modelo de Usuario / Contribuyente / Cliente.
+
+    Representa a cualquier entidad que interactúa con el sistema, ya sea un
+    operador (cajero) o un cliente (comprador).
+
+    Attributes:
+        id (int): Identificador único (PK).
+        rut (str): Rol Único Tributario (único).
+        razon_social (str): Nombre o Razón Social.
+        giro (str): Giro comercial (opcional).
+        direccion (str): Dirección física (opcional).
+        comuna (str): Comuna de residencia (opcional).
+        ciudad (str): Ciudad de residencia (opcional).
+        email (str): Correo electrónico de contacto.
+        current_balance (Numeric): Deuda acumulada en Cuenta Corriente.
+            Valor positivo indica deuda del cliente hacia el negocio.
+        is_active (bool): Si el usuario está habilitado.
+        created_at (datetime): Fecha de creación del registro.
+        updated_at (datetime): Última fecha de actualización.
+    """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -22,5 +42,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<User(rut='{self.rut}', razon_social='{self.razon_social}')>"

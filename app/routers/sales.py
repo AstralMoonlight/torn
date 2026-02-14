@@ -29,11 +29,35 @@ _html_env = Environment(
 )
 
 
-@router.post("/", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+             summary="Crear Venta",
+             description="Registra una nueva venta de forma atómica.",
+             response_description="Objeto de venta creado con detalles y folio.")
 def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     """
-    Registra una nueva venta + genera DTE XML atómicamente.
-    Si algo falla, se hace rollback completo.
+    Registra una nueva venta en el sistema.
+
+    Esta función orquesta todo el proceso de venta:
+    1. Valida que la caja esté abierta.
+    2. Valida cliente y productos (existencia y stock).
+    3. Descuenta inventario y genera movimientos (Kardex).
+    4. Procesa pagos (múltiples medios de pago).
+    5. Asigna Folio fiscal (CAF).
+    6. Genera XML del DTE (Factura Electrónica/Boleta).
+    7. Persiste todo en una transacción atómica.
+
+    Args:
+        sale_in (SaleCreate): Datos de la venta (cliente, items, pagos).
+        db (Session): Sesión de base de datos.
+
+    Returns:
+        SaleOut: Objeto de venta creado con todas sus relaciones.
+
+    Raises:
+        HTTPException(409): Si la caja está cerrada o no hay stock.
+        HTTPException(404): Si cliente o producto no existen.
+        HTTPException(400): Si los montos no cuadran.
+        HTTPException(500): Si falla la generación del DTE.
     """
     # 0. Validar Caja Abierta (Simulado usuario 1)
     user_id = 1 
@@ -224,11 +248,31 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     return sale_loaded
 
 
-@router.post("/return", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
+@router.post("/return", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+             summary="Crear Devolución (NC)",
+             description="Genera una Nota de Crédito por devolución de productos.",
+             response_description="Nota de Crédito generada.")
 def create_return(return_in: ReturnCreate, db: Session = Depends(get_db)):
     """
-    Registra una Devolución (Nota de Crédito).
-    Reingresa stock, genera DTE 61, y devuelve dinero (Caja o Abono Cta Cte).
+    Registra una Devolución de mercadería (Nota de Crédito).
+
+    Proceso inverso a la venta:
+    1. Valida existencia de venta original.
+    2. Reingresa stock al inventario (Movimiento 'ENTRADA' motivo 'DEVOLUCION').
+    3. Genera un nuevo DTE Tipo 61 (Nota de Crédito).
+    4. Vincula la NC con la venta original (`related_sale_id`).
+    5. Realiza la devolución del dinero (Abono a Cta Cte o Caja).
+
+    Args:
+        return_in (ReturnCreate): Datos de la devolución (venta origen, items).
+        db (Session): Sesión de base de datos.
+    
+    Returns:
+        SaleOut: La Nota de Crédito generada.
+
+    Raises:
+        HTTPException(404): Si la venta original no existe.
+        HTTPException(400): Si el medio de devolución es inválido.
     """
     # 0. Validar Caja Abierta (si se devuelve efectivo)
     user_id = 1
@@ -346,10 +390,25 @@ def create_return(return_in: ReturnCreate, db: Session = Depends(get_db)):
 # ── PDF Preview ──────────────────────────────────────────────────────
 
 
-@router.get("/{sale_id}/pdf", response_class=HTMLResponse)
+@router.get("/{sale_id}/pdf", response_class=HTMLResponse,
+             summary="Vista Previa Factura",
+             description="Genera HTML para impresión de la factura.")
 def get_sale_pdf(sale_id: int, db: Session = Depends(get_db)):
     """
-    Genera una vista previa HTML de la factura (lista para imprimir como PDF).
+    Genera una vista previa HTML del documento tributario.
+
+    Renderiza una plantilla Jinja2 con los datos de la venta, el emisor
+    y el cliente, lista para ser impresa o convertida a PDF.
+
+    Args:
+        sale_id (int): ID de la venta.
+        db (Session): Sesión de base de datos.
+
+    Returns:
+        HTMLResponse: Contenido HTML de la factura.
+
+    Raises:
+        HTTPException(404): Si la venta no existe o falta configuración de emisor.
     """
 
     # Cargar venta con relaciones

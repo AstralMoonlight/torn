@@ -7,7 +7,25 @@ from app.database import Base
 
 
 class Issuer(Base):
-    """Datos del contribuyente emisor (singleton — una sola empresa)."""
+    """Datos del contribuyente emisor (singleton — una sola empresa).
+
+    Almacena la información tributaria de la empresa dueña del sistema.
+    Estos datos son obligatorios para generar el XML del DTE.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        rut (str): RUT de la empresa emisora.
+        razon_social (str): Razón Social completa.
+        giro (str): Giro comercial principal.
+        acteco (str): Código de Actividad Económica (SII).
+        direccion (str): Dirección de la casa matriz.
+        comuna (str): Comuna.
+        ciudad (str): Ciudad.
+        telefono (str): Teléfono de contacto.
+        email (str): Email de contacto.
+        created_at (datetime): Fecha de creación.
+        updated_at (datetime): Última actualización.
+    """
     __tablename__ = "issuers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -24,5 +42,6 @@ class Issuer(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<Issuer(rut='{self.rut}', razon_social='{self.razon_social}')>"

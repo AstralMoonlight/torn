@@ -1,0 +1,60 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/serphiente/Proyectos/torn
+plugins: anyio-4.12.1
+collected 8 items
+
+tests/test_inventory.py ...                                              [ 37%]
+tests/test_pos.py .                                                      [ 50%]
+tests/test_sales.py ...                                                  [ 87%]
+tests/test_world_class.py .                                              [100%]
+
+=============================== warnings summary ===============================
+app/database.py:33
+  /home/serphiente/Proyectos/torn/app/database.py:33: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+app/main.py:18
+  /home/serphiente/Proyectos/torn/app/main.py:18: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+venv/lib/python3.12/site-packages/fastapi/applications.py:4573
+  /home/serphiente/Proyectos/torn/venv/lib/python3.12/site-packages/fastapi/applications.py:4573: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_inventory.py::TestInventory::test_sale_deducts_stock
+tests/test_pos.py::TestPOS::test_pos_flow
+tests/test_pos.py::TestPOS::test_pos_flow
+tests/test_sales.py::TestSalesFlow::test_full_sale_flow
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:199: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    pay_method = db.query(PaymentMethod).get(payment_in.payment_method_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:281: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    original_sale = db.query(Sale).get(return_in.original_sale_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:291: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    product = db.query(Product).get(item.product_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:363: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    method = db.query(PaymentMethod).get(return_in.return_method_id)
+
+tests/test_world_class.py::TestWorldClass::test_credit_and_return_flow
+  /home/serphiente/Proyectos/torn/app/routers/sales.py:369: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    customer = db.query(User).get(original_sale.user_id)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 8 passed, 12 warnings in 2.67s ========================

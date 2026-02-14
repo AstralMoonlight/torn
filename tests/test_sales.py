@@ -3,10 +3,21 @@
 from decimal import Decimal
 
 
-def _seed_caf(db_session):
-    """Inserta un CAF de prueba tipo 33 directamente en la BD."""
-    from app.models.dte import CAF
 
+
+def _seed_caf(db_session, client):
+    """Inserta un CAF de prueba tipo 33 directamente en la BD y abre caja."""
+    from app.models.dte import CAF
+    from app.models.payment import PaymentMethod
+    from app.models.user import User
+
+    # Seed User 1 (Admin/Cashier) for Cash Session
+    if not db_session.get(User, 1):
+        admin = User(id=1, rut="11111111-1", razon_social="Admin", email="admin@torn.cl")
+        db_session.add(admin)
+        db_session.commit()
+
+    # Seed CAF
     caf = CAF(
         tipo_documento=33,
         folio_desde=1,
@@ -15,7 +26,15 @@ def _seed_caf(db_session):
         xml_caf="<CAF_TEST>",
     )
     db_session.add(caf)
+    
+    # Seed Payment Methods
+    pm = PaymentMethod(code="EFECTIVO", name="Efectivo")
+    db_session.add(pm)
+    
     db_session.commit()
+
+    # Open Cash Session
+    client.post("/cash/open", json={"start_amount": 10000})
 
 
 class TestSalesFlow:
@@ -66,8 +85,8 @@ class TestSalesFlow:
         assert resp_b.status_code == 201, f"Error creando producto B: {resp_b.text}"
         prod_b = resp_b.json()
 
-        # ── 3. Insertar CAF ──────────────────────────────────────────
-        _seed_caf(db_session)
+        # ── 3. Insertar CAF y Abrir Caja ─────────────────────────────
+        _seed_caf(db_session, client)
 
         # ── 4. Realizar venta ────────────────────────────────────────
         sale_data = {
@@ -78,6 +97,9 @@ class TestSalesFlow:
                 {"product_id": prod_b["id"], "cantidad": "2"},
             ],
             "descripcion": "Venta de prueba integración",
+            "payments": [
+                {"payment_method_id": 1, "amount": "47600", "transaction_code": "TEST"}
+            ]
         }
         resp_sale = client.post("/sales/", json=sale_data)
         assert resp_sale.status_code == 201, f"Error creando venta: {resp_sale.text}"
@@ -116,6 +138,15 @@ class TestSalesFlow:
 
     def test_sale_without_caf_fails(self, client, db_session):
         """Verifica que una venta falla si no hay CAF disponible."""
+        # Setup Cash Session manually because _seed_caf is not called here (it inserts caf)
+        # We need Cash Open but NO CAF.
+        from app.models.user import User
+        if not db_session.get(User, 1):
+            admin = User(id=1, rut="11111111-1", razon_social="Admin", email="admin@torn.cl")
+            db_session.add(admin)
+            db_session.commit()
+        client.post("/cash/open", json={"start_amount": 10000})
+
         # Crear cliente y producto
         client.post("/customers/", json={
             "rut": "12345678-5",
@@ -132,5 +163,6 @@ class TestSalesFlow:
         resp = client.post("/sales/", json={
             "rut_cliente": "12345678-5",
             "items": [{"product_id": prod["id"], "cantidad": "1"}],
+            "payments": [{"payment_method_id": 1, "amount": "1190", "transaction_code": "TEST"}]
         })
         assert resp.status_code == 409, "Debería fallar sin CAF"

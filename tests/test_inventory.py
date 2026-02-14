@@ -5,6 +5,7 @@ from app.models.inventory import StockMovement
 from app.models.user import User
 from app.models.dte import CAF, DTE
 from app.models.issuer import Issuer
+from app.models.payment import PaymentMethod
 
 class TestInventory:
     def setup_method(self, method):
@@ -34,12 +35,23 @@ class TestInventory:
 
     def test_sale_deducts_stock(self, client, db_session):
         # 1. Setup Datos
+        # User 1 for Cashier
+        if not db_session.get(User, 1):
+             u1 = User(id=1, rut="11111111-1", razon_social="Admin", email="admin@torn.cl")
+             db_session.add(u1)
+             db_session.commit()
+        # Open Cash
+        client.post("/cash/open", json={"start_amount": 5000})
+
         # Emisor
         issuer = Issuer(rut="76123456-K", razon_social="Emisor Test", giro="Giro", acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce")
         db_session.add(issuer)
         # CAF
         caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
         db_session.add(caf)
+        # Payment Method
+        pm = PaymentMethod(code="EFECTIVO", name="Efectivo")
+        db_session.add(pm)
         # Cliente
         user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
         db_session.add(user)
@@ -61,7 +73,10 @@ class TestInventory:
             "items": [
                 {"product_id": prod.id, "cantidad": 3}
             ],
-            "descripcion": "Venta con descuento de stock"
+            "descripcion": "Venta con descuento de stock",
+            "payments": [
+                {"payment_method_id": 1, "amount": "3570", "transaction_code": "TEST"}
+            ]
         }
         resp = client.post("/sales/", json=sale_data)
         assert resp.status_code == 201
@@ -79,6 +94,12 @@ class TestInventory:
 
     def test_sale_insufficient_stock(self, client, db_session):
         # 1. Setup
+        if not db_session.get(User, 1):
+             u1 = User(id=1, rut="11111111-1", razon_social="Admin", email="admin@torn.cl")
+             db_session.add(u1)
+             db_session.commit()
+        client.post("/cash/open", json={"start_amount": 5000})
+
         user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
         db_session.add(user)
         prod = Product(
@@ -98,6 +119,9 @@ class TestInventory:
             "items": [
                 {"product_id": prod.id, "cantidad": 3}
             ],
+            "payments": [
+                {"payment_method_id": 1, "amount": "3570", "transaction_code": "TEST"}
+            ]
         }
         resp = client.post("/sales/", json=sale_data)
         

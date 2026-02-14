@@ -7,9 +7,21 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class CashSession(Base):
-    """
-    Sesión de caja (Turno).
-    Controla la apertura y cierre de caja por usuario.
+    """Sesión de Caja (Turno de Cajero).
+
+    Controla el ciclo de vida de una caja registradora, permitiendo aperturas,
+    cierres y arqueos ciegos.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        user_id (int): Usuario cajero asignado (FK).
+        start_time (datetime): Hora de apertura.
+        end_time (datetime): Hora de cierre.
+        start_amount (Numeric): Dinero en efectivo inicial (fondo de caja).
+        final_cash_system (Numeric): Dinero esperado por el sistema (calculado).
+        final_cash_declared (Numeric): Dinero declarado por el cajero (arqueo).
+        difference (Numeric): Diferencia entre sistema y declarado.
+        status (str): Estado de la sesión ('OPEN', 'CLOSED').
     """
     __tablename__ = "cash_sessions"
 
@@ -31,5 +43,6 @@ class CashSession(Base):
     # Relaciones
     user = relationship("app.models.user.User", backref="cash_sessions")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Retorna representación string del objeto."""
         return f"<CashSession(user={self.user_id}, status={self.status}, start={self.start_amount})>"
