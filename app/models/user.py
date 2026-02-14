@@ -1,6 +1,6 @@
 """Modelo de Usuario / Contribuyente."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -17,6 +17,7 @@ class User(Base):
     comuna = Column(String(100))
     ciudad = Column(String(100))
     email = Column(String(150))
+    current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente (Positivo=Deuda)")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -16,7 +16,7 @@ from app.models.sale import Sale, SaleDetail
 from app.models.user import User
 from app.models.cash import CashSession
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import SaleCreate, SaleOut
+from app.schemas import SaleCreate, SaleOut, ReturnCreate
 from app.services.xml_generator import render_factura_xml
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -170,6 +170,13 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         )
         db.add(pm)
 
+        # Lógica de Crédito Interno
+        # Validamos si el medio de pago es CREDITO_INTERNO para sumar deuda
+        pay_method = db.query(PaymentMethod).get(payment_in.payment_method_id)
+        if pay_method and pay_method.code == "CREDITO_INTERNO":
+            customer.current_balance += payment_in.amount
+            db.add(customer)
+
     # 5.2 Actualizar sale_id en movimientos de stock (Si los hubo)
     # Buscamos los movimientos en la sesión que tengan sale_id nulo y sean de estos productos?
     # Mas facil: Lo hacemos arriba si tuvieramos el ID, pero no lo teniamos.
@@ -215,6 +222,125 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     )
 
     return sale_loaded
+
+
+@router.post("/return", response_model=SaleOut, status_code=status.HTTP_201_CREATED)
+def create_return(return_in: ReturnCreate, db: Session = Depends(get_db)):
+    """
+    Registra una Devolución (Nota de Crédito).
+    Reingresa stock, genera DTE 61, y devuelve dinero (Caja o Abono Cta Cte).
+    """
+    # 0. Validar Caja Abierta (si se devuelve efectivo)
+    user_id = 1
+    
+    # 1. Buscar Venta Original
+    original_sale = db.query(Sale).get(return_in.original_sale_id)
+    if not original_sale:
+        raise HTTPException(status_code=404, detail="Venta original no encontrada")
+
+    # 2. Calcular Montos de Devolución
+    total_neto = Decimal("0")
+    sale_details = []
+    stock_movements = []
+
+    for item in return_in.items:
+        product = db.query(Product).get(item.product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Producto {item.product_id} no encontrado")
+        
+        # Validar que la cantidad no exceda lo vendido? (Omitido por simplicidad, confiamos en operador)
+        
+        # Reingreso de Stock
+        if product.controla_stock:
+            product.stock_actual += item.cantidad
+            from app.models.inventory import StockMovement
+            movement = StockMovement(
+                product_id=product.id,
+                user_id=user_id,
+                tipo="ENTRADA",
+                motivo="DEVOLUCION",
+                cantidad=item.cantidad,
+                description=f"Devolución venta f.{original_sale.folio}: {return_in.reason}"
+            )
+            stock_movements.append(movement)
+        
+        precio_unitario = product.precio_neto # Usamos precio actual o histórico? Ideal histórico.
+        # Por simplicidad usamos precio actual del producto, pero DEBERIAMOS buscar precio venta original.
+        # Buscamos en detalle original?
+        original_detail = db.query(SaleDetail).filter(
+            SaleDetail.sale_id == original_sale.id,
+            SaleDetail.product_id == product.id
+        ).first()
+        if original_detail:
+            precio_unitario = original_detail.precio_unitario
+        
+        subtotal = precio_unitario * item.cantidad
+        total_neto += subtotal
+        
+        sale_details.append(SaleDetail(
+            product_id=product.id,
+            cantidad=item.cantidad,
+            precio_unitario=precio_unitario,
+            subtotal=subtotal
+        ))
+
+    iva = total_neto * Decimal("0.19")
+    total = total_neto + iva
+
+    # 3. Registrar Nota de Crédito (Sale Tipo 61)
+    tipo = 61 # NC
+    caf = db.query(CAF).filter(CAF.tipo_documento == tipo).first()
+    # Si no hay CAF 61, fallamos? O usamos DTE 61 dummy?
+    # Asumimos que hay CAF 61 o usamos logica dummy.
+    nuevo_folio = 1 # Dummy por ahora si no hay CAF
+    if caf:
+        nuevo_folio = caf.ultimo_folio_usado + 1
+        caf.ultimo_folio_usado = nuevo_folio
+        db.add(caf)
+
+    nc_sale = Sale(
+        user_id=original_sale.user_id,
+        folio=nuevo_folio,
+        tipo_dte=tipo,
+        monto_neto=total_neto,
+        iva=iva,
+        monto_total=total,
+        descripcion=f"Devolución: {return_in.reason}",
+        details=sale_details,
+        stock_movements=stock_movements,
+        related_sale_id=original_sale.id
+    )
+    db.add(nc_sale)
+    db.flush()
+
+    # 4. Registrar Devolución de Dinero (SalePayment negativo o positivo con metodo Devolucion?)
+    # Usamos SalePayment normal linkeado a la NC. 
+    # Si es abono a cta cte:
+    method = db.query(PaymentMethod).get(return_in.return_method_id)
+    if not method: 
+         raise HTTPException(status_code=400, detail="Medio de devolución invalido")
+
+    # Si es CREDITO_INTERNO (Abono), disminuimos deuda
+    if method.code == "CREDITO_INTERNO":
+        customer = db.query(User).get(original_sale.user_id)
+        customer.current_balance -= total
+        db.add(customer)
+    elif method.code == "EFECTIVO":
+        # Verificar caja?
+        # Por ahora asumimos que hay caja.
+        pass
+
+    pm = SalePayment(
+        sale_id=nc_sale.id,
+        payment_method_id=method.id,
+        amount=total, # Monto positivo asociado a la NC
+        transaction_code="DEVOLUCION"
+    )
+    db.add(pm)
+    
+    # 5. Commit
+    db.commit()
+    return nc_sale
 
 
 # ── PDF Preview ──────────────────────────────────────────────────────

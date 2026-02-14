@@ -132,6 +132,7 @@ def seed_data():
             PaymentMethod(code="DEBITO", name="Tarjeta Débito"),
             PaymentMethod(code="CREDITO", name="Tarjeta Crédito"),
             PaymentMethod(code="TRANSFERENCIA", name="Transferencia"),
+            PaymentMethod(code="CREDITO_INTERNO", name="Fiado / Crédito Casa"),
         ]
         db.add_all(methods)
 

@@ -23,6 +23,9 @@ class Sale(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relaciones
+    related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")
+    related_sale = relationship("Sale", remote_side=[id], backref="adjustments")
+
     user = relationship("User", backref="sales")
     details = relationship("SaleDetail", back_populates="sale", cascade="all, delete-orphan")
 

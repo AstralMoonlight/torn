@@ -42,6 +42,8 @@ class CustomerOut(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+    email: Optional[str] = None
+    current_balance: Decimal
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -147,10 +149,22 @@ class SaleOut(BaseModel):
     monto_total: Decimal
     descripcion: Optional[str] = None
     created_at: datetime
+    related_sale_id: Optional[int] = None
     
-    # Nested relationships
     user: CustomerOut
     details: List[SaleDetailOut]
+
+
+class ReturnItem(BaseModel):
+    product_id: int
+    cantidad: Decimal
+
+
+class ReturnCreate(BaseModel):
+    original_sale_id: int
+    items: List[ReturnItem]
+    reason: str
+    return_method_id: int # ID de medio de pago para devolución (Caja o Credito)
 
 
 # ── Medios de Pago ───────────────────────────────────────────────────
