@@ -13,6 +13,8 @@ class Sale(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     folio = Column(Integer, nullable=False)
+    tipo_dte = Column(Integer, nullable=False, default=33,
+                      comment="33=Factura, 34=Exenta, 39=Boleta, 61=NC")
     fecha_emision = Column(DateTime(timezone=True), server_default=func.now())
     monto_neto = Column(Numeric(15, 2), default=0)
     iva = Column(Numeric(15, 2), default=0)

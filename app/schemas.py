@@ -83,6 +83,7 @@ class SaleCreate(BaseModel):
     """Datos requeridos para registrar una nueva venta."""
 
     rut_cliente: str
+    tipo_dte: int = 33
     items: List[SaleItem]
     descripcion: Optional[str] = None
 
@@ -107,6 +108,7 @@ class SaleOut(BaseModel):
 
     id: int
     folio: int
+    tipo_dte: int
     fecha_emision: datetime
     monto_neto: Decimal
     iva: Decimal
@@ -117,3 +119,39 @@ class SaleOut(BaseModel):
     # Nested relationships
     user: CustomerOut
     details: List[SaleDetailOut]
+
+
+# ── Issuer (Emisor) ──────────────────────────────────────────────────
+
+
+class IssuerCreate(BaseModel):
+    """Datos para crear / actualizar el emisor."""
+
+    rut: str
+    razon_social: str
+    giro: str
+    acteco: str
+    direccion: Optional[str] = None
+    comuna: Optional[str] = None
+    ciudad: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+
+
+class IssuerOut(BaseModel):
+    """Representación del emisor devuelta por la API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    rut: str
+    razon_social: str
+    giro: str
+    acteco: str
+    direccion: Optional[str] = None
+    comuna: Optional[str] = None
+    ciudad: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None

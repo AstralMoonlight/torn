@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<DTE version="1.0" xmlns="http://www.sii.cl/SiiDte">
+    <Documento ID="F{{ sale.folio }}T{{ sale.tipo_dte }}">
+        <Encabezado>
+            <IdDoc>
+                <TipoDTE>{{ sale.tipo_dte }}</TipoDTE>
+                <Folio>{{ sale.folio }}</Folio>
+                <FchEmis>{{ sale.created_at.strftime('%Y-%m-%d') }}</FchEmis>
+                <TpoTranVenta>1</TpoTranVenta>
+                <FmaPago>2</FmaPago>
+                <FchVenc>{{ sale.created_at.strftime('%Y-%m-%d') }}</FchVenc>
+            </IdDoc>
+            <Emisor>
+                <RUTEmisor>{{ issuer.rut }}</RUTEmisor>
+                <RznSoc>{{ issuer.razon_social }}</RznSoc>
+                <GiroEmis>{{ issuer.giro }}</GiroEmis>
+                <Acteco>{{ issuer.acteco }}</Acteco>
+                <DirOrigen>{{ issuer.direccion }}</DirOrigen>
+                <CmnaOrigen>{{ issuer.comuna }}</CmnaOrigen>
+                <CiudadOrigen>{{ issuer.ciudad }}</CiudadOrigen>
+                <Telefono>{{ issuer.telefono }}</Telefono>
+                <CorreoEmisor>{{ issuer.email }}</CorreoEmisor>
+            </Emisor>
+            <Receptor>
+                <RUTRecep>{{ customer.rut }}</RUTRecep>
+                <RznSocRecep>{{ customer.razon_social }}</RznSocRecep>
+                <GiroRecep>{{ customer.giro }}</GiroRecep>
+                <DirRecep>{{ customer.direccion }}</DirRecep>
+                <CmnaRecep>{{ customer.comuna }}</CmnaRecep>
+                <CiudadRecep>{{ customer.ciudad }}</CiudadRecep>
+            </Receptor>
+            <Totales>
+                <MntNeto>{{ sale.net_amount | int }}</MntNeto>
+                <TasaIVA>19</TasaIVA>
+                <IVA>{{ sale.vat_amount | int }}</IVA>
+                <MntTotal>{{ sale.total_amount | int }}</MntTotal>
+            </Totales>
+        </Encabezado>
+        {% for detail in sale.items %}
+        <Detalle>
+            <NroLinDet>{{ loop.index }}</NroLinDet>
+            <NmbItem>{{ detail.product.nombre }}</NmbItem>
+            <QtyItem>{{ detail.cantidad }}</QtyItem>
+            <UnmdItem>{{ detail.product.unidad_medida }}</UnmdItem>
+            <PrcItem>{{ detail.precio_unitario | int }}</PrcItem>
+            <MontoItem>{{ detail.subtotal | int }}</MontoItem>
+        </Detalle>
+        {% endfor %}
+    </Documento>
+</DTE>

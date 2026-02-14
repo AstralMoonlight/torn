@@ -71,17 +71,17 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     iva = total_neto * Decimal("0.19")
     total = total_neto + iva
 
-    # 4. Asignar Folio (CAF tipo 33 = Factura)
-    # Buscamos un CAF que tenga cupo
+    # 4. Asignar Folio (CAF según tipo de DTE solicitado)
+    tipo = sale_in.tipo_dte
     caf = db.query(CAF).filter(
-        CAF.tipo_documento == 33,
+        CAF.tipo_documento == tipo,
         CAF.ultimo_folio_usado < CAF.folio_hasta
     ).order_by(CAF.id.asc()).first()
 
     if not caf:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No hay folios disponibles (CAF agotado o inexistente) para Facturas (33).",
+            detail=f"No hay folios disponibles (CAF agotado o inexistente) para tipo DTE {tipo}.",
         )
     
     nuevo_folio = caf.ultimo_folio_usado + 1
@@ -94,11 +94,12 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     new_sale = Sale(
         user_id=customer.id,
         folio=nuevo_folio,
+        tipo_dte=tipo,
         monto_neto=total_neto,
         iva=iva,
         monto_total=total,
         descripcion=sale_in.descripcion,
-        details=sale_details # SQLAlchemy maneja la relación y FKs
+        details=sale_details
     )
 
     db.add(new_sale)
