@@ -9,6 +9,7 @@ from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.product import Product
 from app.models.user import User
+from app.models.payment import PaymentMethod
 
 
 def seed_data():
@@ -122,6 +123,17 @@ def seed_data():
         db.add(p2)
         db.add(v1)
         db.add(v2)
+
+    # 5. Medios de Pago
+    if not db.query(PaymentMethod).first():
+        print("Creating Payment Methods...")
+        methods = [
+            PaymentMethod(code="EFECTIVO", name="Efectivo"),
+            PaymentMethod(code="DEBITO", name="Tarjeta Débito"),
+            PaymentMethod(code="CREDITO", name="Tarjeta Crédito"),
+            PaymentMethod(code="TRANSFERENCIA", name="Transferencia"),
+        ]
+        db.add_all(methods)
 
     db.commit()
     db.close()

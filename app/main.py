@@ -6,7 +6,7 @@ Punto de entrada principal de la aplicación FastAPI.
 from fastapi import FastAPI
 
 from app.database import Base, engine
-from app.routers import customers, health, issuer, products, sales, inventory
+from app.routers import customers, health, issuer, products, sales, inventory, cash
 
 app = FastAPI(
     title="Torn - Facturador Electrónico",
@@ -27,6 +27,7 @@ app.include_router(products.router)
 app.include_router(sales.router)
 app.include_router(issuer.router)
 app.include_router(inventory.router)
+app.include_router(cash.router)
 
 
 @app.get("/")

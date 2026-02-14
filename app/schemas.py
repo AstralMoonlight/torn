@@ -99,12 +99,19 @@ class SaleItem(BaseModel):
     cantidad: Decimal
 
 
+class SalePaymentCreate(BaseModel):
+    payment_method_id: int
+    amount: Decimal
+    transaction_code: Optional[str] = None
+
+
 class SaleCreate(BaseModel):
     """Datos requeridos para registrar una nueva venta."""
 
     rut_cliente: str
     tipo_dte: int = 33
     items: List[SaleItem]
+    payments: List[SalePaymentCreate]  # Pagos múltiples
     descripcion: Optional[str] = None
 
     @field_validator("rut_cliente")
@@ -144,6 +151,41 @@ class SaleOut(BaseModel):
     # Nested relationships
     user: CustomerOut
     details: List[SaleDetailOut]
+
+
+# ── Medios de Pago ───────────────────────────────────────────────────
+
+
+class PaymentMethodOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Caja (Cash Session) ──────────────────────────────────────────────
+
+
+class CashSessionCreate(BaseModel):
+    start_amount: Decimal
+
+
+class CashSessionClose(BaseModel):
+    final_cash_declared: Decimal
+
+
+class CashSessionOut(BaseModel):
+    id: int
+    user_id: int
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    start_amount: Decimal
+    final_cash_system: Decimal
+    final_cash_declared: Decimal
+    difference: Decimal
+    status: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Issuer (Emisor) ──────────────────────────────────────────────────

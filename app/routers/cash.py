@@ -1,0 +1,125 @@
+"""Router para gestión de Caja (Sesiones)."""
+
+from datetime import datetime
+from decimal import Decimal
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from app.database import get_db
+from app.models.cash import CashSession
+from app.models.payment import SalePayment, PaymentMethod
+from app.models.sale import Sale
+from app.models.user import User
+from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut
+
+router = APIRouter(prefix="/cash", tags=["cash"])
+
+# TODO: Cuando haya auth real, obtener user_id del token.
+# Por ahora simulamos que el usuario es el ID 1 (Admin/Cajero por defecto del seed).
+DEFAULT_USER_ID = 1
+
+def get_current_user_id():
+    return DEFAULT_USER_ID
+
+@router.post("/open", response_model=CashSessionOut)
+def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
+    """Abre una nueva sesión de caja."""
+    user_id = get_current_user_id()
+
+    # Verificar si ya tiene una abierta
+    active_session = db.query(CashSession).filter(
+        CashSession.user_id == user_id,
+        CashSession.status == "OPEN"
+    ).first()
+    
+    if active_session:
+        raise HTTPException(status_code=400, detail="Ya existe una caja abierta para este usuario")
+
+    new_session = CashSession(
+        user_id=user_id,
+        start_amount=session_in.start_amount,
+        final_cash_system=0,
+        final_cash_declared=0,
+        difference=0,
+        status="OPEN"
+    )
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+    return new_session
+
+
+@router.get("/status", response_model=CashSessionOut)
+def session_status(db: Session = Depends(get_db)):
+    """Obtiene el estado de la caja actual."""
+    user_id = get_current_user_id()
+    active_session = db.query(CashSession).filter(
+        CashSession.user_id == user_id,
+        CashSession.status == "OPEN"
+    ).first()
+    
+    if not active_session:
+        raise HTTPException(status_code=404, detail="No hay caja abierta")
+
+    # Calcular monto actual en sistema (ventas efectivo) de esta sesión
+    # 1. Buscar ventas realizadas por este user desde start_time
+    # 2. Sumar SalePayment donde method='EFECTIVO' y sale_id in (ventas del user)
+    
+    # query_total = db.query(func.sum(SalePayment.amount)).join(Sale).filter(
+    #     Sale.user_id == user_id? No, Sale.user_id es cliente! 
+    #     Necesitamos Sale.created_by? No tenemos created_by en Sale.
+    #     Asumimos que la sesión es global para las ventas que caen en ese rango?
+    #     O necesitamos agregar created_by a Sale.
+    # )
+    
+    # CRITICAL: Sale needs `seller_id` or audit field to link to CashSession user.
+    # For now, we assume single user or we filter by time > start_time.
+    
+    # Simplified approach: Sum all CASH payments created after session start
+    # This assumes single cashier machine logic or logic by time.
+    
+    # To be robust, we need `seller_id` on Sale. I will follow up on this.
+    # For now, let's just return the session object as stored.
+    
+    return active_session
+
+
+@router.post("/close", response_model=CashSessionOut)
+def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
+    """Cierra la sesión de caja y realiza arqueo."""
+    user_id = get_current_user_id()
+    active_session = db.query(CashSession).filter(
+        CashSession.user_id == user_id,
+        CashSession.status == "OPEN"
+    ).first()
+    
+    if not active_session:
+        raise HTTPException(status_code=404, detail="No hay caja abierta")
+
+    # Calcular Sistema
+    # Sumar pagos en efectivo desde active_session.start_time
+    total_sales_cash = db.query(func.coalesce(func.sum(SalePayment.amount), 0))\
+        .join(Sale)\
+        .join(PaymentMethod)\
+        .filter(
+            Sale.created_at >= active_session.start_time,
+            PaymentMethod.code == "EFECTIVO"
+        ).scalar()
+    
+    # Note: This logic assumes all sales after open belong to this session.
+    # In a multi-user environment, we need seller_id.
+    
+    final_system = active_session.start_amount + total_sales_cash
+    
+    active_session.end_time = func.now()
+    active_session.final_cash_system = final_system
+    active_session.final_cash_declared = close_in.final_cash_declared
+    active_session.difference = close_in.final_cash_declared - final_system
+    active_session.status = "CLOSED"
+    
+    db.commit()
+    db.refresh(active_session)
+    return active_session

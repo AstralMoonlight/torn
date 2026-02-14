@@ -15,6 +15,7 @@ class StockMovement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="Usuario que generó el movimiento")
     
     tipo = Column(String(20), nullable=False, comment="ENTRADA | SALIDA")
     motivo = Column(String(50), nullable=False, comment="VENTA | COMPRA | AJUSTE | INICIAL")
@@ -22,11 +23,17 @@ class StockMovement(Base):
     
     fecha = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Opcional: referencia a venta o compra (si aplica)
-    # sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True)
+    # Auditoría y Trazabilidad
+    balance_after = Column(Numeric(15, 4), nullable=True, comment="Stock resultante tras movimiento")
+    description = Column(String(255), nullable=True)
 
+    # Referencias
+    sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True)
+    
     # Relaciones
     product = relationship("app.models.product.Product", backref="stock_movements")
+    user = relationship("app.models.user.User")
+    sale = relationship("app.models.sale.Sale", backref="stock_movements")
 
     def __repr__(self):
         return f"<StockMovement(prod={self.product_id}, tipo={self.tipo}, cant={self.cantidad})>"

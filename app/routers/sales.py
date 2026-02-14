@@ -14,6 +14,8 @@ from app.models.issuer import Issuer
 from app.models.product import Product
 from app.models.sale import Sale, SaleDetail
 from app.models.user import User
+from app.models.cash import CashSession
+from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut
 from app.services.xml_generator import render_factura_xml
 
@@ -33,6 +35,18 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     Registra una nueva venta + genera DTE XML atómicamente.
     Si algo falla, se hace rollback completo.
     """
+    # 0. Validar Caja Abierta (Simulado usuario 1)
+    user_id = 1 
+    active_session = db.query(CashSession).filter(
+        CashSession.user_id == user_id,
+        CashSession.status == "OPEN"
+    ).first()
+    
+    if not active_session:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No hay turno de caja abierto. Debe abrir caja para vender."
+        )
 
     # 1. Validar Cliente
     customer = db.query(User).filter(User.rut == sale_in.rut_cliente).first()
@@ -45,6 +59,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     # 2. Validar Productos y Calcular Totales
     total_neto = Decimal("0")
     sale_details = []
+    stock_movements = []
 
     for item in sale_in.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -76,11 +91,14 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
             
             movement = StockMovement(
                 product_id=product.id,
+                user_id=user_id, # Usuario caja
                 tipo="SALIDA",
                 motivo="VENTA",
-                cantidad=item.cantidad
+                cantidad=item.cantidad,
+                description=f"Venta en proceso", 
             )
-            db.add(movement)
+            # No hacemos db.add(movement) aquí, lo vinculamos a la venta
+            stock_movements.append(movement)
 
         precio_unitario = product.precio_neto
         cantidad = item.cantidad
@@ -99,6 +117,16 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     # 3. Calcular IVA y Total
     iva = total_neto * Decimal("0.19")
     total = total_neto + iva
+
+    # Validar Pagos
+    total_payments = sum(p.amount for p in sale_in.payments)
+    # Permitimos margen de error de 1 peso por redondeo? O exacto?
+    # Por ahora exacto o mayor (si es efectivo da vuelto, pero no registramos vuelto aun)
+    if total_payments < total:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Monto de pagos ({total_payments}) inferior al total de la venta ({total})"
+        )
 
     # 4. Asignar Folio (CAF según tipo de DTE)
     tipo = sale_in.tipo_dte
@@ -127,10 +155,33 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         monto_total=total,
         descripcion=sale_in.descripcion,
         details=sale_details,
+        stock_movements=stock_movements, # Vinculación automática
     )
     db.add(new_sale)
     db.flush()  # Genera new_sale.id sin hacer commit todavía
 
+    # 5.1 Guardar Pagos
+    for payment_in in sale_in.payments:
+        pm = SalePayment(
+            sale_id=new_sale.id,
+            payment_method_id=payment_in.payment_method_id,
+            amount=payment_in.amount,
+            transaction_code=payment_in.transaction_code,
+        )
+        db.add(pm)
+
+    # 5.2 Actualizar sale_id en movimientos de stock (Si los hubo)
+    # Buscamos los movimientos en la sesión que tengan sale_id nulo y sean de estos productos?
+    # Mas facil: Lo hacemos arriba si tuvieramos el ID, pero no lo teniamos.
+    # Hack: Iterar details y buscar movimiento? 
+    # Mejor: Al crear movement arriba, no teniamos sale_id.
+    # Solucion: Flush sale primero (ya hecho) y luego recorrer items de nuevo? No eficiente.
+    # Solucion correcta: Agregar movements a una lista temporal y asignarle sale_id aqui.
+    
+    # Re-implements stock logic inside loop? No.
+    # Just set sale_id on flush? SQLAlchemy handles relationships?
+    # If we added `sale.stock_movements.append(movement)`?
+    
     # 6. Generar XML DTE y guardarlo atómicamente
     try:
         issuer = db.query(Issuer).first()
