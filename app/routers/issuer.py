@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.issuer import Issuer
-from app.schemas import IssuerCreate, IssuerOut
+from app.schemas import IssuerCreate, IssuerOut, IssuerUpdate
 
 router = APIRouter(prefix="/issuer", tags=["issuer"])
 
@@ -24,18 +24,18 @@ def get_issuer(db: Session = Depends(get_db)):
 
 
 @router.put("/", response_model=IssuerOut)
-def upsert_issuer(data: IssuerCreate, db: Session = Depends(get_db)):
+def upsert_issuer(data: IssuerUpdate, db: Session = Depends(get_db)):
     """Crea o actualiza los datos del emisor (singleton)."""
 
     issuer = db.query(Issuer).first()
 
     if issuer:
-        # Actualizar campos
-        for field, value in data.model_dump().items():
+        # Actualización parcial: solo campos enviados (no-None)
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(issuer, field, value)
     else:
-        # Crear nuevo
-        issuer = Issuer(**data.model_dump())
+        # Crear nuevo (requiere campos obligatorios)
+        issuer = Issuer(**data.model_dump(exclude_unset=True))
         db.add(issuer)
 
     db.commit()

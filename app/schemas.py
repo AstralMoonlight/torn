@@ -138,6 +138,20 @@ class IssuerCreate(BaseModel):
     email: Optional[str] = None
 
 
+class IssuerUpdate(BaseModel):
+    """Datos opcionales para actualizar el emisor (actualización parcial)."""
+
+    rut: Optional[str] = None
+    razon_social: Optional[str] = None
+    giro: Optional[str] = None
+    acteco: Optional[str] = None
+    direccion: Optional[str] = None
+    comuna: Optional[str] = None
+    ciudad: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+
+
 class IssuerOut(BaseModel):
     """Representación del emisor devuelta por la API."""
 
