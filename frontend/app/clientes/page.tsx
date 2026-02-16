@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
+import { getApiErrorMessage } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Search, Loader2 } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
@@ -98,7 +99,7 @@ export default function CustomersPage() {
             setCustomers(data)
         } catch (error) {
             console.error(error)
-            toast.error('Error al cargar clientes')
+            toast.error(getApiErrorMessage(error, 'Error al cargar clientes'))
         } finally {
             setLoading(false)
         }

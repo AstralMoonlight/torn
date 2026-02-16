@@ -1,19 +1,37 @@
 # Torn – Facturador electrónico (SII Chile)
 
-Monorepo: backend (FastAPI) + frontend (Next.js).
+Monorepo: backend (FastAPI) + frontend (Next.js). El frontend es un proyecto **independiente** (sus deps van en `frontend/node_modules`).
 
 ## Instalación
 
-**Importante:** instala dependencias desde la **raíz del proyecto** para que el frontend resuelva bien los módulos en dev:
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abre http://localhost:3000. No hace falta instalar nada desde la raíz para el frontend.
+
+**Importante:** Para que Clientes, Marcas, Inventario, POS, etc. carguen datos, el **backend tiene que estar en marcha** en el puerto 8000. Si no, verás un aviso tipo: *"No se pudo conectar al servidor. ¿Está el backend en marcha? (puerto 8000)"*.
+
+### Backend
+
+En la raíz del repo, usa un **entorno virtual** (en Ubuntu no instales uvicorn con `apt`; usa el del proyecto):
 
 ```bash
 cd /ruta/a/torn
-npm install
+
+# Crear y activar el venv (solo la primera vez)
+python3 -m venv .venv
+source .venv/bin/activate   # en Windows: .venv\Scripts\activate
+
+# Instalar dependencias (solo la primera vez)
+pip install -r requirements.txt
+
+# Levantar el servidor
+uvicorn app.main:app --reload --port 8000
 ```
 
-Luego:
-
-- **Frontend:** `cd frontend && npm run dev` (en `http://localhost:3000`)
-- **Backend:** desde la raíz, `uvicorn app.main:app --reload --port 8000` (o con el venv que uses)
-
-Si al entrar en una ruta del frontend la pantalla se va a blanco, suele ser que `node_modules` de la raíz no existía al levantar el frontend. Vuelve a ejecutar `npm install` en la raíz y después `npm run dev` en `frontend/`.
+El backend quedará en http://localhost:8000. Déjalo corriendo en una terminal y usa el frontend en otra.

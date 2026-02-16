@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSellers, createUser, updateUser, deleteUser, User, UserCreate } from '@/services/users'
+import { getApiErrorMessage } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Loader2, User as UserIcon } from 'lucide-react'
 
@@ -64,7 +65,7 @@ export default function SellersPage() {
             setSellers(data)
         } catch (error) {
             console.error(error)
-            toast.error('Error al cargar vendedores')
+            toast.error(getApiErrorMessage(error, 'Error al cargar vendedores'))
         } finally {
             setLoading(false)
         }

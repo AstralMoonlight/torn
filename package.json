@@ -2,11 +2,5 @@
     "name": "torn-root-shim",
     "private": true,
     "description": "Shim to stop Next.js from walking up directory tree",
-    "workspaces": [
-        "frontend",
-        "app"
-    ],
-    "scripts": {
-        "postinstall": "node scripts/link-frontend-deps.js"
-    }
+    "workspaces": ["app"]
 }

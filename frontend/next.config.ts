@@ -1,19 +1,14 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// Frontend es independiente (no workspace): todas las deps están en frontend/node_modules.
 const frontendRoot = path.resolve(__dirname);
-const monorepoRoot = path.resolve(__dirname, "..");
-
-// En dev: raíz solo del frontend → Next no indexa todo el monorepo (evita consumo excesivo de RAM).
-// En build: raíz del monorepo → resuelve todas las deps que npm workspaces deja en la raíz.
-const isDev = process.env.NODE_ENV !== "production";
-const root = isDev ? frontendRoot : monorepoRoot;
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root,
+    root: frontendRoot,
   },
-  outputFileTracingRoot: root,
+  outputFileTracingRoot: frontendRoot,
 };
 
 export default nextConfig;

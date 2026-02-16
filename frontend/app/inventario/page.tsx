@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getProducts, type Product } from '@/services/products'
+import { getApiErrorMessage } from '@/services/api'
 import {
     Package,
     Search,
@@ -64,7 +65,10 @@ export default function InventarioPage() {
         setLoading(true)
         getProducts()
             .then(setProducts)
-            .catch(console.error)
+            .catch((error) => {
+                console.error(error)
+                toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
+            })
             .finally(() => setLoading(false))
     }
 

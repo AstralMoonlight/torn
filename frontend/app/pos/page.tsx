@@ -8,6 +8,7 @@ import ProductSearch from '@/components/pos/ProductSearch'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
 import { getProducts, getProductBySku, type Product } from '@/services/products'
+import { getApiErrorMessage } from '@/services/api'
 import { Landmark, AlertTriangle, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +33,10 @@ export default function POSPage() {
                 setProducts(data)
                 setFiltered(sellable)
             })
-            .catch(console.error)
+            .catch((error) => {
+                console.error(error)
+                toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
+            })
             .finally(() => setLoading(false))
     }, [])
 

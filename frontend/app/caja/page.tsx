@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { openSession, closeSession, getSessionStatus } from '@/services/cash'
 import { getSellers, User } from '@/services/users'
+import { getApiErrorMessage } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,7 +58,12 @@ export default function CajaPage() {
             .catch(() => setStatus('CLOSED'))
             .catch(() => setStatus('CLOSED'))
 
-        getSellers().then(setSellers).catch(console.error)
+        getSellers()
+            .then(setSellers)
+            .catch((err) => {
+                console.error(err)
+                toast.error(getApiErrorMessage(err, 'Error al cargar vendedores'))
+            })
     }, [setSession, setStatus])
 
     const handleOpen = async () => {
