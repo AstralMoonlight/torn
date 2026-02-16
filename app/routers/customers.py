@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas import CustomerCreate, CustomerOut
+from app.schemas import CustomerCreate, CustomerOut, CustomerUpdate
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -44,6 +44,31 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
     return db_customer
 
 
+@router.get("/", response_model=list[CustomerOut],
+             summary="Listar Clientes",
+             description="Obtiene todos los clientes registrados.")
+def list_customers(db: Session = Depends(get_db)):
+    """Lista todos los clientes."""
+    return db.query(User).order_by(User.razon_social).all()
+
+
+@router.get("/search", response_model=list[CustomerOut], summary="Buscar Clientes (Predictivo)")
+def search_customers(q: str = "", db: Session = Depends(get_db)):
+    """Busca clientes por RUT o Razón Social (coincidencia parcial)."""
+    if not q:
+        return []
+    
+    # Normalize query for RUT search (strip dots/dashes) if it looks like a RUT part
+    clean_q = q.replace(".", "").replace("-", "")
+    
+    query = db.query(User).filter(
+        (User.rut.ilike(f"%{clean_q}%")) |
+        (User.razon_social.ilike(f"%{q}%"))
+    ).limit(10)
+    
+    return query.all()
+
+
 @router.get("/{rut}", response_model=CustomerOut,
              summary="Buscar Cliente",
              description="Busca un cliente por su RUT.")
@@ -68,3 +93,42 @@ def get_customer_by_rut(rut: str, db: Session = Depends(get_db)):
             detail=f"No se encontró un cliente con RUT {rut}",
         )
     return customer
+
+
+@router.put("/{rut}", response_model=CustomerOut,
+             summary="Actualizar Cliente",
+             description="Actualiza datos de un cliente existente.")
+def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_db)):
+    """Actualiza un cliente."""
+    db_customer = db.query(User).filter(User.rut == rut).first()
+    if not db_customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cliente con RUT {rut} no encontrado"
+        )
+    
+    # Update fields
+    update_data = customer_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_customer, key, value)
+    
+    db.commit()
+    db.refresh(db_customer)
+    return db_customer
+
+
+@router.delete("/{rut}", status_code=status.HTTP_204_NO_CONTENT,
+               summary="Eliminar Cliente",
+               description="Elimina un cliente por su RUT.")
+def delete_customer(rut: str, db: Session = Depends(get_db)):
+    """Elimina un cliente."""
+    db_customer = db.query(User).filter(User.rut == rut).first()
+    if not db_customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cliente con RUT {rut} no encontrado"
+        )
+    
+    db.delete(db_customer)
+    db.commit()
+    return None

@@ -6,7 +6,26 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+
 from app.utils.validators import validar_rut
+
+
+# ── Brand (Marca) ────────────────────────────────────────────────────
+
+
+class BrandBase(BaseModel):
+    name: str
+
+class BrandCreate(BrandBase):
+    pass
+
+class BrandUpdate(BrandBase):
+    name: Optional[str] = None
+
+class BrandOut(BrandBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 # ── Customer (Contribuyente) ─────────────────────────────────────────
@@ -27,6 +46,25 @@ class CustomerCreate(BaseModel):
     @classmethod
     def rut_valido(cls, v: str) -> str:
         return validar_rut(v)
+
+
+class CustomerUpdate(BaseModel):
+    """Datos opcionales para actualizar cliente."""
+
+    rut: Optional[str] = None
+    razon_social: Optional[str] = None
+    giro: Optional[str] = None
+    direccion: Optional[str] = None
+    comuna: Optional[str] = None
+    ciudad: Optional[str] = None
+    email: Optional[str] = None
+
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validar_rut(v)
+        return v
 
 
 class CustomerOut(BaseModel):
@@ -65,6 +103,22 @@ class ProductCreate(BaseModel):
     stock_actual: Decimal = Decimal(0)
     stock_minimo: Decimal = Decimal(0)
     parent_id: Optional[int] = None
+    brand_id: Optional[int] = None
+
+
+class ProductUpdate(BaseModel):
+    """Datos para actualizar un producto."""
+    codigo_interno: Optional[str] = None
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_neto: Optional[Decimal] = None
+    unidad_medida: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    controla_stock: Optional[bool] = None
+    stock_minimo: Optional[Decimal] = None
+    stock_actual: Optional[Decimal] = None # Allow updating stock for now, though movements usually handle this
+    is_active: Optional[bool] = None
+    brand_id: Optional[int] = None
 
 
 class ProductOut(BaseModel):
@@ -83,11 +137,14 @@ class ProductOut(BaseModel):
     stock_actual: Decimal
     stock_minimo: Decimal
     is_active: bool
+    is_deleted: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
     
     # Jerarquía
     parent_id: Optional[int] = None
+    brand_id: Optional[int] = None
+    brand: Optional[BrandOut] = None
     variants: List["ProductOut"] = []
 
 
@@ -115,6 +172,7 @@ class SaleCreate(BaseModel):
     items: List[SaleItem]
     payments: List[SalePaymentCreate]  # Pagos múltiples
     descripcion: Optional[str] = None
+    seller_id: Optional[int] = None
 
     @field_validator("rut_cliente")
     @classmethod
@@ -183,6 +241,7 @@ class PaymentMethodOut(BaseModel):
 
 class CashSessionCreate(BaseModel):
     start_amount: Decimal
+    user_id: int
 
 
 class CashSessionClose(BaseModel):

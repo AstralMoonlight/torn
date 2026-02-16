@@ -18,6 +18,7 @@ export interface SaleCreate {
     items: SaleItem[]
     payments: SalePaymentCreate[]
     descripcion?: string
+    seller_id?: number
 }
 
 export interface SaleDetailOut {
@@ -86,7 +87,7 @@ export async function createReturn(ret: ReturnCreate): Promise<SaleOut> {
     return data
 }
 
-export async function getSalePdfUrl(saleId: number): string {
+export function getSalePdfUrl(saleId: number): string {
     return `${api.defaults.baseURL}/sales/${saleId}/pdf`
 }
 

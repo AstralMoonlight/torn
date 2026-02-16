@@ -43,7 +43,7 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
     Raises:
         HTTPException(400): Si ya existe una sesión abierta.
     """
-    user_id = get_current_user_id()
+    user_id = session_in.user_id
 
     # Verificar si ya tiene una abierta
     active_session = db.query(CashSession).filter(
@@ -150,6 +150,7 @@ def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
         .join(PaymentMethod)\
         .filter(
             Sale.created_at >= active_session.start_time,
+            Sale.seller_id == user_id,
             PaymentMethod.code == "EFECTIVO"
         ).scalar()
     

@@ -91,17 +91,19 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         HTTPException(400): Si los montos no cuadran.
         HTTPException(500): Si falla la generación del DTE.
     """
-    # 0. Validar Caja Abierta (Simulado usuario 1)
-    user_id = 1 
+    # 0. Validar Caja Abierta
+    # Si viene seller_id, verificamos SU caja. Si no, usamos el default 1 (o el del token en futuro)
+    seller_id_to_use = sale_in.seller_id if sale_in.seller_id else 1
+    
     active_session = db.query(CashSession).filter(
-        CashSession.user_id == user_id,
+        CashSession.user_id == seller_id_to_use,
         CashSession.status == "OPEN"
     ).first()
     
     if not active_session:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No hay turno de caja abierto. Debe abrir caja para vender."
+            detail=f"El vendedor (ID {seller_id_to_use}) no tiene turno de caja abierto."
         )
 
     # 1. Validar Cliente
@@ -147,7 +149,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
             
             movement = StockMovement(
                 product_id=product.id,
-                user_id=user_id, # Usuario caja
+                user_id=seller_id_to_use, # Usuario caja
                 tipo="SALIDA",
                 motivo="VENTA",
                 cantidad=item.cantidad,
@@ -191,15 +193,14 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         CAF.ultimo_folio_usado < CAF.folio_hasta,
     ).order_by(CAF.id.asc()).first()
 
-    if not caf:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"No hay folios disponibles para tipo DTE {tipo}.",
-        )
-
-    nuevo_folio = caf.ultimo_folio_usado + 1
-    caf.ultimo_folio_usado = nuevo_folio
-    db.add(caf)
+    if caf:
+        nuevo_folio = caf.ultimo_folio_usado + 1
+        caf.ultimo_folio_usado = nuevo_folio
+        db.add(caf)
+    else:
+        # MODO SIMULACIÓN: Si no hay CAF, usamos correlativo manual basándonos en ventas anteriores
+        last_sale = db.query(Sale).filter(Sale.tipo_dte == tipo).order_by(Sale.folio.desc()).first()
+        nuevo_folio = (last_sale.folio + 1) if last_sale else 1
 
     # 5. Crear Venta
     new_sale = Sale(
@@ -210,6 +211,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         iva=iva,
         monto_total=total,
         descripcion=sale_in.descripcion,
+        seller_id=seller_id_to_use,
         details=sale_details,
         stock_movements=stock_movements, # Vinculación automática
     )

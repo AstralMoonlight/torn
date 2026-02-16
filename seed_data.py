@@ -58,6 +58,21 @@ def seed_data():
         )
         db.add(customer)
 
+    # 3.1 Cliente Genérico (Boleta)
+    if not db.query(User).filter_by(rut="66666666-6").first():
+        print("Creating Generic Customer...")
+        generic = User(
+            rut="66666666-6",
+            razon_social="Cliente Boleta",
+            giro="Particular",
+            direccion="Sin Dirección",
+            comuna="Sin Comuna",
+            ciudad="Sin Ciudad",
+            email="cliente@generico.cl",
+            is_active=True,
+        )
+        db.add(generic)
+
     # 4. Productos
     if not db.query(Product).filter_by(codigo_interno="SKU-001").first():
         print("Creating Products...")

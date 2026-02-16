@@ -45,12 +45,17 @@ class Product(Base):
     stock_minimo = Column(Numeric(15, 4), default=0)
 
     is_active = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Variantes (Relación Jerárquica)
     parent_id = Column(Integer, ForeignKey("products.id"), nullable=True)
     variants = relationship("Product", backref=backref("parent", remote_side=[id]))
+
+    # Marca
+    brand_id = Column(Integer, ForeignKey("brands.id"), nullable=True)
+    brand = relationship("app.models.brand.Brand", back_populates="products")
 
     def __repr__(self) -> str:
         """Retorna representación string del objeto."""

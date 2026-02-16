@@ -44,7 +44,12 @@ class Sale(Base):
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")
     related_sale = relationship("Sale", remote_side=[id], backref="adjustments")
 
-    user = relationship("User", backref="sales")
+    user = relationship("User", foreign_keys=[user_id], backref="sales_as_customer")
+    
+    # Seller
+    seller_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    seller = relationship("User", foreign_keys=[seller_id], backref="sales_as_seller")
+    
     details = relationship("SaleDetail", back_populates="sale", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

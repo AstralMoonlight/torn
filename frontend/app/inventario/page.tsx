@@ -2,202 +2,236 @@
 
 import { useEffect, useState } from 'react'
 import { getProducts, type Product } from '@/services/products'
+import {
+    Package,
+    Search,
+    AlertTriangle,
+    XCircle,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    Plus,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, Search, AlertTriangle, Box } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import ProductWizard from '@/components/inventory/ProductWizard'
+import ProductEditDialog from '@/components/inventory/ProductEditDialog'
+import { deleteProduct } from '@/services/products'
+import { toast } from 'sonner'
 
-function formatCLP(value: string | number): string {
+function formatCLP(value: number): string {
     return new Intl.NumberFormat('es-CL', {
         style: 'currency',
         currency: 'CLP',
         minimumFractionDigits: 0,
-    }).format(typeof value === 'string' ? parseFloat(value) : value)
+    }).format(value)
+}
+
+function StockBadge({ product }: { product: Product }) {
+    const stock = parseFloat(product.stock_actual)
+    const min = parseFloat(product.stock_minimo)
+
+    if (!product.controla_stock) {
+        return <Badge variant="secondary" className="text-[10px]">Sin control</Badge>
+    }
+    if (stock <= 0) {
+        return <Badge variant="destructive" className="text-[10px] gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
+    }
+    if (stock <= min) {
+        return <Badge className="bg-amber-500 text-[10px] gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
+    }
+    return <Badge className="bg-emerald-600 text-[10px]">{stock}</Badge>
 }
 
 export default function InventarioPage() {
     const [products, setProducts] = useState<Product[]>([])
-    const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [loading, setLoading] = useState(true)
+    const [wizardOpen, setWizardOpen] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
-    useEffect(() => {
+    const loadProducts = () => {
+        setLoading(true)
         getProducts()
             .then(setProducts)
             .catch(console.error)
             .finally(() => setLoading(false))
-    }, [])
+    }
 
-    // Flatten all products (parents + variants)
-    const allProducts = products.reduce<Product[]>((acc, p) => {
-        if (p.variants && p.variants.length > 0) {
-            return [...acc, ...p.variants]
+    const handleDelete = async (product: Product) => {
+        if (!confirm(`¿Estás seguro de eliminar "${product.nombre}"? Esto no se puede deshacer.`)) return
+
+        try {
+            await deleteProduct(product.id)
+            toast.success('Producto eliminado')
+            loadProducts()
+        } catch (error) {
+            console.error(error)
+            toast.error('Error al eliminar producto')
         }
-        if (parseFloat(p.precio_neto) > 0) {
-            return [...acc, p]
-        }
-        return acc
-    }, [])
+    }
+
+    const handleEdit = (product: Product) => {
+        setSelectedProduct(product)
+        setEditDialogOpen(true)
+    }
+
+    useEffect(() => { loadProducts() }, [])
+
+    // Filter only root products (parents or standalone) to avoid duplicates
+    // Filter only root products (parents or standalone) to avoid duplicates
+    // We want to show PARENTS in the table, effectively grouping variants.
+    // Standalone products are their own parents (parent_id === null and empty variants usually, or just treat as root).
+    const rawProducts = products.filter(p => p.parent_id === null)
+
+    // Deduplicate by ID just in case
+    const allProducts = Array.from(new Map(rawProducts.map(p => [p.id, p])).values())
 
     const filtered = search.trim()
         ? allProducts.filter(
             (p) =>
                 p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                p.codigo_interno.toLowerCase().includes(search.toLowerCase())
+                p.codigo_interno.toLowerCase().includes(search.toLowerCase()) ||
+                p.codigo_barras?.includes(search)
         )
         : allProducts
 
-    const lowStockItems = allProducts.filter(
-        (p) =>
-            p.controla_stock &&
-            parseFloat(p.stock_actual) <= parseFloat(p.stock_minimo) &&
-            parseFloat(p.stock_actual) > 0
-    )
-
-    const outOfStockItems = allProducts.filter(
-        (p) => p.controla_stock && parseFloat(p.stock_actual) <= 0
-    )
-
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
             {/* Header */}
-            <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                    <Package className="h-6 w-6 text-purple-600" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                    <Package className="h-6 w-6 text-blue-600" />
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Inventario</h1>
+                        <p className="text-xs text-slate-500">{allProducts.length} productos</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Inventario</h1>
-                    <p className="text-sm text-slate-500">Control de stock en tiempo real</p>
-                </div>
+                <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700">
+                    <Plus className="h-4 w-4" /> Nuevo Producto
+                </Button>
             </div>
 
-            {/* Alerts */}
-            {(outOfStockItems.length > 0 || lowStockItems.length > 0) && (
-                <div className="flex gap-4">
-                    {outOfStockItems.length > 0 && (
-                        <Card className="flex-1 border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
-                            <CardContent className="flex items-center gap-3 py-4">
-                                <AlertTriangle className="h-5 w-5 text-red-500" />
-                                <div>
-                                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Sin Stock</p>
-                                    <p className="text-xs text-red-500">{outOfStockItems.length} producto(s)</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                    {lowStockItems.length > 0 && (
-                        <Card className="flex-1 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-                            <CardContent className="flex items-center gap-3 py-4">
-                                <Box className="h-5 w-5 text-amber-500" />
-                                <div>
-                                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Stock Bajo</p>
-                                    <p className="text-xs text-amber-500">{lowStockItems.length} producto(s)</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            )}
-
             {/* Search */}
-            <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
-                    placeholder="Buscar productos..."
-                    className="pl-10"
+                    placeholder="Buscar por nombre, SKU o código de barras..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-10 text-sm"
                 />
             </div>
 
             {/* Table */}
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>SKU</TableHead>
-                                <TableHead>Producto</TableHead>
-                                <TableHead className="text-right">Precio Neto</TableHead>
-                                <TableHead className="text-center">Ctrl. Stock</TableHead>
-                                <TableHead className="text-right">Stock Actual</TableHead>
-                                <TableHead className="text-right">Stock Mín.</TableHead>
-                                <TableHead className="text-center">Estado</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                                <th className="text-left text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">SKU</th>
+                                <th className="text-left text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">Producto</th>
+                                <th className="text-right text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium hidden sm:table-cell">Precio Neto</th>
+                                <th className="text-center text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">Stock Total</th>
+                                <th className="text-center text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium hidden lg:table-cell">Variantes</th>
+                                <th className="w-[50px]"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        {Array.from({ length: 7 }).map((_, j) => (
-                                            <TableCell key={j}>
-                                                <Skeleton className="h-4 w-full" />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))
+                                <tr>
+                                    <td colSpan={5} className="text-center py-12 text-slate-400">Cargando...</td>
+                                </tr>
                             ) : filtered.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-slate-400">
-                                        No se encontraron productos
-                                    </TableCell>
-                                </TableRow>
+                                <tr>
+                                    <td colSpan={5} className="text-center py-12 text-slate-400">Sin resultados</td>
+                                </tr>
                             ) : (
-                                filtered.map((product) => {
-                                    const stock = parseFloat(product.stock_actual)
-                                    const minStock = parseFloat(product.stock_minimo)
-                                    const outOfStock = product.controla_stock && stock <= 0
-                                    const lowStock = product.controla_stock && stock > 0 && stock <= minStock
-
-                                    return (
-                                        <TableRow key={product.id} className={outOfStock ? 'bg-red-50/50 dark:bg-red-950/10' : ''}>
-                                            <TableCell className="font-mono text-xs text-slate-500">
-                                                {product.codigo_interno}
-                                            </TableCell>
-                                            <TableCell className="font-medium">{product.nombre}</TableCell>
-                                            <TableCell className="text-right font-tabular">
-                                                {formatCLP(product.precio_neto)}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {product.controla_stock ? (
-                                                    <Badge variant="outline" className="text-[10px]">Sí</Badge>
-                                                ) : (
-                                                    <span className="text-slate-300">—</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right font-tabular font-semibold">
-                                                {product.controla_stock ? stock : '—'}
-                                            </TableCell>
-                                            <TableCell className="text-right font-tabular text-slate-400">
-                                                {product.controla_stock ? minStock : '—'}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {outOfStock ? (
-                                                    <Badge variant="destructive" className="text-[10px]">Agotado</Badge>
-                                                ) : lowStock ? (
-                                                    <Badge className="bg-amber-500 text-[10px]">Bajo</Badge>
-                                                ) : product.controla_stock ? (
-                                                    <Badge className="bg-emerald-600 text-[10px]">OK</Badge>
-                                                ) : (
-                                                    <span className="text-slate-300">—</span>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })
+                                filtered.map((p) => (
+                                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500">{p.codigo_interno}</td>
+                                        <td className="px-4 py-2.5">
+                                            <p className="text-xs font-medium text-slate-900 dark:text-white">{p.nombre}</p>
+                                            {p.codigo_barras && (
+                                                <p className="text-[10px] text-slate-400 font-mono">{p.codigo_barras}</p>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-tabular text-xs hidden sm:table-cell">
+                                            {formatCLP(parseFloat(p.precio_neto))}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            {p.variants.length > 0 ? (
+                                                <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-200">
+                                                    {p.variants.reduce((acc, v) => acc + parseFloat(v.stock_actual), 0)} u.
+                                                </Badge>
+                                            ) : (
+                                                <StockBadge product={p} />
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center text-xs text-slate-400 font-tabular hidden lg:table-cell">
+                                            {p.variants.length > 0 ? (
+                                                <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
+                                            ) : (
+                                                <span className="text-[10px]">—</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <span className="sr-only">Open menu</span>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={() => handleEdit(p)}>
+                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                        Editar
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleDelete(p)} className="text-red-600 focus:text-red-600">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Eliminar
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
+                                    </tr>
+                                ))
                             )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Product Wizard */}
+            <ProductWizard
+                open={wizardOpen}
+                onClose={(refresh) => {
+                    setWizardOpen(false)
+                    if (refresh) loadProducts()
+                }}
+            />
+
+            <ProductEditDialog
+                open={editDialogOpen}
+                product={selectedProduct}
+                onClose={(refresh) => {
+                    setEditDialogOpen(false)
+                    if (refresh) loadProducts()
+                }}
+            />
         </div>
     )
 }

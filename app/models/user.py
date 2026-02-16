@@ -39,6 +39,7 @@ class User(Base):
     email = Column(String(150))
     current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente (Positivo=Deuda)")
     is_active = Column(Boolean, default=True)
+    role = Column(String(20), default="CUSTOMER", comment="ADMIN, SELLER, CUSTOMER")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

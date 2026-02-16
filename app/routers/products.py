@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.product import Product
-from app.schemas import ProductCreate, ProductOut
+from app.schemas import ProductCreate, ProductOut, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -46,8 +46,70 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=List[ProductOut])
 def list_products(db: Session = Depends(get_db)):
-    """Lista todos los productos activos."""
-    return db.query(Product).filter(Product.is_active == True).all()  # noqa: E712
+    """Lista todos los productos activos (no eliminados)."""
+    return db.query(Product).filter(
+        Product.is_deleted == False  # noqa: E712
+    ).order_by(Product.id.desc()).all()
+
+
+@router.put("/{product_id}", response_model=ProductOut,
+            summary="Actualizar Producto",
+            description="Actualiza parcialmente un producto.")
+def update_product(product_id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
+    """Actualiza un producto existente."""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Producto no encontrado",
+        )
+
+    update_data = product_in.model_dump(exclude_unset=True)
+    
+    # Validation unique code if changing
+    if "codigo_interno" in update_data and update_data["codigo_interno"] != product.codigo_interno:
+        existing = db.query(Product).filter(
+            Product.codigo_interno == update_data["codigo_interno"]
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe un producto con código {update_data['codigo_interno']}",
+            )
+
+    for field, value in update_data.items():
+        setattr(product, field, value)
+
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT,
+               summary="Eliminar Producto",
+               description="Realiza un borrado lógico del producto y sus variantes.")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    """Soft delete de un producto y sus variantes."""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Producto no encontrado",
+        )
+
+    # Soft delete parent
+    product.is_deleted = True
+    product.is_active = False # Also deactivate
+    
+    # Soft delete variants
+    variants = db.query(Product).filter(Product.parent_id == product_id).all()
+    for variant in variants:
+        variant.is_deleted = True
+        variant.is_active = False
+
+    db.commit()
+    return None
 
 
 @router.get("/{codigo}", response_model=ProductOut,
