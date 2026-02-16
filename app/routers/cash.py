@@ -71,10 +71,11 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
 @router.get("/status", response_model=CashSessionOut,
              summary="Estado de Caja",
              description="Consulta el estado actual de la caja del usuario.")
-def session_status(db: Session = Depends(get_db)):
+def session_status(user_id: int = None, db: Session = Depends(get_db)):
     """Obtiene el estado de la caja actual.
     
     Args:
+        user_id (int, optional): ID del usuario a consultar. Si no se provee, usa el default.
         db (Session): Sesión DB.
         
     Returns:
@@ -83,7 +84,9 @@ def session_status(db: Session = Depends(get_db)):
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    user_id = get_current_user_id()
+    if user_id is None:
+        user_id = get_current_user_id()
+        
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
         CashSession.status == "OPEN"

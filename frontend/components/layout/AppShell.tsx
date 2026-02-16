@@ -9,10 +9,11 @@ import { getSessionStatus } from '@/services/cash'
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const setSession = useSessionStore((s) => s.setSession)
     const setStatus = useSessionStore((s) => s.setStatus)
+    const userId = useSessionStore((s) => s.userId)
 
     // Sync cash session with backend on mount
     useEffect(() => {
-        getSessionStatus()
+        getSessionStatus(userId || undefined)
             .then((session) => {
                 if (session.status === 'OPEN') {
                     setSession(session.id, parseFloat(session.start_amount), session.start_time, session.user_id)
@@ -21,9 +22,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 }
             })
             .catch(() => {
+                // If 404 or error, assume closed if we don't have a session
                 setStatus('CLOSED')
             })
-    }, [setSession, setStatus])
+    }, [setSession, setStatus, userId])
 
     return (
         <div className="flex h-[100dvh] overflow-hidden">

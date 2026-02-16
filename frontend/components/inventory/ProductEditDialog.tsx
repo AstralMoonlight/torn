@@ -63,79 +63,47 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
         }
     }, [open, product])
 
-    const handleSaveGeneral = async () => {
+    const handleSave = async () => {
         if (!product) return
         setLoading(true)
         try {
-            const payload: any = {
+            // 1. Save main product info (General)
+            const mainPayload: any = {
                 nombre: baseName,
                 codigo_interno: baseSku,
-                descripcion: baseDescription || undefined,
-                brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
+                descripcion: baseDescription || null,
+                brand_id: selectedBrand ? parseInt(selectedBrand) : null,
                 controla_stock: controlStock,
             }
 
-            // If simple product, also save price/stock/barcode here? 
-            // Or only in the other tab? Let's save general info here.
-            await updateProduct(product.id, payload)
+            if (!isParent) {
+                // If simple product, include price/stock/barcode in the main update
+                mainPayload.precio_neto = simplePrice.toString()
+                mainPayload.stock_actual = simpleStock.toString()
+                mainPayload.codigo_barras = simpleBarcode || null
+            }
 
-            toast.success('Información general actualizada')
+            await updateProduct(product.id, mainPayload)
+
+            // 2. If it has variants, save them
+            if (isParent) {
+                for (const v of variants) {
+                    await updateProduct(v.id, {
+                        nombre: v.nombre,
+                        codigo_interno: v.codigo_interno,
+                        precio_neto: v.precio_neto as any,
+                        stock_actual: v.stock_actual as any,
+                        codigo_barras: v.codigo_barras || null,
+                        controla_stock: controlStock,
+                    })
+                }
+            }
+
+            toast.success('Producto actualizado correctamente')
             onClose(true)
         } catch (error) {
             console.error(error)
             toast.error('Error al actualizar producto')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleUpdateVariantState = (index: number, field: keyof Product, value: any) => {
-        const newVariants = [...variants]
-        newVariants[index] = { ...newVariants[index], [field]: value }
-        setVariants(newVariants)
-    }
-
-    const handleSaveVariants = async () => {
-        if (!product) return
-        setLoading(true)
-        try {
-            let updatedCount = 0
-            for (const v of variants) {
-                await updateProduct(v.id, {
-                    codigo_interno: v.codigo_interno,
-                    precio_neto: v.precio_neto as any, // Cast to any to allow number/string mix without TS complaint
-                    stock_actual: v.stock_actual as any,
-                    codigo_barras: v.codigo_barras || undefined,
-                    controla_stock: controlStock,
-                })
-                updatedCount++
-            }
-            toast.success(`${updatedCount} variantes actualizadas`)
-            onClose(true)
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al actualizar variantes')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleSaveSimple = async () => {
-        if (!product) return
-        setLoading(true)
-        try {
-            await updateProduct(product.id, {
-                precio_neto: simplePrice.toString(), // Convert to string as per Product interface?
-                stock_actual: simpleStock.toString(),
-                codigo_barras: simpleBarcode || undefined,
-                controla_stock: controlStock,
-            } as any) // temporary cast if types differ significantly or fixing type definition
-
-            toast.success('Precio y stock actualizados')
-            onClose(true)
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al actualizar')
         } finally {
             setLoading(false)
         }
@@ -219,9 +187,9 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         </div>
 
                         <div className="flex justify-end pt-4">
-                            <Button onClick={handleSaveGeneral} disabled={loading} className="gap-2">
+                            <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Guardar General
+                                Guardar Cambios
                             </Button>
                         </div>
                     </TabsContent>
@@ -244,18 +212,34 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                             {variants.map((v, i) => (
                                                 <tr key={v.id}>
                                                     <td className="px-3 py-2">
-                                                        <div className="font-medium text-xs">{v.nombre.replace(baseName + ' - ', '')}</div>
+                                                        <Input
+                                                            value={v.nombre}
+                                                            onChange={(e) => {
+                                                                const newVariants = [...variants]
+                                                                newVariants[i] = { ...v, nombre: e.target.value }
+                                                                setVariants(newVariants)
+                                                            }}
+                                                            className="h-7 text-xs mb-1"
+                                                        />
                                                         <Input
                                                             value={v.codigo_interno}
-                                                            onChange={(e) => handleUpdateVariantState(i, 'codigo_interno', e.target.value)}
-                                                            className="h-7 text-xs font-mono mt-1 w-32"
+                                                            onChange={(e) => {
+                                                                const newVariants = [...variants]
+                                                                newVariants[i] = { ...v, codigo_interno: e.target.value }
+                                                                setVariants(newVariants)
+                                                            }}
+                                                            className="h-7 text-xs font-mono w-32"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
                                                         <Input
                                                             type="number"
                                                             value={v.precio_neto.toString()}
-                                                            onChange={(e) => handleUpdateVariantState(i, 'precio_neto', parseFloat(e.target.value) || 0)}
+                                                            onChange={(e) => {
+                                                                const newVariants = [...variants]
+                                                                newVariants[i] = { ...v, precio_neto: e.target.value }
+                                                                setVariants(newVariants)
+                                                            }}
                                                             className="h-8 w-24 text-right font-tabular"
                                                         />
                                                     </td>
@@ -263,14 +247,22 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                         <Input
                                                             type="number"
                                                             value={v.stock_actual.toString()}
-                                                            onChange={(e) => handleUpdateVariantState(i, 'stock_actual', parseFloat(e.target.value) || 0)}
+                                                            onChange={(e) => {
+                                                                const newVariants = [...variants]
+                                                                newVariants[i] = { ...v, stock_actual: e.target.value }
+                                                                setVariants(newVariants)
+                                                            }}
                                                             className="h-8 w-20 text-center font-tabular"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
                                                         <Input
                                                             value={v.codigo_barras || ''}
-                                                            onChange={(e) => handleUpdateVariantState(i, 'codigo_barras', e.target.value)}
+                                                            onChange={(e) => {
+                                                                const newVariants = [...variants]
+                                                                newVariants[i] = { ...v, codigo_barras: e.target.value }
+                                                                setVariants(newVariants)
+                                                            }}
                                                             placeholder="EAN-13"
                                                             className="h-8 w-32 font-mono text-xs"
                                                         />
@@ -281,10 +273,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     </table>
                                 </div>
                                 <div className="flex justify-end pt-4">
-                                    <Button onClick={handleSaveVariants} disabled={loading || variants.length === 0} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                    <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 bg-blue-600 hover:bg-blue-700">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Actualizar Variantes
+                                        Guardar Todas las Variantes
                                     </Button>
                                 </div>
                             </>
@@ -321,10 +313,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     </div>
                                 </div>
                                 <div className="flex justify-end pt-6">
-                                    <Button onClick={handleSaveSimple} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                    <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Actualizar Datos
+                                        Guardar Todo
                                     </Button>
                                 </div>
                             </div>

@@ -20,8 +20,10 @@ export async function openSession(startAmount: number, userId: number): Promise<
     return data
 }
 
-export async function getSessionStatus(): Promise<CashSession> {
-    const { data } = await api.get<CashSession>('/cash/status')
+export async function getSessionStatus(userId?: number): Promise<CashSession> {
+    const { data } = await api.get<CashSession>('/cash/status', {
+        params: { user_id: userId }
+    })
     return data
 }
 

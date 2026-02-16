@@ -25,7 +25,8 @@ const navItems = [
     { href: '/caja', label: 'Caja', icon: Landmark },
     { href: '/inventario', label: 'Inventario', icon: Package },
     { href: '/marcas', label: 'Marcas', icon: Package },
-    { href: '/clientes', label: 'Clientes', icon: Globe }, // Using Globe or Users icon
+    { href: '/clientes', label: 'Clientes', icon: Globe },
+    { href: '/vendedores', label: 'Vendedores', icon: Landmark },
     { href: '/historial', label: 'Historial', icon: History },
 ]
 

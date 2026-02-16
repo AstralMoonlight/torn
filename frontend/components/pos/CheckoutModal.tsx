@@ -39,40 +39,36 @@ function formatCLP(value: number): string {
     }).format(value)
 }
 
+// Chilean Rounding Law (Ley de Redondeo - Ley 21.054)
+// Ends in 1-5 -> Round down to 0
+// Ends in 6-9 -> Round up to 10
+function roundCash(amount: number): number {
+    const integerAmount = Math.round(amount)
+    const lastDigit = integerAmount % 10
+    if (lastDigit === 0) return integerAmount
+    if (lastDigit <= 5) return integerAmount - lastDigit
+    return integerAmount + (10 - lastDigit)
+}
+
 // Chilean bill denominations
 const BILLS = [1000, 2000, 5000, 10000, 20000]
 
 function getSuggestedBills(total: number): number[] {
     const suggestions: number[] = []
 
-    // 1. Exact amount
-    suggestions.push(total)
+    // 1. Exact amount (Rounded for cash)
+    const cashTotal = roundCash(total)
+    suggestions.push(cashTotal)
 
     // 2. Next "round" bill amount that covers total
-    // We want the smallest combination of bills that is >= total and "makes sense"
-    // Heuristic: iterate mostly used bills or round up to nearest 1k, 5k, 10k?
-
-    // Let's add simple rounding to next 1.000, 5.000, 10.000, 20.000
-    const roundings = [1000, 5000, 10000, 20000]
+    // Included 500 as requested by user
+    const roundings = [500, 1000, 5000, 10000, 20000]
     for (const round of roundings) {
-        const next = Math.ceil(total / round) * round
-        if (next > total && !suggestions.includes(next)) {
+        const next = Math.ceil(cashTotal / round) * round
+        if (next > cashTotal && !suggestions.includes(next)) {
             suggestions.push(next)
         }
     }
-
-    // 3. Common bill combinations (e.g. 15.000 for 12.500)?
-    // User specifically complained about "6000" for "2975". 
-    // For 2975:
-    // next 1000 -> 3000 (Added)
-    // next 5000 -> 5000 (Added)
-    // next 10000 -> 10000 (Added)
-    // That covers 3000, 5000, 10000. 
-    // Perfect.
-
-    // 4. Also suggest "Big Bill" payment directly? 
-    // e.g. if total is 12.000, users might pay with 20.000.
-    // Our loop above covers 20.000.
 
     return suggestions.sort((a, b) => a - b).slice(0, 5)
 }
@@ -110,7 +106,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                 .then((m) => {
                     setMethods(m)
                     const cash = m.find((pm) => pm.code === 'EFECTIVO')
-                    if (cash) setPayments([{ method: cash, amount: totalFinal }])
+                    if (cash) setPayments([{ method: cash, amount: roundCash(totalFinal) }])
                 })
                 .catch(() => toast.error('Error cargando medios de pago'))
             setSuccess(false)
@@ -152,8 +148,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
     }
 
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
-    const remaining = totalFinal - totalPaid
-    const change = totalPaid > totalFinal ? totalPaid - totalFinal : 0
+    // Remaining shows true debt
+    const remaining = Math.max(0, totalFinal - totalPaid)
+    // Change is always cash, so it should be rounded
+    const rawChange = totalPaid > totalFinal ? totalPaid - totalFinal : 0
+    const change = roundCash(rawChange)
 
     // Show smart cash only when there's a cash payment line
     const hasCashPayment = payments.some((p) => p.method.code === 'EFECTIVO')

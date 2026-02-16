@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label'
 import { DialogFooter } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
 import { CustomerCreate, Customer } from '@/services/customers'
+import { formatRut, validateRut } from '@/lib/rut'
+import { toast } from 'sonner'
 
 interface CustomerFormProps {
     initialData?: CustomerCreate
@@ -13,19 +15,7 @@ interface CustomerFormProps {
     isEditing?: boolean
 }
 
-// Basic RUT formatter
-const formatRut = (rut: string): string => {
-    const clean = rut.replace(/[^0-9kK]/g, '').toUpperCase()
-    if (clean.length < 2) return clean
-    const body = clean.slice(0, -1)
-    const dv = clean.slice(-1)
-    let formattedBody = ''
-    for (let i = body.length - 1, j = 0; i >= 0; i--, j++) {
-        formattedBody = body.charAt(i) + formattedBody
-        if (j % 3 === 2 && i > 0) formattedBody = '.' + formattedBody
-    }
-    return `${formattedBody}-${dv}`
-}
+
 
 export default function CustomerForm({ initialData, onSubmit, onCancel, isEditing }: CustomerFormProps) {
     const [formData, setFormData] = useState<CustomerCreate>({
@@ -46,6 +36,12 @@ export default function CustomerForm({ initialData, onSubmit, onCancel, isEditin
     }, [initialData])
 
     const handleSubmit = async () => {
+        if (!validateRut(formData.rut)) {
+            toast.error('RUT inválido', {
+                description: 'Verifique el formato y el dígito verificador.'
+            })
+            return
+        }
         setSaving(true)
         try {
             await onSubmit(formData)

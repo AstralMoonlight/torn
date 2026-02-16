@@ -32,7 +32,7 @@ function formatCLP(value: number): string {
 }
 
 export default function CajaPage() {
-    const { status, sessionId, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
+    const { status, sessionId, userId, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
     const [montoInicial, setMontoInicial] = useState('')
     const [efectivoContado, setEfectivoContado] = useState('')
     const [sellers, setSellers] = useState<User[]>([])
@@ -47,7 +47,7 @@ export default function CajaPage() {
 
     // Sync on mount
     useEffect(() => {
-        getSessionStatus()
+        getSessionStatus(userId || undefined)
             .then((s) => {
                 if (s.status === 'OPEN') {
                     setSession(s.id, parseFloat(s.start_amount), s.start_time, s.user_id)
