@@ -3,6 +3,7 @@
  * Enlaza en frontend/node_modules las dependencias que npm workspaces
  * deja en la raíz, para que Next en dev (root = frontend) las resuelva
  * sin indexar todo el monorepo (evita consumo excesivo de RAM).
+ * Ejecutar desde la raíz del repo: node scripts/link-frontend-deps.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,15 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const frontendModules = path.join(root, 'frontend', 'node_modules');
 const rootModules = path.join(root, 'node_modules');
+
+if (!fs.existsSync(rootModules)) {
+  console.error(
+    '[link-frontend-deps] No existe node_modules en la raíz del proyecto.\n' +
+    'Ejecuta desde la raíz: npm install\n' +
+    'Luego vuelve a levantar el frontend (npm run dev en frontend/).'
+  );
+  process.exit(1);
+}
 
 if (!fs.existsSync(frontendModules)) {
   fs.mkdirSync(frontendModules, { recursive: true });
