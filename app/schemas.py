@@ -388,6 +388,7 @@ class PurchaseCreate(BaseModel):
     tipo_documento: str = "FACTURA"  # FACTURA | BOLETA | SIN_DOCUMENTO
     items: List[PurchaseItem]
     observacion: Optional[str] = None
+    fecha_compra: Optional[datetime] = None
 
 
 class PurchaseDetailOut(BaseModel):

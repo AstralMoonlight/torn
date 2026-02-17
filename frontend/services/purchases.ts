@@ -46,7 +46,21 @@ export async function getPurchases(): Promise<Purchase[]> {
     return data
 }
 
+export async function getPurchase(id: number): Promise<Purchase> {
+    const { data } = await api.get<Purchase>(`/purchases/${id}`)
+    return data
+}
+
 export async function createPurchase(purchase: PurchaseCreate): Promise<Purchase> {
     const { data } = await api.post<Purchase>('/purchases/', purchase)
     return data
+}
+
+export async function updatePurchase(id: number, purchase: PurchaseCreate): Promise<Purchase> {
+    const { data } = await api.put<Purchase>(`/purchases/${id}`, purchase)
+    return data
+}
+
+export async function deletePurchase(id: number): Promise<void> {
+    await api.delete(`/purchases/${id}`)
 }

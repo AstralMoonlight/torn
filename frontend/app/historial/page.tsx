@@ -106,7 +106,7 @@ export default function HistorialPage() {
         }
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
     return (
         <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
