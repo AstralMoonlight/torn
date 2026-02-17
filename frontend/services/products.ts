@@ -6,6 +6,7 @@ export interface Product {
     nombre: string
     descripcion: string | null
     precio_neto: string // Decimal comes as string
+    costo_unitario: string
     unidad_medida: string
     codigo_barras: string | null
     controla_stock: boolean
@@ -18,6 +19,7 @@ export interface Product {
     brand_id: number | null
     brand?: { id: number; name: string } | null
     variants: Product[]
+    full_name: string
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -35,6 +37,7 @@ export interface ProductCreatePayload {
     nombre: string
     descripcion?: string
     precio_neto: number
+    costo_unitario?: number
     unidad_medida?: string
     codigo_barras?: string
     controla_stock?: boolean

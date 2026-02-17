@@ -67,7 +67,7 @@ export default function CartPanel({ onClose }: Props) {
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-medium text-slate-900 dark:text-white truncate">
-                                            {item.product.nombre}
+                                            {item.product.full_name}
                                         </p>
                                         <p className="text-[10px] text-slate-400 font-mono">{item.product.codigo_interno}</p>
                                         <p className="text-[10px] text-slate-500 mt-0.5 font-tabular">

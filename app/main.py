@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
-from app.routers import customers, health, issuer, products, sales, inventory, cash, reports, brands
+from app.routers import customers, health, issuer, products, sales, inventory, cash, reports, brands, providers, purchases, stats, users
 
 app = FastAPI(
     title="Torn - Facturador Electrónico",
@@ -18,7 +18,14 @@ app = FastAPI(
 # ── CORS ─────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,8 +47,9 @@ app.include_router(issuer.router)
 app.include_router(inventory.router)
 app.include_router(cash.router)
 app.include_router(reports.router)
-
-from app.routers import users
+app.include_router(providers.router)
+app.include_router(purchases.router)
+app.include_router(stats.router)
 app.include_router(users.router)
 
 

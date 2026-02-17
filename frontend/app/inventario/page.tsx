@@ -104,9 +104,10 @@ export default function InventarioPage() {
     const filtered = search.trim()
         ? allProducts.filter(
             (p) =>
-                p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+                p.full_name.toLowerCase().includes(search.toLowerCase()) ||
                 p.codigo_interno.toLowerCase().includes(search.toLowerCase()) ||
-                p.codigo_barras?.includes(search)
+                p.codigo_barras?.includes(search) ||
+                p.variants.some(v => v.full_name.toLowerCase().includes(search.toLowerCase()))
         )
         : allProducts
 
@@ -165,7 +166,7 @@ export default function InventarioPage() {
                                     <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                                         <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500">{p.codigo_interno}</td>
                                         <td className="px-4 py-2.5">
-                                            <p className="text-xs font-medium text-slate-900 dark:text-white">{p.nombre}</p>
+                                            <p className="text-xs font-medium text-slate-900 dark:text-white">{p.full_name}</p>
                                             {p.codigo_barras && (
                                                 <p className="text-[10px] text-slate-400 font-mono">{p.codigo_barras}</p>
                                             )}

@@ -112,11 +112,12 @@ class ProductUpdate(BaseModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
     precio_neto: Optional[Decimal] = None
+    costo_unitario: Optional[Decimal] = None
     unidad_medida: Optional[str] = None
     codigo_barras: Optional[str] = None
     controla_stock: Optional[bool] = None
     stock_minimo: Optional[Decimal] = None
-    stock_actual: Optional[Decimal] = None # Allow updating stock for now, though movements usually handle this
+    stock_actual: Optional[Decimal] = None
     is_active: Optional[bool] = None
     brand_id: Optional[int] = None
 
@@ -131,6 +132,7 @@ class ProductOut(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     precio_neto: Decimal
+    costo_unitario: Decimal
     unidad_medida: str
     codigo_barras: Optional[str] = None
     controla_stock: bool
@@ -138,8 +140,10 @@ class ProductOut(BaseModel):
     stock_minimo: Decimal
     is_active: bool
     is_deleted: bool
-    created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    # Propiedades calculadas
+    full_name: str
     
     # Jerarquía
     parent_id: Optional[int] = None
@@ -321,3 +325,122 @@ class IssuerOut(BaseModel):
     email: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+
+# ── Provider (Proveedor) ─────────────────────────────────────────────
+
+
+class ProviderBase(BaseModel):
+    rut: str
+    razon_social: str
+    giro: Optional[str] = None
+    direccion: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: str) -> str:
+        return validar_rut(v)
+
+
+class ProviderCreate(ProviderBase):
+    pass
+
+
+class ProviderUpdate(BaseModel):
+    rut: Optional[str] = None
+    razon_social: Optional[str] = None
+    giro: Optional[str] = None
+    direccion: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    is_active: Optional[bool] = None
+
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validar_rut(v)
+        return v
+
+
+class ProviderOut(ProviderBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Purchase (Compra) ────────────────────────────────────────────────
+
+
+class PurchaseItem(BaseModel):
+    product_id: int
+    cantidad: Decimal
+    precio_costo_unitario: Decimal
+
+
+class PurchaseCreate(BaseModel):
+    provider_id: int
+    folio: Optional[str] = None
+    tipo_documento: str = "FACTURA"  # FACTURA | BOLETA | SIN_DOCUMENTO
+    items: List[PurchaseItem]
+    observacion: Optional[str] = None
+
+
+class PurchaseDetailOut(BaseModel):
+    id: int
+    product_id: int
+    cantidad: Decimal
+    precio_costo_unitario: Decimal
+    subtotal: Decimal
+    product: ProductOut
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PurchaseOut(BaseModel):
+    id: int
+    provider_id: int
+    folio: Optional[str] = None
+    tipo_documento: str
+    fecha_compra: datetime
+    monto_neto: Decimal
+    iva: Decimal
+    monto_total: Decimal
+    observacion: Optional[str] = None
+    created_at: datetime
+    provider: ProviderOut
+    details: List[PurchaseDetailOut]
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Dashboard & Stats ────────────────────────────────────────────────
+
+
+class StatPeriod(BaseModel):
+    sales_total: Decimal
+    sales_count: int
+    margin_total: Decimal
+    period: str  # 'Diario' | 'Semanal' | 'Mensual'
+
+
+class DashboardSummary(BaseModel):
+    daily: StatPeriod
+    weekly: StatPeriod
+    monthly: StatPeriod
+
+
+class TopProduct(BaseModel):
+    product_id: int
+    nombre: str
+    full_name: Optional[str] = None
+    total_qty: Decimal
+    total_margin: Decimal
+    total_sales: Decimal
+
+
+class TopProductsResponse(BaseModel):
+    by_quantity: List[TopProduct]
+    by_margin: List[TopProduct]

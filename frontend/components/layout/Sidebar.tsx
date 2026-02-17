@@ -12,6 +12,8 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Globe,
+    Truck,
+    ShoppingBag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -26,6 +28,8 @@ const navItems = [
     { href: '/inventario', label: 'Inventario', icon: Package },
     { href: '/marcas', label: 'Marcas', icon: Package },
     { href: '/clientes', label: 'Clientes', icon: Globe },
+    { href: '/proveedores', label: 'Proveedores', icon: Truck },
+    { href: '/compras', label: 'Compras', icon: ShoppingBag },
     { href: '/vendedores', label: 'Vendedores', icon: Landmark },
     { href: '/historial', label: 'Historial', icon: History },
 ]

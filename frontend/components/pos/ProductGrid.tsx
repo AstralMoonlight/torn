@@ -40,12 +40,12 @@ export default function ProductGrid({ products, loading }: Props) {
 
         // Stock check
         if (product.controla_stock && parseFloat(product.stock_actual) <= 0) {
-            toast.error(`Sin stock: ${product.nombre}`)
+            toast.error(`Sin stock: ${product.full_name}`)
             return
         }
 
         addItem(product)
-        toast.success(`${product.nombre} agregado`, { duration: 1500 })
+        toast.success(`${product.full_name} agregado`, { duration: 1500 })
     }
 
     if (loading) {
@@ -94,7 +94,7 @@ export default function ProductGrid({ products, loading }: Props) {
 
                             <div className="w-full">
                                 <p className="font-semibold text-sm text-slate-900 dark:text-white leading-tight line-clamp-2">
-                                    {product.nombre}
+                                    {product.full_name}
                                 </p>
                                 <p className="text-[11px] text-slate-400 mt-1 font-mono">
                                     {product.codigo_interno}
@@ -130,7 +130,7 @@ export default function ProductGrid({ products, loading }: Props) {
             <Dialog open={!!variantsOf} onOpenChange={() => setVariantsOf(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{variantsOf?.nombre}</DialogTitle>
+                        <DialogTitle>{variantsOf?.full_name}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-2 py-2">
                         {variantsOf?.variants.map((variant) => {
@@ -148,7 +148,7 @@ export default function ProductGrid({ products, loading }: Props) {
                                     className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-800 dark:hover:border-blue-600 transition"
                                 >
                                     <div className="text-left">
-                                        <p className="font-medium text-sm">{variant.nombre}</p>
+                                        <p className="font-medium text-sm">{variant.full_name}</p>
                                         <p className="text-xs text-slate-400 font-mono">{variant.codigo_interno}</p>
                                     </div>
                                     <div className="text-right">

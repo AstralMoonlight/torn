@@ -153,7 +153,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                 const attrLabel = v.attributes.join(' - ')
                 await createProduct({
                     codigo_interno: v.sku,
-                    nombre: `${baseName} - ${attrLabel}`,
+                    nombre: attrLabel,
                     precio_neto: parseFloat(v.precio) || 0,
                     controla_stock: controlStock,
                     stock_actual: parseInt(v.stock) || 0,

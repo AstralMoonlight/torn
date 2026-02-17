@@ -6,3 +6,5 @@ from .dte import DTE, CAF
 from .inventory import StockMovement
 from .cash import CashSession
 from .payment import PaymentMethod, SalePayment
+from .provider import Provider
+from .purchase import Purchase, PurchaseDetail

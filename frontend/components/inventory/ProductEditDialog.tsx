@@ -119,7 +119,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-blue-600" />
-                        Editar Producto: {baseName}
+                        Editar Producto: {product?.full_name || baseName}
                     </DialogTitle>
                     <DialogDescription>
                         SKU: {baseSku}

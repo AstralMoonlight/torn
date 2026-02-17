@@ -36,6 +36,7 @@ class Product(Base):
     nombre = Column(String(200), nullable=False)
     descripcion = Column(String(500))
     precio_neto = Column(Numeric(15, 2), nullable=False)
+    costo_unitario = Column(Numeric(15, 2), default=0, comment="Costo de adquisición para margen")
     unidad_medida = Column(String(20), default="unidad")
     
     # Inventario
@@ -46,6 +47,7 @@ class Product(Base):
 
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -56,6 +58,16 @@ class Product(Base):
     # Marca
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=True)
     brand = relationship("app.models.brand.Brand", back_populates="products")
+
+    @property
+    def full_name(self) -> str:
+        """Returns the full name including parent if it's a variant, evitando duplicidad."""
+        if self.parent:
+            parent_name = self.parent.nombre
+            if self.nombre.startswith(parent_name):
+                return self.nombre
+            return f"{parent_name} {self.nombre}"
+        return self.nombre
 
     def __repr__(self) -> str:
         """Retorna representación string del objeto."""
