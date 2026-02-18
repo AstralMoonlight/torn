@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct, ReportOut, ReportItem
+from app.routers.auth import require_admin
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -51,7 +52,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     )
 
 
-@router.get("/summary", response_model=DashboardSummary)
+@router.get("/summary", response_model=DashboardSummary, dependencies=[Depends(require_admin)])
 def get_dashboard_summary(db: Session = Depends(get_db)):
     """Obtiene resumen de ventas y margen diario, semanal y mensual."""
     now = get_now()
@@ -116,7 +117,7 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_d
     )
 
 
-@router.get("/report", response_model=ReportOut)
+@router.get("/report", response_model=ReportOut, dependencies=[Depends(require_admin)])
 def get_report(
     period: str = "day",  # day, week, month
     date: str = None,     # YYYY-MM-DD

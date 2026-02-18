@@ -12,10 +12,11 @@ export interface CashSession {
     status: 'OPEN' | 'CLOSED'
 }
 
-export async function openSession(startAmount: number, userId: number): Promise<CashSession> {
+export async function openSession(startAmount: number, userId: number, forceClosePrevious: boolean = false): Promise<CashSession> {
     const { data } = await api.post<CashSession>('/cash/open', {
         start_amount: startAmount,
         user_id: userId,
+        force_close_previous: forceClosePrevious,
     })
     return data
 }

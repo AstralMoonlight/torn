@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { getSales, getPaymentMethods, type SaleOut, type PaymentMethod } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -161,7 +161,7 @@ export default function HistorialPage() {
                                 <tr><td colSpan={6} className="text-center py-12 text-slate-400">Sin resultados</td></tr>
                             ) : (
                                 Object.entries(groupedSales).map(([date, daySales]) => (
-                                    <div key={date} style={{ display: 'contents' }}>
+                                    <Fragment key={date}>
                                         <tr className="bg-slate-100/50 dark:bg-slate-900/50">
                                             <td colSpan={6} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 border-y border-slate-100 dark:border-slate-800">
                                                 {date}
@@ -208,7 +208,7 @@ export default function HistorialPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                    </div>
+                                    </Fragment>
                                 ))
                             )}
                         </tbody>

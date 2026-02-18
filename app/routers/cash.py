@@ -14,20 +14,20 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut
+from app.routers.auth import get_current_user
+from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
 
-# TODO: Cuando haya auth real, obtener user_id del token.
-# Por ahora simulamos que el usuario es el ID 1 (Admin/Cajero por defecto del seed).
-DEFAULT_USER_ID = 1
-
-def get_current_user_id():
-    return DEFAULT_USER_ID
 
 @router.post("/open", response_model=CashSessionOut,
              summary="Abrir Caja",
              description="Inicia un nuevo turno de caja para el usuario actual.")
-def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
+def open_session(
+    session_in: CashSessionCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Abre una nueva sesión de caja.
 
     Verifica que el usuario no tenga ya una sesión abierta. Registra el
@@ -43,7 +43,7 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
     Raises:
         HTTPException(400): Si ya existe una sesión abierta.
     """
-    user_id = session_in.user_id
+    user_id = current_user.id
 
     # Verificar si ya tiene una abierta
     active_session = db.query(CashSession).filter(
@@ -52,7 +52,21 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
     ).first()
     
     if active_session:
-        raise HTTPException(status_code=400, detail="Ya existe una caja abierta para este usuario")
+        if session_in.force_close_previous:
+            # Cerrar sesión anterior forzosamente
+            active_session.status = "CLOSED_SYSTEM"
+            active_session.end_time = datetime.now()
+            # Asumimos diferencia 0 o lo que sea, idealmente se debería calcular
+            # pero al ser forzado, no tenemos "declarado".
+            active_session.final_cash_declared = 0 
+            active_session.difference = 0 # O null
+            db.commit()
+            db.refresh(active_session)
+        else:
+            raise HTTPException(
+                status_code=409, 
+                detail=f"Ya existe una caja abierta para este usuario (ID: {active_session.id}, Inicio: {active_session.start_time})"
+            )
 
     new_session = CashSession(
         user_id=user_id,
@@ -71,7 +85,10 @@ def open_session(session_in: CashSessionCreate, db: Session = Depends(get_db)):
 @router.get("/status", response_model=CashSessionOut,
              summary="Estado de Caja",
              description="Consulta el estado actual de la caja del usuario.")
-def session_status(user_id: int = None, db: Session = Depends(get_db)):
+def session_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Obtiene el estado de la caja actual.
     
     Args:
@@ -84,8 +101,7 @@ def session_status(user_id: int = None, db: Session = Depends(get_db)):
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    if user_id is None:
-        user_id = get_current_user_id()
+    user_id = current_user.id
         
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
@@ -121,7 +137,11 @@ def session_status(user_id: int = None, db: Session = Depends(get_db)):
 @router.post("/close", response_model=CashSessionOut,
              summary="Cerrar Caja",
              description="Cierra el turno y realiza el arqueo de caja.")
-def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
+def close_session(
+    close_in: CashSessionClose, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Cierra la sesión de caja y realiza arqueo (Blind Cash Count).
 
     Calcula cuánto efectivo debería haber según las ventas registradas
@@ -137,7 +157,7 @@ def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    user_id = get_current_user_id()
+    user_id = current_user.id
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
         CashSession.status == "OPEN"

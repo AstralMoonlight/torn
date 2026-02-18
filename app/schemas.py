@@ -16,6 +16,30 @@ from app.utils.validators import validar_rut
 class BrandBase(BaseModel):
     name: str
 
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    can_manage_users: bool
+    can_view_reports: bool
+    can_edit_products: bool
+    can_perform_sales: bool
+    can_perform_returns: bool
+    model_config = ConfigDict(from_attributes=True)
+
+# ── Auth ─────────────────────────────────────────────────────────────
+class UserLogin(BaseModel):
+    rut: str
+    password: str
+
+class UserToken(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: int
+    rut: str
+    name: str
+    role: Optional[str] = None # Role name
+
 class BrandCreate(BrandBase):
     pass
 
@@ -117,6 +141,8 @@ class CustomerOut(BaseModel):
     email: Optional[str] = None
     current_balance: Decimal
     is_active: bool
+    role_id: Optional[int] = None
+    role_obj: Optional[RoleOut] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -285,6 +311,7 @@ class PaymentMethodOut(BaseModel):
 class CashSessionCreate(BaseModel):
     start_amount: Decimal
     user_id: int
+    force_close_previous: bool = False
 
 
 class CashSessionClose(BaseModel):

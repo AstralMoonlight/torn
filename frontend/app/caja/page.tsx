@@ -26,11 +26,9 @@ import {
 
 
 export default function CajaPage() {
-    const { status, sessionId, userId, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
+    const { status, sessionId, user, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
     const [montoInicial, setMontoInicial] = useState('')
     const [efectivoContado, setEfectivoContado] = useState('')
-    const [sellers, setSellers] = useState<User[]>([])
-    const [selectedSellerId, setSelectedSellerId] = useState<string>('')
     const [opening, setOpening] = useState(false)
     const [closing, setClosing] = useState(false)
     const [closeResult, setCloseResult] = useState<{
@@ -41,7 +39,9 @@ export default function CajaPage() {
 
     // Sync on mount
     useEffect(() => {
-        getSessionStatus(userId || undefined)
+        if (!user?.id) return
+
+        getSessionStatus(user.id)
             .then((s) => {
                 if (s.status === 'OPEN') {
                     setSession(s.id, parseFloat(s.start_amount), s.start_time, s.user_id)
@@ -50,22 +50,13 @@ export default function CajaPage() {
                 }
             })
             .catch(() => setStatus('CLOSED'))
-            .catch(() => setStatus('CLOSED'))
-
-        getSellers()
-            .then(setSellers)
-            .catch((err) => {
-                console.error(err)
-                toast.error(getApiErrorMessage(err, 'Error al cargar vendedores'))
-            })
-    }, [setSession, setStatus])
+    }, [setSession, setStatus, user?.id])
 
     const handleOpen = async () => {
         const monto = parseFloat(montoInicial)
-        const sellerId = parseInt(selectedSellerId)
 
-        if (!sellerId) {
-            toast.error('Selecciona un vendedor responsable de la caja')
+        if (!user?.id) {
+            toast.error('No hay usuario identificado')
             return
         }
 
@@ -75,13 +66,58 @@ export default function CajaPage() {
         }
         setOpening(true)
         try {
-            const session = await openSession(monto, sellerId)
-            setSession(session.id, monto, session.start_time, sellerId)
+            const session = await openSession(monto, user.id, false)
+            setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
             toast.success('¡Caja abierta correctamente!')
-        } catch (err: unknown) {
-            const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-            toast.error(detail || 'Error al abrir caja')
+        } catch (err: any) {
+            if (err.response?.status === 409) {
+                toast.custom((t) => (
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 max-w-sm">
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-2">¡Caja ya abierta!</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                            Ya tienes una caja abierta en otro dispositivo.
+                            ¿Deseas cerrarla forzosamente y abrir una nueva aquí?
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toast.dismiss(t)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                    toast.dismiss(t)
+                                    forceOpenSession(monto, user.id)
+                                }}
+                            >
+                                Cerrar anterior y Abrir
+                            </Button>
+                        </div>
+                    </div>
+                ), { duration: Infinity })
+            } else {
+                const detail = err.response?.data?.detail
+                toast.error(detail || 'Error al abrir caja')
+            }
+        } finally {
+            setOpening(false)
+        }
+    }
+
+    const forceOpenSession = async (monto: number, sellerId: number) => {
+        setOpening(true)
+        try {
+            const session = await openSession(monto, sellerId, true)
+            setSession(session.id, monto, session.start_time, sellerId)
+            setMontoInicial('')
+            toast.success('Sesión anterior cerrada y nueva caja abierta')
+        } catch (error) {
+            toast.error('Error al forzar apertura de caja')
         } finally {
             setOpening(false)
         }
@@ -123,6 +159,17 @@ export default function CajaPage() {
                 </div>
             </div>
 
+            {/* User Info Card */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 flex shadow-sm items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-lg">
+                    {user?.name?.[0].toUpperCase()}
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{user?.name}</p>
+                    <p className="text-[10px] text-slate-500 font-mono">{user?.rut}</p>
+                </div>
+            </div>
+
             {/* Status Card */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                 <div className="flex items-center justify-between">
@@ -156,22 +203,6 @@ export default function CajaPage() {
                         <h2 className="text-base font-bold text-slate-900 dark:text-white">Abrir Turno</h2>
                     </div>
                     <p className="text-xs text-slate-500">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-xs">Vendedor Responsable</Label>
-                        <Select value={selectedSellerId} onValueChange={setSelectedSellerId}>
-                            <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Selecciona quién abre caja..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sellers.map((seller) => (
-                                    <SelectItem key={seller.id} value={seller.id.toString()}>
-                                        {seller.razon_social} ({seller.rut})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
 
                     <div className="space-y-1.5">
                         <Label className="text-xs">Monto Inicial ($)</Label>

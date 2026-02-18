@@ -52,6 +52,8 @@ app.include_router(purchases.router)
 app.include_router(stats.router)
 app.include_router(users.router)
 app.include_router(config.router)
+from app.routers import auth
+app.include_router(auth.router)
 
 
 @app.get("/")

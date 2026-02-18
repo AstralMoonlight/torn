@@ -66,6 +66,7 @@ const navGroups = [
 
 export default function Sidebar() {
     const pathname = usePathname()
+    const user = useSessionStore((s) => s.user)
     const status = useSessionStore((s) => s.status)
     const collapsed = useUIStore((s) => s.sidebarCollapsed)
     const toggle = useUIStore((s) => s.toggleSidebar)
@@ -97,40 +98,54 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 px-2 py-4 overflow-y-auto custom-scrollbar">
-                {navGroups.map((group, groupIdx) => (
-                    <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
-                        {!collapsed && (
-                            <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                {group.label}
-                            </h2>
-                        )}
-                        <div className="space-y-1">
-                            {group.items.map((item) => {
-                                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        title={collapsed ? item.label : undefined}
-                                        className={cn(
-                                            'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all group',
-                                            collapsed && 'justify-center px-0',
-                                            isActive
-                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
-                                        )}
-                                    >
-                                        <item.icon className={cn(
-                                            "h-[18px] w-[18px] shrink-0",
-                                            isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
-                                        )} />
-                                        {!collapsed && <span className="truncate">{item.label}</span>}
-                                    </Link>
-                                )
-                            })}
+                {navGroups.map((group, groupIdx) => {
+                    // Role-based filtering
+                    if (user?.role === 'VENDEDOR') {
+                        if (['Inventario', 'Entidades', 'Auditoría', 'Sistema'].includes(group.label)) return null
+                        if (group.label === 'Operaciones') {
+                            // On Operaciones, seller only sees POS and Caja
+                            group = {
+                                ...group,
+                                items: group.items.filter(i => i.label !== 'Dashboard')
+                            }
+                        }
+                    }
+
+                    return (
+                        <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
+                            {!collapsed && (
+                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    {group.label}
+                                </h2>
+                            )}
+                            <div className="space-y-1">
+                                {group.items.map((item) => {
+                                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            title={collapsed ? item.label : undefined}
+                                            className={cn(
+                                                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all group',
+                                                collapsed && 'justify-center px-0',
+                                                isActive
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                                            )}
+                                        >
+                                            <item.icon className={cn(
+                                                "h-[18px] w-[18px] shrink-0",
+                                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                                            )} />
+                                            {!collapsed && <span className="truncate">{item.label}</span>}
+                                        </Link>
+                                    )
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
             </nav>
 
             {/* Footer */}

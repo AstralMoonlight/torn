@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
 from app.database import Base
+from app.models.brand import Brand
+from app.models.tax import Tax
 
 
 class Product(Base):
@@ -57,11 +59,11 @@ class Product(Base):
 
     # Marca
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=True)
-    brand = relationship("app.models.brand.Brand", back_populates="products")
+    brand = relationship(Brand, back_populates="products")
 
     # Impuesto
     tax_id = Column(Integer, ForeignKey("taxes.id"), nullable=True)
-    tax = relationship("app.models.tax.Tax")
+    tax = relationship(Tax)
 
     @property
     def full_name(self) -> str:

@@ -1,9 +1,34 @@
 """Modelo de Usuario / Contribuyente."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.database import Base
+
+
+class Role(Base):
+    """Modelo de Rol de Usuario.
+
+    Define los permisos y capacidades de un grupo de usuarios.
+    """
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False, index=True) # ADMINISTRADOR, VENDEDOR, CLIENTE
+    description = Column(String(200))
+    
+    # Permisos Granulares
+    can_manage_users = Column(Boolean, default=False)
+    can_view_reports = Column(Boolean, default=False)
+    can_edit_products = Column(Boolean, default=True)
+    can_perform_sales = Column(Boolean, default=True)
+    can_perform_returns = Column(Boolean, default=False)
+
+    users = relationship("User", back_populates="role_obj")
+
+    def __repr__(self) -> str:
+        return f"<Role(name='{self.name}')>"
 
 
 class User(Base):
@@ -39,7 +64,15 @@ class User(Base):
     email = Column(String(150))
     current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente (Positivo=Deuda)")
     is_active = Column(Boolean, default=True)
-    role = Column(String(20), default="CUSTOMER", comment="ADMIN, SELLER, CUSTOMER")
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    role_obj = relationship("Role", back_populates="users")
+    
+    # Mantener el campo role como string temporalmente para compatibilidad 
+    # o eliminarlo tras la migración. Por ahora lo dejamos para no romper el backend 
+    # hasta que hagamos la migración completa.
+    role = Column(String(20), default="CUSTOMER") 
+    password_hash = Column(String(255), nullable=True)
+    pin = Column(String(10), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

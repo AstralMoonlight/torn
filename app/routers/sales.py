@@ -21,6 +21,7 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -69,7 +70,11 @@ def list_sales(
              summary="Crear Venta",
              description="Registra una nueva venta de forma atómica.",
              response_description="Objeto de venta creado con detalles y folio.")
-def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
+def create_sale(
+    sale_in: SaleCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Registra una nueva venta en el sistema.
 
@@ -96,8 +101,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         HTTPException(500): Si falla la generación del DTE.
     """
     # 0. Validar Caja Abierta
-    # Si viene seller_id, verificamos SU caja. Si no, usamos el default 1 (o el del token en futuro)
-    seller_id_to_use = sale_in.seller_id if sale_in.seller_id else 1
+    seller_id_to_use = current_user.id
     
     active_session = db.query(CashSession).filter(
         CashSession.user_id == seller_id_to_use,
@@ -290,7 +294,11 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
              summary="Crear Devolución (NC)",
              description="Genera una Nota de Crédito por devolución de productos.",
              response_description="Nota de Crédito generada.")
-def create_return(return_in: ReturnCreate, db: Session = Depends(get_db)):
+def create_return(
+    return_in: ReturnCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Registra una Devolución de mercadería (Nota de Crédito).
 
@@ -313,7 +321,7 @@ def create_return(return_in: ReturnCreate, db: Session = Depends(get_db)):
         HTTPException(400): Si el medio de devolución es inválido.
     """
     # 0. Validar Caja Abierta (si se devuelve efectivo)
-    user_id = 1
+    user_id = current_user.id
     
     # 1. Buscar Venta Original
     original_sale = db.query(Sale).get(return_in.original_sale_id)

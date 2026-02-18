@@ -32,4 +32,20 @@ api.interceptors.response.use(
     }
 )
 
+// Request interceptor to add auth token
+api.interceptors.request.use((config) => {
+    try {
+        const sessionStr = localStorage.getItem('torn-session')
+        if (sessionStr) {
+            const { state } = JSON.parse(sessionStr)
+            if (state.token) {
+                config.headers.Authorization = `Bearer ${state.token}`
+            }
+        }
+    } catch (err) {
+        console.error('Error reading token from localStorage', err)
+    }
+    return config
+})
+
 export default api

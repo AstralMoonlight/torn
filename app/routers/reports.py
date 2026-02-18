@@ -17,11 +17,12 @@ from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
+from app.routers.auth import require_admin
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.get("/dashboard")
+@router.get("/dashboard", dependencies=[Depends(require_admin)])
 def get_dashboard(
     fecha: Optional[date] = Query(None, description="Fecha del reporte (default=hoy)"),
     db: Session = Depends(get_db),
