@@ -60,6 +60,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     rut = Column(String(12), unique=True, nullable=False, index=True)
+    razon_social = Column(String(200), nullable=False, server_default="Sin Razón Social")
     email = Column(String(150))
     is_active = Column(Boolean, default=True)
     # Personal Operativo

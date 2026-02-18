@@ -221,6 +221,7 @@ def create_sale(
         monto_total=total,
         descripcion=sale_in.descripcion,
         seller_id=seller_id_to_use,
+        user_id=seller_id_to_use,
         details=sale_details,
         stock_movements=stock_movements, # Vinculación automática
     )

@@ -30,6 +30,7 @@ class Sale(Base):
     __tablename__ = "sales"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, comment="Legacy Seller ID")
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     folio = Column(Integer, nullable=False)
     tipo_dte = Column(Integer, nullable=False, default=33,
