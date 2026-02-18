@@ -36,7 +36,7 @@ export async function getProductBySku(sku: string): Promise<Product> {
 }
 
 export interface ProductCreatePayload {
-    codigo_interno: string
+    codigo_interno?: string
     nombre: string
     descripcion?: string
     precio_neto: number
@@ -49,6 +49,29 @@ export interface ProductCreatePayload {
     parent_id?: number
     brand_id?: number
     tax_id?: number
+}
+
+export interface VariantPayload {
+    nombre: string
+    codigo_interno?: string
+    codigo_barras?: string
+    precio_neto: number
+    descripcion?: string
+    stock_actual?: number
+}
+
+export interface ProductWithVariantsPayload {
+    nombre: string
+    codigo_interno?: string
+    codigo_barras?: string
+    descripcion?: string
+    precio_neto?: number
+    unidad_medida?: string
+    controla_stock?: boolean
+    stock_minimo?: number
+    brand_id?: number
+    tax_id?: number
+    variants: VariantPayload[]
 }
 
 // Update a product
@@ -64,5 +87,10 @@ export async function deleteProduct(id: number): Promise<void> {
 
 export async function createProduct(payload: ProductCreatePayload): Promise<Product> {
     const { data } = await api.post<Product>('/products/', payload)
+    return data
+}
+
+export async function createProductWithVariants(payload: ProductWithVariantsPayload): Promise<Product> {
+    const { data } = await api.post<Product>('/products/with-variants', payload)
     return data
 }

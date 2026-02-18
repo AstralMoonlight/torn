@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -13,8 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
-import { createProduct } from '@/services/products'
+import { createProduct, createProductWithVariants } from '@/services/products'
 import { toast } from 'sonner'
 import {
     Loader2,
@@ -22,7 +21,6 @@ import {
     Trash2,
     Package,
     CheckCircle2,
-    Grid3X3,
     Barcode,
 } from 'lucide-react'
 import {
@@ -33,14 +31,13 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { createBrand, getBrands, Brand } from '@/services/brands'
-import { useEffect } from 'react'
 
 interface VariantRow {
-    attributes: string[] // e.g. ["40", "Rojo"]
-    sku: string
-    precio: string
-    stock: string
-    barcode: string
+    nombre: string      // e.g. "Talla 42", "Rojo XL"
+    sku: string         // optional, auto-gen if empty
+    barcode: string     // optional, auto-gen if empty
+    precio: string      // required
+    descripcion: string // optional
 }
 
 interface Props {
@@ -48,15 +45,22 @@ interface Props {
     onClose: (refresh?: boolean) => void
 }
 
+const emptyVariant = (): VariantRow => ({
+    nombre: '',
+    sku: '',
+    barcode: '',
+    precio: '',
+    descripcion: '',
+})
+
 export default function ProductWizard({ open, onClose }: Props) {
-    const [step, setStep] = useState(1) // 1: base product, 2: attributes, 3: variant matrix
+    const [step, setStep] = useState(1) // 1: base product, 2: variants
 
     // Step 1: Base product
     const [baseName, setBaseName] = useState('')
     const [baseSku, setBaseSku] = useState('')
-    // const [basePrice, setBasePrice] = useState('') // Removed: Price is now per variant
-    const [basePrice, setBasePrice] = useState('') // Re-added for Simple Product flow
-
+    const [baseBarcode, setBaseBarcode] = useState('')
+    const [basePrice, setBasePrice] = useState('')
     const [baseDescription, setBaseDescription] = useState('')
     const [controlStock, setControlStock] = useState(true)
     const [selectedBrand, setSelectedBrand] = useState<string>('')
@@ -65,6 +69,10 @@ export default function ProductWizard({ open, onClose }: Props) {
     const [taxes, setTaxes] = useState<any[]>([])
     const [isCreatingBrand, setIsCreatingBrand] = useState(false)
     const [newBrandName, setNewBrandName] = useState('')
+
+    // Step 2: Variants list
+    const [variants, setVariants] = useState<VariantRow[]>([])
+    const [creating, setCreating] = useState(false)
 
     // Load brands and taxes
     useEffect(() => {
@@ -78,103 +86,35 @@ export default function ProductWizard({ open, onClose }: Props) {
         }
     }, [open])
 
-    // Step 2: Attribute axes
-    const [axes, setAxes] = useState<{ name: string; values: string }[]>([
-        { name: 'Talla', values: '' },
-    ])
-
-    // Step 3: Generated matrix
-    const [variants, setVariants] = useState<VariantRow[]>([])
-    const [creating, setCreating] = useState(false)
-
-    const addAxis = () => {
-        setAxes([...axes, { name: '', values: '' }])
-    }
-
-    const removeAxis = (i: number) => {
-        setAxes(axes.filter((_, idx) => idx !== i))
-    }
-
-    const updateAxis = (i: number, field: 'name' | 'values', value: string) => {
-        setAxes(axes.map((a, idx) => (idx === i ? { ...a, [field]: value } : a)))
-    }
-
-    // Generate cartesian product of attribute values
-    const generateMatrix = () => {
-        const validAxes = axes.filter((a) => a.name.trim() && a.values.trim())
-        if (validAxes.length === 0) {
-            toast.error('Agrega al menos un atributo con valores')
-            return
-        }
-
-        const axisValues = validAxes.map((a) =>
-            a.values.split(',').map((v) => v.trim()).filter(Boolean)
-        )
-
-        // Cartesian product
-        const combinations: string[][] = axisValues.reduce<string[][]>(
-            (acc, values) => acc.flatMap((combo) => values.map((v) => [...combo, v])),
-            [[]]
-        )
-
-        const rows: VariantRow[] = combinations.map((combo) => {
-            const suffix = combo.join('-')
-            return {
-                attributes: combo,
-                sku: `${baseSku}-${suffix}`.toUpperCase(),
-                precio: '',
-                stock: '0',
-                barcode: '',
-            }
-        })
-
-        setVariants(rows)
-        setStep(3)
-    }
-
-    const updateVariant = (i: number, field: keyof VariantRow, value: string) => {
-        setVariants(variants.map((v, idx) => (idx === i ? { ...v, [field]: value } : v)))
+    const addVariant = () => {
+        setVariants([...variants, emptyVariant()])
     }
 
     const removeVariant = (i: number) => {
         setVariants(variants.filter((_, idx) => idx !== i))
     }
 
-    const handleCreate = async () => {
+    const updateVariant = (i: number, field: keyof VariantRow, value: string) => {
+        setVariants(variants.map((v, idx) => (idx === i ? { ...v, [field]: value } : v)))
+    }
+
+    // ── Create simple product (no variants) ──
+    const handleCreateSimple = async () => {
         setCreating(true)
         try {
-            // Create parent product
-            const parent = await createProduct({
-                codigo_interno: baseSku,
+            await createProduct({
+                codigo_interno: baseSku || undefined,
                 nombre: baseName,
                 descripcion: baseDescription || undefined,
-                precio_neto: 0, // Parent is a container, not sellable
-                controla_stock: false,
+                precio_neto: parseFloat(basePrice) || 0,
+                codigo_barras: baseBarcode || undefined,
+                controla_stock: controlStock,
                 stock_actual: 0,
                 stock_minimo: 0,
+                brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
                 tax_id: selectedTax ? parseInt(selectedTax) : undefined,
             })
-
-            // Create each variant as child
-            let created = 0
-            for (const v of variants) {
-                const attrLabel = v.attributes.join(' - ')
-                await createProduct({
-                    codigo_interno: v.sku,
-                    nombre: attrLabel,
-                    precio_neto: parseFloat(v.precio) || 0,
-                    controla_stock: controlStock,
-                    stock_actual: parseInt(v.stock) || 0,
-                    stock_minimo: 0,
-                    codigo_barras: v.barcode || undefined,
-                    parent_id: parent.id,
-                    brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
-                    tax_id: selectedTax ? parseInt(selectedTax) : undefined,
-                })
-                created++
-            }
-
-            toast.success(`✓ ${baseName} creado con ${created} variantes`)
+            toast.success(`✓ ${baseName} creado`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
@@ -185,41 +125,34 @@ export default function ProductWizard({ open, onClose }: Props) {
         }
     }
 
-    // Also allow simple product (no variants)
-    const handleCreateSimple = async () => {
+    // ── Create product with variants ──
+    const handleCreateWithVariants = async () => {
+        // Validate all variants have name and price
+        const invalid = variants.some(v => !v.nombre.trim() || !v.precio.trim())
+        if (invalid) {
+            toast.error('Cada variante necesita Nombre y Precio')
+            return
+        }
+
         setCreating(true)
         try {
-            await createProduct({
-                codigo_interno: baseSku,
-                // Removed duplicates (nombre, descripcion, precio_neto were here)
-                // Actually, if we create simple product, we should probably ask for price. 
-                // But the user said "precio lo estamos colocando en el padre, cuando deberia ser en cada variable".
-                // Ideally we treat simple product as having 1 variant or just ask price here.
-                // Re-reading: "cuando el principal es tener codigo de barras, aparte del sku, además estos codigos se deben manejar en las variantes, no en el producto padre."
-                // "creando variantes... precio lo estamos colocando en el padre, cuando debería ser en cada variable".
-                // So for simple products, we DO need price. I will keep price for simple product creation flow, but maybe move it to UI?
-                // Actually, I removed `basePrice` state. I should restore it ONLY for simple product flow or add it to variant.
-                // Let's re-add a specific input for simple product price if we are in "Crear Sin Variantes" mode?
-                // The current UI layout for Step 1 had Price. I removed it.
-                // I should probably keep it but ONLY use it for simple product or as default for variants?
-                // User said "precio... debería ser en cada variable".
-                // I will add a default price input in Step 3 (Matrix) which I did (v.precio).
-                // For SIMPLE product, I need to ask price.
-                // I'll add a "Precio" field to Step 1 that is ONLY used for Simple Product or as pre-fill?
-                // Or better: When clicking "Crear Sin Variantes", show a small prompt or just let Step 1 have price but clarify it's for Simple.
-                // Let's restore basePrice state but clarify in UI.
-                // Wait, I already removed basePrice state in previous chunk. I should handle this.
-                // Let's assume for now I removed it. I will add it back but renamed or scoped.
-                // Actually, let's look at the UI code I'm replacing below.
+            await createProductWithVariants({
                 nombre: baseName,
+                codigo_interno: baseSku || undefined,
                 descripcion: baseDescription || undefined,
                 precio_neto: parseFloat(basePrice) || 0,
                 controla_stock: controlStock,
-                stock_actual: 0,
-                stock_minimo: 0,
                 brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
+                tax_id: selectedTax ? parseInt(selectedTax) : undefined,
+                variants: variants.map(v => ({
+                    nombre: v.nombre,
+                    codigo_interno: v.sku || undefined,
+                    codigo_barras: v.barcode || undefined,
+                    precio_neto: parseFloat(v.precio) || 0,
+                    descripcion: v.descripcion || undefined,
+                })),
             })
-            toast.success(`✓ ${baseName} creado`)
+            toast.success(`✓ ${baseName} creado con ${variants.length} variantes`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
@@ -234,25 +167,15 @@ export default function ProductWizard({ open, onClose }: Props) {
         setStep(1)
         setBaseName('')
         setBaseSku('')
-        setBaseName('')
-        setBaseSku('')
+        setBaseBarcode('')
         setBasePrice('')
         setBaseDescription('')
         setSelectedBrand('')
-        setBaseDescription('')
-        setSelectedBrand('')
+        setSelectedTax('')
         setIsCreatingBrand(false)
         setNewBrandName('')
         setControlStock(true)
-        setAxes([{ name: 'Talla', values: '' }])
         setVariants([])
-    }
-
-    const canProceedStep1 = baseName.trim() !== '' && baseSku.trim() !== ''
-    const canProceedStep2 = axes.some((a) => a.name.trim() !== '' && a.values.trim() !== '')
-
-    const nextStep = () => {
-        setStep(2)
     }
 
     const handleCreateBrand = async () => {
@@ -270,6 +193,8 @@ export default function ProductWizard({ open, onClose }: Props) {
         }
     }
 
+    const canProceedStep1 = baseName.trim() !== ''
+
     return (
         <Dialog open={open} onOpenChange={(val) => {
             if (!val) { resetForm(); onClose() }
@@ -282,14 +207,13 @@ export default function ProductWizard({ open, onClose }: Props) {
                     </DialogTitle>
                     <DialogDescription>
                         {step === 1 && 'Datos del producto base'}
-                        {step === 2 && 'Define los ejes de variantes (Talla, Color, etc.)'}
-                        {step === 3 && `Revisa las ${variants.length} variantes generadas`}
+                        {step === 2 && `Define las variantes del producto`}
                     </DialogDescription>
                 </DialogHeader>
 
                 {/* Progress */}
                 <div className="flex gap-1 mb-2">
-                    {[1, 2, 3].map((s) => (
+                    {[1, 2].map((s) => (
                         <div
                             key={s}
                             className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
@@ -312,12 +236,38 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">SKU Base *</Label>
+                                <Label className="text-xs">SKU <span className="text-slate-400">(opcional)</span></Label>
                                 <Input
-                                    placeholder="ZAP-RUN"
+                                    placeholder="Se genera automáticamente"
                                     value={baseSku}
                                     onChange={(e) => setBaseSku(e.target.value.toUpperCase())}
                                     className="h-9 text-sm font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Código de Barras <span className="text-slate-400">(opcional)</span></Label>
+                                <div className="relative">
+                                    <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                    <Input
+                                        placeholder="Se genera automáticamente"
+                                        value={baseBarcode}
+                                        onChange={(e) => setBaseBarcode(e.target.value)}
+                                        className="h-9 text-sm font-mono pl-8"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Precio Neto</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="50000"
+                                    value={basePrice}
+                                    onChange={(e) => setBasePrice(e.target.value)}
+                                    className="h-9 text-sm font-tabular"
+                                    min={0}
                                 />
                             </div>
                         </div>
@@ -379,38 +329,8 @@ export default function ProductWizard({ open, onClose }: Props) {
                                     </div>
                                 )}
                             </div>
-                            <div className="space-y-1 flex items-end">
-                                <label className="flex items-center gap-2 text-xs cursor-pointer mb-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={controlStock}
-                                        onChange={(e) => setControlStock(e.target.checked)}
-                                        className="rounded border-slate-300"
-                                    />
-                                    Controlar stock globalmente
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Price Input Only for Simple Product Hint? Or just show it? 
-                            User wanted "precio en cada variable". 
-                            But for simple product (no variants), this Base Price IS the variable price.
-                            So we should show it.
-                        */}
-                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs">Precio Neto (Para Sin Variantes)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="50000"
-                                    value={basePrice}
-                                    onChange={(e) => setBasePrice(e.target.value)}
-                                    className="h-9 text-sm font-tabular"
-                                    min={0}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Impuesto Asociado</Label>
+                                <Label className="text-xs">Impuesto</Label>
                                 <Select value={selectedTax} onValueChange={setSelectedTax}>
                                     <SelectTrigger className="h-9 text-xs">
                                         <SelectValue placeholder="Seleccionar impuesto..." />
@@ -426,148 +346,122 @@ export default function ProductWizard({ open, onClose }: Props) {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <Label className="text-xs">Descripción (opcional)</Label>
-                            <Input
-                                placeholder="Zapatilla deportiva para correr..."
-                                value={baseDescription}
-                                onChange={(e) => setBaseDescription(e.target.value)}
-                                className="h-9 text-sm"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs">Descripción <span className="text-slate-400">(opcional)</span></Label>
+                                <Input
+                                    placeholder="Zapatilla deportiva para correr..."
+                                    value={baseDescription}
+                                    onChange={(e) => setBaseDescription(e.target.value)}
+                                    className="h-9 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1 flex items-end">
+                                <label className="flex items-center gap-2 text-xs cursor-pointer mb-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={controlStock}
+                                        onChange={(e) => setControlStock(e.target.checked)}
+                                        className="rounded border-slate-300"
+                                    />
+                                    Controlar stock
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Hint for optional fields */}
+                        <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 px-3 py-2 text-[11px] text-slate-500">
+                            <Barcode className="inline h-3 w-3 mr-1" />
+                            Los campos SKU y Código de Barras se generan automáticamente si no los ingresas.
                         </div>
                     </div>
                 )}
 
-                {/* ── Step 2: Attribute Axes ─────────── */}
+                {/* ── Step 2: Simplified Variants ─────────── */}
                 {step === 2 && (
                     <div className="space-y-3">
                         <p className="text-xs text-slate-500">
-                            Ingresa los ejes de variación. Separa los valores con comas.
+                            Agrega las variantes del producto. Cada variante tiene su propio nombre, precio, y opcionalmente SKU y código de barras.
+                            El control de stock e impuestos se <strong>heredan del producto padre</strong>.
                         </p>
 
-                        {axes.map((axis, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                                <div className="space-y-1 w-32 shrink-0">
-                                    <Label className="text-[10px]">Atributo</Label>
-                                    <Input
-                                        placeholder="Talla"
-                                        value={axis.name}
-                                        onChange={(e) => updateAxis(i, 'name', e.target.value)}
-                                        className="h-8 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1 flex-1">
-                                    <Label className="text-[10px]">Valores (coma-separados)</Label>
-                                    <Input
-                                        placeholder="38, 39, 40, 41, 42"
-                                        value={axis.values}
-                                        onChange={(e) => updateAxis(i, 'values', e.target.value)}
-                                        className="h-8 text-xs"
-                                    />
-                                </div>
-                                {axes.length > 1 && (
-                                    <button
-                                        onClick={() => removeAxis(i)}
-                                        className="mt-5 text-red-400 hover:text-red-600"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
+                        {variants.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400 text-sm">
+                                <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                                No hay variantes aún. Agrega la primera.
                             </div>
-                        ))}
-
-                        <Button variant="outline" size="sm" onClick={addAxis} className="text-xs gap-1 h-7">
-                            <Plus className="h-3 w-3" /> Agregar Atributo
-                        </Button>
-
-                        {canProceedStep2 && (
-                            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-                                <Grid3X3 className="inline h-3 w-3 mr-1" />
-                                Se generarán{' '}
-                                <strong>
-                                    {axes
-                                        .filter((a) => a.name.trim() && a.values.trim())
-                                        .reduce(
-                                            (acc, a) =>
-                                                acc *
-                                                a.values.split(',').filter((v) => v.trim()).length,
-                                            1
-                                        )}
-                                </strong>{' '}
-                                variantes
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                                            <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Nombre *</th>
+                                            <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">SKU</th>
+                                            <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Cód. Barras</th>
+                                            <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Precio *</th>
+                                            <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Descripción</th>
+                                            <th className="w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {variants.map((v, i) => (
+                                            <tr key={i}>
+                                                <td className="py-1.5 pr-1">
+                                                    <Input
+                                                        value={v.nombre}
+                                                        onChange={(e) => updateVariant(i, 'nombre', e.target.value)}
+                                                        placeholder="Talla 42"
+                                                        className="h-7 w-28 text-[11px]"
+                                                    />
+                                                </td>
+                                                <td className="py-1.5 pr-1">
+                                                    <Input
+                                                        value={v.sku}
+                                                        onChange={(e) => updateVariant(i, 'sku', e.target.value.toUpperCase())}
+                                                        placeholder="Auto"
+                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                    />
+                                                </td>
+                                                <td className="py-1.5 pr-1">
+                                                    <Input
+                                                        value={v.barcode}
+                                                        onChange={(e) => updateVariant(i, 'barcode', e.target.value)}
+                                                        placeholder="Auto"
+                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                    />
+                                                </td>
+                                                <td className="py-1.5 pr-1">
+                                                    <Input
+                                                        type="number"
+                                                        value={v.precio}
+                                                        onChange={(e) => updateVariant(i, 'precio', e.target.value)}
+                                                        placeholder="0"
+                                                        className="h-7 w-20 text-[11px] font-tabular"
+                                                    />
+                                                </td>
+                                                <td className="py-1.5 pr-1">
+                                                    <Input
+                                                        value={v.descripcion}
+                                                        onChange={(e) => updateVariant(i, 'descripcion', e.target.value)}
+                                                        placeholder="Opcional"
+                                                        className="h-7 w-28 text-[11px]"
+                                                    />
+                                                </td>
+                                                <td className="py-1.5">
+                                                    <button onClick={() => removeVariant(i)} className="text-red-400 hover:text-red-600">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
-                    </div>
-                )}
 
-                {/* ── Step 3: Variant Matrix ──────────── */}
-                {step === 3 && (
-                    <div className="space-y-3">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead>
-                                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                                        <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Variante</th>
-                                        <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">SKU</th>
-                                        <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Precio</th>
-                                        <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Stock</th>
-                                        <th className="text-left pb-1.5 font-medium text-slate-400 text-[10px]">Código Barras</th>
-                                        <th className="w-8"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {variants.map((v, i) => (
-                                        <tr key={i}>
-                                            <td className="py-1.5">
-                                                <div className="flex gap-1">
-                                                    {v.attributes.map((a, j) => (
-                                                        <Badge key={j} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                            {a}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="py-1.5">
-                                                <Input
-                                                    value={v.sku}
-                                                    onChange={(e) => updateVariant(i, 'sku', e.target.value)}
-                                                    className="h-7 w-28 text-[11px] font-mono"
-                                                />
-                                            </td>
-                                            <td className="py-1.5">
-                                                <Input
-                                                    type="number"
-                                                    value={v.precio}
-                                                    onChange={(e) => updateVariant(i, 'precio', e.target.value)}
-                                                    className="h-7 w-24 text-[11px] font-tabular"
-                                                />
-                                            </td>
-                                            <td className="py-1.5">
-                                                <Input
-                                                    type="number"
-                                                    value={v.stock}
-                                                    onChange={(e) => updateVariant(i, 'stock', e.target.value)}
-                                                    className="h-7 w-20 text-[11px] font-tabular"
-                                                />
-                                            </td>
-                                            <td className="py-1.5">
-                                                <Input
-                                                    value={v.barcode}
-                                                    onChange={(e) => updateVariant(i, 'barcode', e.target.value)}
-                                                    placeholder="Opcional"
-                                                    className="h-7 w-28 text-[11px] font-mono"
-                                                />
-                                            </td>
-                                            <td className="py-1.5">
-                                                <button onClick={() => removeVariant(i)} className="text-red-400 hover:text-red-600">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={addVariant} className="text-xs gap-1 h-7">
+                            <Plus className="h-3 w-3" /> Agregar Variante
+                        </Button>
                     </div>
                 )}
 
@@ -575,7 +469,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                 <DialogFooter className="flex-col sm:flex-row gap-2">
                     {step > 1 && (
-                        <Button type="button" variant="outline" onClick={() => setStep(step - 1)} className="text-xs">
+                        <Button type="button" variant="outline" onClick={() => setStep(1)} className="text-xs">
                             ← Atrás
                         </Button>
                     )}
@@ -590,11 +484,12 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 disabled={!canProceedStep1 || creating}
                                 className="text-xs"
                             >
+                                {creating && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                                 Crear Sin Variantes
                             </Button>
                             <Button
                                 type="button"
-                                onClick={nextStep}
+                                onClick={() => setStep(2)}
                                 disabled={!canProceedStep1}
                                 className="text-xs gap-1"
                             >
@@ -605,26 +500,16 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                     {step === 2 && (
                         <Button
-                            onClick={generateMatrix}
-                            disabled={!canProceedStep2}
-                            className="text-xs gap-1"
-                        >
-                            <Grid3X3 className="h-3.5 w-3.5" /> Siguiente: Variantes →
-                        </Button>
-                    )}
-
-                    {step === 3 && (
-                        <Button
-                            onClick={handleCreate}
+                            onClick={handleCreateWithVariants}
                             disabled={creating || variants.length === 0}
                             className="text-xs gap-1 bg-emerald-600 hover:bg-emerald-700"
                         >
                             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Crear {variants.length} Variantes
+                            Crear {variants.length} Variante{variants.length !== 1 ? 's' : ''}
                         </Button>
                     )}
                 </DialogFooter>
             </DialogContent>
-        </Dialog >
+        </Dialog>
     )
 }

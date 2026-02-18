@@ -186,7 +186,7 @@ class CustomerOut(BaseModel):
 class ProductCreate(BaseModel):
     """Datos requeridos para crear un nuevo producto."""
 
-    codigo_interno: str
+    codigo_interno: Optional[str] = None  # Auto-generated if empty
     nombre: str
     descripcion: Optional[str] = None
     precio_neto: Decimal
@@ -198,6 +198,33 @@ class ProductCreate(BaseModel):
     parent_id: Optional[int] = None
     brand_id: Optional[int] = None
     tax_id: Optional[int] = None
+
+
+class VariantCreate(BaseModel):
+    """Datos para crear una variante de producto."""
+    nombre: str  # e.g. "Talla 42", "Rojo XL"
+    codigo_interno: Optional[str] = None  # Auto-generated if empty
+    codigo_barras: Optional[str] = None  # Auto-generated if empty
+    precio_neto: Decimal
+    descripcion: Optional[str] = None
+    stock_actual: Decimal = Decimal(0)
+
+
+class ProductCreateWithVariants(BaseModel):
+    """Producto padre + variantes en un solo request."""
+    # Parent data
+    nombre: str
+    codigo_interno: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_neto: Decimal = Decimal(0)
+    unidad_medida: str = "unidad"
+    controla_stock: bool = False
+    stock_minimo: Decimal = Decimal(0)
+    brand_id: Optional[int] = None
+    tax_id: Optional[int] = None
+    # Variants
+    variants: List[VariantCreate] = []
 
 
 class ProductUpdate(BaseModel):
