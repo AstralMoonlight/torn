@@ -18,8 +18,11 @@ export interface Product {
     parent_id: number | null
     brand_id: number | null
     brand?: { id: number; name: string } | null
+    tax_id: number | null
+    tax?: { id: number; name: string; rate: number } | null
     variants: Product[]
     full_name: string
+    precio_bruto: string
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -45,6 +48,7 @@ export interface ProductCreatePayload {
     stock_minimo?: number
     parent_id?: number
     brand_id?: number
+    tax_id?: number
 }
 
 // Update a product

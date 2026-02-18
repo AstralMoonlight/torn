@@ -49,6 +49,7 @@ import { getProducts, type Product } from '@/services/products'
 import { createPurchase, getPurchases, deletePurchase, type Purchase, type PurchaseCreate, type PurchaseItem } from '@/services/purchases'
 import { getApiErrorMessage } from '@/services/api'
 import { formatRut } from '@/lib/rut'
+import { formatCLP, getTodayChile } from '@/lib/format'
 
 interface CartItem {
     product: Product
@@ -56,13 +57,6 @@ interface CartItem {
     precio_costo: number
 }
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 export default function ComprasPage() {
     const [providers, setProviders] = useState<Provider[]>([])
@@ -75,7 +69,7 @@ export default function ComprasPage() {
     const [selectedProviderId, setSelectedProviderId] = useState<string>('')
     const [folio, setFolio] = useState('')
     const [tipoDoc, setTipoDoc] = useState('FACTURA')
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+    const [fecha, setFecha] = useState(getTodayChile())
     const [observacion, setObservacion] = useState('')
 
     // Product Selection State
@@ -132,7 +126,7 @@ export default function ComprasPage() {
     const addItem = (product: Product) => {
         const existing = items.find(i => i.product.id === product.id)
         if (existing) {
-            toast.info(`${product.nombre} ya está en la lista`)
+            toast.info(`${product.full_name} ya está en la lista`)
             return
         }
 
@@ -503,7 +497,7 @@ export default function ComprasPage() {
                                         purchases.map(p => (
                                             <TableRow key={p.id} className="group">
                                                 <TableCell className="text-xs">
-                                                    {new Date(p.fecha_compra).toLocaleDateString()}
+                                                    {new Date(p.fecha_compra).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })}
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     <div className="font-medium">{p.tipo_documento}</div>
@@ -581,7 +575,7 @@ export default function ComprasPage() {
                             <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg">
                                 <div>
                                     <p className="text-xs text-slate-500 uppercase font-bold">Fecha Compra</p>
-                                    <p>{new Date(selectedPurchase.fecha_compra).toLocaleString()}</p>
+                                    <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-slate-500 uppercase font-bold">Monto Total</p>

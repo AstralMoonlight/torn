@@ -15,6 +15,7 @@ from app.models.product import Product
 from app.models.inventory import StockMovement
 from app.models.issuer import Issuer
 from app.schemas import PurchaseCreate, PurchaseOut
+from app.utils.formatters import format_clp, format_number
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
@@ -24,6 +25,8 @@ _html_env = Environment(
     loader=FileSystemLoader(str(_HTML_TEMPLATES)),
     autoescape=True,
 )
+_html_env.filters["clp"] = format_clp
+_html_env.filters["number"] = format_number
 
 
 @router.post("/", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)

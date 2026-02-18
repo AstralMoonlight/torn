@@ -17,6 +17,7 @@ import {
     ArrowDownRight
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatCLP } from '@/lib/format'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
@@ -30,14 +31,6 @@ const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCh
     loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl" />
 })
 
-function formatCLP(value: number | string): string {
-    const val = typeof value === 'string' ? parseFloat(value) : value
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(val)
-}
 
 function KPICard({
     title,

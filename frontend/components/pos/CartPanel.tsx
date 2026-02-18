@@ -6,14 +6,8 @@ import { Trash2, Minus, Plus, ShoppingBag, CreditCard, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import CheckoutModal from '@/components/pos/CheckoutModal'
+import { formatCLP } from '@/lib/format'
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 interface Props {
     onClose?: () => void // Mobile close handler
@@ -71,7 +65,7 @@ export default function CartPanel({ onClose }: Props) {
                                         </p>
                                         <p className="text-[10px] text-slate-400 font-mono">{item.product.codigo_interno}</p>
                                         <p className="text-[10px] text-slate-500 mt-0.5 font-tabular">
-                                            {formatCLP(item.precio_neto)} × {item.quantity}
+                                            {formatCLP(item.precio_bruto)} × {item.quantity}
                                         </p>
                                     </div>
                                     <p className="font-bold text-xs text-slate-900 dark:text-white font-tabular whitespace-nowrap">

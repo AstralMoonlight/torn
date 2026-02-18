@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket N° {{ sale.folio }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 5mm 2mm 2mm 2mm;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8pt;
+            line-height: 1.2;
+            background: white;
+            color: #000;
+        }
+
+        .copy-separator {
+            margin: 15px 0;
+            border-bottom: 2px dashed #000;
+            text-align: center;
+            font-weight: bold;
+            font-size: 8pt;
+            padding-bottom: 5px;
+        }
+
+        /* ── Header ──────────────────────────────────────── */
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #000;
+        }
+
+        .header h1 {
+            font-size: 10pt;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .header p {
+            font-size: 7pt;
+            margin: 1px 0;
+        }
+
+        .doc-info {
+            margin: 8px 0;
+            padding: 4px;
+            border: 1px solid #000;
+            text-align: center;
+        }
+
+        .doc-type {
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 2px;
+        }
+
+        .folio {
+            font-size: 10pt;
+            font-weight: bold;
+        }
+
+        /* ── Sections ────────────────────────────────────── */
+        .section {
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 7pt;
+            text-transform: uppercase;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 2px;
+        }
+
+        .data {
+            font-size: 7pt;
+        }
+
+        .data-row {
+            display: flex;
+            margin-bottom: 1px;
+        }
+
+        .label {
+            width: 70px;
+            font-weight: bold;
+        }
+
+        /* ── Table ───────────────────────────────────────── */
+        <table>width: 100%;
+        border-collapse: collapse;
+        margin: 6px 0;
+        }
+
+        thead th {
+            font-size: 7pt;
+            text-align: left;
+            border-bottom: 1px solid #000;
+            padding: 2px 0;
+        }
+
+        tbody td {
+            padding: 3px 0;
+            font-size: 7pt;
+            vertical-align: top;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        /* ── Totals ──────────────────────────────────────── */
+        .totals {
+            border-top: 1px dashed #000;
+            padding-top: 4px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1px 0;
+        }
+
+        .grand-total {
+            font-weight: bold;
+            font-size: 9pt;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid #000;
+        }
+
+        /* ── Acuse de Recibo ────────────────────────────── */
+        .acuse-recibo {
+            margin-top: 10px;
+            border: 1px solid #000;
+            padding: 5px;
+            font-size: 7pt;
+        }
+
+        .acuse-title {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .acuse-line {
+            border-bottom: 1px dotted #000;
+            margin-bottom: 4px;
+            height: 12px;
+        }
+
+        .copy-legend {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 8px;
+            font-size: 9pt;
+            text-transform: uppercase;
+        }
+
+        /* ── Footer ──────────────────────────────────────── */
+        .footer {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 7pt;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    {% set copies = ['COPIA CLIENTE', 'CEDIBLE'] if sale.tipo_dte in [33, 34, 61] else ['COPIA CLIENTE'] %}
+
+    {% for copy_name in copies %}
+    {% if not loop.first %}
+    <div class="copy-separator">CORTE AQUÍ</div>
+    {% endif %}
+
+    <div class="header">
+        <h1>{{ issuer.razon_social }}</h1>
+        <p>RUT: {{ issuer.rut }}</p>
+        <p>{{ issuer.direccion }}</p>
+        <p>{{ issuer.comuna }}, {{ issuer.ciudad }}</p>
+        {% if issuer.telefono %}<p>Tel: {{ issuer.telefono }}</p>{% endif %}
+
+        <div class="doc-info">
+            <div class="doc-type">
+                {% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA
+                {% elif sale.tipo_dte == 34 %}FACTURA EXENTA
+                {% elif sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA
+                {% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO
+                {% else %}TICKET DE VENTA
+                {% endif %}
+            </div>
+            <div class="folio">N° {{ sale.folio }}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="data">
+            <div class="data-row">
+                <span class="label">FECHA:</span>
+                <span>{{ sale.fecha_emision.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            <div class="data-row">
+                <span class="label">CLIENTE:</span>
+                <span>{{ customer.razon_social }}</span>
+            </div>
+            <div class="data-row">
+                <span class="label">RUT:</span>
+                <span>{{ customer.rut }}</span>
+            </div>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 6px 0;">
+        <thead>
+            <tr>
+                <th style="width: 50%">DESCRIPCIÓN</th>
+                <th class="right" style="width: 15%">CANT</th>
+                <th class="right" style="width: 35%">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detail in sale.details %}
+            <tr>
+                <td style="font-size: 7pt; padding: 2px 0;">{{ detail.product.nombre }}</td>
+                <td class="right" style="font-size: 7pt; padding: 2px 0;">{{ detail.cantidad | int }} {{
+                    detail.product.unidad_medida }}</td>
+                <td class="right" style="font-size: 7pt; padding: 2px 0;">{{ detail.subtotal | clp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <div class="total-row">
+            <span>NETO:</span>
+            <span>{{ sale.monto_neto | clp }}</span>
+        </div>
+        <div class="total-row">
+            <span>IVA (19%):</span>
+            <span>{{ sale.iva | clp }}</span>
+        </div>
+        <div class="total-row grand-total">
+            <span>TOTAL:</span>
+            <span>{{ sale.monto_total | clp }}</span>
+        </div>
+    </div>
+
+    {% if copy_name == 'CEDIBLE' %}
+    <div class="acuse-recibo">
+        <div class="acuse-title">Acuse de Recibo</div>
+        <div class="acuse-line">Nombre:</div>
+        <div class="acuse-line">RUT:</div>
+        <div class="acuse-line">Fecha:</div>
+        <div class="acuse-line"
+            style="height: 30px; border: none; text-align: right; border-bottom: 1px solid #000; margin-top: 10px;">
+            Firma:
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="copy-legend">
+        {{ copy_name }}
+    </div>
+
+    <div class="footer">
+        <p>¡Gracias por su compra!</p>
+        <p>Borrador sin validez tributaria</p>
+        <p>Torn Facturación</p>
+    </div>
+    {% endfor %}
+
+    <script>
+        window.onload = function () {
+            setTimeout(function () { window.print(); }, 300);
+        };
+    </script>
+</body>
+
+</html>

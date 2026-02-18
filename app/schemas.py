@@ -27,6 +27,40 @@ class BrandOut(BrandBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Impuestos (Taxes) ────────────────────────────────────────────────
+
+class TaxBase(BaseModel):
+    name: str
+    rate: Decimal
+    is_active: bool = True
+    is_default: bool = False
+
+class TaxCreate(TaxBase):
+    pass
+
+class TaxUpdate(BaseModel):
+    name: Optional[str] = None
+    rate: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
+
+class TaxOut(TaxBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Configuración (Settings) ─────────────────────────────────────────
+
+class SettingsBase(BaseModel):
+    print_format: str = "80mm"
+    iva_default_id: Optional[int] = None
+
+class SettingsUpdate(SettingsBase):
+    pass
+
+class SettingsOut(SettingsBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
 
 # ── Customer (Contribuyente) ─────────────────────────────────────────
 
@@ -104,6 +138,7 @@ class ProductCreate(BaseModel):
     stock_minimo: Decimal = Decimal(0)
     parent_id: Optional[int] = None
     brand_id: Optional[int] = None
+    tax_id: Optional[int] = None
 
 
 class ProductUpdate(BaseModel):
@@ -120,6 +155,7 @@ class ProductUpdate(BaseModel):
     stock_actual: Optional[Decimal] = None
     is_active: Optional[bool] = None
     brand_id: Optional[int] = None
+    tax_id: Optional[int] = None
 
 
 class ProductOut(BaseModel):
@@ -144,11 +180,14 @@ class ProductOut(BaseModel):
     
     # Propiedades calculadas
     full_name: str
+    precio_bruto: Decimal
     
-    # Jerarquía
+    # Jerarquía e Impuesto
     parent_id: Optional[int] = None
     brand_id: Optional[int] = None
     brand: Optional[BrandOut] = None
+    tax_id: Optional[int] = None
+    tax: Optional["TaxOut"] = None
     variants: List["ProductOut"] = []
 
 
@@ -445,3 +484,18 @@ class TopProduct(BaseModel):
 class TopProductsResponse(BaseModel):
     by_quantity: List[TopProduct]
     by_margin: List[TopProduct]
+
+
+class ReportItem(BaseModel):
+    product_id: int
+    full_name: str
+    cantidad: Decimal
+    monto_total: Decimal
+    utilidad: Decimal
+
+class ReportOut(BaseModel):
+    fecha: datetime
+    period: str  # 'Diario' | 'Semanal' | 'Mensual'
+    total_ventas: Decimal
+    total_utilidad: Decimal
+    items: List[ReportItem]

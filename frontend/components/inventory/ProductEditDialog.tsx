@@ -30,6 +30,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
     const [baseSku, setBaseSku] = useState('')
     const [baseDescription, setBaseDescription] = useState('')
     const [selectedBrand, setSelectedBrand] = useState<string>('')
+    const [selectedTax, setSelectedTax] = useState<string>('')
     const [controlStock, setControlStock] = useState(true)
 
     // For simple products (no variants)
@@ -40,6 +41,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
     // Variants state (local copy for editing)
     const [variants, setVariants] = useState<Product[]>([])
     const [brands, setBrands] = useState<Brand[]>([])
+    const [taxes, setTaxes] = useState<any[]>([])
 
     useEffect(() => {
         if (open && product) {
@@ -47,6 +49,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
             setBaseSku(product.codigo_interno)
             setBaseDescription(product.descripcion || '')
             setSelectedBrand(product.brand_id ? product.brand_id.toString() : '')
+            setSelectedTax(product.tax_id ? product.tax_id.toString() : '')
             setControlStock(product.controla_stock)
 
             if (product.variants && product.variants.length > 0) {
@@ -60,6 +63,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
             }
 
             getBrands().then(setBrands).catch(console.error)
+            import('@/services/config').then(m => m.getTaxes()).then(setTaxes).catch(console.error)
         }
     }, [open, product])
 
@@ -73,6 +77,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 codigo_interno: baseSku,
                 descripcion: baseDescription || null,
                 brand_id: selectedBrand ? parseInt(selectedBrand) : null,
+                tax_id: selectedTax ? parseInt(selectedTax) : null,
                 controla_stock: controlStock,
             }
 
@@ -95,6 +100,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         stock_actual: v.stock_actual as any,
                         codigo_barras: v.codigo_barras || null,
                         controla_stock: controlStock,
+                        tax_id: selectedTax ? parseInt(selectedTax) : null,
                     })
                 }
             }
@@ -176,6 +182,22 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     />
                                     <span className="text-sm font-medium">Controlar Stock Globalmente</span>
                                 </label>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Impuesto Aplicado</Label>
+                                <Select value={selectedTax} onValueChange={setSelectedTax}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar impuesto" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0">Sin Impuesto (0%)</SelectItem>
+                                        {taxes.map(t => (
+                                            <SelectItem key={t.id} value={t.id.toString()}>
+                                                {t.name} ({(t.rate * 100).toFixed(0)}%)
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="space-y-2">

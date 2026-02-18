@@ -8,3 +8,5 @@ from .cash import CashSession
 from .payment import PaymentMethod, SalePayment
 from .provider import Provider
 from .purchase import Purchase, PurchaseDetail
+from .tax import Tax
+from .settings import SystemSettings

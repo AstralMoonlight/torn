@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { formatCLP } from '@/lib/format'
 import {
     Landmark,
     DoorOpen,
@@ -23,13 +24,6 @@ import {
     CheckCircle2,
 } from 'lucide-react'
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 export default function CajaPage() {
     const { status, sessionId, userId, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()

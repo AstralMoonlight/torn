@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
-from app.routers import customers, health, issuer, products, sales, inventory, cash, reports, brands, providers, purchases, stats, users
+from app.routers import customers, health, issuer, products, sales, inventory, cash, reports, brands, providers, purchases, stats, users, config
 
 app = FastAPI(
     title="Torn - Facturador Electrónico",
@@ -51,6 +51,7 @@ app.include_router(providers.router)
 app.include_router(purchases.router)
 app.include_router(stats.router)
 app.include_router(users.router)
+app.include_router(config.router)
 
 
 @app.get("/")

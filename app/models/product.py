@@ -59,6 +59,10 @@ class Product(Base):
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=True)
     brand = relationship("app.models.brand.Brand", back_populates="products")
 
+    # Impuesto
+    tax_id = Column(Integer, ForeignKey("taxes.id"), nullable=True)
+    tax = relationship("app.models.tax.Tax")
+
     @property
     def full_name(self) -> str:
         """Returns the full name including parent if it's a variant, evitando duplicidad."""
@@ -68,6 +72,14 @@ class Product(Base):
                 return self.nombre
             return f"{parent_name} {self.nombre}"
         return self.nombre
+
+    @property
+    def precio_bruto(self) -> int:
+        """Calcula el precio bruto (Neto + Impuesto) redondeado."""
+        if self.precio_neto is None:
+            return 0
+        tax_rate = float(self.tax.rate) if self.tax else 0.19
+        return int(round(float(self.precio_neto) * (1 + tax_rate)))
 
     def __repr__(self) -> str:
         """Retorna representación string del objeto."""

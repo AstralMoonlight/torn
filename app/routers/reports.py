@@ -4,6 +4,7 @@ Agrega métricas de ventas del día, por hora, top productos y métodos de pago.
 """
 
 from datetime import datetime, timedelta, date
+from app.utils.dates import get_now, get_today
 from decimal import Decimal
 from typing import Optional
 
@@ -26,9 +27,9 @@ def get_dashboard(
     db: Session = Depends(get_db),
 ):
     """Retorna métricas del dashboard para una fecha específica."""
-    target_date = fecha or date.today()
-    start = datetime.combine(target_date, datetime.min.time())
-    end = datetime.combine(target_date, datetime.max.time())
+    target_date = fecha or get_today().date()
+    start = datetime.combine(target_date, datetime.min.time(), tzinfo=get_now().tzinfo)
+    end = datetime.combine(target_date, datetime.max.time(), tzinfo=get_now().tzinfo)
 
     # ── KPIs del día ─────────────────────────────────────────────────
     sales_query = db.query(Sale).filter(

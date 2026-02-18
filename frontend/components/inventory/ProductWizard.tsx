@@ -60,14 +60,21 @@ export default function ProductWizard({ open, onClose }: Props) {
     const [baseDescription, setBaseDescription] = useState('')
     const [controlStock, setControlStock] = useState(true)
     const [selectedBrand, setSelectedBrand] = useState<string>('')
+    const [selectedTax, setSelectedTax] = useState<string>('')
     const [brands, setBrands] = useState<Brand[]>([])
+    const [taxes, setTaxes] = useState<any[]>([])
     const [isCreatingBrand, setIsCreatingBrand] = useState(false)
     const [newBrandName, setNewBrandName] = useState('')
 
-    // Load brands
+    // Load brands and taxes
     useEffect(() => {
         if (open) {
             getBrands().then(setBrands).catch(console.error)
+            import('@/services/config').then(m => m.getTaxes()).then(t => {
+                setTaxes(t)
+                const def = t.find(tx => tx.is_default)
+                if (def) setSelectedTax(def.id.toString())
+            }).catch(console.error)
         }
     }, [open])
 
@@ -145,6 +152,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                 controla_stock: false,
                 stock_actual: 0,
                 stock_minimo: 0,
+                tax_id: selectedTax ? parseInt(selectedTax) : undefined,
             })
 
             // Create each variant as child
@@ -161,6 +169,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                     codigo_barras: v.barcode || undefined,
                     parent_id: parent.id,
                     brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
+                    tax_id: selectedTax ? parseInt(selectedTax) : undefined,
                 })
                 created++
             }
@@ -399,9 +408,21 @@ export default function ProductWizard({ open, onClose }: Props) {
                                     className="h-9 text-sm font-tabular"
                                     min={0}
                                 />
-                                <p className="text-[10px] text-slate-400">
-                                    Se ignorará si creas variantes (usarás la matriz).
-                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs">Impuesto Asociado</Label>
+                                <Select value={selectedTax} onValueChange={setSelectedTax}>
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <SelectValue placeholder="Seleccionar impuesto..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {taxes.map(t => (
+                                            <SelectItem key={t.id} value={t.id.toString()}>
+                                                {t.name} ({(t.rate * 100).toFixed(0)}%)
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 

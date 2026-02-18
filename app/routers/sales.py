@@ -16,9 +16,11 @@ from app.models.product import Product
 from app.models.sale import Sale, SaleDetail
 from app.models.user import User
 from app.models.cash import CashSession
+from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
+from app.utils.formatters import format_clp, format_number
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -28,6 +30,8 @@ _html_env = Environment(
     loader=FileSystemLoader(str(_HTML_TEMPLATES)),
     autoescape=True,
 )
+_html_env.filters["clp"] = format_clp
+_html_env.filters["number"] = format_number
 
 
 @router.get("/payment-methods/", response_model=List[PaymentMethodOut],
@@ -469,8 +473,15 @@ def get_sale_pdf(sale_id: int, db: Session = Depends(get_db)):
             detail="Emisor no configurado. Use PUT /issuer/ primero.",
         )
 
+    # Cargar configuración del sistema para el formato de impresión
+    settings = db.query(SystemSettings).first()
+    print_format = settings.print_format if settings else "80mm"
+
+    # Seleccionar plantilla según formato
+    template_name = "factura_80mm.html" if print_format == "80mm" else "factura_carta.html"
+    template = _html_env.get_template(template_name)
+
     # Renderizar HTML
-    template = _html_env.get_template("factura_print.html")
     html_content = template.render(
         sale=sale,
         issuer=issuer,

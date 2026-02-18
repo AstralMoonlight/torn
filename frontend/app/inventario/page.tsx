@@ -28,14 +28,8 @@ import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
 import { deleteProduct } from '@/services/products'
 import { toast } from 'sonner'
+import { formatCLP } from '@/lib/format'
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 function StockBadge({ product }: { product: Product }) {
     const stock = parseFloat(product.stock_actual)
@@ -73,7 +67,7 @@ export default function InventarioPage() {
     }
 
     const handleDelete = async (product: Product) => {
-        if (!confirm(`¿Estás seguro de eliminar "${product.nombre}"? Esto no se puede deshacer.`)) return
+        if (!confirm(`¿Estás seguro de eliminar "${product.full_name}"? Esto no se puede deshacer.`)) return
 
         try {
             await deleteProduct(product.id)

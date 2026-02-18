@@ -13,14 +13,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { formatCLP } from '@/lib/format'
 
-function formatCLP(value: number | string): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(typeof value === 'string' ? parseFloat(value) : value)
-}
 
 interface Props {
     products: Product[]
@@ -74,7 +68,7 @@ export default function ProductGrid({ products, loading }: Props) {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 flex-1 overflow-auto content-start">
                 {products.map((product) => {
                     const hasVariants = product.variants && product.variants.length > 0
-                    const price = parseFloat(product.precio_neto)
+                    const price = parseFloat(product.precio_bruto)
                     const stock = parseFloat(product.stock_actual)
                     const lowStock = product.controla_stock && stock <= parseFloat(product.stock_minimo)
                     const outOfStock = product.controla_stock && stock <= 0
@@ -153,7 +147,7 @@ export default function ProductGrid({ products, loading }: Props) {
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-blue-600 dark:text-blue-400">
-                                            {formatCLP(variant.precio_neto)}
+                                            {formatCLP(variant.precio_bruto)}
                                         </p>
                                         {variant.controla_stock && (
                                             <p className="text-[10px] text-slate-400">

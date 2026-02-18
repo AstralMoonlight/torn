@@ -8,6 +8,7 @@ export interface CartItem {
     product: Product
     quantity: number
     precio_neto: number
+    precio_bruto: number
     subtotal: number
 }
 
@@ -55,14 +56,16 @@ export const useCartStore = create<CartState>()(
                                 : i
                         )
                     } else {
-                        const precio = parseFloat(product.precio_neto)
+                        const precioNeto = parseFloat(product.precio_neto)
+                        const precioBruto = parseFloat(product.precio_bruto)
                         newItems = [
                             ...state.items,
                             {
                                 product,
                                 quantity: qty,
-                                precio_neto: precio,
-                                subtotal: precio * qty,
+                                precio_neto: precioNeto,
+                                precio_bruto: precioBruto,
+                                subtotal: precioNeto * qty,
                             },
                         ]
                     }

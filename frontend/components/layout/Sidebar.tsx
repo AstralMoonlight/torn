@@ -14,6 +14,9 @@ import {
     Globe,
     Truck,
     ShoppingBag,
+    Tags,
+    Users,
+    Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -21,17 +24,44 @@ import { useUIStore } from '@/lib/store/uiStore'
 import { Badge } from '@/components/ui/badge'
 import ThemeToggle from './ThemeToggle'
 
-const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { href: '/pos', label: 'Terminal POS', icon: ShoppingCart },
-    { href: '/caja', label: 'Caja', icon: Landmark },
-    { href: '/inventario', label: 'Inventario', icon: Package },
-    { href: '/marcas', label: 'Marcas', icon: Package },
-    { href: '/clientes', label: 'Clientes', icon: Globe },
-    { href: '/proveedores', label: 'Proveedores', icon: Truck },
-    { href: '/compras', label: 'Compras', icon: ShoppingBag },
-    { href: '/vendedores', label: 'Vendedores', icon: Landmark },
-    { href: '/historial', label: 'Historial', icon: History },
+const navGroups = [
+    {
+        label: 'Operaciones',
+        items: [
+            { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+            { href: '/pos', label: 'Terminal POS', icon: ShoppingCart },
+            { href: '/caja', label: 'Caja', icon: Landmark },
+        ]
+    },
+    {
+        label: 'Inventario',
+        items: [
+            { href: '/inventario', label: 'Productos', icon: Package },
+            { href: '/marcas', label: 'Marcas', icon: Tags },
+            { href: '/compras', label: 'Compras', icon: ShoppingBag },
+        ]
+    },
+    {
+        label: 'Entidades',
+        items: [
+            { href: '/clientes', label: 'Clientes', icon: Globe },
+            { href: '/proveedores', label: 'Proveedores', icon: Truck },
+            { href: '/vendedores', label: 'Vendedores', icon: Users },
+        ]
+    },
+    {
+        label: 'Auditoría',
+        items: [
+            { href: '/historial', label: 'Historial', icon: History },
+            { href: '/reporte-diario', label: 'Reportes de Ventas', icon: BarChart3 },
+        ]
+    },
+    {
+        label: 'Sistema',
+        items: [
+            { href: '/configuracion', label: 'Configuración', icon: Settings },
+        ]
+    }
 ]
 
 export default function Sidebar() {
@@ -66,27 +96,41 @@ export default function Sidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 space-y-0.5 px-2 py-3 overflow-y-auto">
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            title={collapsed ? item.label : undefined}
-                            className={cn(
-                                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-                                collapsed && 'justify-center px-0',
-                                isActive
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
-                            )}
-                        >
-                            <item.icon className="h-[18px] w-[18px] shrink-0" />
-                            {!collapsed && <span className="truncate">{item.label}</span>}
-                        </Link>
-                    )
-                })}
+            <nav className="flex-1 px-2 py-4 overflow-y-auto custom-scrollbar">
+                {navGroups.map((group, groupIdx) => (
+                    <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
+                        {!collapsed && (
+                            <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                {group.label}
+                            </h2>
+                        )}
+                        <div className="space-y-1">
+                            {group.items.map((item) => {
+                                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        title={collapsed ? item.label : undefined}
+                                        className={cn(
+                                            'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all group',
+                                            collapsed && 'justify-center px-0',
+                                            isActive
+                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                                        )}
+                                    >
+                                        <item.icon className={cn(
+                                            "h-[18px] w-[18px] shrink-0",
+                                            isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                                        )} />
+                                        {!collapsed && <span className="truncate">{item.label}</span>}
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    </div>
+                ))}
             </nav>
 
             {/* Footer */}

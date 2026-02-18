@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createSale, getPaymentMethods, type PaymentMethod } from '@/services/sales'
+import { createSale, getPaymentMethods, getSalePdfUrl, type PaymentMethod } from '@/services/sales'
 import { type Customer } from '@/services/customers'
 import { toast } from 'sonner'
 import {
@@ -28,16 +28,11 @@ import {
     Banknote,
     Receipt,
     FileText,
+    Printer,
 } from 'lucide-react'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
+import { formatCLP } from '@/lib/format'
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 // Chilean Rounding Law (Ley de Redondeo - Ley 21.054)
 // Ends in 1-5 -> Round down to 0
@@ -98,6 +93,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
     const [lastFolio, setLastFolio] = useState<number | null>(null)
+    const [lastSaleId, setLastSaleId] = useState<number | null>(null)
 
     // Load payment methods on open
     useEffect(() => {
@@ -111,10 +107,59 @@ export default function CheckoutModal({ open, onClose }: Props) {
                 .catch(() => toast.error('Error cargando medios de pago'))
             setSuccess(false)
             setLastFolio(null)
+            setLastSaleId(null)
             setSelectedCustomer(null)
             setDteType('boleta')
         }
     }, [open, totalFinal])
+
+    const handleFinish = () => {
+        clear()
+        setPayments([])
+        setSuccess(false)
+        setLastFolio(null)
+        setLastSaleId(null)
+        onClose()
+    }
+
+    const handlePrint = async () => {
+        if (!lastSaleId) return
+
+        try {
+            // Fetch as blob to avoid CORS issues with iframe.contentWindow.print()
+            const response = await fetch(getSalePdfUrl(lastSaleId))
+            if (!response.ok) throw new Error("Error loading PDF")
+
+            const blob = await response.blob()
+            const blobUrl = URL.createObjectURL(blob)
+
+            const iframeId = 'receipt-hidden-frame'
+            let iframe = document.getElementById(iframeId) as HTMLIFrameElement
+
+            if (iframe) document.body.removeChild(iframe)
+
+            iframe = document.createElement('iframe')
+            iframe.id = iframeId
+            iframe.style.display = 'none'
+            document.body.appendChild(iframe)
+
+            iframe.onload = () => {
+                try {
+                    iframe.contentWindow?.print()
+                    // Cleanup URL to avoid memory leaks (optional, but good practice after a delay)
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+                } catch (e) {
+                    console.error("Print error:", e)
+                    window.open(blobUrl, '_blank')
+                }
+            }
+            iframe.src = blobUrl
+        } catch (err) {
+            console.error("Fetch error:", err)
+            // Fallback to direct URL if fetch fails
+            window.open(getSalePdfUrl(lastSaleId), '_blank')
+        }
+    }
 
     const addPaymentLine = () => {
         const remaining = totalFinal - payments.reduce((s, p) => s + p.amount, 0)
@@ -184,14 +229,10 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
             setSuccess(true)
             setLastFolio(sale.folio)
+            setLastSaleId(sale.id)
             toast.success(`¡Venta registrada! Folio #${sale.folio}`, { duration: 5000 })
 
-            setTimeout(() => {
-                clear()
-                setPayments([])
-                setSuccess(false)
-                onClose()
-            }, 2500)
+            // No auto-open, user must click print or finish
         } catch (err: unknown) {
             console.error("Sale Error:", err)
             const response = (err as any)?.response
@@ -224,8 +265,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
     return (
         <>
-            <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <Dialog open={open} onOpenChange={(open) => !open && !success && onClose()}>
+                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => success && e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle className="text-xl">
                             {success ? '✅ Venta Exitosa' : 'Cobrar'}
@@ -238,14 +279,35 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     </DialogHeader>
 
                     {success ? (
-                        <div className="flex flex-col items-center py-8">
-                            <CheckCircle2 className="h-20 w-20 text-emerald-500 animate-in zoom-in-50" />
-                            <p className="mt-4 text-lg font-bold text-emerald-600">¡Listo!</p>
+                        <div className="flex flex-col items-center py-6">
+                            <CheckCircle2 className="h-16 w-16 text-emerald-500 animate-in zoom-in-50" />
                             {change > 0 && (
-                                <p className="mt-2 text-2xl font-bold text-blue-600">
-                                    Vuelto: {formatCLP(change)}
-                                </p>
+                                <div className="mt-6 text-center animate-in slide-in-from-bottom-2 fade-in">
+                                    <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Su Vuelto</p>
+                                    <p className="text-4xl font-black text-blue-600">
+                                        {formatCLP(change)}
+                                    </p>
+                                </div>
                             )}
+
+                            <div className="mt-8 grid gap-3 w-full max-w-xs">
+                                <Button
+                                    onClick={handlePrint}
+                                    size="lg"
+                                    className="w-full gap-2 text-md font-bold h-12 shadow-md shadow-blue-900/10"
+                                    autoFocus
+                                >
+                                    <Printer className="h-5 w-5" />
+                                    Imprimir Ticket
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleFinish}
+                                    className="w-full h-10 border-slate-300"
+                                >
+                                    Finalizar (Nueva Venta)
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-4">

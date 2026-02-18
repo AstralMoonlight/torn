@@ -162,7 +162,7 @@ def close_session(close_in: CashSessionClose, db: Session = Depends(get_db)):
     
     final_system = active_session.start_amount + total_sales_cash
     
-    active_session.end_time = func.now()
+    active_session.end_time = get_now()
     active_session.final_cash_system = final_system
     active_session.final_cash_declared = close_in.final_cash_declared
     active_session.difference = close_in.final_cash_declared - final_system

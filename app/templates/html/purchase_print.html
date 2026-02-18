@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Comprobante de Ingreso de Mercadería - Folio {{ purchase.folio or purchase.id }}</title>
@@ -174,6 +175,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- ── Encabezado ──────────────────────────────────── -->
@@ -205,7 +207,8 @@
             </div>
             <div class="data-item">
                 <span class="label">Fecha Compra</span>
-                <span class="value">{{ purchase.fecha_compra.strftime('%d/%m/%Y') if purchase.fecha_compra else purchase.created_at.strftime('%d/%m/%Y') }}</span>
+                <span class="value">{{ purchase.fecha_compra.strftime('%d/%m/%Y') if purchase.fecha_compra else
+                    purchase.created_at.strftime('%d/%m/%Y') }}</span>
             </div>
             <div class="data-item">
                 <span class="label">Razón Social</span>
@@ -239,10 +242,10 @@
                 {% for detail in purchase.details %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td>{{ detail.product.nombre }}</td>
+                    <td>{{ detail.product.full_name }}</td>
                     <td class="right">{{ detail.cantidad | int }}</td>
-                    <td class="right">${{ "{:,.0f}".format(detail.precio_costo_unitario) }}</td>
-                    <td class="right">${{ "{:,.0f}".format(detail.subtotal) }}</td>
+                    <td class="right">{{ detail.precio_costo_unitario | clp }}</td>
+                    <td class="right">{{ detail.subtotal | clp }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -253,15 +256,15 @@
     <div class="totals">
         <div class="totals-row">
             <span>Subtotal Neto</span>
-            <span>${{ "{:,.0f}".format(purchase.monto_neto) }}</span>
+            <span>{{ purchase.monto_neto | clp }}</span>
         </div>
         <div class="totals-row">
             <span>IVA (19%)</span>
-            <span>${{ "{:,.0f}".format(purchase.iva) }}</span>
+            <span>{{ purchase.iva | clp }}</span>
         </div>
         <div class="totals-row border-top">
             <span>TOTAL COMPRA</span>
-            <span>${{ "{:,.0f}".format(purchase.monto_total) }}</span>
+            <span>{{ purchase.monto_total | clp }}</span>
         </div>
     </div>
 
@@ -271,5 +274,13 @@
         <p>Este documento es para control interno de recepción de mercadería.</p>
     </div>
 
+    <script>
+        window.onload = function () {
+            setTimeout(function () {
+                window.print();
+            }, 500);
+        };
+    </script>
 </body>
+
 </html>

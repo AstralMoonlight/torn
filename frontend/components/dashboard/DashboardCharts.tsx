@@ -12,6 +12,7 @@ import {
     Pie,
     Cell,
 } from 'recharts'
+import { formatCLP } from '@/lib/format'
 
 interface SalesData {
     hora: string
@@ -30,13 +31,6 @@ interface Props {
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
-function formatCLP(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-    }).format(value)
-}
 
 export default function DashboardCharts({ salesData, paymentData }: Props) {
     return (
