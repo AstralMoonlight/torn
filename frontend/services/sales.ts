@@ -54,7 +54,7 @@ export interface SaleOut {
     descripcion: string | null
     created_at: string
     related_sale_id: number | null
-    user: CustomerOut
+    customer: CustomerOut
     details: SaleDetailOut[]
 }
 

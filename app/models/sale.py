@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.models.customer import Customer
 
 
 class Sale(Base):
@@ -29,7 +30,7 @@ class Sale(Base):
     __tablename__ = "sales"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     folio = Column(Integer, nullable=False)
     tipo_dte = Column(Integer, nullable=False, default=33,
                       comment="33=Factura, 34=Exenta, 39=Boleta, 61=NC")
@@ -44,11 +45,11 @@ class Sale(Base):
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")
     related_sale = relationship("Sale", remote_side=[id], backref="adjustments")
 
-    user = relationship("User", foreign_keys=[user_id], backref="sales_as_customer")
+    customer = relationship("Customer", backref="sales")
     
     # Seller
     seller_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    seller = relationship("User", foreign_keys=[seller_id], backref="sales_as_seller")
+    seller = relationship("app.models.user.User", foreign_keys=[seller_id], backref="sales_as_seller")
     
     details = relationship("SaleDetail", back_populates="sale", cascade="all, delete-orphan")
 

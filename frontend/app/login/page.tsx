@@ -28,13 +28,8 @@ export default function LoginPage() {
         setLoading(true)
         try {
             const data = await login(rut, password)
-            setAuth(data.access_token, {
-                id: data.user_id,
-                rut: data.rut,
-                name: data.name,
-                role: data.role
-            })
-            toast.success(`Bienvenido, ${data.name}`)
+            setAuth(data.access_token, data.user)
+            toast.success(`Bienvenido, ${data.user.name}`)
             router.push('/pos')
         } catch (err: any) {
             console.error(err)

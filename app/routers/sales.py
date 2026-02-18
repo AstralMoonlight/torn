@@ -15,6 +15,7 @@ from app.models.issuer import Issuer
 from app.models.product import Product
 from app.models.sale import Sale, SaleDetail
 from app.models.user import User
+from app.models.customer import Customer
 from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
@@ -55,7 +56,7 @@ def list_sales(
     sales = (
         db.query(Sale)
         .options(
-            joinedload(Sale.user),
+            joinedload(Sale.customer),
             joinedload(Sale.details).joinedload(SaleDetail.product),
         )
         .order_by(Sale.created_at.desc())
@@ -115,7 +116,7 @@ def create_sale(
         )
 
     # 1. Validar Cliente
-    customer = db.query(User).filter(User.rut == sale_in.rut_cliente).first()
+    customer = db.query(Customer).filter(Customer.rut == sale_in.rut_cliente).first()
     if not customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -212,7 +213,7 @@ def create_sale(
 
     # 5. Crear Venta
     new_sale = Sale(
-        user_id=customer.id,
+        customer_id=customer.id,
         folio=nuevo_folio,
         tipo_dte=tipo,
         monto_neto=total_neto,
@@ -280,7 +281,7 @@ def create_sale(
     sale_loaded = (
         db.query(Sale)
         .options(
-            joinedload(Sale.user),
+            joinedload(Sale.customer),
             joinedload(Sale.details).joinedload(SaleDetail.product),
         )
         .filter(Sale.id == new_sale.id)
@@ -389,7 +390,7 @@ def create_return(
         db.add(caf)
 
     nc_sale = Sale(
-        user_id=original_sale.user_id,
+        customer_id=original_sale.customer_id,
         folio=nuevo_folio,
         tipo_dte=tipo,
         monto_neto=total_neto,
@@ -412,7 +413,7 @@ def create_return(
 
     # Si es CREDITO_INTERNO (Abono), disminuimos deuda
     if method.code == "CREDITO_INTERNO":
-        customer = db.query(User).get(original_sale.user_id)
+        customer = db.query(Customer).get(original_sale.customer_id)
         customer.current_balance -= total
         db.add(customer)
     elif method.code == "EFECTIVO":
@@ -461,7 +462,7 @@ def get_sale_pdf(sale_id: int, db: Session = Depends(get_db)):
     sale = (
         db.query(Sale)
         .options(
-            joinedload(Sale.user),
+            joinedload(Sale.customer),
             joinedload(Sale.details).joinedload(SaleDetail.product),
         )
         .filter(Sale.id == sale_id)
@@ -493,7 +494,7 @@ def get_sale_pdf(sale_id: int, db: Session = Depends(get_db)):
     html_content = template.render(
         sale=sale,
         issuer=issuer,
-        customer=sale.user,
+        customer=sale.customer,
     )
 
     return HTMLResponse(content=html_content)

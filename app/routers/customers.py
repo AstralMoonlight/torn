@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
+from app.models.customer import Customer
 from app.schemas import CustomerCreate, CustomerOut, CustomerUpdate
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -30,14 +30,14 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
     """
 
     # Verificar que el RUT no exista
-    existing = db.query(User).filter(User.rut == customer.rut).first()
+    existing = db.query(Customer).filter(Customer.rut == customer.rut).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Ya existe un cliente con RUT {customer.rut}",
         )
 
-    db_customer = User(**customer.model_dump())
+    db_customer = Customer(**customer.model_dump())
     db.add(db_customer)
     db.commit()
     db.refresh(db_customer)
@@ -49,7 +49,7 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
              description="Obtiene todos los clientes registrados.")
 def list_customers(db: Session = Depends(get_db)):
     """Lista todos los clientes."""
-    return db.query(User).order_by(User.razon_social).all()
+    return db.query(Customer).order_by(Customer.razon_social).all()
 
 
 @router.get("/search", response_model=list[CustomerOut], summary="Buscar Clientes (Predictivo)")
@@ -61,9 +61,9 @@ def search_customers(q: str = "", db: Session = Depends(get_db)):
     # Normalize query for RUT search (strip dots/dashes) if it looks like a RUT part
     clean_q = q.replace(".", "").replace("-", "")
     
-    query = db.query(User).filter(
-        (User.rut.ilike(f"%{clean_q}%")) |
-        (User.razon_social.ilike(f"%{q}%"))
+    query = db.query(Customer).filter(
+        (Customer.rut.ilike(f"%{clean_q}%")) |
+        (Customer.razon_social.ilike(f"%{q}%"))
     ).limit(10)
     
     return query.all()
@@ -86,7 +86,7 @@ def get_customer_by_rut(rut: str, db: Session = Depends(get_db)):
         HTTPException(404): Si no se encuentra el cliente.
     """
 
-    customer = db.query(User).filter(User.rut == rut).first()
+    customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -100,7 +100,7 @@ def get_customer_by_rut(rut: str, db: Session = Depends(get_db)):
              description="Actualiza datos de un cliente existente.")
 def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_db)):
     """Actualiza un cliente."""
-    db_customer = db.query(User).filter(User.rut == rut).first()
+    db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -122,7 +122,7 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
                description="Elimina un cliente por su RUT.")
 def delete_customer(rut: str, db: Session = Depends(get_db)):
     """Elimina un cliente."""
-    db_customer = db.query(User).filter(User.rut == rut).first()
+    db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

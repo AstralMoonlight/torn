@@ -17,6 +17,8 @@ import {
     Tags,
     Users,
     Settings,
+    ShieldCheck,
+    LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -28,48 +30,52 @@ const navGroups = [
     {
         label: 'Operaciones',
         items: [
-            { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-            { href: '/pos', label: 'Terminal POS', icon: ShoppingCart },
-            { href: '/caja', label: 'Caja', icon: Landmark },
+            { href: '/dashboard', label: 'Dashboard', icon: BarChart3, permissionKey: 'Dashboard' },
+            { href: '/pos', label: 'Terminal POS', icon: ShoppingCart, permissionKey: 'Terminal POS' },
+            { href: '/caja', label: 'Caja', icon: Landmark, permissionKey: 'Caja' },
         ]
     },
     {
         label: 'Inventario',
         items: [
-            { href: '/inventario', label: 'Productos', icon: Package },
-            { href: '/marcas', label: 'Marcas', icon: Tags },
-            { href: '/compras', label: 'Compras', icon: ShoppingBag },
+            { href: '/inventario', label: 'Productos', icon: Package, permissionKey: 'Productos' },
+            { href: '/marcas', label: 'Marcas', icon: Tags, permissionKey: 'Marcas' },
+            { href: '/compras', label: 'Compras', icon: ShoppingBag, permissionKey: 'Compras' },
         ]
     },
     {
         label: 'Entidades',
         items: [
-            { href: '/clientes', label: 'Clientes', icon: Globe },
-            { href: '/proveedores', label: 'Proveedores', icon: Truck },
-            { href: '/vendedores', label: 'Vendedores', icon: Users },
+            { href: '/clientes', label: 'Clientes', icon: Globe, permissionKey: 'Clientes' },
+            { href: '/proveedores', label: 'Proveedores', icon: Truck, permissionKey: 'Proveedores' },
+            { href: '/vendedores', label: 'Vendedores', icon: Users, permissionKey: 'Vendedores' },
         ]
     },
     {
         label: 'Auditoría',
         items: [
-            { href: '/historial', label: 'Historial', icon: History },
-            { href: '/reporte-diario', label: 'Reportes de Ventas', icon: BarChart3 },
+            { href: '/historial', label: 'Historial', icon: History, permissionKey: 'Historial' },
+            { href: '/reporte-diario', label: 'Reportes de Ventas', icon: BarChart3, permissionKey: 'Reportes de Ventas' },
         ]
     },
     {
         label: 'Sistema',
         items: [
-            { href: '/configuracion', label: 'Configuración', icon: Settings },
+            { href: '/vendedores/roles', label: 'Roles y Permisos', icon: ShieldCheck, permissionKey: 'Roles y Permisos' },
+            { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
         ]
     }
 ]
 
 export default function Sidebar() {
     const pathname = usePathname()
-    const user = useSessionStore((s) => s.user)
+    const userPayload = useSessionStore((s) => s.user)
     const status = useSessionStore((s) => s.status)
     const collapsed = useUIStore((s) => s.sidebarCollapsed)
     const toggle = useUIStore((s) => s.toggleSidebar)
+
+    const permissions = userPayload?.role_obj?.permissions || {}
+    const isAdmin = userPayload?.role === 'ADMINISTRADOR'
 
     return (
         <aside
@@ -99,17 +105,13 @@ export default function Sidebar() {
             {/* Navigation */}
             <nav className="flex-1 px-2 py-4 overflow-y-auto custom-scrollbar">
                 {navGroups.map((group, groupIdx) => {
-                    // Role-based filtering
-                    if (user?.role === 'VENDEDOR') {
-                        if (['Inventario', 'Entidades', 'Auditoría', 'Sistema'].includes(group.label)) return null
-                        if (group.label === 'Operaciones') {
-                            // On Operaciones, seller only sees POS and Caja
-                            group = {
-                                ...group,
-                                items: group.items.filter(i => i.label !== 'Dashboard')
-                            }
-                        }
-                    }
+                    // Filter items based on dynamic permissions
+                    const filteredItems = group.items.filter(item => {
+                        if (isAdmin) return true
+                        return permissions[item.permissionKey] === true
+                    })
+
+                    if (filteredItems.length === 0) return null
 
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
@@ -119,7 +121,7 @@ export default function Sidebar() {
                                 </h2>
                             )}
                             <div className="space-y-1">
-                                {group.items.map((item) => {
+                                {filteredItems.map((item) => {
                                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                                     return (
                                         <Link
@@ -173,12 +175,24 @@ export default function Sidebar() {
                     </Badge>
                 </div>
 
-                {/* Theme + Collapse */}
+                {/* Theme + Logout + Collapse */}
                 <div className={cn(
                     'flex items-center border-t border-slate-200 dark:border-slate-800 px-2 py-1.5',
-                    collapsed ? 'justify-center' : 'justify-between'
+                    collapsed ? 'flex-col justify-center gap-2' : 'flex-row justify-between'
                 )}>
-                    {!collapsed && <ThemeToggle />}
+                    <ThemeToggle />
+
+                    <button
+                        onClick={() => {
+                            useSessionStore.getState().logout()
+                            window.location.href = '/login'
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                        title="Cerrar Sesión"
+                    >
+                        <LogOut className="h-4 w-4" />
+                    </button>
+
                     <button
                         onClick={toggle}
                         className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -190,7 +204,6 @@ export default function Sidebar() {
                             <PanelLeftClose className="h-4 w-4" />
                         )}
                     </button>
-                    {collapsed && <ThemeToggle />}
                 </div>
             </div>
         </aside>

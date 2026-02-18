@@ -8,6 +8,9 @@ interface User {
     rut: string
     name: string
     role: string
+    role_obj?: {
+        permissions: Record<string, boolean>
+    }
 }
 
 interface SessionState {

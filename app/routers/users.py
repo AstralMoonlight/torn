@@ -5,31 +5,9 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.user import User
+from app.schemas import UserCreate, UserUpdate, UserOut
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-# --- Schemas ---
-class UserBase(BaseModel):
-    rut: str
-    razon_social: str
-    email: Optional[str] = None
-    role: str = "SELLER"
-
-class UserCreate(UserBase):
-    pass
-
-class UserUpdate(BaseModel):
-    razon_social: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
-
-class UserOut(UserBase):
-    id: int
-    is_active: bool
-
-    class Config:
-        from_attributes = True
 
 # --- Endpoints ---
 

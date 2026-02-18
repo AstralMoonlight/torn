@@ -1,6 +1,6 @@
 """Modelo de Usuario / Contribuyente."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -24,6 +24,10 @@ class Role(Base):
     can_edit_products = Column(Boolean, default=True)
     can_perform_sales = Column(Boolean, default=True)
     can_perform_returns = Column(Boolean, default=False)
+    
+    # Permisos Dinámicos (UI/Menus)
+    # Estructura Sugerida: {"dashboard": true, "pos": true, "caja": true, "inventario": false, ...}
+    permissions = Column(JSON, default={}, server_default='{}')
 
     users = relationship("User", back_populates="role_obj")
 
@@ -56,26 +60,23 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     rut = Column(String(12), unique=True, nullable=False, index=True)
-    razon_social = Column(String(200), nullable=False)
-    giro = Column(String(200))
-    direccion = Column(String(300))
-    comuna = Column(String(100))
-    ciudad = Column(String(100))
     email = Column(String(150))
-    current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente (Positivo=Deuda)")
     is_active = Column(Boolean, default=True)
+    # Personal Operativo
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     role_obj = relationship("Role", back_populates="users")
     
-    # Mantener el campo role como string temporalmente para compatibilidad 
-    # o eliminarlo tras la migración. Por ahora lo dejamos para no romper el backend 
-    # hasta que hagamos la migración completa.
-    role = Column(String(20), default="CUSTOMER") 
+    role = Column(String(20), default="SELLER") 
+    full_name = Column(String(100))
     password_hash = Column(String(255), nullable=True)
     pin = Column(String(10), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    @property
+    def name(self):
+        return self.full_name
+
     def __repr__(self) -> str:
         """Retorna representación string del objeto."""
-        return f"<User(rut='{self.rut}', razon_social='{self.razon_social}')>"
+        return f"<User(rut='{self.rut}', full_name='{self.full_name}')>"

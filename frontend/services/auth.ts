@@ -10,10 +10,15 @@ export interface User {
 export interface LoginResponse {
     access_token: string
     token_type: string
-    user_id: number
-    rut: string
-    name: string
-    role: string
+    user: {
+        id: number
+        rut: string
+        name: string
+        role: string
+        role_obj?: {
+            permissions: Record<string, boolean>
+        }
+    }
 }
 
 export async function login(rut: string, password: string): Promise<LoginResponse> {

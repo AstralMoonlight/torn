@@ -25,20 +25,55 @@ class RoleOut(BaseModel):
     can_edit_products: bool
     can_perform_sales: bool
     can_perform_returns: bool
+    permissions: dict = {}
     model_config = ConfigDict(from_attributes=True)
 
+class RoleUpdate(BaseModel):
+    description: Optional[str] = None
+    can_manage_users: Optional[bool] = None
+    can_view_reports: Optional[bool] = None
+    can_edit_products: Optional[bool] = None
+    can_perform_sales: Optional[bool] = None
+    can_perform_returns: Optional[bool] = None
+    permissions: Optional[dict] = None
+
 # ── Auth ─────────────────────────────────────────────────────────────
+
+class UserOut(BaseModel):
+    id: int
+    rut: str
+    name: str
+    role: Optional[str] = None
+    is_active: bool
+    role_obj: Optional[RoleOut] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class UserCreate(BaseModel):
+    rut: str
+    full_name: str
+    email: Optional[str] = None
+    role_id: Optional[int] = None
+    password: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    role_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
 class UserLogin(BaseModel):
     rut: str
     password: str
 
+    @field_validator("rut")
+    @classmethod
+    def rut_valido(cls, v: str) -> str:
+        return validar_rut(v)
+
 class UserToken(BaseModel):
     access_token: str
     token_type: str
-    user_id: int
-    rut: str
-    name: str
-    role: Optional[str] = None # Role name
+    user: UserOut
 
 class BrandCreate(BrandBase):
     pass
@@ -141,8 +176,6 @@ class CustomerOut(BaseModel):
     email: Optional[str] = None
     current_balance: Decimal
     is_active: bool
-    role_id: Optional[int] = None
-    role_obj: Optional[RoleOut] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -278,7 +311,7 @@ class SaleOut(BaseModel):
     created_at: datetime
     related_sale_id: Optional[int] = None
     
-    user: CustomerOut
+    customer: CustomerOut
     details: List[SaleDetailOut]
 
 
@@ -295,6 +328,9 @@ class ReturnCreate(BaseModel):
 
 
 # ── Medios de Pago ───────────────────────────────────────────────────
+
+
+
 
 
 class PaymentMethodOut(BaseModel):

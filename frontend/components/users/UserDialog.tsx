@@ -33,7 +33,7 @@ export default function UserDialog({ open, onClose, onSuccess, user }: Props) {
         if (open) {
             if (user) {
                 setRut(user.rut)
-                setName(user.razon_social)
+                setName(user.name || '')
                 setEmail(user.email || '')
             } else {
                 setRut('')
@@ -61,14 +61,14 @@ export default function UserDialog({ open, onClose, onSuccess, user }: Props) {
         try {
             if (user) {
                 await updateUser(user.id, {
-                    razon_social: name,
+                    full_name: name,
                     email: email || undefined,
                 })
                 toast.success('Vendedor actualizado')
             } else {
                 await createUser({
                     rut,
-                    razon_social: name,
+                    full_name: name,
                     email: email || undefined,
                     role: 'SELLER'
                 })

@@ -66,7 +66,7 @@ export default function HistorialPage() {
     const filtered = search.trim()
         ? sales.filter((s) =>
             s.folio.toString().includes(search) ||
-            s.user?.razon_social?.toLowerCase().includes(search.toLowerCase())
+            s.customer?.razon_social?.toLowerCase().includes(search.toLowerCase())
         )
         : sales
 
@@ -179,7 +179,7 @@ export default function HistorialPage() {
                                                     {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-xs text-slate-600 dark:text-slate-400 hidden lg:table-cell truncate max-w-[200px]">
-                                                    {sale.user?.razon_social || '—'}
+                                                    {sale.customer?.razon_social || '—'}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-right font-tabular text-xs font-semibold text-slate-900 dark:text-white">
                                                     {formatCLP(parseFloat(String(sale.monto_total)))}

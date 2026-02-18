@@ -118,7 +118,7 @@ export default function SellersPage() {
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                                                 <Users className="h-4 w-4" />
                                             </div>
-                                            <span className="font-medium">{user.razon_social}</span>
+                                            <span className="font-medium">{user.name}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
