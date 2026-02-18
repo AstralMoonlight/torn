@@ -50,6 +50,7 @@ import { createPurchase, getPurchases, deletePurchase, type Purchase, type Purch
 import { getApiErrorMessage } from '@/services/api'
 import { formatRut } from '@/lib/rut'
 import { formatCLP, getTodayChile } from '@/lib/format'
+import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 
 interface CartItem {
     product: Product
@@ -66,7 +67,7 @@ export default function ComprasPage() {
     const [loadingPurchases, setLoadingPurchases] = useState(false)
 
     // Form State
-    const [selectedProviderId, setSelectedProviderId] = useState<string>('')
+    const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
     const [folio, setFolio] = useState('')
     const [tipoDoc, setTipoDoc] = useState('FACTURA')
     const [fecha, setFecha] = useState(getTodayChile())
@@ -88,9 +89,8 @@ export default function ComprasPage() {
     }, [])
 
     const loadInitialData = () => {
-        Promise.all([getProviders(), getProducts(), getPurchases()])
-            .then(([provData, prodData, purchaseData]) => {
-                setProviders(provData)
+        Promise.all([getProducts(), getPurchases()])
+            .then(([prodData, purchaseData]) => {
                 // Filter: Only products that DON'T have children (leaves)
                 const leafProducts = prodData.filter(p => {
                     const hasChildren = prodData.some(child => child.parent_id === p.id)
@@ -154,7 +154,7 @@ export default function ComprasPage() {
     const totalFinal = totalNeto + totalIva
 
     const handleSave = async () => {
-        if (!selectedProviderId) {
+        if (!selectedProvider) {
             toast.error('Seleccione un proveedor')
             return
         }
@@ -166,7 +166,7 @@ export default function ComprasPage() {
         setSubmitting(true)
         try {
             const payload: PurchaseCreate = {
-                provider_id: parseInt(selectedProviderId),
+                provider_id: selectedProvider.id,
                 folio,
                 tipo_documento: tipoDoc,
                 fecha_compra: fecha ? new Date(fecha).toISOString() : undefined,
@@ -185,7 +185,7 @@ export default function ComprasPage() {
             setItems([])
             setFolio('')
             setObservacion('')
-            setSelectedProviderId('')
+            setSelectedProvider(null)
             refreshPurchases()
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Error al registrar compra'))
@@ -240,18 +240,10 @@ export default function ComprasPage() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Proveedor</Label>
-                                    <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccione un proveedor" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {providers.map(p => (
-                                                <SelectItem key={p.id} value={p.id.toString()}>
-                                                    {p.razon_social} ({formatRut(p.rut)})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <ProviderSearchCombobox
+                                        value={selectedProvider}
+                                        onChange={setSelectedProvider}
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

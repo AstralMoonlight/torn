@@ -34,6 +34,24 @@ def list_providers(db: Session = Depends(get_db)):
     """Lista todos los proveedores activos."""
     return db.query(Provider).filter(Provider.is_active == True).all()
 
+@router.get("/search", response_model=List[ProviderOut])
+def search_providers(q: str = "", db: Session = Depends(get_db)):
+    """Busca proveedores por RUT o Razón Social (coincidencia parcial)."""
+    if not q:
+        return []
+    
+    # Normalize query for RUT search
+    clean_q = q.replace(".", "").replace("-", "")
+    
+    query = db.query(Provider).filter(
+        (Provider.is_active == True) &
+        ((Provider.rut.ilike(f"%{clean_q}%")) |
+         (Provider.razon_social.ilike(f"%{q}%")))
+    ).limit(10)
+    
+    return query.all()
+
+
 
 @router.get("/{provider_id}", response_model=ProviderOut)
 def get_provider(provider_id: int, db: Session = Depends(get_db)):

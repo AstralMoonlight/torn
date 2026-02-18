@@ -65,11 +65,12 @@ export default function CartPanel({ onClose }: Props) {
                                         </p>
                                         <p className="text-[10px] text-slate-400 font-mono">{item.product.codigo_interno}</p>
                                         <p className="text-[10px] text-slate-500 mt-0.5 font-tabular">
-                                            {formatCLP(item.precio_bruto)} × {item.quantity}
+                                            <span className="text-slate-400">Neto:</span> {formatCLP(item.precio_neto)} +
+                                            <span className="text-slate-400 ml-1">IVA:</span> {formatCLP(item.precio_bruto - item.precio_neto)} × {item.quantity}
                                         </p>
                                     </div>
                                     <p className="font-bold text-xs text-slate-900 dark:text-white font-tabular whitespace-nowrap">
-                                        {formatCLP(item.subtotal)}
+                                        {formatCLP(item.precio_bruto * item.quantity)}
                                     </p>
                                 </div>
 

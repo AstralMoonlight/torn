@@ -33,9 +33,10 @@ const providerSchema = z.object({
     direccion: z.string().optional().default(''),
     email: z.string().email('Email inválido').optional().or(z.literal('')).default(''),
     telefono: z.string().optional().default(''),
+    ciudad: z.string().optional().default(''),
 })
 
-type ProviderFormValues = z.infer<typeof providerSchema>
+type ProviderFormValues = z.input<typeof providerSchema>
 
 interface Props {
     open: boolean
@@ -54,6 +55,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
             direccion: '',
             email: '',
             telefono: '',
+            ciudad: '',
         },
     })
 
@@ -67,6 +69,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                     direccion: provider.direccion || '',
                     email: provider.email || '',
                     telefono: provider.telefono || '',
+                    ciudad: provider.ciudad || '',
                 })
             } else {
                 form.reset({
@@ -76,6 +79,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                     direccion: '',
                     email: '',
                     telefono: '',
+                    ciudad: '',
                 })
             }
         }
@@ -86,7 +90,6 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
             const payload = {
                 ...values,
                 rut: cleanRut(values.rut),
-                // Ensure nulls are handled if necessary, but schemas usually prefer string or undefined
             }
 
             if (provider) {
@@ -167,6 +170,20 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                                     <FormLabel>Dirección</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Av. Principal 123" {...field} value={field.value || ''} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="ciudad"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Ciudad</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Ej: Santiago" {...field} value={field.value || ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

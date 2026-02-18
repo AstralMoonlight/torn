@@ -148,9 +148,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     iframe.contentWindow?.print()
                     // Cleanup URL to avoid memory leaks (optional, but good practice after a delay)
                     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+                    // Close modal and clear cart after printing
+                    handleFinish()
                 } catch (e) {
                     console.error("Print error:", e)
                     window.open(blobUrl, '_blank')
+                    handleFinish()
                 }
             }
             iframe.src = blobUrl
@@ -158,6 +161,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
             console.error("Fetch error:", err)
             // Fallback to direct URL if fetch fails
             window.open(getSalePdfUrl(lastSaleId), '_blank')
+            handleFinish()
         }
     }
 

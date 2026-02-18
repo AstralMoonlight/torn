@@ -376,6 +376,7 @@ class ProviderBase(BaseModel):
     direccion: Optional[str] = None
     email: Optional[str] = None
     telefono: Optional[str] = None
+    ciudad: Optional[str] = None
 
     @field_validator("rut")
     @classmethod
@@ -394,6 +395,7 @@ class ProviderUpdate(BaseModel):
     direccion: Optional[str] = None
     email: Optional[str] = None
     telefono: Optional[str] = None
+    ciudad: Optional[str] = None
     is_active: Optional[bool] = None
 
     @field_validator("rut")

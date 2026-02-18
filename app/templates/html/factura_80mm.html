@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Ticket N° {{ sale.folio }}</title>
+    <title>{% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA{% elif sale.tipo_dte == 34 %}FACTURA EXENTA{% elif
+        sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA{% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO{% else %}TICKET DE VENTA{%
+        endif %} N° {{ sale.folio }}</title>
     <style>
         @page {
             size: 80mm auto;
@@ -101,9 +103,10 @@
         }
 
         /* ── Table ───────────────────────────────────────── */
-        <table>width: 100%;
-        border-collapse: collapse;
-        margin: 6px 0;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0;
         }
 
         thead th {

@@ -31,6 +31,7 @@ class Provider(Base):
     direccion = Column(String(200))
     email = Column(String(100))
     telefono = Column(String(50))
+    ciudad = Column(String(100))
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

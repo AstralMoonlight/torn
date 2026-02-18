@@ -8,6 +8,7 @@ export interface Provider {
     direccion?: string
     email?: string
     telefono?: string
+    ciudad?: string
     is_active: boolean
 }
 
@@ -31,4 +32,10 @@ export async function updateProvider(id: number, provider: ProviderUpdate): Prom
 
 export async function deleteProvider(id: number): Promise<void> {
     await api.delete(`/providers/${id}`)
+}
+export async function searchProviders(query: string): Promise<Provider[]> {
+    const { data } = await api.get<Provider[]>('/providers/search', {
+        params: { q: query }
+    })
+    return data
 }

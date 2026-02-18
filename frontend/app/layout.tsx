@@ -37,7 +37,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AppShell>{children}</AppShell>
           <Toaster
-            position="top-right"
+            position="bottom-center"
             richColors
             closeButton
             toastOptions={{ duration: 3000 }}
