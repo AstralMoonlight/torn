@@ -34,3 +34,18 @@ export async function closeSession(finalCashDeclared: number): Promise<CashSessi
     })
     return data
 }
+
+export interface CashSessionWithUser extends CashSession {
+    user: {
+        id: number
+        name: string
+        full_name: string | null
+        email: string
+        rut: string | null
+    }
+}
+
+export async function getAllSessions(): Promise<CashSessionWithUser[]> {
+    const { data } = await api.get<CashSessionWithUser[]>('/cash/sessions')
+    return data
+}

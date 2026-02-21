@@ -5,14 +5,15 @@ from decimal import Decimal
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.cash import CashSession
 from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
-from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut
+from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut, CashSessionWithUserOut
+
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 from app.utils.dates import get_now
@@ -209,3 +210,17 @@ def close_session(
     db.commit()
     db.refresh(active_session)
     return active_session
+
+
+@router.get("/sessions", response_model=List[CashSessionWithUserOut],
+             summary="Historial de Sesiones",
+             description="Obtiene el historial de todas las sesiones de caja (arqueos).")
+def list_sessions(
+    db: Session = Depends(get_tenant_db)
+):
+    """Lista todas las sesiones de caja con la información del usuario."""
+    sessions = db.query(CashSession).options(
+        joinedload(CashSession.user)
+    ).order_by(desc(CashSession.start_time)).all()
+    
+    return sessions

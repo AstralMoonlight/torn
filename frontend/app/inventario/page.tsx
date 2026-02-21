@@ -158,14 +158,14 @@ export default function InventarioPage() {
                             ) : (
                                 filtered.map((p) => (
                                     <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
-                                        <td className="px-4 py-2.5 font-mono text-[11px] text-neutral-500">{p.codigo_interno}</td>
+                                        <td className="px-4 py-2.5 font-mono text-xs text-neutral-500">{p.codigo_interno}</td>
                                         <td className="px-4 py-2.5">
-                                            <p className="text-xs font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
+                                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
                                             {p.codigo_barras && (
-                                                <p className="text-[10px] text-neutral-400 font-mono">{p.codigo_barras}</p>
+                                                <p className="text-xs text-neutral-400 font-mono">{p.codigo_barras}</p>
                                             )}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right font-tabular text-xs hidden sm:table-cell">
+                                        <td className="px-4 py-2.5 text-right font-tabular text-sm hidden sm:table-cell">
                                             {formatCLP(parseFloat(p.precio_neto))}
                                         </td>
                                         <td className="px-4 py-2.5 text-center">

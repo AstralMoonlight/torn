@@ -398,6 +398,10 @@ class CashSessionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CashSessionWithUserOut(CashSessionOut):
+    user: UserOut
+
+
 # ── Issuer (Emisor) ──────────────────────────────────────────────────
 
 

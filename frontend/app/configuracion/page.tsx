@@ -121,7 +121,7 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: '80mm' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === '80mm'
-                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
                                             : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
@@ -135,7 +135,7 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: 'carta' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === 'carta'
-                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
                                             : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
@@ -164,7 +164,7 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('grouped')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'grouped'
-                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
                                             : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
@@ -178,7 +178,7 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('flat')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'flat'
-                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
                                             : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
@@ -214,7 +214,7 @@ export default function ConfigurationPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* New Tax Form */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-neutral-50 p-4 rounded-lg border border-neutral-100">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-neutral-50 dark:bg-neutral-900 p-4 rounded-lg border border-neutral-100 dark:border-neutral-800">
                                 <div className="space-y-2">
                                     <Label className="text-xs">Nombre del Impuesto</Label>
                                     <Input
