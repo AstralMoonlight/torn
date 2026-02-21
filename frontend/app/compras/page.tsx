@@ -286,7 +286,7 @@ export default function ComprasPage() {
                                 <div className="space-y-2">
                                     <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Observaciones</Label>
                                     <textarea
-                                        className="w-full min-h-[80px] rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-800 dark:bg-neutral-950"
+                                        className="w-full min-h-[80px] rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
                                         placeholder="Notas adicionales..."
                                         value={observacion}
                                         onChange={e => setObservacion(e.target.value)}
@@ -298,7 +298,7 @@ export default function ComprasPage() {
                         {/* Right Panel: Items Selection and List */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* Product Search */}
-                            <Card className="shadow-sm border-blue-100 dark:border-blue-900/30">
+                            <Card className="shadow-sm">
                                 <CardContent className="p-4">
                                     <div className="relative">
                                         <Search className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
@@ -555,7 +555,7 @@ export default function ComprasPage() {
                                 href={`${apiUrl}/purchases/${selectedPurchase?.id}/pdf`}
                                 target="_blank"
                                 rel="noopener"
-                                className="flex items-center gap-2 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 rounded-md text-xs font-medium hover:opacity-90 transition shadow-sm"
+                                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 active:scale-95 transition shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                                 Imprimir
@@ -571,7 +571,7 @@ export default function ComprasPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-neutral-500 uppercase font-bold">Monto Total</p>
-                                    <p className="font-bold text-blue-600">{formatCLP(selectedPurchase.monto_total)}</p>
+                                    <p className="font-bold text-neutral-900 dark:text-white text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
                                     <div className="col-span-2">

@@ -288,7 +288,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {change > 0 && (
                                 <div className="mt-6 text-center animate-in slide-in-from-bottom-2 fade-in">
                                     <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest">Su Vuelto</p>
-                                    <p className="text-4xl font-black text-blue-600">
+                                    <p className="text-4xl font-black text-neutral-900 dark:text-white">
                                         {formatCLP(change)}
                                     </p>
                                 </div>
@@ -298,7 +298,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <Button
                                     onClick={handlePrint}
                                     size="lg"
-                                    className="w-full gap-2 text-md font-bold h-12 shadow-md shadow-blue-900/10"
+                                    className="w-full gap-2 text-md font-bold h-12 shadow-md shadow-neutral-900/10"
                                     autoFocus
                                 >
                                     <Printer className="h-5 w-5" />
@@ -397,7 +397,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             <button
                                                 key={bill}
                                                 onClick={() => applySmartCash(bill)}
-                                                className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold font-tabular text-neutral-700 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 active:scale-95 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30"
+                                                className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold font-tabular text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50 hover:text-neutral-900 active:scale-95 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-white"
                                             >
                                                 {formatCLP(bill)}
                                             </button>
@@ -428,8 +428,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 )}
                                 {change > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-blue-600 font-medium">Vuelto</span>
-                                        <Badge className="bg-blue-600 text-xs">{formatCLP(change)}</Badge>
+                                        <span className="text-neutral-900 dark:text-white font-medium">Vuelto</span>
+                                        <Badge variant="secondary" className="text-xs">{formatCLP(change)}</Badge>
                                     </div>
                                 )}
                             </div>

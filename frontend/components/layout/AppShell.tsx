@@ -136,7 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!isMounted) return null // Prevent hydration mismatch
 
     if (pathname === '/login' || pathname === '/select-tenant' || pathname.startsWith('/saas-admin')) {
-        return <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950">{children}</main>
+        return <main className="min-h-screen bg-neutral-50 dark:bg-neutral-900">{children}</main>
     }
 
     if (!token || !selectedTenantId) return null // Wait for redirect

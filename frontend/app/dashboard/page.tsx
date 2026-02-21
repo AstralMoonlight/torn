@@ -48,15 +48,16 @@ function KPICard({
     trend?: { value: string, positive: boolean }
 }) {
     const colorMap: Record<string, string> = {
-        blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-        green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-        amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-        red: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-        purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+        blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+        green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+        amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+        red: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
+        indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
+        purple: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
     }
 
     return (
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 shadow-sm transition-all hover:shadow-md">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-card shadow-sm transition-all hover:shadow-md">
             <div className="flex items-start justify-between">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[color]}`}>
                     <Icon className="h-5 w-5" />

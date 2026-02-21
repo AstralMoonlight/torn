@@ -47,7 +47,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     return (
         <>
             {before}
-            <span className="font-bold text-blue-600 dark:text-blue-400">{match}</span>
+            <span className="font-black text-neutral-900 dark:text-white underline decoration-neutral-300 dark:decoration-neutral-600 underline-offset-2">{match}</span>
             {after}
         </>
     )
@@ -287,7 +287,7 @@ export default function CustomerSearchCombobox({
                                     className={`
                                         flex w-full items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer
                                         ${idx === highlightedIndex
-                                            ? 'bg-blue-50 dark:bg-blue-950/40'
+                                            ? 'bg-neutral-100 dark:bg-neutral-800'
                                             : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                                         }
                                         ${idx > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}
@@ -319,15 +319,15 @@ export default function CustomerSearchCombobox({
                             className={`
                                 flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-neutral-200 dark:border-neutral-700 transition-colors cursor-pointer
                                 ${highlightedIndex === results.length
-                                    ? 'bg-blue-50 dark:bg-blue-950/40'
+                                    ? 'bg-neutral-100 dark:bg-neutral-800'
                                     : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                                 }
                             `}
                         >
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 shrink-0">
-                                <Plus className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-700 shrink-0">
+                                <Plus className="h-3 w-3 text-neutral-600 dark:text-neutral-300" />
                             </div>
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            <span className="text-xs font-medium text-neutral-700 dark:text-neutral-200">
                                 Crear nuevo cliente
                             </span>
                         </button>

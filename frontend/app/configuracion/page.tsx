@@ -121,8 +121,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: '80mm' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === '80mm'
-                                            ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
+                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
                                         <Printer className="h-8 w-8" />
@@ -135,8 +135,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: 'carta' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === 'carta'
-                                            ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
+                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
                                         <div className="h-8 w-6 border-2 border-current rounded-sm relative">
@@ -164,8 +164,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('grouped')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'grouped'
-                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600 dark:bg-blue-950/30'
-                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
                                         <Layers className="h-8 w-8" />
@@ -178,8 +178,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('flat')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'flat'
-                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600 dark:bg-blue-950/30'
-                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
                                             }`}
                                     >
                                         <LayoutGrid className="h-8 w-8" />
@@ -267,7 +267,7 @@ export default function ConfigurationPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        {tax.is_default && <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">Default</Badge>}
+                                                        {tax.is_default && <Badge variant="outline" className="text-neutral-700 border-neutral-300 bg-neutral-50 dark:text-neutral-200 dark:border-neutral-700 dark:bg-neutral-800">Default</Badge>}
                                                     </TableCell>
                                                 </TableRow>
                                             ))

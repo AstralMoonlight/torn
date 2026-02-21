@@ -22,10 +22,10 @@ export default function CartPanel({ onClose }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-800 shrink-0">
                 <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-4 w-4 text-blue-600" />
+                    <ShoppingBag className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                     <h2 className="font-semibold text-sm text-neutral-900 dark:text-white">Ticket</h2>
                     {items.length > 0 && (
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-neutral-800 px-1.5 text-[10px] font-bold text-white dark:bg-neutral-700">
                             {items.length}
                         </span>
                     )}

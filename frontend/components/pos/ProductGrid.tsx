@@ -93,7 +93,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                             key={product.id}
                             onClick={() => handleClick(product)}
                             disabled={outOfStock && !hasVariants}
-                            className="group relative flex flex-col items-start justify-between rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-blue-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-blue-600"
+                            className="group relative flex flex-col items-start justify-between rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-neutral-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600"
                         >
                             {hasVariants && (
                                 <div className="absolute right-2 top-2">
@@ -116,7 +116,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                         {product.variants.length} variantes
                                     </Badge>
                                 ) : (
-                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400 font-tabular">
+                                    <span className="text-lg font-bold text-neutral-900 dark:text-white font-tabular">
                                         {formatCLP(price)}
                                     </span>
                                 )}
@@ -153,7 +153,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                             value={variantSearch}
                             onChange={(e) => setVariantSearch(e.target.value)}
                             placeholder={`Buscar entre ${variantsOf?.variants.length} variantes…`}
-                            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                         />
                     )}
 
@@ -176,14 +176,14 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                             setVariantsOf(null)
                                             setVariantSearch('')
                                         }}
-                                        className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-blue-600 transition"
+                                        className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-neutral-600 transition"
                                     >
                                         <div className="text-left">
                                             <p className="font-medium text-sm">{variant.full_name}</p>
                                             <p className="text-xs text-neutral-400 font-mono">{variant.codigo_interno}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-blue-600 dark:text-blue-400">
+                                            <p className="font-bold text-neutral-900 dark:text-white">
                                                 {formatCLP(variant.precio_bruto)}
                                             </p>
                                             {variant.controla_stock && (

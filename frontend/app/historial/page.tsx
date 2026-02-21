@@ -162,8 +162,8 @@ export default function HistorialPage() {
                             ) : (
                                 Object.entries(groupedSales).map(([date, daySales]) => (
                                     <Fragment key={date}>
-                                        <tr className="bg-neutral-100/50 dark:bg-neutral-900/50">
-                                            <td colSpan={6} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 border-y border-neutral-100 dark:border-neutral-800">
+                                        <tr className="bg-neutral-100/50 dark:bg-neutral-800/60">
+                                            <td colSpan={6} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-neutral-500 dark:text-neutral-400 border-y border-neutral-100 dark:border-neutral-800">
                                                 {date}
                                             </td>
                                         </tr>
