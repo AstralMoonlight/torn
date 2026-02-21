@@ -219,7 +219,7 @@ export default function ProviderSearchCombobox({
         <>
             <div ref={containerRef} className="relative">
                 <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
                     <Input
                         ref={inputRef}
                         placeholder={placeholder}
@@ -233,18 +233,18 @@ export default function ProviderSearchCombobox({
                         autoComplete="off"
                     />
                     {loading && (
-                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-slate-400" />
+                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-neutral-400" />
                     )}
                 </div>
 
                 {isOpen && (
                     <div
                         ref={listRef}
-                        className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+                        className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
                     >
                         <div className="max-h-[200px] overflow-y-auto">
                             {results.length === 0 && !loading && (
-                                <div className="px-3 py-4 text-center text-xs text-slate-400">
+                                <div className="px-3 py-4 text-center text-xs text-neutral-400">
                                     <Truck className="h-5 w-5 mx-auto mb-1 opacity-40" />
                                     No se encontraron proveedores para "{query}"
                                 </div>
@@ -260,19 +260,19 @@ export default function ProviderSearchCombobox({
                                         flex w-full items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer
                                         ${idx === highlightedIndex
                                             ? 'bg-blue-50 dark:bg-blue-950/40'
-                                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                                         }
-                                        ${idx > 0 ? 'border-t border-slate-100 dark:border-slate-800' : ''}
+                                        ${idx > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}
                                     `}
                                 >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 shrink-0">
-                                        <Truck className="h-3.5 w-3.5 text-slate-500" />
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 shrink-0">
+                                        <Truck className="h-3.5 w-3.5 text-neutral-500" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate text-slate-800 dark:text-slate-200">
+                                        <p className="text-sm truncate text-neutral-800 dark:text-neutral-200">
                                             <HighlightedText text={provider.razon_social} query={query} />
                                         </p>
-                                        <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                                        <p className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">
                                             <HighlightedText text={provider.rut} query={query} />
                                         </p>
                                     </div>
@@ -288,10 +288,10 @@ export default function ProviderSearchCombobox({
                             }}
                             onMouseEnter={() => setHighlightedIndex(results.length)}
                             className={`
-                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-slate-200 dark:border-slate-700 transition-colors cursor-pointer
+                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-neutral-200 dark:border-neutral-700 transition-colors cursor-pointer
                                 ${highlightedIndex === results.length
                                     ? 'bg-blue-50 dark:bg-blue-950/40'
-                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                                 }
                             `}
                         >

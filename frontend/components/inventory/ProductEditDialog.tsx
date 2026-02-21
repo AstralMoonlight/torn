@@ -220,17 +220,17 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                     <TabsContent value="variants" className="space-y-4 py-4">
                         {isParent ? (
                             <>
-                                <div className="rounded-md border border-slate-200 overflow-hidden">
+                                <div className="rounded-md border border-neutral-200 overflow-hidden">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-slate-50">
+                                        <thead className="bg-neutral-50">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-medium text-slate-500 text-xs uppercase">Variante / SKU</th>
-                                                <th className="px-3 py-2 text-left font-medium text-slate-500 text-xs uppercase">Precio Neto</th>
-                                                <th className="px-3 py-2 text-left font-medium text-slate-500 text-xs uppercase">Stock</th>
-                                                <th className="px-3 py-2 text-left font-medium text-slate-500 text-xs uppercase">Código Barras</th>
+                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Variante / SKU</th>
+                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Precio Neto</th>
+                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Stock</th>
+                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Código Barras</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100">
+                                        <tbody className="divide-y divide-neutral-100">
                                             {variants.map((v, i) => (
                                                 <tr key={v.id}>
                                                     <td className="px-3 py-2">
@@ -303,8 +303,8 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                 </div>
                             </>
                         ) : (
-                            <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-                                <h3 className="text-sm font-medium mb-4 text-slate-700">Configuración de Inventario (Producto Simple)</h3>
+                            <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+                                <h3 className="text-sm font-medium mb-4 text-neutral-700">Configuración de Inventario (Producto Simple)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
                                         <Label>Precio Neto</Label>

@@ -1,84 +1,82 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from jose import JWTError, jwt
 
 from app.database import get_db
-from app.models.user import User, Role
-from app.schemas import UserLogin, UserToken, UserOut
+from app.dependencies.tenant import get_global_db, get_current_global_user
+from app.models.saas import SaaSUser, TenantUser
+from app.schemas_saas import SaaSUserLogin, SaaSToken, SaaSUserOut, AvailableTenant
 from app.utils.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    SECRET_KEY,
-    ALGORITHM,
     create_access_token,
     verify_password,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
-    """Dependencia para obtener el usuario actual desde el token JWT."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudo validar la sesión",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-        
-    user = db.query(User).options(joinedload(User.role_obj)).filter(User.rut == username).first()
-    if user is None:
-        raise credentials_exception
-    return user
+def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]:
+    """Helper to get a list of tenants the user can access."""
+    tenant_users = global_db.query(TenantUser).options(
+        joinedload(TenantUser.tenant)
+    ).filter(
+        TenantUser.user_id == user_id,
+        TenantUser.is_active == True
+    ).all()
+    
+    return [
+        AvailableTenant(
+            id=tu.tenant.id,
+            name=tu.tenant.name,
+            rut=tu.tenant.rut,
+            role_name=tu.role_name,
+            is_active=tu.tenant.is_active
+        )
+        for tu in tenant_users
+    ]
 
-@router.post("/token", response_model=UserToken)
+@router.post("/token", response_model=SaaSToken)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_db),
+    global_db: Session = Depends(get_global_db),
 ):
-    """OAuth2 compatible token login, retrieving user profile and role."""
-    user = db.query(User).options(joinedload(User.role_obj)).filter(User.rut == form_data.username).first()
-    if not user:
-        user = db.query(User).options(joinedload(User.role_obj)).filter(User.email == form_data.username).first()
+    """OAuth2 compatible token login for SaaS Users."""
+    user = global_db.query(SaaSUser).filter(SaaSUser.email == form_data.username).first()
 
-    if not user or not user.password_hash or not verify_password(form_data.password, user.password_hash):
+    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
         
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        subject=user.rut, expires_delta=access_token_expires
+        subject=user.email, expires_delta=access_token_expires
     )
+    
+    # Obtener la lista de empresas a las que tiene acceso para que el Frontend renderice un selector
+    tenants = _get_user_tenants(global_db, user.id)
     
     return {
         "access_token": access_token, 
         "token_type": "bearer",
-        "user": user
+        "user": user,
+        "available_tenants": tenants
     }
 
-@router.post("/login", response_model=UserToken)
+@router.post("/login", response_model=SaaSToken)
 async def login_json(
-    login_data: UserLogin,
-    db: Session = Depends(get_db)
+    login_data: SaaSUserLogin,
+    global_db: Session = Depends(get_global_db)
 ):
     """JSON login alternative to OAuth2 form."""
-    user = db.query(User).options(joinedload(User.role_obj)).filter(User.rut == login_data.rut).first()
-    if not user:
-         user = db.query(User).options(joinedload(User.role_obj)).filter(User.email == login_data.rut).first()
+    user = global_db.query(SaaSUser).filter(SaaSUser.email == login_data.email).first()
 
-    if not user or not user.password_hash or not verify_password(login_data.password, user.password_hash):
+    if not user or not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
@@ -86,49 +84,31 @@ async def login_json(
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        subject=user.rut, expires_delta=access_token_expires
+        subject=user.email, expires_delta=access_token_expires
     )
+
+    tenants = _get_user_tenants(global_db, user.id)
 
     return {
         "access_token": access_token, 
         "token_type": "bearer",
-        "user": user
+        "user": user,
+        "available_tenants": tenants
     }
 
-@router.get("/users/me", response_model=UserOut)
-async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
-    """Obtiene el perfil del usuario actual."""
+@router.get("/users/me", response_model=SaaSUserOut)
+async def read_users_me(current_user: Annotated[SaaSUser, Depends(get_current_global_user)]):
+    """Obtiene el perfil del usuario actual (Nivel SaaS)."""
     return current_user
 
-
-# ── Dependencias de Autorización ────────────────────────────────────
-
-async def require_admin(current_user: User = Depends(get_current_user)):
-    """Verifica que el usuario sea Administrador."""
-    if not current_user.role_obj or current_user.role_obj.name != "ADMINISTRADOR":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado: se requieren permisos de administrador",
-        )
-    return current_user
-
-async def require_seller(current_user: User = Depends(get_current_user)):
-    """Verifica que el usuario sea al menos Vendedor o Administrador."""
-    allowed = ["ADMINISTRADOR", "VENDEDOR"]
-    if not current_user.role_obj or current_user.role_obj.name not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado: permisos insuficientes",
-        )
-    return current_user
-
-def require_role(allowed_roles: list[str]):
-    """Dependencia parametrizada para requerir roles específicos."""
-    async def role_checker(current_user: User = Depends(get_current_user)):
-        if not current_user.role_obj or current_user.role_obj.name not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Acceso denegado: se requiere uno de los siguientes roles: {', '.join(allowed_roles)}",
-            )
-        return current_user
-    return role_checker
+@router.get("/validate")
+async def validate_session(
+    current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
+    global_db: Session = Depends(get_global_db)
+):
+    """Valida la sesión actual y refresca la lista de empresas disponibles."""
+    tenants = _get_user_tenants(global_db, current_user.id)
+    return {
+        "user": current_user,
+        "available_tenants": tenants
+    }

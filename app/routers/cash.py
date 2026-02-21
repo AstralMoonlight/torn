@@ -14,7 +14,8 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut
-from app.routers.auth import get_current_user
+from app.dependencies.tenant import get_current_tenant_user
+from app.models.saas import TenantUser
 from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/cash", tags=["cash"])
 def open_session(
     session_in: CashSessionCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TenantUser = Depends(get_current_tenant_user)
 ):
     """Abre una nueva sesión de caja.
 
@@ -87,7 +88,7 @@ def open_session(
              description="Consulta el estado actual de la caja del usuario.")
 def session_status(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TenantUser = Depends(get_current_tenant_user)
 ):
     """Obtiene el estado de la caja actual.
     
@@ -140,7 +141,7 @@ def session_status(
 def close_session(
     close_in: CashSessionClose, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TenantUser = Depends(get_current_tenant_user)
 ):
     """Cierra la sesión de caja y realiza arqueo (Blind Cash Count).
 

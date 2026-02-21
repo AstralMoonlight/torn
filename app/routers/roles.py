@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import Role
 from app.schemas import RoleOut, RoleUpdate
-from app.routers.auth import require_admin
+from app.dependencies.tenant import require_admin
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 

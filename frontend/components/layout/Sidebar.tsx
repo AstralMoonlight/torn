@@ -63,6 +63,7 @@ const navGroups = [
         items: [
             { href: '/vendedores/roles', label: 'Roles y Permisos', icon: ShieldCheck, permissionKey: 'Roles y Permisos' },
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
+            { href: '/saas-admin', label: 'Terminal SaaS Global', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
     }
 ]
@@ -76,26 +77,27 @@ export default function Sidebar() {
 
     const permissions = userPayload?.role_obj?.permissions || {}
     const isAdmin = userPayload?.role === 'ADMINISTRADOR'
+    const isSuperadmin = userPayload?.is_superuser === true
 
     return (
         <aside
             className={cn(
-                'hidden md:flex h-screen flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 transition-all duration-300 print:hidden',
+                'hidden md:flex h-screen flex-col border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 transition-all duration-300 print:hidden',
                 collapsed ? 'w-[68px]' : 'w-60'
             )}
         >
             {/* Logo */}
             <div className={cn(
-                'flex h-14 items-center border-b border-slate-200 dark:border-slate-800 shrink-0',
+                'flex h-14 items-center border-b border-neutral-200 dark:border-neutral-800 shrink-0',
                 collapsed ? 'justify-center px-2' : 'gap-2.5 px-4'
             )}>
                 <Activity className="h-6 w-6 text-blue-600 shrink-0" />
                 {!collapsed && (
                     <div className="overflow-hidden">
-                        <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+                        <h1 className="text-base font-bold tracking-tight text-neutral-900 dark:text-white leading-tight">
                             Torn
                         </h1>
-                        <p className="text-[9px] uppercase tracking-widest text-slate-400 leading-none">
+                        <p className="text-[9px] uppercase tracking-widest text-neutral-400 leading-none">
                             punto de venta
                         </p>
                     </div>
@@ -107,6 +109,7 @@ export default function Sidebar() {
                 {navGroups.map((group, groupIdx) => {
                     // Filter items based on dynamic permissions
                     const filteredItems = group.items.filter(item => {
+                        if (item.permissionKey === '__SUPERADMIN__') return isSuperadmin
                         if (isAdmin) return true
                         return permissions[item.permissionKey] === true
                     })
@@ -116,7 +119,7 @@ export default function Sidebar() {
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
                             {!collapsed && (
-                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
                                     {group.label}
                                 </h2>
                             )}
@@ -133,12 +136,12 @@ export default function Sidebar() {
                                                 collapsed && 'justify-center px-0',
                                                 isActive
                                                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                                                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white'
                                             )}
                                         >
                                             <item.icon className={cn(
                                                 "h-[18px] w-[18px] shrink-0",
-                                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                                                isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
                                             )} />
                                             {!collapsed && <span className="truncate">{item.label}</span>}
                                         </Link>
@@ -151,14 +154,14 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="border-t border-slate-200 dark:border-slate-800 shrink-0">
+            <div className="border-t border-neutral-200 dark:border-neutral-800 shrink-0">
                 {/* Cash Status */}
                 <div className={cn(
                     'flex items-center px-3 py-2',
                     collapsed ? 'justify-center' : 'justify-between'
                 )}>
                     {!collapsed && (
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">
                             Caja
                         </span>
                     )}
@@ -177,7 +180,7 @@ export default function Sidebar() {
 
                 {/* Theme + Logout + Collapse */}
                 <div className={cn(
-                    'flex items-center border-t border-slate-200 dark:border-slate-800 px-2 py-1.5',
+                    'flex items-center border-t border-neutral-200 dark:border-neutral-800 px-2 py-1.5',
                     collapsed ? 'flex-col justify-center gap-2' : 'flex-row justify-between'
                 )}>
                     <ThemeToggle />
@@ -195,7 +198,7 @@ export default function Sidebar() {
 
                     <button
                         onClick={toggle}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-white"
                         title={collapsed ? 'Expandir' : 'Colapsar'}
                     >
                         {collapsed ? (

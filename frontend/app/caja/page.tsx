@@ -73,9 +73,9 @@ export default function CajaPage() {
         } catch (err: any) {
             if (err.response?.status === 409) {
                 toast.custom((t) => (
-                    <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 max-w-sm">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-2">¡Caja ya abierta!</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800 max-w-sm">
+                        <h3 className="font-bold text-neutral-900 dark:text-white mb-2">¡Caja ya abierta!</h3>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
                             Ya tienes una caja abierta en otro dispositivo.
                             ¿Deseas cerrarla forzosamente y abrir una nueva aquí?
                         </p>
@@ -154,26 +154,26 @@ export default function CajaPage() {
             <div className="flex items-center gap-2">
                 <Landmark className="h-6 w-6 text-blue-600" />
                 <div>
-                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gestión de Caja</h1>
-                    <p className="text-xs text-slate-500">Abre y cierra turnos de caja</p>
+                    <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Gestión de Caja</h1>
+                    <p className="text-xs text-neutral-500">Abre y cierra turnos de caja</p>
                 </div>
             </div>
 
             {/* User Info Card */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 flex shadow-sm items-center gap-3">
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 flex shadow-sm items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-lg">
                     {user?.name?.[0].toUpperCase()}
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{user?.name}</p>
-                    <p className="text-[10px] text-slate-500 font-mono">{user?.rut}</p>
+                    <p className="text-sm font-bold text-neutral-900 dark:text-white">{user?.name}</p>
+                    <p className="text-[10px] text-neutral-500 font-mono">{user?.rut}</p>
                 </div>
             </div>
 
             {/* Status Card */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
                 <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-900 dark:text-white">Estado Actual</span>
+                    <span className="text-sm font-medium text-neutral-900 dark:text-white">Estado Actual</span>
                     <Badge
                         variant={status === 'OPEN' ? 'default' : 'destructive'}
                         className={status === 'OPEN' ? 'bg-emerald-600' : ''}
@@ -182,7 +182,7 @@ export default function CajaPage() {
                     </Badge>
                 </div>
                 {status === 'OPEN' && startTime && (
-                    <div className="mt-2 space-y-0.5 text-xs text-slate-500">
+                    <div className="mt-2 space-y-0.5 text-xs text-neutral-500">
                         <p className="flex items-center gap-1.5">
                             <Clock className="h-3 w-3" />
                             Apertura: {new Date(startTime).toLocaleString('es-CL')}
@@ -197,12 +197,12 @@ export default function CajaPage() {
 
             {/* Open / Close Form */}
             {status !== 'OPEN' ? (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 space-y-3">
+                <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
                     <div className="flex items-center gap-2">
                         <DoorOpen className="h-5 w-5 text-emerald-600" />
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white">Abrir Turno</h2>
+                        <h2 className="text-base font-bold text-neutral-900 dark:text-white">Abrir Turno</h2>
                     </div>
-                    <p className="text-xs text-slate-500">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
+                    <p className="text-xs text-neutral-500">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
 
                     <div className="space-y-1.5">
                         <Label className="text-xs">Monto Inicial ($)</Label>
@@ -227,12 +227,12 @@ export default function CajaPage() {
                     </Button>
                 </div>
             ) : (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 space-y-3">
+                <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
                     <div className="flex items-center gap-2">
                         <DoorClosed className="h-5 w-5 text-red-500" />
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white">Cerrar Turno (Arqueo Ciego)</h2>
+                        <h2 className="text-base font-bold text-neutral-900 dark:text-white">Cerrar Turno (Arqueo Ciego)</h2>
                     </div>
-                    <p className="text-xs text-slate-500">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
+                    <p className="text-xs text-neutral-500">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
 
                     <div className="space-y-1.5">
                         <Label className="text-xs">Efectivo Contado ($)</Label>
@@ -261,24 +261,24 @@ export default function CajaPage() {
 
             {/* Close Results */}
             {closeResult && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 space-y-3">
-                    <h3 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
+                    <h3 className="text-sm font-bold flex items-center gap-2 text-neutral-900 dark:text-white">
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         Resultado del Arqueo
                     </h3>
                     <Separator />
                     <div className="space-y-1.5 text-sm font-tabular">
                         <div className="flex justify-between">
-                            <span className="text-slate-500">Sistema</span>
-                            <span className="font-semibold text-slate-900 dark:text-white">{formatCLP(closeResult.final_cash_system)}</span>
+                            <span className="text-neutral-500">Sistema</span>
+                            <span className="font-semibold text-neutral-900 dark:text-white">{formatCLP(closeResult.final_cash_system)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500">Declarado</span>
-                            <span className="font-semibold text-slate-900 dark:text-white">{formatCLP(closeResult.final_cash_declared)}</span>
+                            <span className="text-neutral-500">Declarado</span>
+                            <span className="font-semibold text-neutral-900 dark:text-white">{formatCLP(closeResult.final_cash_declared)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">Diferencia</span>
+                            <span className="font-medium text-neutral-700 dark:text-neutral-300">Diferencia</span>
                             <span className={`font-bold text-base ${closeResult.difference === 0 ? 'text-emerald-600' : closeResult.difference > 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                 {closeResult.difference > 0 ? '+' : ''}{formatCLP(closeResult.difference)}
                             </span>

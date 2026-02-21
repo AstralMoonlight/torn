@@ -13,7 +13,7 @@ from app.database import get_db
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct, ReportOut, ReportItem
-from app.routers.auth import require_admin
+from app.dependencies.tenant import require_admin
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 

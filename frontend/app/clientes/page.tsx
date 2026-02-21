@@ -203,7 +203,7 @@ export default function CustomersPage() {
             </div>
 
             <div className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-slate-500" />
+                <Search className="h-4 w-4 text-neutral-500" />
                 <Input
                     placeholder="Buscar por RUT o Nombre..."
                     value={filter}
@@ -212,7 +212,7 @@ export default function CustomersPage() {
                 />
             </div>
 
-            <div className="border rounded-lg bg-white dark:bg-slate-950 shadow-sm overflow-hidden">
+            <div className="border rounded-lg bg-white dark:bg-neutral-950 shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -227,7 +227,7 @@ export default function CustomersPage() {
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-neutral-400" />
                                 </TableCell>
                             </TableRow>
                         ) : filteredCustomers.length === 0 ? (

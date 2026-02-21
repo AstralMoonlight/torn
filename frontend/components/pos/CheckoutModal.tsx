@@ -287,7 +287,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             <CheckCircle2 className="h-16 w-16 text-emerald-500 animate-in zoom-in-50" />
                             {change > 0 && (
                                 <div className="mt-6 text-center animate-in slide-in-from-bottom-2 fade-in">
-                                    <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Su Vuelto</p>
+                                    <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest">Su Vuelto</p>
                                     <p className="text-4xl font-black text-blue-600">
                                         {formatCLP(change)}
                                     </p>
@@ -307,7 +307,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <Button
                                     variant="outline"
                                     onClick={handleFinish}
-                                    className="w-full h-10 border-slate-300"
+                                    className="w-full h-10 border-neutral-300"
                                 >
                                     Finalizar (Nueva Venta)
                                 </Button>
@@ -334,7 +334,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <div className="flex justify-between items-center">
                                     <Label className="text-xs">Cliente {isBoleta ? '(Opcional)' : '(Requerido)'}</Label>
                                     {isBoleta && !selectedCustomer && (
-                                        <span className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                        <span className="text-[10px] text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
                                             Por defecto: Cliente Genérico
                                         </span>
                                     )}
@@ -389,7 +389,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {/* Smart Cash Suggestions */}
                             {hasCashPayment && (
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <Label className="text-[10px] text-neutral-400 uppercase tracking-wider flex items-center gap-1">
                                         <Banknote className="h-3 w-3" /> Billetes sugeridos
                                     </Label>
                                     <div className="flex flex-wrap gap-1.5">
@@ -397,7 +397,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             <button
                                                 key={bill}
                                                 onClick={() => applySmartCash(bill)}
-                                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold font-tabular text-slate-700 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30"
+                                                className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold font-tabular text-neutral-700 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 active:scale-95 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30"
                                             >
                                                 {formatCLP(bill)}
                                             </button>
@@ -411,11 +411,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {/* Summary */}
                             <div className="space-y-1 font-tabular text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Total</span>
+                                    <span className="text-neutral-500">Total</span>
                                     <span className="font-semibold">{formatCLP(totalFinal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Pagado</span>
+                                    <span className="text-neutral-500">Pagado</span>
                                     <span className={totalPaid >= totalFinal ? 'text-emerald-600' : 'text-amber-600'}>
                                         {formatCLP(totalPaid)}
                                     </span>

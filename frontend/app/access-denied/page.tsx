@@ -6,16 +6,16 @@ import Link from 'next/link'
 
 export default function AccessDenied() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-            <div className="w-full max-w-md space-y-8 bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-4">
+            <div className="w-full max-w-md space-y-8 bg-white dark:bg-neutral-900 p-8 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 text-center">
                 <div className="space-y-4">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 mb-2">
                         <ShieldAlert className="w-10 h-10" />
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">
                         Acceso Denegado
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <p className="text-neutral-500 dark:text-neutral-400">
                         No tienes los permisos necesarios para acceder a esta sección.
                         Si crees que esto es un error, contacta al administrador del sistema.
                     </p>
@@ -37,7 +37,7 @@ export default function AccessDenied() {
                     </Button>
                 </div>
 
-                <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-center text-xs text-neutral-400 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     &copy; {new Date().getFullYear()} Torn. Sistema de Gestión y Seguridad.
                 </div>
             </div>

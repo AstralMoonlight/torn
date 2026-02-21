@@ -90,7 +90,7 @@ export default function ConfigurationPage() {
         <div className="container mx-auto py-8 max-w-4xl space-y-6">
             <div className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold tracking-tight">Configuración</h1>
-                <p className="text-slate-500">Administra las preferencias generales y parámetros del sistema.</p>
+                <p className="text-neutral-500">Administra las preferencias generales y parámetros del sistema.</p>
             </div>
 
             <Tabs defaultValue="general" className="w-full">
@@ -119,7 +119,7 @@ export default function ConfigurationPage() {
                                         onClick={() => setSettings(s => s ? { ...s, print_format: '80mm' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === '80mm'
                                                 ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                                : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
                                             }`}
                                     >
                                         <Printer className="h-8 w-8" />
@@ -133,7 +133,7 @@ export default function ConfigurationPage() {
                                         onClick={() => setSettings(s => s ? { ...s, print_format: 'carta' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === 'carta'
                                                 ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                                : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
                                             }`}
                                     >
                                         <div className="h-8 w-6 border-2 border-current rounded-sm relative">
@@ -169,7 +169,7 @@ export default function ConfigurationPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* New Tax Form */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-neutral-50 p-4 rounded-lg border border-neutral-100">
                                 <div className="space-y-2">
                                     <Label className="text-xs">Nombre del Impuesto</Label>
                                     <Input
@@ -205,7 +205,7 @@ export default function ConfigurationPage() {
                                     <TableBody>
                                         {taxes.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center text-slate-500">
+                                                <TableCell colSpan={4} className="h-24 text-center text-neutral-500">
                                                     No hay impuestos configurados.
                                                 </TableCell>
                                             </TableRow>

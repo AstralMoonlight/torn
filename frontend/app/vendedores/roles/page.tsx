@@ -170,11 +170,11 @@ export default function RolesManagementPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white flex items-center gap-3">
                         <ShieldCheck className="h-8 w-8 text-blue-600" />
                         Gestión de Accesos y Seguridad
                     </h1>
-                    <p className="text-slate-500 mt-2">
+                    <p className="text-neutral-500 mt-2">
                         Controla quién puede ver qué en el sistema y asigna roles a tus usuarios.
                     </p>
                 </div>
@@ -191,7 +191,7 @@ export default function RolesManagementPage() {
             </div>
 
             {/* Matriz de Permisos */}
-            <Card className="border-slate-200 dark:border-slate-800">
+            <Card className="border-neutral-200 dark:border-neutral-800">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <ShieldCheck className="h-5 w-5 text-blue-500" />
@@ -205,12 +205,12 @@ export default function RolesManagementPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-800">
-                                    <th className="py-4 px-6 text-left font-semibold text-slate-700 dark:text-slate-300">Menú / Sección</th>
+                                <tr className="border-b border-neutral-200 dark:border-neutral-800">
+                                    <th className="py-4 px-6 text-left font-semibold text-neutral-700 dark:text-neutral-300">Menú / Sección</th>
                                     {roles.map(role => (
-                                        <th key={role.id} className="py-4 px-6 text-center font-semibold text-slate-700 dark:text-slate-300">
+                                        <th key={role.id} className="py-4 px-6 text-center font-semibold text-neutral-700 dark:text-neutral-300">
                                             <div className="flex flex-col items-center">
-                                                <Users className="h-5 w-5 mb-1 text-slate-400" />
+                                                <Users className="h-5 w-5 mb-1 text-neutral-400" />
                                                 {role.name}
                                             </div>
                                         </th>
@@ -222,11 +222,11 @@ export default function RolesManagementPage() {
                                     <tr
                                         key={item}
                                         className={cn(
-                                            "border-b border-slate-100 dark:border-slate-900 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/50",
+                                            "border-b border-neutral-100 dark:border-neutral-900 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
                                             idx === MENU_ITEMS.length - 1 && "border-0"
                                         )}
                                     >
-                                        <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400">
+                                        <td className="py-4 px-6 font-medium text-neutral-600 dark:text-neutral-400">
                                             {item}
                                         </td>
                                         {roles.map(role => {
@@ -255,7 +255,7 @@ export default function RolesManagementPage() {
             </Card>
 
             {/* Asignación de Usuarios */}
-            <Card className="border-slate-200 dark:border-slate-800">
+            <Card className="border-neutral-200 dark:border-neutral-800">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-blue-500" />
@@ -268,7 +268,7 @@ export default function RolesManagementPage() {
                 <CardContent className="space-y-6">
                     {/* Buscador */}
                     <div className="relative max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                         <Input
                             placeholder="Buscar por RUT o Nombre..."
                             value={searchTerm}
@@ -277,24 +277,24 @@ export default function RolesManagementPage() {
                         />
                     </div>
 
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden">
                         <table className="w-full border-collapse text-sm">
-                            <thead className="bg-slate-50 dark:bg-slate-900/50">
+                            <thead className="bg-neutral-50 dark:bg-neutral-900/50">
                                 <tr>
-                                    <th className="py-3 px-4 text-left font-semibold text-slate-700 dark:text-slate-300">Usuario</th>
-                                    <th className="py-3 px-4 text-left font-semibold text-slate-700 dark:text-slate-300">RUT</th>
-                                    <th className="py-3 px-4 text-left font-semibold text-slate-700 dark:text-slate-300 w-[240px]">Rol Asignado</th>
+                                    <th className="py-3 px-4 text-left font-semibold text-neutral-700 dark:text-neutral-300">Usuario</th>
+                                    <th className="py-3 px-4 text-left font-semibold text-neutral-700 dark:text-neutral-300">RUT</th>
+                                    <th className="py-3 px-4 text-left font-semibold text-neutral-700 dark:text-neutral-300 w-[240px]">Rol Asignado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredUsers.length > 0 ? (
                                     filteredUsers.slice(0, 50).map((user) => (
-                                        <tr key={user.id} className="border-t border-slate-100 dark:border-slate-900">
-                                            <td className="py-3 px-4 flex items-center gap-3 text-slate-900 dark:text-white">
-                                                <UserCircle className="h-5 w-5 text-slate-400 shrink-0" />
+                                        <tr key={user.id} className="border-t border-neutral-100 dark:border-neutral-900">
+                                            <td className="py-3 px-4 flex items-center gap-3 text-neutral-900 dark:text-white">
+                                                <UserCircle className="h-5 w-5 text-neutral-400 shrink-0" />
                                                 <span className="truncate">{user.name}</span>
                                             </td>
-                                            <td className="py-3 px-4 text-slate-500">{user.rut}</td>
+                                            <td className="py-3 px-4 text-neutral-500">{user.rut}</td>
                                             <td className="py-3 px-4">
                                                 <Select
                                                     value={user.role_id?.toString() || ""}
@@ -317,7 +317,7 @@ export default function RolesManagementPage() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={3} className="py-10 text-center text-slate-500">
+                                        <td colSpan={3} className="py-10 text-center text-neutral-500">
                                             {searchTerm ? 'No se encontraron usuarios.' : 'Ingresa un término de búsqueda.'}
                                         </td>
                                     </tr>

@@ -17,7 +17,7 @@ from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
-from app.routers.auth import require_admin
+from app.dependencies.tenant import require_admin
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 

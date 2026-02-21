@@ -213,7 +213,7 @@ export default function ComprasPage() {
                     <ShoppingBag className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Ingreso de Mercadería</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">Ingreso de Mercadería</h1>
                     <p className="text-muted-foreground">Registre compras y actualice stock de productos.</p>
                 </div>
             </div>
@@ -239,7 +239,7 @@ export default function ComprasPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Proveedor</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Proveedor</Label>
                                     <ProviderSearchCombobox
                                         value={selectedProvider}
                                         onChange={setSelectedProvider}
@@ -248,7 +248,7 @@ export default function ComprasPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Tipo</Label>
+                                        <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Tipo</Label>
                                         <Select value={tipoDoc} onValueChange={setTipoDoc}>
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -261,7 +261,7 @@ export default function ComprasPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Folio</Label>
+                                        <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Folio</Label>
                                         <Input
                                             placeholder="N° Docto."
                                             value={folio}
@@ -271,9 +271,9 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Fecha Compra</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Fecha Compra</Label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                        <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
                                         <Input
                                             type="date"
                                             className="pl-9"
@@ -284,9 +284,9 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-slate-500 font-bold">Observaciones</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Observaciones</Label>
                                     <textarea
-                                        className="w-full min-h-[80px] rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950"
+                                        className="w-full min-h-[80px] rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-800 dark:bg-neutral-950"
                                         placeholder="Notas adicionales..."
                                         value={observacion}
                                         onChange={e => setObservacion(e.target.value)}
@@ -301,7 +301,7 @@ export default function ComprasPage() {
                             <Card className="shadow-sm border-blue-100 dark:border-blue-900/30">
                                 <CardContent className="p-4">
                                     <div className="relative">
-                                        <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                                        <Search className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
                                         <Input
                                             placeholder="Buscar productos a ingresar por nombre o SKU..."
                                             className="pl-11 h-11 text-lg"
@@ -314,10 +314,10 @@ export default function ComprasPage() {
                                         />
 
                                         {isSearching && searchQuery.length > 1 && (
-                                            <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 animate-in fade-in zoom-in-95">
+                                            <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950 animate-in fade-in zoom-in-95">
                                                 <div className="p-2">
                                                     {filteredSearchResults.length === 0 ? (
-                                                        <div className="p-4 text-center text-slate-500">
+                                                        <div className="p-4 text-center text-neutral-500">
                                                             No se encontraron resultados
                                                         </div>
                                                     ) : (
@@ -325,14 +325,14 @@ export default function ComprasPage() {
                                                             <button
                                                                 key={product.id}
                                                                 onClick={() => addItem(product)}
-                                                                className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900 group"
+                                                                className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 group"
                                                             >
                                                                 <div>
-                                                                    <p className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600">{product.full_name || product.nombre}</p>
-                                                                    <p className="text-xs text-slate-400 font-mono">{product.codigo_interno}</p>
+                                                                    <p className="font-semibold text-neutral-900 dark:text-white group-hover:text-blue-600">{product.full_name || product.nombre}</p>
+                                                                    <p className="text-xs text-neutral-400 font-mono">{product.codigo_interno}</p>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                                                                    <p className="text-sm font-bold text-neutral-600 dark:text-neutral-300">
                                                                         Costo: {formatCLP(parseFloat(product.costo_unitario as any) || 0)}
                                                                     </p>
                                                                     <Plus className="h-4 w-4 ml-auto text-blue-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -349,7 +349,7 @@ export default function ComprasPage() {
 
                             {/* Items Table */}
                             <Card className="shadow-sm overflow-hidden">
-                                <CardHeader className="bg-slate-50 dark:bg-slate-900/50 flex flex-row items-center justify-between">
+                                <CardHeader className="bg-neutral-50 dark:bg-neutral-900/50 flex flex-row items-center justify-between">
                                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                                         <Package className="h-4 w-4" /> Ítems a Ingresar
                                     </CardTitle>
@@ -360,7 +360,7 @@ export default function ComprasPage() {
                                 <CardContent className="p-0">
                                     <div className="max-h-[400px] overflow-y-auto">
                                         <Table>
-                                            <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-10">
+                                            <TableHeader className="bg-neutral-50/80 dark:bg-neutral-900/80 backdrop-blur sticky top-0 z-10">
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
@@ -372,7 +372,7 @@ export default function ComprasPage() {
                                             <TableBody>
                                                 {items.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={5} className="h-40 text-center text-slate-400">
+                                                        <TableCell colSpan={5} className="h-40 text-center text-neutral-400">
                                                             <div className="flex flex-col items-center gap-2">
                                                                 <Package className="h-8 w-8 opacity-20" />
                                                                 <p>Busque productos arriba para agregarlos</p>
@@ -385,7 +385,7 @@ export default function ComprasPage() {
                                                             <TableCell>
                                                                 <div>
                                                                     <p className="font-medium text-sm leading-tight">{item.product.full_name || item.product.nombre}</p>
-                                                                    <p className="text-[10px] text-slate-400 font-mono">{item.product.codigo_interno}</p>
+                                                                    <p className="text-[10px] text-neutral-400 font-mono">{item.product.codigo_interno}</p>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -398,7 +398,7 @@ export default function ComprasPage() {
                                                             </TableCell>
                                                             <TableCell>
                                                                 <div className="relative">
-                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400">$</span>
+                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-neutral-400">$</span>
                                                                     <Input
                                                                         type="number"
                                                                         className="h-8 text-right pl-4 pr-1"
@@ -429,20 +429,20 @@ export default function ComprasPage() {
                                 </CardContent>
 
                                 {(items.length > 0) && (
-                                    <CardFooter className="bg-slate-50 dark:bg-slate-900/50 p-6 flex flex-col gap-4">
+                                    <CardFooter className="bg-neutral-50 dark:bg-neutral-900/50 p-6 flex flex-col gap-4">
                                         <div className="w-full space-y-2">
-                                            <div className="flex justify-between text-sm text-slate-500">
+                                            <div className="flex justify-between text-sm text-neutral-500">
                                                 <span>Subtotal Neto</span>
                                                 <span>{formatCLP(totalNeto)}</span>
                                             </div>
                                             {tipoDoc === 'FACTURA' && (
-                                                <div className="flex justify-between text-sm text-slate-500">
+                                                <div className="flex justify-between text-sm text-neutral-500">
                                                     <span>IVA (19%)</span>
                                                     <span>{formatCLP(totalIva)}</span>
                                                 </div>
                                             )}
                                             <Separator className="my-2" />
-                                            <div className="flex justify-between text-xl font-bold text-slate-900 dark:text-white">
+                                            <div className="flex justify-between text-xl font-bold text-neutral-900 dark:text-white">
                                                 <span>Total</span>
                                                 <span className="text-blue-600 dark:text-blue-400">{formatCLP(totalFinal)}</span>
                                             </div>
@@ -484,7 +484,7 @@ export default function ComprasPage() {
                                     {loadingPurchases ? (
                                         <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
                                     ) : purchases.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-500">No hay compras registradas</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-neutral-500">No hay compras registradas</TableCell></TableRow>
                                     ) : (
                                         purchases.map(p => (
                                             <TableRow key={p.id} className="group">
@@ -493,7 +493,7 @@ export default function ComprasPage() {
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     <div className="font-medium">{p.tipo_documento}</div>
-                                                    <div className="text-slate-400 font-mono">#{p.folio || 'S/N'}</div>
+                                                    <div className="text-neutral-400 font-mono">#{p.folio || 'S/N'}</div>
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     {p.provider?.razon_social}
@@ -507,7 +507,7 @@ export default function ComprasPage() {
                                                             href={`${apiUrl}/purchases/${p.id}/pdf`}
                                                             target="_blank"
                                                             rel="noopener"
-                                                            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800 transition"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-blue-600 dark:hover:bg-neutral-800 transition"
                                                             title="Imprimir Comprobante"
                                                         >
                                                             <Printer className="h-4 w-4" />
@@ -555,7 +555,7 @@ export default function ComprasPage() {
                                 href={`${apiUrl}/purchases/${selectedPurchase?.id}/pdf`}
                                 target="_blank"
                                 rel="noopener"
-                                className="flex items-center gap-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-3 py-1.5 rounded-md text-xs font-medium hover:opacity-90 transition shadow-sm"
+                                className="flex items-center gap-2 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-3 py-1.5 rounded-md text-xs font-medium hover:opacity-90 transition shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                                 Imprimir
@@ -564,24 +564,24 @@ export default function ComprasPage() {
                     </DialogHeader>
                     {selectedPurchase && (
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 text-sm bg-neutral-50 dark:bg-neutral-900/50 p-4 rounded-lg">
                                 <div>
-                                    <p className="text-xs text-slate-500 uppercase font-bold">Fecha Compra</p>
+                                    <p className="text-xs text-neutral-500 uppercase font-bold">Fecha Compra</p>
                                     <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-slate-500 uppercase font-bold">Monto Total</p>
+                                    <p className="text-xs text-neutral-500 uppercase font-bold">Monto Total</p>
                                     <p className="font-bold text-blue-600">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
                                     <div className="col-span-2">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Observación</p>
+                                        <p className="text-xs text-neutral-500 uppercase font-bold">Observación</p>
                                         <p className="italic">"{selectedPurchase.observacion}"</p>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="rounded-md border border-slate-200">
+                            <div className="rounded-md border border-neutral-200">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -596,7 +596,7 @@ export default function ComprasPage() {
                                             <TableRow key={d.id}>
                                                 <TableCell>
                                                     <p className="font-medium text-xs">{d.product?.full_name || d.product?.nombre}</p>
-                                                    <p className="text-[10px] text-slate-400 font-mono">{d.product?.codigo_interno}</p>
+                                                    <p className="text-[10px] text-neutral-400 font-mono">{d.product?.codigo_interno}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center font-tabular text-xs">
                                                     {parseFloat(d.cantidad as any)}

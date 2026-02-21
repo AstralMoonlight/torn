@@ -7,10 +7,21 @@ interface User {
     id: number
     rut: string
     name: string
+    full_name?: string
+    is_superuser: boolean
+    email?: string
     role: string
     role_obj?: {
         permissions: Record<string, boolean>
     }
+}
+
+export interface AvailableTenant {
+    id: number
+    name: string
+    rut: string
+    role_name: string
+    is_active: boolean
 }
 
 interface SessionState {
@@ -23,13 +34,17 @@ interface SessionState {
     // Auth
     token: string | null
     user: User | null
+    availableTenants: AvailableTenant[]
+    selectedTenantId: number | null
 
     setSession: (id: number, amount: number, time: string, userId: number) => void
     closeSession: () => void
     setStatus: (status: 'OPEN' | 'CLOSED' | 'UNKNOWN') => void
 
-    login: (token: string, user: User) => void
+    login: (token: string, user: User, tenants: AvailableTenant[]) => void
+    selectTenant: (tenantId: number) => void
     logout: () => void
+    syncSession: (user: User, tenants: AvailableTenant[]) => void
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -42,6 +57,8 @@ export const useSessionStore = create<SessionState>()(
             startTime: null,
             token: null,
             user: null,
+            availableTenants: [],
+            selectedTenantId: null,
 
             setSession: (id, amount, time, userId) =>
                 set({
@@ -63,8 +80,29 @@ export const useSessionStore = create<SessionState>()(
 
             setStatus: (status) => set({ status }),
 
-            login: (token, user) => set({ token, user }),
-            logout: () => set({ token: null, user: null, sessionId: null, status: 'UNKNOWN' }),
+            login: (token, user, tenants) => set({
+                token,
+                user,
+                availableTenants: tenants,
+                // Solo auto-seleccionar si hay exactamente uno Y está activo
+                selectedTenantId: (tenants.length === 1 && tenants[0].is_active) ? tenants[0].id : null
+            }),
+
+            selectTenant: (tenantId) => set({ selectedTenantId: tenantId }),
+
+            logout: () => set({
+                token: null,
+                user: null,
+                availableTenants: [],
+                selectedTenantId: null,
+                sessionId: null,
+                status: 'UNKNOWN'
+            }),
+
+            syncSession: (user, tenants) => set({
+                user,
+                availableTenants: tenants
+            }),
         }),
         {
             name: 'torn-session',

@@ -103,8 +103,8 @@ export default function POSPage() {
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
                         <AlertTriangle className="h-10 w-10 text-amber-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Caja Cerrada</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Debes abrir un turno de caja antes de poder vender.</p>
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Caja Cerrada</h2>
+                    <p className="text-neutral-500 dark:text-neutral-400">Debes abrir un turno de caja antes de poder vender.</p>
                     <Link href="/caja">
                         <Button size="lg" className="gap-2 bg-blue-600 hover:bg-blue-700">
                             <Landmark className="h-5 w-5" /> Ir a Abrir Caja
@@ -137,7 +137,7 @@ export default function POSPage() {
             </button>
 
             {/* Desktop: Cart Panel */}
-            <div className="hidden lg:block w-[380px] xl:w-[420px] border-l border-slate-200 dark:border-slate-800">
+            <div className="hidden lg:block w-[380px] xl:w-[420px] border-l border-neutral-200 dark:border-neutral-800">
                 <CartPanel />
             </div>
 
@@ -145,9 +145,9 @@ export default function POSPage() {
             {showMobileCart && (
                 <div className="lg:hidden fixed inset-0 z-50">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileCart(false)} />
-                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-white dark:bg-slate-950 shadow-xl animate-in slide-in-from-bottom">
+                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-white dark:bg-neutral-950 shadow-xl animate-in slide-in-from-bottom">
                         <div className="flex justify-center py-2">
-                            <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <div className="h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
                         </div>
                         <CartPanel onClose={() => setShowMobileCart(false)} />
                     </div>

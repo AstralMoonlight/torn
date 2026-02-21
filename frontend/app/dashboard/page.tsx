@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 // Dynamic import with SSR disabled to prevent Recharts hydration issues
 const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCharts'), {
     ssr: false,
-    loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl" />
+    loading: () => <div className="h-64 w-full bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-xl" />
 })
 
 
@@ -56,7 +56,7 @@ function KPICard({
     }
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all hover:shadow-md">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-start justify-between">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[color]}`}>
                     <Icon className="h-5 w-5" />
@@ -72,9 +72,9 @@ function KPICard({
                 )}
             </div>
             <div className="mt-3">
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate font-medium uppercase tracking-wider">{title}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white font-tabular mt-0.5 tracking-tight">{value}</p>
-                {subtitle && <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">{subtitle}</p>}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate font-medium uppercase tracking-wider">{title}</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white font-tabular mt-0.5 tracking-tight">{value}</p>
+                {subtitle && <p className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">{subtitle}</p>}
             </div>
         </div>
     )
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             <div className="flex h-full items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <BarChart3 className="h-10 w-10 text-blue-600 animate-bounce" />
-                    <div className="text-slate-400 font-medium">Analizando datos...</div>
+                    <div className="text-neutral-400 font-medium">Analizando datos...</div>
                 </div>
             </div>
         )
@@ -128,13 +128,13 @@ export default function DashboardPage() {
                         <BarChart3 className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Panel de Control</h1>
-                        <p className="text-sm text-slate-500">Resumen operativo y financiero</p>
+                        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Panel de Control</h1>
+                        <p className="text-sm text-neutral-500">Resumen operativo y financiero</p>
                     </div>
                 </div>
 
                 <Tabs value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)} className="w-full sm:w-auto">
-                    <TabsList className="bg-slate-100 dark:bg-slate-800 p-1">
+                    <TabsList className="bg-neutral-100 dark:bg-neutral-800 p-1">
                         <TabsTrigger value="daily" className="text-xs">Diario</TabsTrigger>
                         <TabsTrigger value="weekly" className="text-xs">Semanal</TabsTrigger>
                         <TabsTrigger value="monthly" className="text-xs">Mensual</TabsTrigger>
@@ -192,15 +192,15 @@ export default function DashboardPage() {
                     <CardContent className="pt-4">
                         {topRanking?.by_quantity.map((p, i) => (
                             <div key={p.product_id} className="flex items-center mb-4 last:mb-0 gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-500">
                                     {i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-slate-400 font-tabular">{p.total_qty} unidades vendidas</p>
+                                    <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
+                                    <p className="text-[10px] text-neutral-400 font-tabular">{p.total_qty} unidades vendidas</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-bold text-slate-900 dark:text-white">{formatCLP(p.total_sales)}</p>
+                                    <p className="text-xs font-bold text-neutral-900 dark:text-white">{formatCLP(p.total_sales)}</p>
                                     <Progress value={Math.min(100, (p.total_qty / (topRanking.by_quantity[0]?.total_qty || 1)) * 100)} className="h-1 mt-1" />
                                 </div>
                             </div>
@@ -225,12 +225,12 @@ export default function DashboardPage() {
                                     {i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-slate-500 font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
+                                    <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
+                                    <p className="text-[10px] text-neutral-500 font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-bold text-emerald-600">{formatCLP(p.total_margin)}</p>
-                                    <p className="text-[9px] text-slate-400">Utilidad Total</p>
+                                    <p className="text-[9px] text-neutral-400">Utilidad Total</p>
                                 </div>
                             </div>
                         ))}

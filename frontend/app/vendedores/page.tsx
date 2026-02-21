@@ -83,7 +83,7 @@ export default function SellersPage() {
                 </Button>
             </div>
 
-            <div className="rounded-md border bg-white dark:bg-slate-900 shadow-sm">
+            <div className="rounded-md border bg-white dark:bg-neutral-900 shadow-sm">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -134,7 +134,7 @@ export default function SellersPage() {
                                                 {user.email}
                                             </div>
                                         ) : (
-                                            <span className="text-slate-300 italic">-</span>
+                                            <span className="text-neutral-300 italic">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell>

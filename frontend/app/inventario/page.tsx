@@ -112,8 +112,8 @@ export default function InventarioPage() {
                 <div className="flex items-center gap-2">
                     <Package className="h-6 w-6 text-blue-600" />
                     <div>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Inventario</h1>
-                        <p className="text-xs text-slate-500">{allProducts.length} productos</p>
+                        <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Inventario</h1>
+                        <p className="text-xs text-neutral-500">{allProducts.length} productos</p>
                     </div>
                 </div>
                 <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700">
@@ -123,7 +123,7 @@ export default function InventarioPage() {
 
             {/* Search */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                 <Input
                     placeholder="Buscar por nombre, SKU o código de barras..."
                     value={search}
@@ -133,36 +133,36 @@ export default function InventarioPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
+            <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-                                <th className="text-left text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">SKU</th>
-                                <th className="text-left text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">Producto</th>
-                                <th className="text-right text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium hidden sm:table-cell">Precio Neto</th>
-                                <th className="text-center text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium">Stock Total</th>
-                                <th className="text-center text-[10px] uppercase tracking-wider text-slate-400 px-4 py-2.5 font-medium hidden lg:table-cell">Variantes</th>
+                            <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
+                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">SKU</th>
+                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Producto</th>
+                                <th className="text-right text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden sm:table-cell">Precio Neto</th>
+                                <th className="text-center text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Stock Total</th>
+                                <th className="text-center text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden lg:table-cell">Variantes</th>
                                 <th className="w-[50px]"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-12 text-slate-400">Cargando...</td>
+                                    <td colSpan={5} className="text-center py-12 text-neutral-400">Cargando...</td>
                                 </tr>
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-12 text-slate-400">Sin resultados</td>
+                                    <td colSpan={5} className="text-center py-12 text-neutral-400">Sin resultados</td>
                                 </tr>
                             ) : (
                                 filtered.map((p) => (
-                                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500">{p.codigo_interno}</td>
+                                    <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
+                                        <td className="px-4 py-2.5 font-mono text-[11px] text-neutral-500">{p.codigo_interno}</td>
                                         <td className="px-4 py-2.5">
-                                            <p className="text-xs font-medium text-slate-900 dark:text-white">{p.full_name}</p>
+                                            <p className="text-xs font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
                                             {p.codigo_barras && (
-                                                <p className="text-[10px] text-slate-400 font-mono">{p.codigo_barras}</p>
+                                                <p className="text-[10px] text-neutral-400 font-mono">{p.codigo_barras}</p>
                                             )}
                                         </td>
                                         <td className="px-4 py-2.5 text-right font-tabular text-xs hidden sm:table-cell">
@@ -170,14 +170,14 @@ export default function InventarioPage() {
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
                                             {p.variants.length > 0 ? (
-                                                <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-200">
+                                                <Badge className="bg-neutral-100 text-neutral-600 hover:bg-neutral-200">
                                                     {p.variants.reduce((acc, v) => acc + parseFloat(v.stock_actual), 0)} u.
                                                 </Badge>
                                             ) : (
                                                 <StockBadge product={p} />
                                             )}
                                         </td>
-                                        <td className="px-4 py-2.5 text-center text-xs text-slate-400 font-tabular hidden lg:table-cell">
+                                        <td className="px-4 py-2.5 text-center text-xs text-neutral-400 font-tabular hidden lg:table-cell">
                                             {p.variants.length > 0 ? (
                                                 <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
                                             ) : (

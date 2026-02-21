@@ -22,7 +22,8 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
-from app.routers.auth import get_current_user
+from app.dependencies.tenant import get_current_tenant_user
+from app.models.saas import TenantUser
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -74,7 +75,7 @@ def list_sales(
 def create_sale(
     sale_in: SaleCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TenantUser = Depends(get_current_tenant_user)
 ):
     """
     Registra una nueva venta en el sistema.
@@ -299,7 +300,7 @@ def create_sale(
 def create_return(
     return_in: ReturnCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: TenantUser = Depends(get_current_tenant_user)
 ):
     """
     Registra una Devolución de mercadería (Nota de Crédito).

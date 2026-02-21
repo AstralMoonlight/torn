@@ -119,7 +119,7 @@ export default function BrandsPage() {
             </div>
 
             <div className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-slate-500" />
+                <Search className="h-4 w-4 text-neutral-500" />
                 <Input
                     placeholder="Buscar marca..."
                     value={filter}
@@ -128,7 +128,7 @@ export default function BrandsPage() {
                 />
             </div>
 
-            <div className="border rounded-lg bg-white dark:bg-slate-950 shadow-sm">
+            <div className="border rounded-lg bg-white dark:bg-neutral-950 shadow-sm">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -141,7 +141,7 @@ export default function BrandsPage() {
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-neutral-400" />
                                 </TableCell>
                             </TableRow>
                         ) : filteredBrands.length === 0 ? (

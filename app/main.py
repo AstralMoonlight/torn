@@ -38,6 +38,8 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 # ── Routers ──────────────────────────────────────────────────────────
+from app.routers import saas
+app.include_router(saas.router)
 app.include_router(health.router)
 app.include_router(customers.router)
 app.include_router(products.router)
