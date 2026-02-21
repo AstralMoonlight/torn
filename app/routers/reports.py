@@ -12,12 +12,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, desc, case, extract
 from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
-from app.dependencies.tenant import require_admin
+from app.dependencies.tenant import get_tenant_db, require_admin
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -25,7 +24,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 @router.get("/dashboard", dependencies=[Depends(require_admin)])
 def get_dashboard(
     fecha: Optional[date] = Query(None, description="Fecha del reporte (default=hoy)"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Retorna métricas del dashboard para una fecha específica."""
     target_date = fecha or get_today().date()

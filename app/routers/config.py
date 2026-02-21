@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.tax import Tax
 from app.models.settings import SystemSettings
 from app.schemas import (
@@ -18,12 +18,12 @@ router = APIRouter(prefix="/config", tags=["config"])
 # ── Impuestos (Taxes) ────────────────────────────────────────────────
 
 @router.get("/taxes/", response_model=List[TaxOut])
-def list_taxes(db: Session = Depends(get_db)):
+def list_taxes(db: Session = Depends(get_tenant_db)):
     """Lista todos los impuestos."""
     return db.query(Tax).all()
 
 @router.post("/taxes/", response_model=TaxOut, status_code=status.HTTP_201_CREATED)
-def create_tax(tax_in: TaxCreate, db: Session = Depends(get_db)):
+def create_tax(tax_in: TaxCreate, db: Session = Depends(get_tenant_db)):
     """Crea un nuevo impuesto."""
     tax = Tax(**tax_in.model_dump())
     db.add(tax)
@@ -32,7 +32,7 @@ def create_tax(tax_in: TaxCreate, db: Session = Depends(get_db)):
     return tax
 
 @router.put("/taxes/{tax_id}", response_model=TaxOut)
-def update_tax(tax_id: int, tax_in: TaxUpdate, db: Session = Depends(get_db)):
+def update_tax(tax_id: int, tax_in: TaxUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza un impuesto existente."""
     tax = db.query(Tax).get(tax_id)
     if not tax:
@@ -49,7 +49,7 @@ def update_tax(tax_id: int, tax_in: TaxUpdate, db: Session = Depends(get_db)):
 # ── Configuración (Settings) ─────────────────────────────────────────
 
 @router.get("/settings/", response_model=SettingsOut)
-def get_settings(db: Session = Depends(get_db)):
+def get_settings(db: Session = Depends(get_tenant_db)):
     """Obtiene la configuración global del sistema."""
     settings = db.query(SystemSettings).first()
     if not settings:
@@ -61,7 +61,7 @@ def get_settings(db: Session = Depends(get_db)):
     return settings
 
 @router.put("/settings/", response_model=SettingsOut)
-def update_settings(settings_in: SettingsUpdate, db: Session = Depends(get_db)):
+def update_settings(settings_in: SettingsUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza la configuración global."""
     settings = db.query(SystemSettings).first()
     if not settings:

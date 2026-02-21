@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.customer import Customer
 from app.schemas import CustomerCreate, CustomerOut, CustomerUpdate
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 @router.post("/", response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Cliente",
              description="Registra un nuevo cliente/contribuyente.")
-def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_db)):
     """Registra un nuevo cliente / contribuyente en la base de datos.
     
     Valida que el RUT no esté duplicado.
@@ -47,13 +47,13 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[CustomerOut],
              summary="Listar Clientes",
              description="Obtiene todos los clientes registrados.")
-def list_customers(db: Session = Depends(get_db)):
+def list_customers(db: Session = Depends(get_tenant_db)):
     """Lista todos los clientes."""
     return db.query(Customer).order_by(Customer.razon_social).all()
 
 
 @router.get("/search", response_model=list[CustomerOut], summary="Buscar Clientes (Predictivo)")
-def search_customers(q: str = "", db: Session = Depends(get_db)):
+def search_customers(q: str = "", db: Session = Depends(get_tenant_db)):
     """Busca clientes por RUT o Razón Social (coincidencia parcial)."""
     if not q:
         return []
@@ -72,7 +72,7 @@ def search_customers(q: str = "", db: Session = Depends(get_db)):
 @router.get("/{rut}", response_model=CustomerOut,
              summary="Buscar Cliente",
              description="Busca un cliente por su RUT.")
-def get_customer_by_rut(rut: str, db: Session = Depends(get_db)):
+def get_customer_by_rut(rut: str, db: Session = Depends(get_tenant_db)):
     """Busca un cliente por su RUT.
     
     Args:
@@ -98,7 +98,7 @@ def get_customer_by_rut(rut: str, db: Session = Depends(get_db)):
 @router.put("/{rut}", response_model=CustomerOut,
              summary="Actualizar Cliente",
              description="Actualiza datos de un cliente existente.")
-def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_db)):
+def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza un cliente."""
     db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
@@ -120,7 +120,7 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
 @router.delete("/{rut}", status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Cliente",
                description="Elimina un cliente por su RUT.")
-def delete_customer(rut: str, db: Session = Depends(get_db)):
+def delete_customer(rut: str, db: Session = Depends(get_tenant_db)):
     """Elimina un cliente."""
     db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:

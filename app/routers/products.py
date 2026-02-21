@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.product import Product
 from app.schemas import (
     ProductCreate,
@@ -68,7 +68,7 @@ def generate_ean13(product_id: int) -> str:
 @router.post("/", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto Simple",
              description="Agrega un nuevo producto al catálogo. SKU y código de barras se auto-generan si no se proporcionan.")
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db)):
     """Registra un nuevo producto en la base de datos."""
     data = product.model_dump()
 
@@ -103,7 +103,7 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 @router.post("/with-variants", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto con Variantes",
              description="Crea un producto padre y sus variantes en un solo request.")
-def create_product_with_variants(payload: ProductCreateWithVariants, db: Session = Depends(get_db)):
+def create_product_with_variants(payload: ProductCreateWithVariants, db: Session = Depends(get_tenant_db)):
     """Crea un producto padre con variantes simplificadas."""
 
     # 1. Create parent product
@@ -178,7 +178,7 @@ def create_product_with_variants(payload: ProductCreateWithVariants, db: Session
 
 
 @router.get("/", response_model=List[ProductOut])
-def list_products(db: Session = Depends(get_db)):
+def list_products(db: Session = Depends(get_tenant_db)):
     """Lista todos los productos activos (no eliminados)."""
     return db.query(Product).filter(
         Product.is_deleted == False  # noqa: E712
@@ -188,7 +188,7 @@ def list_products(db: Session = Depends(get_db)):
 @router.put("/{product_id}", response_model=ProductOut,
             summary="Actualizar Producto",
             description="Actualiza parcialmente un producto.")
-def update_product(product_id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
+def update_product(product_id: int, product_in: ProductUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza un producto existente."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -222,7 +222,7 @@ def update_product(product_id: int, product_in: ProductUpdate, db: Session = Dep
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Producto",
                description="Realiza un borrado lógico del producto y sus variantes.")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(product_id: int, db: Session = Depends(get_tenant_db)):
     """Soft delete de un producto y sus variantes."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -248,7 +248,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 @router.get("/{codigo}", response_model=ProductOut,
              summary="Buscar Producto",
              description="Busca un producto por su SKU.")
-def get_product_by_sku(codigo: str, db: Session = Depends(get_db)):
+def get_product_by_sku(codigo: str, db: Session = Depends(get_tenant_db)):
     """Busca un producto por su código interno (SKU)."""
     product = db.query(Product).filter(Product.codigo_interno == codigo).first()
     if not product:

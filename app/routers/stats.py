@@ -9,11 +9,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
-from app.database import get_db
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct, ReportOut, ReportItem
-from app.dependencies.tenant import require_admin
+from app.dependencies.tenant import get_tenant_db, require_admin
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -53,7 +52,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
 
 
 @router.get("/summary", response_model=DashboardSummary, dependencies=[Depends(require_admin)])
-def get_dashboard_summary(db: Session = Depends(get_db)):
+def get_dashboard_summary(db: Session = Depends(get_tenant_db)):
     """Obtiene resumen de ventas y margen diario, semanal y mensual."""
     now = get_now()
     
@@ -72,7 +71,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/top-products", response_model=TopProductsResponse)
-def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_db)):
+def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_tenant_db)):
     """Ranking de productos más vendidos y más rentables."""
     start_date = get_now() - timedelta(days=days)
     
@@ -121,7 +120,7 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_d
 def get_report(
     period: str = "day",  # day, week, month
     date: str = None,     # YYYY-MM-DD
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Genera reporte detallado de ventas y utilidad para un periodo específico."""
     

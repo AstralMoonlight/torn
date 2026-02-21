@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.issuer import Issuer
 from app.schemas import IssuerCreate, IssuerOut, IssuerUpdate
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/issuer", tags=["issuer"])
 @router.get("/", response_model=IssuerOut,
              summary="Obtener Emisor",
              description="Retorna los datos tributarios de la empresa emisora.")
-def get_issuer(db: Session = Depends(get_db)):
+def get_issuer(db: Session = Depends(get_tenant_db)):
     """Obtiene los datos del emisor (empresa).
     
     Args:
@@ -38,7 +38,7 @@ def get_issuer(db: Session = Depends(get_db)):
 @router.put("/", response_model=IssuerOut,
              summary="Configurar Emisor",
              description="Crea o actualiza los datos tributarios de la empresa.")
-def upsert_issuer(data: IssuerUpdate, db: Session = Depends(get_db)):
+def upsert_issuer(data: IssuerUpdate, db: Session = Depends(get_tenant_db)):
     """Crea o actualiza los datos del emisor (singleton).
     
     Si ya existe, actualiza parcialmente los campos no nulos.

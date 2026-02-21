@@ -18,13 +18,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Loader2, Save, Plus, Settings, Percent, Printer } from 'lucide-react'
+import { Loader2, Save, Plus, Settings, Percent, Printer, LayoutGrid, Layers } from 'lucide-react'
+import { useUIStore } from '@/lib/store/uiStore'
 
 export default function ConfigurationPage() {
     const [settings, setSettings] = useState<SystemSettings | null>(null)
     const [taxes, setTaxes] = useState<Tax[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
+    const setPosVariantDisplay = useUIStore((s) => s.setPosVariantDisplay)
 
     // New Tax Form State
     const [newTax, setNewTax] = useState({ name: '', rate: 19 })
@@ -118,8 +121,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: '80mm' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === '80mm'
-                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
+                                            ? 'border-blue-600 bg-blue-50/50 text-blue-600'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
                                             }`}
                                     >
                                         <Printer className="h-8 w-8" />
@@ -132,8 +135,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setSettings(s => s ? { ...s, print_format: 'carta' } : null)}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === 'carta'
-                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600'
-                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
+                                            ? 'border-blue-600 bg-blue-50/50 text-blue-600'
+                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200'
                                             }`}
                                     >
                                         <div className="h-8 w-6 border-2 border-current rounded-sm relative">
@@ -147,6 +150,48 @@ export default function ConfigurationPage() {
                                         </div>
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* POS Variant Display Preference */}
+                            <div className="space-y-3 border-t pt-5">
+                                <div>
+                                    <Label>Vista del Terminal POS — Variantes</Label>
+                                    <p className="text-xs text-neutral-500 mt-1">
+                                        Cómo se muestran los productos con variantes en el punto de venta.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setPosVariantDisplay('grouped')}
+                                        className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'grouped'
+                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600 dark:bg-blue-950/30'
+                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            }`}
+                                    >
+                                        <Layers className="h-8 w-8" />
+                                        <div className="text-center">
+                                            <p className="font-bold text-sm">Agrupado</p>
+                                            <p className="text-xs opacity-70 mt-0.5">Producto padre con modal de variantes</p>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPosVariantDisplay('flat')}
+                                        className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'flat'
+                                                ? 'border-blue-600 bg-blue-50/50 text-blue-600 dark:bg-blue-950/30'
+                                                : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            }`}
+                                    >
+                                        <LayoutGrid className="h-8 w-8" />
+                                        <div className="text-center">
+                                            <p className="font-bold text-sm">Vista Plana</p>
+                                            <p className="text-xs opacity-70 mt-0.5">Todas las variantes visibles en el grid</p>
+                                        </div>
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-neutral-400">
+                                    Esta preferencia se guarda localmente y aplica de inmediato al POS.
+                                </p>
                             </div>
 
                             <div className="flex justify-end pt-4 border-t">

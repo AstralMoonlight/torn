@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { useCartStore } from '@/lib/store/cartStore'
+import { useUIStore } from '@/lib/store/uiStore'
 import { useBarcodeScanner } from '@/lib/hooks/useBarcodeScanner'
 import ProductSearch from '@/components/pos/ProductSearch'
 import ProductGrid from '@/components/pos/ProductGrid'
@@ -19,6 +20,7 @@ export default function POSPage() {
     const sessionStatus = useSessionStore((s) => s.status)
     const addItem = useCartStore((s) => s.addItem)
     const cartCount = useCartStore((s) => s.items.length)
+    const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
     const [products, setProducts] = useState<Product[]>([])
     const [filtered, setFiltered] = useState<Product[]>([])
     const [loading, setLoading] = useState(true)
@@ -27,8 +29,10 @@ export default function POSPage() {
     useEffect(() => {
         getProducts()
             .then((data) => {
+                // Exclude child variants only in 'grouped' mode
                 const sellable = data.filter(
-                    (p) => parseFloat(p.precio_neto) > 0 || p.variants.length === 0
+                    (p) => (posVariantDisplay === 'grouped' ? !p.parent_id : true) &&
+                        (parseFloat(p.precio_neto) > 0 || p.variants.length === 0)
                 )
                 setProducts(data)
                 setFiltered(sellable)
@@ -38,17 +42,21 @@ export default function POSPage() {
                 toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
             })
             .finally(() => setLoading(false))
-    }, [])
+    }, [posVariantDisplay])
 
     const handleSearch = (query: string) => {
+        const baseFilter = (p: Product) =>
+            (posVariantDisplay === 'grouped' ? !p.parent_id : true) &&
+            (parseFloat(p.precio_neto) > 0 || p.variants.length === 0)
+
         if (!query.trim()) {
-            setFiltered(products.filter((p) => parseFloat(p.precio_neto) > 0 || p.variants.length === 0))
+            setFiltered(products.filter(baseFilter))
             return
         }
         const q = query.toLowerCase()
         const results = products.filter(
             (p) =>
-                (parseFloat(p.precio_neto) > 0 || p.variants.length === 0) &&
+                baseFilter(p) &&
                 (p.nombre.toLowerCase().includes(q) ||
                     p.codigo_interno.toLowerCase().includes(q) ||
                     p.codigo_barras?.includes(q) ||
@@ -120,7 +128,7 @@ export default function POSPage() {
             {/* Left Panel: Search + Products */}
             <div className="flex flex-1 flex-col p-3 md:p-4 gap-3 min-h-0">
                 <ProductSearch onSearch={handleSearch} />
-                <ProductGrid products={filtered} loading={loading} />
+                <ProductGrid products={filtered} loading={loading} variantDisplay={posVariantDisplay} />
             </div>
 
             {/* Mobile: Cart Toggle FAB */}

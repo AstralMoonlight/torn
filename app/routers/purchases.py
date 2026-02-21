@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.purchase import Purchase, PurchaseDetail
 from app.models.product import Product
 from app.models.inventory import StockMovement
@@ -30,7 +30,7 @@ _html_env.filters["number"] = format_number
 
 
 @router.post("/", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)
-def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_db)):
+def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db)):
     """Registra una compra y actualiza stock/costos de forma atómica."""
     
     # 1. Crear encabezado
@@ -116,7 +116,7 @@ def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{purchase_id}", response_model=PurchaseOut)
-def get_purchase(purchase_id: int, db: Session = Depends(get_db)):
+def get_purchase(purchase_id: int, db: Session = Depends(get_tenant_db)):
     """Obtiene el detalle de una compra específica."""
     db_purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
     if not db_purchase:
@@ -125,7 +125,7 @@ def get_purchase(purchase_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{purchase_id}", response_model=PurchaseOut)
-def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session = Depends(get_db)):
+def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db)):
     """Actualiza una compra y ajusta el stock según la diferencia."""
     db_purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
     if not db_purchase:
@@ -210,7 +210,7 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
 
 
 @router.delete("/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_purchase(purchase_id: int, db: Session = Depends(get_db)):
+def delete_purchase(purchase_id: int, db: Session = Depends(get_tenant_db)):
     """Elimina una compra y reversa el stock."""
     db_purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
     if not db_purchase:
@@ -237,13 +237,13 @@ def delete_purchase(purchase_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[PurchaseOut])
-def list_purchases(db: Session = Depends(get_db)):
+def list_purchases(db: Session = Depends(get_tenant_db)):
     """Lista las compras registradas."""
     return db.query(Purchase).order_by(Purchase.id.desc()).all()
 
 
 @router.get("/{purchase_id}/pdf", response_class=HTMLResponse)
-def get_purchase_pdf(purchase_id: int, db: Session = Depends(get_db)):
+def get_purchase_pdf(purchase_id: int, db: Session = Depends(get_tenant_db)):
     """Generat HTML preview of the purchase for printing."""
     purchase = (
         db.query(Purchase)

@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.database import get_db
 from app.models.user import User, Role
 from app.models.saas import SaaSUser, TenantUser
 from app.schemas import UserCreate, UserUpdate, UserOut

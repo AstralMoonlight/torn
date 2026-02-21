@@ -9,7 +9,6 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
 from app.models.dte import CAF, DTE
 from app.models.issuer import Issuer
 from app.models.product import Product
@@ -40,7 +39,7 @@ _html_env.filters["number"] = format_number
 @router.get("/payment-methods/", response_model=List[PaymentMethodOut],
             summary="Listar Medios de Pago",
             description="Lista todos los medios de pago activos.")
-def list_payment_methods(db: Session = Depends(get_db)):
+def list_payment_methods(db: Session = Depends(get_tenant_db)):
     """Lista todos los medios de pago activos."""
     return db.query(PaymentMethod).filter(PaymentMethod.is_active == True).all()  # noqa: E712
 
@@ -51,7 +50,7 @@ def list_payment_methods(db: Session = Depends(get_db)):
 def list_sales(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Lista ventas paginadas, ordenadas por fecha descendente."""
     sales = (
@@ -459,7 +458,7 @@ def create_return(
 @router.get("/{sale_id}/pdf", response_class=HTMLResponse,
              summary="Vista Previa Factura",
              description="Genera HTML para impresión de la factura.")
-def get_sale_pdf(sale_id: int, db: Session = Depends(get_db)):
+def get_sale_pdf(sale_id: int, db: Session = Depends(get_tenant_db)):
     """
     Genera una vista previa HTML del documento tributario.
 

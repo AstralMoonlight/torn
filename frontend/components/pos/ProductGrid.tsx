@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Product } from '@/services/products'
 import { useCartStore } from '@/lib/store/cartStore'
+import { useUIStore, type PosVariantDisplay } from '@/lib/store/uiStore'
 import { Package, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,25 +20,27 @@ import { formatCLP } from '@/lib/format'
 interface Props {
     products: Product[]
     loading: boolean
+    variantDisplay: PosVariantDisplay
 }
 
-export default function ProductGrid({ products, loading }: Props) {
+const SEARCH_THRESHOLD = 8
+
+export default function ProductGrid({ products, loading, variantDisplay }: Props) {
     const addItem = useCartStore((s) => s.addItem)
     const [variantsOf, setVariantsOf] = useState<Product | null>(null)
+    const [variantSearch, setVariantSearch] = useState('')
 
     const handleClick = (product: Product) => {
-        // If product has variants, show variant picker
-        if (product.variants && product.variants.length > 0) {
+        // In 'grouped' mode, products with variants open the modal
+        if (variantDisplay === 'grouped' && product.variants && product.variants.length > 0) {
             setVariantsOf(product)
+            setVariantSearch('')
             return
         }
-
-        // Stock check
         if (product.controla_stock && parseFloat(product.stock_actual) <= 0) {
             toast.error(`Sin stock: ${product.full_name}`)
             return
         }
-
         addItem(product)
         toast.success(`${product.full_name} agregado`, { duration: 1500 })
     }
@@ -63,11 +66,23 @@ export default function ProductGrid({ products, loading }: Props) {
         )
     }
 
+    const manyVariants = (variantsOf?.variants.length ?? 0) > SEARCH_THRESHOLD
+    const filteredVariants = manyVariants
+        ? (variantsOf?.variants ?? []).filter((v) => {
+            const q = variantSearch.toLowerCase()
+            return (
+                !q ||
+                v.nombre.toLowerCase().includes(q) ||
+                v.codigo_interno.toLowerCase().includes(q)
+            )
+        })
+        : (variantsOf?.variants ?? [])
+
     return (
         <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 flex-1 overflow-auto content-start">
                 {products.map((product) => {
-                    const hasVariants = product.variants && product.variants.length > 0
+                    const hasVariants = variantDisplay === 'grouped' && product.variants && product.variants.length > 0
                     const price = parseFloat(product.precio_bruto)
                     const stock = parseFloat(product.stock_actual)
                     const lowStock = product.controla_stock && stock <= parseFloat(product.stock_minimo)
@@ -120,44 +135,67 @@ export default function ProductGrid({ products, loading }: Props) {
                 })}
             </div>
 
-            {/* Variants Dialog */}
-            <Dialog open={!!variantsOf} onOpenChange={() => setVariantsOf(null)}>
+            {/* Variants Dialog — only used in 'grouped' mode */}
+            <Dialog
+                open={!!variantsOf}
+                onOpenChange={() => { setVariantsOf(null); setVariantSearch('') }}
+            >
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{variantsOf?.full_name}</DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-2 py-2">
-                        {variantsOf?.variants.map((variant) => {
-                            const stock = parseFloat(variant.stock_actual)
-                            const outOfStock = variant.controla_stock && stock <= 0
-                            return (
-                                <button
-                                    key={variant.id}
-                                    disabled={outOfStock}
-                                    onClick={() => {
-                                        addItem(variant)
-                                        toast.success(`${variant.nombre} agregado`, { duration: 1500 })
-                                        setVariantsOf(null)
-                                    }}
-                                    className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-blue-600 transition"
-                                >
-                                    <div className="text-left">
-                                        <p className="font-medium text-sm">{variant.full_name}</p>
-                                        <p className="text-xs text-neutral-400 font-mono">{variant.codigo_interno}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-blue-600 dark:text-blue-400">
-                                            {formatCLP(variant.precio_bruto)}
-                                        </p>
-                                        {variant.controla_stock && (
-                                            <p className="text-[10px] text-neutral-400">
-                                                {outOfStock ? 'Agotado' : `Stock: ${stock}`}
+
+                    {/* Search — only appears when variants > SEARCH_THRESHOLD */}
+                    {manyVariants && (
+                        <input
+                            autoFocus
+                            type="text"
+                            value={variantSearch}
+                            onChange={(e) => setVariantSearch(e.target.value)}
+                            placeholder={`Buscar entre ${variantsOf?.variants.length} variantes…`}
+                            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                        />
+                    )}
+
+                    <div className="grid gap-2 py-2 max-h-[60vh] overflow-y-auto pr-1">
+                        {filteredVariants.length === 0 ? (
+                            <p className="text-center text-sm text-neutral-400 py-4">
+                                Sin resultados para &ldquo;{variantSearch}&rdquo;
+                            </p>
+                        ) : (
+                            filteredVariants.map((variant) => {
+                                const stock = parseFloat(variant.stock_actual)
+                                const outOfStock = variant.controla_stock && stock <= 0
+                                return (
+                                    <button
+                                        key={variant.id}
+                                        disabled={outOfStock}
+                                        onClick={() => {
+                                            addItem(variant)
+                                            toast.success(`${variant.nombre} agregado`, { duration: 1500 })
+                                            setVariantsOf(null)
+                                            setVariantSearch('')
+                                        }}
+                                        className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-blue-600 transition"
+                                    >
+                                        <div className="text-left">
+                                            <p className="font-medium text-sm">{variant.full_name}</p>
+                                            <p className="text-xs text-neutral-400 font-mono">{variant.codigo_interno}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-blue-600 dark:text-blue-400">
+                                                {formatCLP(variant.precio_bruto)}
                                             </p>
-                                        )}
-                                    </div>
-                                </button>
-                            )
-                        })}
+                                            {variant.controla_stock && (
+                                                <p className="text-[10px] text-neutral-400">
+                                                    {outOfStock ? 'Agotado' : `Stock: ${stock}`}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </button>
+                                )
+                            })
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>

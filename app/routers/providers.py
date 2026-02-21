@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.dependencies.tenant import get_tenant_db
 from app.models.provider import Provider
 from app.schemas import ProviderCreate, ProviderOut, ProviderUpdate
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/providers", tags=["providers"])
 
 
 @router.post("/", response_model=ProviderOut, status_code=status.HTTP_201_CREATED)
-def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
+def create_provider(provider: ProviderCreate, db: Session = Depends(get_tenant_db)):
     """Registra un nuevo proveedor."""
     existing = db.query(Provider).filter(Provider.rut == provider.rut).first()
     if existing:
@@ -30,12 +30,12 @@ def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[ProviderOut])
-def list_providers(db: Session = Depends(get_db)):
+def list_providers(db: Session = Depends(get_tenant_db)):
     """Lista todos los proveedores activos."""
     return db.query(Provider).filter(Provider.is_active == True).all()
 
 @router.get("/search", response_model=List[ProviderOut])
-def search_providers(q: str = "", db: Session = Depends(get_db)):
+def search_providers(q: str = "", db: Session = Depends(get_tenant_db)):
     """Busca proveedores por RUT o Razón Social (coincidencia parcial)."""
     if not q:
         return []
@@ -54,7 +54,7 @@ def search_providers(q: str = "", db: Session = Depends(get_db)):
 
 
 @router.get("/{provider_id}", response_model=ProviderOut)
-def get_provider(provider_id: int, db: Session = Depends(get_db)):
+def get_provider(provider_id: int, db: Session = Depends(get_tenant_db)):
     """Obtiene un proveedor por ID."""
     provider = db.query(Provider).filter(Provider.id == provider_id).first()
     if not provider:
@@ -63,7 +63,7 @@ def get_provider(provider_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{provider_id}", response_model=ProviderOut)
-def update_provider(provider_id: int, provider_in: ProviderUpdate, db: Session = Depends(get_db)):
+def update_provider(provider_id: int, provider_in: ProviderUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza datos de un proveedor."""
     provider = db.query(Provider).filter(Provider.id == provider_id).first()
     if not provider:
@@ -79,7 +79,7 @@ def update_provider(provider_id: int, provider_in: ProviderUpdate, db: Session =
 
 
 @router.delete("/{provider_id}")
-def delete_provider(provider_id: int, db: Session = Depends(get_db)):
+def delete_provider(provider_id: int, db: Session = Depends(get_tenant_db)):
     """Desactiva un proveedor (soft-delete lógico)."""
     provider = db.query(Provider).filter(Provider.id == provider_id).first()
     if not provider:

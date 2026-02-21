@@ -178,7 +178,7 @@ class CustomerOut(BaseModel):
     ciudad: Optional[str] = None
     email: Optional[str] = None
     email: Optional[str] = None
-    current_balance: Decimal
+    current_balance: Optional[Decimal] = Decimal(0)
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -259,7 +259,7 @@ class ProductOut(BaseModel):
     descripcion: Optional[str] = None
     precio_neto: Decimal
     costo_unitario: Decimal
-    unidad_medida: str
+    unidad_medida: Optional[str] = "unidad"
     codigo_barras: Optional[str] = None
     controla_stock: bool
     stock_actual: Decimal
