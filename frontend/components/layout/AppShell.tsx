@@ -19,12 +19,8 @@ const NAV_PERMISSION_MAP = [
     { label: 'Compras', path: '/compras' },
     { label: 'Clientes', path: '/clientes' },
     { label: 'Proveedores', path: '/proveedores' },
-    { label: 'Vendedores', path: '/vendedores' },
-    { label: 'Historial', path: '/historial' },
-    { label: 'Revisión de Caja', path: '/caja-revision' },
-    { label: 'Reportes de Ventas', path: '/reporte-diario' },
+    { label: 'Personal', path: '/personal' },
     { label: 'Configuración', path: '/configuracion' },
-    { label: 'Roles y Permisos', path: '/vendedores/roles' },
 ]
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -89,8 +85,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         // Dynamic Route Guard
         if (token && pathname !== '/login' && pathname !== '/select-tenant' && !pathname.startsWith('/saas-admin') && pathname !== '/pos' && pathname !== '/caja') {
             const user = (userPayload as any)
-            const permissions = user?.role_obj?.permissions || {}
-            const isAdmin = user?.role === 'ADMINISTRADOR'
+            const currentTenant = (availableTenants as any[]).find(t => t.id === selectedTenantId)
+            const roleForCurrentTenant = currentTenant?.role_name || user?.role || ''
+
+            const permissions = currentTenant?.permissions || user?.role_obj?.permissions || {}
+            const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR' || user?.is_superuser === true
 
             if (!isAdmin) {
                 // Check if the current path starts with any of our restricted paths

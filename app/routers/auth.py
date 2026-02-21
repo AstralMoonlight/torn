@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import text
 from jose import JWTError, jwt
 
 from app.database import get_db
@@ -27,16 +28,32 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
         TenantUser.is_active == True
     ).all()
     
-    return [
-        AvailableTenant(
+    results = []
+    for tu in tenant_users:
+        perms = {}
+        if tu.tenant and tu.tenant.schema_name and tu.role_name:
+            try:
+                # Query the specific tenant's 'roles' table for this role_name
+                res = global_db.execute(
+                    text(f'SELECT permissions FROM "{tu.tenant.schema_name}".roles WHERE name = :role_name'),
+                    {"role_name": tu.role_name}
+                ).first()
+                if res and res[0]:
+                    perms = res[0]
+            except Exception:
+                pass
+                
+        results.append(AvailableTenant(
             id=tu.tenant.id,
             name=tu.tenant.name,
             rut=tu.tenant.rut,
             role_name=tu.role_name,
-            is_active=tu.tenant.is_active
-        )
-        for tu in tenant_users
-    ]
+            is_active=tu.tenant.is_active,
+            max_users=tu.tenant.max_users_override or tu.tenant.plan_max_users,
+            permissions=perms
+        ))
+        
+    return results
 
 @router.post("/token", response_model=SaaSToken)
 async def login_for_access_token(

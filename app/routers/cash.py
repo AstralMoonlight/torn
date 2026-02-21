@@ -14,8 +14,8 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut
-from app.dependencies.tenant import get_current_tenant_user
-from app.models.saas import TenantUser
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_global_user
+from app.models.saas import TenantUser, SaaSUser
 from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
@@ -26,8 +26,9 @@ router = APIRouter(prefix="/cash", tags=["cash"])
              description="Inicia un nuevo turno de caja para el usuario actual.")
 def open_session(
     session_in: CashSessionCreate, 
-    db: Session = Depends(get_db),
-    current_user: TenantUser = Depends(get_current_tenant_user)
+    db: Session = Depends(get_tenant_db),
+    current_user: TenantUser = Depends(get_current_tenant_user),
+    global_db: Session = Depends(get_global_db)
 ):
     """Abre una nueva sesión de caja.
 
@@ -44,7 +45,12 @@ def open_session(
     Raises:
         HTTPException(400): Si ya existe una sesión abierta.
     """
-    user_id = current_user.id
+    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
+    local_user = db.query(User).filter(User.email == saas_user.email).first()
+    if not local_user:
+        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
+        
+    user_id = local_user.id
 
     # Verificar si ya tiene una abierta
     active_session = db.query(CashSession).filter(
@@ -87,8 +93,9 @@ def open_session(
              summary="Estado de Caja",
              description="Consulta el estado actual de la caja del usuario.")
 def session_status(
-    db: Session = Depends(get_db),
-    current_user: TenantUser = Depends(get_current_tenant_user)
+    db: Session = Depends(get_tenant_db),
+    current_user: TenantUser = Depends(get_current_tenant_user),
+    global_db: Session = Depends(get_global_db)
 ):
     """Obtiene el estado de la caja actual.
     
@@ -102,7 +109,12 @@ def session_status(
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    user_id = current_user.id
+    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
+    local_user = db.query(User).filter(User.email == saas_user.email).first()
+    if not local_user:
+        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
+        
+    user_id = local_user.id
         
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
@@ -140,8 +152,9 @@ def session_status(
              description="Cierra el turno y realiza el arqueo de caja.")
 def close_session(
     close_in: CashSessionClose, 
-    db: Session = Depends(get_db),
-    current_user: TenantUser = Depends(get_current_tenant_user)
+    db: Session = Depends(get_tenant_db),
+    current_user: TenantUser = Depends(get_current_tenant_user),
+    global_db: Session = Depends(get_global_db)
 ):
     """Cierra la sesión de caja y realiza arqueo (Blind Cash Count).
 
@@ -158,7 +171,12 @@ def close_session(
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    user_id = current_user.id
+    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
+    local_user = db.query(User).filter(User.email == saas_user.email).first()
+    if not local_user:
+        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
+        
+    user_id = local_user.id
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
         CashSession.status == "OPEN"

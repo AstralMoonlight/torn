@@ -59,10 +59,12 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    rut = Column(String(12), unique=True, nullable=False, index=True)
-    razon_social = Column(String(200), nullable=False, server_default="Sin Razón Social")
-    email = Column(String(150))
+    email = Column(String(150), unique=True, index=True, nullable=True) # Principal para personal
+    rut = Column(String(12), unique=True, nullable=True, index=True) # Opcional para personal operativo
+    razon_social = Column(String(200), nullable=True, server_default="Sin Razón Social")
     is_active = Column(Boolean, default=True)
+    is_owner = Column(Boolean, default=False, server_default="false") # Si es el dueño (Global) de la empresa
+    
     # Personal Operativo
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     role_obj = relationship("Role", back_populates="users")

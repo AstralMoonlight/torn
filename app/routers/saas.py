@@ -155,6 +155,8 @@ async def list_tenant_users(
     users = global_db.query(TenantUser).filter(TenantUser.tenant_id == tenant_id).all()
     return users
 
+from sqlalchemy import text
+
 @router.post("/tenants/{tenant_id}/users", response_model=TenantUserOut)
 async def assign_user_to_tenant(
     tenant_id: int,
@@ -164,7 +166,7 @@ async def assign_user_to_tenant(
 ):
     """
     Asigna un usuario a un Tenant. Si el usuario no existe, lo crea.
-    Aplica límites de usuarios por suscripción.
+    Aplica límites de usuarios por suscripción y sincroniza con la DB local.
     """
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -227,6 +229,37 @@ async def assign_user_to_tenant(
     global_db.commit()
     global_db.refresh(new_tenant_user)
     
+    # 4. Sincronizar hacia el esquema local (users)
+    try:
+        # Resolver el ID del rol
+        res_role = global_db.execute(
+            text(f'SELECT id FROM "{tenant.schema_name}".roles WHERE name = :role_name LIMIT 1'),
+            {"role_name": user_data.role_name}
+        ).fetchone()
+        role_id_local = res_role[0] if res_role else None
+        
+        # Insertar o actualizar el usuario en la BD local de ese Tenant
+        global_db.execute(text(f'''
+            INSERT INTO "{tenant.schema_name}".users (email, full_name, password_hash, role, role_id, is_active)
+            VALUES (:email, :full_name, :pwd, :role, :role_id, true)
+            ON CONFLICT (email) DO UPDATE SET
+            full_name = EXCLUDED.full_name,
+            password_hash = EXCLUDED.password_hash,
+            role = EXCLUDED.role,
+            role_id = EXCLUDED.role_id,
+            is_active = true
+        '''), {
+            "email": target_user.email,
+            "full_name": target_user.full_name or "",
+            "pwd": target_user.hashed_password or "",
+            "role": user_data.role_name,
+            "role_id": role_id_local
+        })
+        global_db.commit()
+    except Exception as e:
+        print(f"Error syncing user {target_user.email} to tenant schema: {e}")
+        # Not throwing here to not break the global registration, but ideally we should.
+    
     return new_tenant_user
 
 @router.patch("/tenants/{tenant_id}/users/{user_id}", response_model=TenantUserOut)
@@ -265,5 +298,50 @@ async def update_tenant_user(
         
     global_db.commit()
     global_db.refresh(tenant_user)
+    
+    # 2. Sincronizar hacia el esquema local
+    tenant = global_db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant and tenant.schema_name:
+        try:
+            # Buscar el rol id si viene role_name
+            role_id_local = None
+            if "role_name" in data_dict:
+                res_role = global_db.execute(
+                    text(f'SELECT id FROM "{tenant.schema_name}".roles WHERE name = :role_name LIMIT 1'),
+                    {"role_name": data_dict["role_name"]}
+                ).fetchone()
+                role_id_local = res_role[0] if res_role else None
+            
+            # Construir la actualización dinámica
+            updates = []
+            params = {"email": tenant_user.user.email}
+            
+            # We read from the original pydantic model since data_dict might be mutated
+            if update_data.is_active is not None:
+                updates.append("is_active = :is_active")
+                params["is_active"] = update_data.is_active
+                
+            if pwd:
+                updates.append("password_hash = :pwd")
+                params["pwd"] = tenant_user.user.hashed_password
+                
+            if fn is not None:
+                updates.append("full_name = :full_name")
+                params["full_name"] = fn
+                
+            if "role_name" in data_dict:
+                updates.append("role = :role")
+                updates.append("role_id = :role_id")
+                params["role"] = data_dict["role_name"]
+                params["role_id"] = role_id_local
+                
+            if updates:
+                query_str = f'UPDATE "{tenant.schema_name}".users SET ' + ", ".join(updates) + " WHERE email = :email"
+                global_db.execute(text(query_str), params)
+                global_db.commit()
+                
+        except Exception as e:
+            print(f"Error syncing user update {tenant_user.user.email} to tenant schema: {e}")
+            
     return tenant_user
 

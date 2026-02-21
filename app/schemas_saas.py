@@ -59,6 +59,8 @@ class AvailableTenant(BaseModel):
     rut: Optional[str]
     role_name: str
     is_active: bool = True
+    max_users: int = 1
+    permissions: Optional[dict] = {}
 
 class TenantUserCreate(BaseModel):
     email: str

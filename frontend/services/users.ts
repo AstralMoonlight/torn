@@ -2,12 +2,13 @@ import api from './api'
 
 export interface User {
     id: number
-    rut: string
+    rut?: string
     name: string
     email?: string
     role?: string
     role_id?: number
     is_active: boolean
+    is_owner?: boolean
     role_obj?: {
         name: string
         permissions: Record<string, boolean>

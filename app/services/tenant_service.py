@@ -142,6 +142,19 @@ def provision_new_tenant(
             "comuna": commune or "",
             "ciudad": city or ""
         })
+        
+        # D. Cargar Roles por defecto
+        insert_roles_sql = text(f"""
+            INSERT INTO "{schema_name}".roles 
+            (id, name, description, permissions, can_manage_users, can_view_reports, can_edit_products, can_perform_sales, can_perform_returns)
+            VALUES 
+                (1, 'ADMINISTRADOR', 'Acceso total al sistema', '{{"all": true}}'::jsonb, true, true, true, true, true),
+                (2, 'VENDEDOR', 'Rol para generar ventas y administrar caja', '{{"sales": true, "cash": true}}'::jsonb, false, false, true, true, false)
+        """)
+        connection.execute(insert_roles_sql)
+        connection.execute(text(f"SELECT setval('\"{schema_name}\".roles_id_seq', 2)"))
+
+        
         connection.commit()
 
         # D. Registrar el esquema en Alembic como actualizado ("stamp head")

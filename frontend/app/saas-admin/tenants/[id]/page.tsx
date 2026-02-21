@@ -20,6 +20,7 @@ export default function TenantDetailsPage() {
     const { id } = useParams()
     const tenantId = Number(id)
     const selectTenant = useSessionStore(s => s.selectTenant)
+    const availableTenants = useSessionStore(s => s.availableTenants)
 
     const [tenant, setTenant] = useState<Tenant | null>(null)
     const [users, setUsers] = useState<TenantUser[]>([])
@@ -160,6 +161,28 @@ export default function TenantDetailsPage() {
     }
 
     const handleImpersonate = () => {
+        if (!tenant) return;
+
+        const existing = availableTenants.find(t => t.id === tenantId)
+        if (!existing) {
+            useSessionStore.setState(state => ({
+                availableTenants: [...state.availableTenants, {
+                    id: tenant.id,
+                    name: tenant.name,
+                    rut: tenant.rut || '',
+                    role_name: 'ADMINISTRADOR',
+                    is_active: tenant.is_active,
+                    max_users: tenant.max_users_override || tenant.plan_max_users || 1,
+                    permissions: {
+                        can_manage_users: true,
+                        can_view_reports: true,
+                        has_pos_access: true,
+                        can_manage_inventory: true,
+                        can_configure_pos: true
+                    }
+                }]
+            }))
+        }
         selectTenant(tenantId)
         router.push('/pos')
     }

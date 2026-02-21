@@ -22,6 +22,8 @@ export interface AvailableTenant {
     rut: string
     role_name: string
     is_active: boolean
+    max_users: number
+    permissions?: Record<string, boolean>
 }
 
 interface SessionState {

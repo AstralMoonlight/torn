@@ -20,11 +20,11 @@ class RoleOut(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    can_manage_users: bool
-    can_view_reports: bool
-    can_edit_products: bool
-    can_perform_sales: bool
-    can_perform_returns: bool
+    can_manage_users: Optional[bool] = False
+    can_view_reports: Optional[bool] = False
+    can_edit_products: Optional[bool] = True
+    can_perform_sales: Optional[bool] = True
+    can_perform_returns: Optional[bool] = False
     permissions: dict = {}
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,15 +41,18 @@ class RoleUpdate(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    rut: str
+    rut: Optional[str] = None
+    email: Optional[str] = None
     name: str
     role: Optional[str] = None
+    role_id: Optional[int] = None
     is_active: bool
+    is_owner: bool = False
     role_obj: Optional[RoleOut] = None
     model_config = ConfigDict(from_attributes=True)
 
 class UserCreate(BaseModel):
-    rut: str
+    rut: Optional[str] = None
     full_name: str
     email: Optional[str] = None
     role_id: Optional[int] = None
@@ -60,6 +63,7 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     role_id: Optional[int] = None
     is_active: Optional[bool] = None
+    password: Optional[str] = None
 
 class UserLogin(BaseModel):
     rut: str

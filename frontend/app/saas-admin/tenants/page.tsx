@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { getTenants, createTenant, updateTenant, deleteTenant, type Tenant } from '@/services/saas'
 import { getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
@@ -455,8 +456,11 @@ export default function TenantsListPage() {
                                                     checked={tenant.is_active}
                                                     onCheckedChange={(checked: boolean) => handleToggleStatus(tenant, checked)}
                                                 />
-                                                <span className={`text-[10px] uppercase font-bold tracking-wider ${tenant.is_active ? 'text-blue-600' : 'text-neutral-400'}`}>
-                                                    {tenant.is_active ? 'ON' : 'OFF'}
+                                                <span className={cn(
+                                                    "text-[10px] font-bold uppercase tracking-wider",
+                                                    tenant.is_active ? "text-emerald-600" : "text-neutral-400"
+                                                )}>
+                                                    {tenant.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
                                             </div>
                                         </td>

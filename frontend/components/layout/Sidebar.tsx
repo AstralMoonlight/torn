@@ -48,7 +48,7 @@ const navGroups = [
         items: [
             { href: '/clientes', label: 'Clientes', icon: Globe, permissionKey: 'Clientes' },
             { href: '/proveedores', label: 'Proveedores', icon: Truck, permissionKey: 'Proveedores' },
-            { href: '/vendedores', label: 'Vendedores', icon: Users, permissionKey: 'Vendedores' },
+            { href: '/personal', label: 'Personal', icon: Users, permissionKey: 'Vendedores' },
         ]
     },
     {
@@ -61,7 +61,6 @@ const navGroups = [
     {
         label: 'Sistema',
         items: [
-            { href: '/vendedores/roles', label: 'Roles y Permisos', icon: ShieldCheck, permissionKey: 'Roles y Permisos' },
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
             { href: '/saas-admin', label: 'Terminal SaaS Global', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
@@ -74,9 +73,14 @@ export default function Sidebar() {
     const status = useSessionStore((s) => s.status)
     const collapsed = useUIStore((s) => s.sidebarCollapsed)
     const toggle = useUIStore((s) => s.toggleSidebar)
+    const availableTenants = useSessionStore((s) => s.availableTenants)
+    const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
 
-    const permissions = userPayload?.role_obj?.permissions || {}
-    const isAdmin = userPayload?.role === 'ADMINISTRADOR'
+    const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
+    const roleForCurrentTenant = currentTenant?.role_name || userPayload?.role || ''
+
+    const permissions = currentTenant?.permissions || userPayload?.role_obj?.permissions || {}
+    const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR'
     const isSuperadmin = userPayload?.is_superuser === true
 
     return (
@@ -94,8 +98,8 @@ export default function Sidebar() {
                 <Activity className="h-6 w-6 text-blue-600 shrink-0" />
                 {!collapsed && (
                     <div className="overflow-hidden">
-                        <h1 className="text-base font-bold tracking-tight text-neutral-900 dark:text-white leading-tight">
-                            Torn
+                        <h1 className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white leading-tight truncate max-w-[160px]" title={currentTenant?.name || 'Torn'}>
+                            {currentTenant?.name || 'Torn'}
                         </h1>
                         <p className="text-[9px] uppercase tracking-widest text-neutral-400 leading-none">
                             punto de venta
@@ -125,11 +129,16 @@ export default function Sidebar() {
                             )}
                             <div className="space-y-1">
                                 {filteredItems.map((item) => {
-                                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                                    let itemHref = item.href;
+                                    if (item.permissionKey === '__SUPERADMIN__' && selectedTenantId) {
+                                        itemHref = `/saas-admin/tenants/${selectedTenantId}`;
+                                    }
+
+                                    const isActive = pathname === itemHref || pathname.startsWith(itemHref + '/')
                                     return (
                                         <Link
                                             key={item.href}
-                                            href={item.href}
+                                            href={itemHref}
                                             title={collapsed ? item.label : undefined}
                                             className={cn(
                                                 'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all group',
@@ -155,6 +164,18 @@ export default function Sidebar() {
 
             {/* Footer */}
             <div className="border-t border-neutral-200 dark:border-neutral-800 shrink-0">
+                {/* User Info */}
+                {!collapsed && (
+                    <div className="px-3 pt-3 flex flex-col">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 truncate">
+                            {userPayload?.full_name || userPayload?.name || 'Usuario'}
+                        </span>
+                        <span className="text-[10px] text-neutral-500 truncate lowercase italic">
+                            {roleForCurrentTenant.replace('_', ' ')}
+                        </span>
+                    </div>
+                )}
+
                 {/* Cash Status */}
                 <div className={cn(
                     'flex items-center px-3 py-2',
