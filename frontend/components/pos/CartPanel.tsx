@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import CheckoutModal from '@/components/pos/CheckoutModal'
 import { formatCLP } from '@/lib/format'
+import PriceListSelector from '@/components/pos/PriceListSelector'
+import { Badge } from '@/components/ui/badge'
 
 
 interface Props {
@@ -30,6 +32,7 @@ export default function CartPanel({ onClose }: Props) {
                         </span>
                     )}
                 </div>
+                <PriceListSelector />
                 <div className="flex items-center gap-1">
                     {items.length > 0 && (
                         <Button variant="ghost" size="sm" onClick={clear} className="text-[11px] text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2">
@@ -60,9 +63,16 @@ export default function CartPanel({ onClose }: Props) {
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-neutral-900 dark:text-white truncate">
-                                            {item.product.full_name}
-                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <p className="text-xs font-medium text-neutral-900 dark:text-white truncate">
+                                                {item.product.full_name}
+                                            </p>
+                                            {item.price_source === 'price_list' && (
+                                                <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                    Lista
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <p className="text-[10px] text-neutral-400 font-mono">{item.product.codigo_interno}</p>
                                         <p className="text-[10px] text-neutral-500 mt-0.5 font-tabular">
                                             <span className="text-neutral-400">Neto:</span> {formatCLP(item.precio_neto)} +

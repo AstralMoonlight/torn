@@ -81,14 +81,14 @@ interface Props {
 const GENERIC_RUT = '66666666-6'
 
 export default function CheckoutModal({ open, onClose }: Props) {
-    const { items, totalFinal, clear } = useCartStore()
+    const { items, totalFinal, clear, customer, setCustomer } = useCartStore()
     const { userId } = useSessionStore()
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [payments, setPayments] = useState<PaymentLine[]>([])
     const [dteType, setDteType] = useState<'boleta' | 'factura'>('boleta')
 
-    // Customer State — single source of truth
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+    // Customer State is now managed by cartStore to allow auto-switching lists
+
 
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
@@ -108,7 +108,6 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setSuccess(false)
             setLastFolio(null)
             setLastSaleId(null)
-            setSelectedCustomer(null)
             setDteType('boleta')
         }
     }, [open, totalFinal])
@@ -209,10 +208,10 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
     // Determine effective RUT
     const isBoleta = dteType === 'boleta'
-    const effectiveRut = selectedCustomer?.rut || (isBoleta ? GENERIC_RUT : '')
+    const effectiveRut = customer?.rut || (isBoleta ? GENERIC_RUT : '')
 
     // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
-    const canSubmit = (isBoleta || !!selectedCustomer) && remaining <= 0
+    const canSubmit = (isBoleta || !!customer) && remaining <= 0
 
     const handleSubmit = async () => {
         setSubmitting(true)
@@ -333,7 +332,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-xs">Cliente {isBoleta ? '(Opcional)' : '(Requerido)'}</Label>
-                                    {isBoleta && !selectedCustomer && (
+                                    {isBoleta && !customer && (
                                         <span className="text-[10px] text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
                                             Por defecto: Cliente Genérico
                                         </span>
@@ -341,8 +340,22 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 </div>
 
                                 <CustomerSearchCombobox
-                                    value={selectedCustomer}
-                                    onChange={setSelectedCustomer}
+                                    value={customer}
+                                    onChange={async (c) => {
+                                        if (c && (c as any).price_list_id) {
+                                            try {
+                                                const { getPriceList } = await import('@/services/price_lists')
+                                                const list = await getPriceList((c as any).price_list_id)
+                                                setCustomer(c, list)
+                                                toast.success(`Lista aplicada: ${list.name}`)
+                                            } catch (err) {
+                                                setCustomer(c)
+                                            }
+                                        } else {
+                                            setCustomer(c)
+                                            if (c) toast.info('Cliente sin lista especial (Precio Base)')
+                                        }
+                                    }}
                                     required={!isBoleta}
                                     placeholder={isBoleta ? 'Buscar cliente (opcional)…' : 'Buscar cliente por Nombre o RUT…'}
                                 />
