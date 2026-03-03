@@ -40,6 +40,7 @@ const navGroups = [
         label: 'Inventario',
         items: [
             { href: '/inventario', label: 'Productos', icon: Package, permissionKey: 'Productos' },
+            { href: '/listas-precios', label: 'Listas de Precios', icon: Tags, permissionKey: 'Productos' },
             { href: '/marcas', label: 'Marcas', icon: Tags, permissionKey: 'Marcas' },
             { href: '/compras', label: 'Compras', icon: ShoppingBag, permissionKey: 'Compras' },
         ]
