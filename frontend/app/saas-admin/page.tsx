@@ -6,10 +6,11 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { Button } from '@/components/ui/button'
 import { ShieldAlert, Users, Building, LogOut } from 'lucide-react'
 import ThemeToggle from '@/components/layout/ThemeToggle'
+import { LogoutConfirmModal } from '@/components/layout/LogoutConfirmModal'
 
 export default function SaaSAdminPage() {
     const router = useRouter()
-    const { user, token, logout } = useSessionStore()
+    const { user, token } = useSessionStore()
     const [isMounted, setIsMounted] = useState(false)
 
     useEffect(() => {
@@ -26,11 +27,6 @@ export default function SaaSAdminPage() {
             router.push('/access-denied')
         }
     }, [token, user, isMounted, router])
-
-    const handleLogout = () => {
-        logout()
-        router.push('/login')
-    }
 
     if (!isMounted || !user?.is_superuser) return null
 
@@ -55,10 +51,12 @@ export default function SaaSAdminPage() {
                         <Button variant="outline" className="border-neutral-200 text-neutral-700 bg-white dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 hover:bg-neutral-50 cursor-pointer w-full sm:w-auto px-6" onClick={() => router.push('/select-tenant')}>
                             Entrar al POS
                         </Button>
-                        <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto gap-2 shrink-0 border-neutral-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-neutral-800 dark:text-red-400 dark:hover:bg-red-900/20 cursor-pointer px-6">
-                            <LogOut className="h-4 w-4" />
-                            Cerrar Sesión
-                        </Button>
+                        <LogoutConfirmModal>
+                            <Button variant="outline" className="w-full sm:w-auto gap-2 shrink-0 border-neutral-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-neutral-800 dark:text-red-400 dark:hover:bg-red-900/20 cursor-pointer px-6">
+                                <LogOut className="h-4 w-4" />
+                                Cerrar Sesión
+                            </Button>
+                        </LogoutConfirmModal>
                     </div>
                 </div>
 

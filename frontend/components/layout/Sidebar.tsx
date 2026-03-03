@@ -25,6 +25,7 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { useUIStore } from '@/lib/store/uiStore'
 import { Badge } from '@/components/ui/badge'
 import ThemeToggle from './ThemeToggle'
+import { LogoutConfirmModal } from './LogoutConfirmModal'
 
 const navGroups = [
     {
@@ -206,16 +207,14 @@ export default function Sidebar() {
                 )}>
                     <ThemeToggle />
 
-                    <button
-                        onClick={() => {
-                            useSessionStore.getState().logout()
-                            window.location.href = '/login'
-                        }}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-                        title="Cerrar Sesión"
-                    >
-                        <LogOut className="h-4 w-4" />
-                    </button>
+                    <LogoutConfirmModal>
+                        <button
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                            title="Cerrar Sesión"
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </button>
+                    </LogoutConfirmModal>
 
                     <button
                         onClick={toggle}

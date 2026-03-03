@@ -6,10 +6,11 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { validateSession } from '@/services/auth'
 import { Button } from '@/components/ui/button'
 import { Store, Building2, ArrowRight, ShieldAlert, LogOut } from 'lucide-react'
+import { LogoutConfirmModal } from '@/components/layout/LogoutConfirmModal'
 
 export default function SelectTenantPage() {
     const router = useRouter()
-    const { availableTenants, selectedTenantId, selectTenant, token, user, logout, syncSession } = useSessionStore()
+    const { availableTenants, selectedTenantId, selectTenant, token, user, syncSession } = useSessionStore()
 
     const activeTenants = useMemo(() => availableTenants.filter(t => t.is_active), [availableTenants])
     const inactiveTenants = useMemo(() => availableTenants.filter(t => !t.is_active), [availableTenants])
@@ -54,10 +55,6 @@ export default function SelectTenantPage() {
         router.push('/pos')
     }
 
-    const handleLogout = () => {
-        logout()
-        router.push('/login')
-    }
 
     // CASO A: No hay ninguna empresa asociada (ni activa ni inactiva)
     if (availableTenants.length === 0) {
@@ -77,9 +74,11 @@ export default function SelectTenantPage() {
                             No posees ninguna empresa asignada actualmente. Contacta al administrador para obtener acceso.
                         </p>
                     </div>
-                    <Button variant="outline" className="w-full h-11 cursor-pointer" onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
-                    </Button>
+                    <LogoutConfirmModal>
+                        <Button variant="outline" className="w-full h-11 cursor-pointer">
+                            <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+                        </Button>
+                    </LogoutConfirmModal>
                 </div>
             </div>
         )
@@ -116,14 +115,15 @@ export default function SelectTenantPage() {
                                 <Store className="mr-2 h-5 w-5" /> Reactivar mi cuenta
                             </Button>
 
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full h-11 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer"
-                                onClick={handleLogout}
-                            >
-                                <LogOut className="mr-2 h-4 w-4" /> Volver más tarde
-                            </Button>
+                            <LogoutConfirmModal>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full h-11 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer"
+                                >
+                                    <LogOut className="mr-2 h-4 w-4" /> Volver más tarde
+                                </Button>
+                            </LogoutConfirmModal>
                         </div>
                     </div>
                 </div>
@@ -183,9 +183,11 @@ export default function SelectTenantPage() {
                 </div>
 
                 <div className="pt-4 text-center">
-                    <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-neutral-600 cursor-pointer" onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" /> Cambiar de Usuario
-                    </Button>
+                    <LogoutConfirmModal>
+                        <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-neutral-600 cursor-pointer">
+                            <LogOut className="mr-2 h-4 w-4" /> Cambiar de Usuario
+                        </Button>
+                    </LogoutConfirmModal>
                 </div>
             </div>
         </div>
