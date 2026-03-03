@@ -10,3 +10,4 @@ from .provider import Provider
 from .purchase import Purchase, PurchaseDetail
 from .tax import Tax
 from .settings import SystemSettings
+from .price_list import PriceList, PriceListProduct
