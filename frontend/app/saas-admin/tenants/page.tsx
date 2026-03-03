@@ -91,6 +91,19 @@ export default function TenantsListPage() {
         }
     }
 
+    // RUT: true when empty (no error yet) or when the entered value is mathematically valid
+    const isRutValid = formData.rut === '' || validateRut(formData.rut)
+
+    const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.toUpperCase()
+        // Strip all forbidden characters; keep digits, dots, dashes and K
+        const sanitized = raw.replace(/[^0-9.\-K]/g, '')
+        // If the user is typing (length > 1 after clean), apply live formatting
+        const clean = sanitized.replace(/[^0-9K]/g, '')
+        const formatted = clean.length > 1 ? formatRut(clean) : clean
+        setFormData({ ...formData, rut: formatted })
+    }
+
     useEffect(() => {
         fetchTenants()
     }, [])
@@ -247,10 +260,14 @@ export default function TenantsListPage() {
                                         <Input
                                             placeholder="Ej. 76.543.210-K"
                                             value={formData.rut}
-                                            onChange={e => setFormData({ ...formData, rut: e.target.value })}
+                                            onChange={handleRutChange}
                                             required
-                                            className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500 font-mono"
+                                            className={`border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500 font-mono ${!isRutValid ? 'border-red-400 dark:border-red-500 focus-visible:ring-red-500' : ''
+                                                }`}
                                         />
+                                        {!isRutValid && (
+                                            <p className="text-xs text-red-500 mt-1">RUT inválido. Verifica el dígito verificador.</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <Label>Giro Comercial</Label>
@@ -369,7 +386,7 @@ export default function TenantsListPage() {
                                     <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-neutral-200 dark:border-neutral-800">
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" disabled={isCreating} className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white">
+                                    <Button type="submit" disabled={isCreating || !isRutValid} className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed">
                                         {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
