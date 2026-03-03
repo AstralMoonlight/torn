@@ -38,7 +38,7 @@ export default function PriceListsPage() {
     // Modal state
     const [openModal, setOpenModal] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [editingId, setEditingId] = useState<number | null>(null)
+    const [editingId, setEditingId] = useState<number | 'base' | null>(null)
     const [activeTab, setActiveTab] = useState<Tab>('products')
 
     // Form fields
@@ -48,6 +48,7 @@ export default function PriceListsPage() {
     // Products tab
     const [allProducts, setAllProducts] = useState<Product[]>([])
     const [productSearch, setProductSearch] = useState('')
+    const [draftSearch, setDraftSearch] = useState('')
     const [draftItems, setDraftItems] = useState<DraftItem[]>([])
 
     // Customers tab
@@ -75,10 +76,33 @@ export default function PriceListsPage() {
         setFormDescription('')
         setDraftItems([])
         setSelectedCustomerIds([])
+        setDraftSearch('')
         setActiveTab('products')
         const [prods, custs] = await Promise.all([getProducts(), getCustomers()])
         setAllProducts(prods.filter(p => !p.parent_id && p.is_active)) // flat active products
         setAllCustomers(custs.filter(c => c.is_active))
+        setOpenModal(true)
+    }
+
+    // ── Open Edit Base ─────────────────────────────────────────────────────
+
+    const openEditBase = async () => {
+        setEditingId('base')
+        setFormName('Precio Base (Catálogo General)')
+        setFormDescription('Precios por defecto de todos los productos (Netos).')
+        setActiveTab('products')
+        setDraftSearch('')
+
+        const prods = await getProducts()
+        const activeProds = prods.filter(p => !p.parent_id && p.is_active)
+        setAllProducts(activeProds)
+
+        setDraftItems(activeProds.map(p => ({
+            product_id: p.id,
+            product_name: p.full_name,
+            fixed_price: parseFloat(p.precio_neto)
+        })))
+
         setOpenModal(true)
     }
 
@@ -87,6 +111,7 @@ export default function PriceListsPage() {
     const openEdit = async (id: number) => {
         setEditingId(id)
         setActiveTab('products')
+        setDraftSearch('')
         const [detail, prods, custs] = await Promise.all([
             getPriceList(id),
             getProducts(),
@@ -120,20 +145,35 @@ export default function PriceListsPage() {
         }
         setIsSaving(true)
         try {
-            let listId = editingId
-            if (listId) {
-                await updatePriceList(listId, { name: formName, description: formDescription || undefined })
+            if (editingId === 'base') {
+                // Bulk update changing products
+                const { updateProduct } = await import('@/services/products')
+                const changed = draftItems.filter(draft => {
+                    const original = allProducts.find(p => p.id === draft.product_id)
+                    return original && parseFloat(original.precio_neto) !== parseFloat(String(draft.fixed_price))
+                })
+
+                await Promise.all(changed.map(item =>
+                    updateProduct(item.product_id, { precio_neto: String(item.fixed_price) })
+                ))
+
+                toast.success('Precios base actualizados correctamente')
             } else {
-                const created = await createPriceList({ name: formName, description: formDescription || undefined })
-                listId = created.id
+                let listId = editingId
+                if (listId) {
+                    await updatePriceList(listId, { name: formName, description: formDescription || undefined })
+                } else {
+                    const created = await createPriceList({ name: formName, description: formDescription || undefined })
+                    listId = created.id
+                }
+                await assignProducts(listId!, draftItems.map(i => ({ product_id: i.product_id, fixed_price: Number(i.fixed_price) })))
+                await assignCustomers(listId!, selectedCustomerIds)
+                toast.success(editingId ? 'Lista actualizada' : 'Lista creada correctamente')
             }
-            await assignProducts(listId!, draftItems.map(i => ({ product_id: i.product_id, fixed_price: Number(i.fixed_price) })))
-            await assignCustomers(listId!, selectedCustomerIds)
-            toast.success(editingId ? 'Lista actualizada' : 'Lista creada correctamente')
             setOpenModal(false)
             fetchLists()
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error guardando la lista'))
+            toast.error(getApiErrorMessage(err, 'Error guardando los cambios'))
         } finally {
             setIsSaving(false)
         }
@@ -165,7 +205,7 @@ export default function PriceListsPage() {
     )
 
     const addProduct = (p: Product) => {
-        setDraftItems(prev => [...prev, { product_id: p.id, product_name: p.full_name, fixed_price: parseFloat(p.precio_bruto) }])
+        setDraftItems(prev => [...prev, { product_id: p.id, product_name: p.full_name, fixed_price: parseFloat(p.precio_neto) }])
         setProductSearch('')
     }
 
@@ -216,6 +256,29 @@ export default function PriceListsPage() {
                         </tr>
                     </thead>
                     <tbody>
+                        {/* Lista Base Hardcodeada */}
+                        {!loading && (
+                            <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 transition-colors">
+                                <td className="px-6 py-4 font-medium text-emerald-900 dark:text-emerald-100">
+                                    <div className="flex items-center gap-2">
+                                        <Tag className="h-4 w-4 text-emerald-500 shrink-0" />
+                                        Precio Base (Catálogo General)
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 text-sm">
+                                    Precios por defecto de todos los productos del sistema.
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <Button
+                                        variant="ghost" size="sm"
+                                        className="h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer"
+                                        onClick={openEditBase}
+                                    >
+                                        <Pencil className="h-4 w-4 mr-1.5" /> Editar Precios
+                                    </Button>
+                                </td>
+                            </tr>
+                        )}
                         {loading && Array(3).fill(0).map((_, i) => (
                             <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800">
                                 <td className="px-6 py-4"><Skeleton className="h-4 w-[200px]" /></td>
@@ -226,7 +289,7 @@ export default function PriceListsPage() {
                         {!loading && priceLists.length === 0 && (
                             <tr>
                                 <td colSpan={3} className="px-6 py-12 text-center text-neutral-400">
-                                    No hay listas de precios configuradas. Crea tu primera lista.
+                                    No hay listas de precios *personalizadas* (solo tienes la Base). Crea tu primera lista especial aquí.
                                 </td>
                             </tr>
                         )}
@@ -271,9 +334,9 @@ export default function PriceListsPage() {
             <Dialog open={openModal} onOpenChange={setOpenModal}>
                 <DialogContent className="sm:max-w-2xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
-                        <DialogTitle>{editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios'}</DialogTitle>
+                        <DialogTitle>{editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}</DialogTitle>
                         <DialogDescription className="text-neutral-500">
-                            Define el nombre, los productos con precios fijos y los clientes asignados.
+                            {editingId === 'base' ? 'Modifica directamente los precios netos por defecto de tus productos.' : 'Define el nombre, los productos con precios fijos y los clientes asignados.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -286,6 +349,7 @@ export default function PriceListsPage() {
                                     placeholder="Ej. Clientes Mayoristas"
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
+                                    disabled={editingId === 'base'}
                                     className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
                                 />
                             </div>
@@ -295,6 +359,7 @@ export default function PriceListsPage() {
                                     placeholder="Ej. Descuentos especiales para clientes B2B"
                                     value={formDescription}
                                     onChange={e => setFormDescription(e.target.value)}
+                                    disabled={editingId === 'base'}
                                     className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
                                 />
                             </div>
@@ -302,11 +367,14 @@ export default function PriceListsPage() {
 
                         {/* Tabs */}
                         <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
-                            {([['products', 'Productos', Package], ['customers', 'Clientes', Users]] as const).map(([key, label, Icon]) => (
+                            {([
+                                ['products', 'Productos', Package],
+                                ...(editingId === 'base' ? [] : [['customers', 'Clientes', Users]])
+                            ] as const).map(([key, label, Icon]: any) => (
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => setActiveTab(key)}
+                                    onClick={() => setActiveTab(key as Tab)}
                                     className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key
                                         ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                                         : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -326,20 +394,20 @@ export default function PriceListsPage() {
 
                         {/* Products Tab */}
                         {activeTab === 'products' && (
-                            <div className="space-y-3">
-                                {/* Search box */}
-                                <div className="relative">
+                            <div className="space-y-3 flexflex-col h-full min-h-[300px]">
+                                {/* Search box (General search for custom list OR Local search for base list) */}
+                                <div className="relative shrink-0">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
                                     <Input
-                                        placeholder="Buscar producto por nombre o código..."
-                                        value={productSearch}
-                                        onChange={e => setProductSearch(e.target.value)}
+                                        placeholder={editingId === 'base' ? "Filtrar catálogo por nombre..." : "Buscar producto por nombre o código..."}
+                                        value={editingId === 'base' ? draftSearch : productSearch}
+                                        onChange={e => editingId === 'base' ? setDraftSearch(e.target.value) : setProductSearch(e.target.value)}
                                         className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
                                     />
                                 </div>
-                                {/* Dropdown results */}
-                                {productSearch && (
-                                    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 max-h-48 overflow-y-auto shadow-md">
+                                {/* Dropdown results (Only for custom lists) */}
+                                {productSearch && editingId !== 'base' && (
+                                    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 max-h-48 overflow-y-auto shadow-md shrink-0">
                                         {filteredProducts.length === 0
                                             ? <p className="text-xs text-neutral-400 px-4 py-3">Sin resultados</p>
                                             : filteredProducts.slice(0, 15).map(p => (
@@ -357,40 +425,45 @@ export default function PriceListsPage() {
                                     </div>
                                 )}
                                 {/* Draft Items List */}
-                                {draftItems.length === 0
-                                    ? (
-                                        <div className="flex flex-col items-center justify-center py-8 text-neutral-400 text-sm rounded-lg border border-dashed border-neutral-200 dark:border-neutral-800">
-                                            <Package className="h-8 w-8 mb-2 opacity-40" />
-                                            Busca productos arriba para agregarlos
-                                        </div>
-                                    )
-                                    : (
-                                        <div className="space-y-2">
-                                            {draftItems.map(item => (
-                                                <div key={item.product_id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group">
-                                                    <span className="flex-1 text-sm truncate text-neutral-800 dark:text-neutral-200">{item.product_name}</span>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <span className="text-xs text-neutral-400">$</span>
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            value={item.fixed_price}
-                                                            onChange={e => updateFixedPrice(item.product_id, e.target.value)}
-                                                            className="w-28 h-8 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
-                                                        />
+                                <div className="flex-1 overflow-y-auto min-h-0 space-y-2 mt-2">
+                                    {draftItems.length === 0
+                                        ? (
+                                            <div className="flex flex-col items-center justify-center py-8 text-neutral-400 text-sm rounded-lg border border-dashed border-neutral-200 dark:border-neutral-800 h-full">
+                                                <Package className="h-8 w-8 mb-2 opacity-40" />
+                                                Busca productos arriba para agregarlos
+                                            </div>
+                                        )
+                                        : (
+                                            draftItems
+                                                .filter(item => editingId !== 'base' || item.product_name.toLowerCase().includes(draftSearch.toLowerCase()))
+                                                .map(item => (
+                                                    <div key={item.product_id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group">
+                                                        <span className="flex-1 text-sm truncate text-neutral-800 dark:text-neutral-200">{item.product_name}</span>
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            <Label className="text-xs text-neutral-400 mr-2">Neto:</Label>
+                                                            <span className="text-xs text-neutral-400">$</span>
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                value={item.fixed_price}
+                                                                onChange={e => updateFixedPrice(item.product_id, e.target.value)}
+                                                                className="w-28 h-8 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
+                                                            />
+                                                        </div>
+                                                        {editingId !== 'base' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeProduct(item.product_id)}
+                                                                className="text-neutral-400 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeProduct(item.product_id)}
-                                                        className="text-neutral-400 hover:text-red-500 transition-colors"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                }
+                                                ))
+                                        )
+                                    }
+                                </div>
                             </div>
                         )}
 
