@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Loader2, Tag, Search, X, Users, Package, ChevronRight } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ type Tab = 'products' | 'customers'
 
 interface DraftItem extends PriceItem {
     product_name: string
+    tax_rate: number
 }
 
 // ── Main Page Component ────────────────────────────────────────────────────
@@ -40,6 +42,7 @@ export default function PriceListsPage() {
     const [isSaving, setIsSaving] = useState(false)
     const [editingId, setEditingId] = useState<number | 'base' | null>(null)
     const [activeTab, setActiveTab] = useState<Tab>('products')
+    const [isGrossMode, setIsGrossMode] = useState(false)
 
     // Form fields
     const [formName, setFormName] = useState('')
@@ -78,8 +81,24 @@ export default function PriceListsPage() {
         setSelectedCustomerIds([])
         setDraftSearch('')
         setActiveTab('products')
+        setIsGrossMode(false)
         const [prods, custs] = await Promise.all([getProducts(), getCustomers()])
-        setAllProducts(prods.filter(p => !p.parent_id && p.is_active)) // flat active products
+
+        const flatProducts: Product[] = [];
+        prods.forEach(p => {
+            if (!p.parent_id) {
+                if (p.variants && p.variants.length > 0) {
+                    p.variants.forEach(v => {
+                        if (v.is_active) {
+                            flatProducts.push({ ...v, full_name: `${p.nombre} - ${v.nombre}` } as Product)
+                        }
+                    })
+                } else if (p.is_active) {
+                    flatProducts.push(p)
+                }
+            }
+        })
+        setAllProducts(flatProducts)
         setAllCustomers(custs.filter(c => c.is_active))
         setOpenModal(true)
     }
@@ -92,15 +111,31 @@ export default function PriceListsPage() {
         setFormDescription('Precios por defecto de todos los productos (Netos).')
         setActiveTab('products')
         setDraftSearch('')
+        setIsGrossMode(false)
 
         const prods = await getProducts()
-        const activeProds = prods.filter(p => !p.parent_id && p.is_active)
-        setAllProducts(activeProds)
 
-        setDraftItems(activeProds.map(p => ({
+        const flatProducts: Product[] = [];
+        prods.forEach(p => {
+            if (!p.parent_id) {
+                if (p.variants && p.variants.length > 0) {
+                    p.variants.forEach(v => {
+                        if (v.is_active) {
+                            flatProducts.push({ ...v, full_name: `${p.nombre} - ${v.nombre}` } as Product)
+                        }
+                    })
+                } else if (p.is_active) {
+                    flatProducts.push(p)
+                }
+            }
+        })
+        setAllProducts(flatProducts)
+
+        setDraftItems(flatProducts.map(p => ({
             product_id: p.id,
             product_name: p.full_name,
-            fixed_price: parseFloat(p.precio_neto)
+            fixed_price: parseFloat(String(p.precio_neto)),
+            tax_rate: p.tax?.rate ?? 19
         })))
 
         setOpenModal(true)
@@ -112,6 +147,7 @@ export default function PriceListsPage() {
         setEditingId(id)
         setActiveTab('products')
         setDraftSearch('')
+        setIsGrossMode(false)
         const [detail, prods, custs] = await Promise.all([
             getPriceList(id),
             getProducts(),
@@ -119,15 +155,34 @@ export default function PriceListsPage() {
         ])
         setFormName(detail.name)
         setFormDescription(detail.description ?? '')
-        setAllProducts(prods.filter(p => p.is_active))
+
+        const flatProducts: Product[] = [];
+        prods.forEach(p => {
+            if (!p.parent_id) {
+                if (p.variants && p.variants.length > 0) {
+                    p.variants.forEach(v => {
+                        if (v.is_active) {
+                            flatProducts.push({ ...v, full_name: `${p.nombre} - ${v.nombre}` } as Product)
+                        }
+                    })
+                } else if (p.is_active) {
+                    flatProducts.push(p)
+                }
+            }
+        })
+        setAllProducts(flatProducts)
         setAllCustomers(custs.filter(c => c.is_active))
 
         // Rebuild draft items with product names
-        const prodMap = new Map(prods.map(p => [p.id, p]))
-        setDraftItems(detail.items.map(item => ({
-            ...item,
-            product_name: prodMap.get(item.product_id)?.full_name ?? `Producto #${item.product_id}`,
-        })))
+        const prodMap = new Map(flatProducts.map(p => [p.id, p]))
+        setDraftItems(detail.items.map(item => {
+            const prod = prodMap.get(item.product_id);
+            return {
+                ...item,
+                product_name: prod?.full_name ?? `Producto #${item.product_id}`,
+                tax_rate: prod?.tax?.rate ?? 19
+            }
+        }))
 
         // Customers already assigned to this price list
         const assignedIds = custs.filter(c => (c as any).price_list_id === id).map(c => c.id)
@@ -205,15 +260,34 @@ export default function PriceListsPage() {
     )
 
     const addProduct = (p: Product) => {
-        setDraftItems(prev => [...prev, { product_id: p.id, product_name: p.full_name, fixed_price: parseFloat(p.precio_neto) }])
+        setDraftItems(prev => [...prev, {
+            product_id: p.id,
+            product_name: p.full_name,
+            fixed_price: parseFloat(String(p.precio_neto)),
+            tax_rate: p.tax?.rate ?? 19
+        }])
         setProductSearch('')
     }
 
     const removeProduct = (product_id: number) =>
         setDraftItems(prev => prev.filter(i => i.product_id !== product_id))
 
-    const updateFixedPrice = (product_id: number, value: string) =>
-        setDraftItems(prev => prev.map(i => i.product_id === product_id ? { ...i, fixed_price: value } : i))
+    const updateFixedPrice = (product_id: number, rawValue: string) => {
+        setDraftItems(prev => prev.map(i => {
+            if (i.product_id === product_id) {
+                if (rawValue === '') return { ...i, fixed_price: '' as any };
+                const val = parseFloat(rawValue);
+                if (isNaN(val)) return i;
+
+                if (isGrossMode) {
+                    const netValue = val / (1 + i.tax_rate / 100);
+                    return { ...i, fixed_price: parseFloat(netValue.toFixed(4)) }
+                }
+                return { ...i, fixed_price: val }
+            }
+            return i
+        }))
+    }
 
     // ── Customers tab helpers ─────────────────────────────────────────────
 
@@ -395,15 +469,27 @@ export default function PriceListsPage() {
                         {/* Products Tab */}
                         {activeTab === 'products' && (
                             <div className="space-y-3 flexflex-col h-full min-h-[300px]">
-                                {/* Search box (General search for custom list OR Local search for base list) */}
-                                <div className="relative shrink-0">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                                    <Input
-                                        placeholder={editingId === 'base' ? "Filtrar catálogo por nombre..." : "Buscar producto por nombre o código..."}
-                                        value={editingId === 'base' ? draftSearch : productSearch}
-                                        onChange={e => editingId === 'base' ? setDraftSearch(e.target.value) : setProductSearch(e.target.value)}
-                                        className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
-                                    />
+                                {/* Search box and Toggle Container */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                        <Input
+                                            placeholder={editingId === 'base' ? "Filtrar catálogo por nombre..." : "Buscar producto por nombre o código..."}
+                                            value={editingId === 'base' ? draftSearch : productSearch}
+                                            onChange={e => editingId === 'base' ? setDraftSearch(e.target.value) : setProductSearch(e.target.value)}
+                                            className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                        <Label htmlFor="tax-toggle" className="text-xs font-medium text-neutral-600 dark:text-neutral-300 cursor-pointer">
+                                            Ingresar precios con impuesto ({isGrossMode ? 'Bruto' : 'Neto'})
+                                        </Label>
+                                        <Switch
+                                            id="tax-toggle"
+                                            checked={isGrossMode}
+                                            onCheckedChange={setIsGrossMode}
+                                        />
+                                    </div>
                                 </div>
                                 {/* Dropdown results (Only for custom lists) */}
                                 {productSearch && editingId !== 'base' && (
@@ -440,12 +526,12 @@ export default function PriceListsPage() {
                                                     <div key={item.product_id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group">
                                                         <span className="flex-1 text-sm truncate text-neutral-800 dark:text-neutral-200">{item.product_name}</span>
                                                         <div className="flex items-center gap-1 shrink-0">
-                                                            <Label className="text-xs text-neutral-400 mr-2">Neto:</Label>
+                                                            <Label className="text-xs text-neutral-400 mr-2">{isGrossMode ? 'Bruto:' : 'Neto:'}</Label>
                                                             <span className="text-xs text-neutral-400">$</span>
                                                             <Input
                                                                 type="number"
                                                                 min="0"
-                                                                value={item.fixed_price}
+                                                                value={String(item.fixed_price) === '' ? '' : (isGrossMode ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate / 100)) : item.fixed_price)}
                                                                 onChange={e => updateFixedPrice(item.product_id, e.target.value)}
                                                                 className="w-28 h-8 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
                                                             />
