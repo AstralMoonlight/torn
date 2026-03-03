@@ -25,3 +25,4 @@ MANIFEST
 .venv/
 node_modules/
 *.log
+backend.pid
