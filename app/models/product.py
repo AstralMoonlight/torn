@@ -63,7 +63,10 @@ class Product(Base):
 
     # Impuesto
     tax_id = Column(Integer, ForeignKey("taxes.id"), nullable=True)
-    tax = relationship(Tax)
+    tax = relationship("Tax")
+
+    # Relación a la tabla pivote (las listas de precio que personalizan este producto)
+    price_list_associations = relationship("PriceListProduct", back_populates="product", cascade="all, delete-orphan")
 
     @property
     def full_name(self) -> str:

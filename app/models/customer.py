@@ -1,6 +1,7 @@
 """Modelo de Cliente / Contribuyente."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -24,6 +25,11 @@ class Customer(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    price_list_id = Column(Integer, ForeignKey("price_lists.id", ondelete="SET NULL"), nullable=True)
+
+    # Relación con la lista de precios
+    price_list = relationship("PriceList", back_populates="customers")
 
     def __repr__(self) -> str:
         return f"<Customer(rut='{self.rut}', razon_social='{self.razon_social}')>"
