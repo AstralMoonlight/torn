@@ -191,11 +191,11 @@ export default function InventarioPage() {
                                             <span className="text-[10px]">—</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-center">
+                                    <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Open menu</span>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+                                                    <span className="sr-only">Abrir menu</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>

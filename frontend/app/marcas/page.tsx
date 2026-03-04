@@ -128,13 +128,13 @@ export default function BrandsPage() {
                 />
             </div>
 
-            <div className="border rounded-lg bg-white dark:bg-neutral-950 shadow-sm">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[100px]">ID</TableHead>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
+                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
+                            <TableHead className="w-[100px] text-xs uppercase tracking-wider text-neutral-400 font-medium">ID</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Nombre</TableHead>
+                            <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -152,26 +152,28 @@ export default function BrandsPage() {
                             </TableRow>
                         ) : (
                             filteredBrands.map((brand) => (
-                                <TableRow key={brand.id}>
+                                <TableRow key={brand.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                                     <TableCell className="font-mono text-xs">{brand.id}</TableCell>
                                     <TableCell className="font-medium">{brand.name}</TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-1">
                                             <Button
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon"
                                                 onClick={() => handleOpenEdit(brand)}
-                                                className="h-8 w-8 p-0"
+                                                className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                title="Editar"
                                             >
-                                                <Pencil className="h-4 w-4 text-blue-600" />
+                                                <Pencil className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon"
                                                 onClick={() => handleDelete(brand)}
-                                                className="h-8 w-8 p-0"
+                                                className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                title="Eliminar"
                                             >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </TableCell>

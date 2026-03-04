@@ -471,13 +471,13 @@ export default function ComprasPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Documento</TableHead>
-                                        <TableHead>Proveedor</TableHead>
-                                        <TableHead className="text-right">Total</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
+                                <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
+                                    <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
+                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Fecha</TableHead>
+                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Documento</TableHead>
+                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Proveedor</TableHead>
+                                        <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Total</TableHead>
+                                        <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -487,7 +487,7 @@ export default function ComprasPage() {
                                         <TableRow><TableCell colSpan={5} className="text-center py-10 text-neutral-500">No hay compras registradas</TableCell></TableRow>
                                     ) : (
                                         purchases.map(p => (
-                                            <TableRow key={p.id} className="group">
+                                            <TableRow key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                                                 <TableCell className="text-xs">
                                                     {new Date(p.fecha_compra).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })}
                                                 </TableCell>
@@ -503,28 +503,36 @@ export default function ComprasPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        <a
-                                                            href={`${apiUrl}/purchases/${p.id}/pdf`}
-                                                            target="_blank"
-                                                            rel="noopener"
-                                                            className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-blue-600 dark:hover:bg-neutral-800 transition"
-                                                            title="Imprimir Comprobante"
-                                                        >
-                                                            <Printer className="h-4 w-4" />
-                                                        </a>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-blue-500"
+                                                            className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                            title="Imprimir Comprobante"
+                                                            asChild
+                                                        >
+                                                            <a
+                                                                href={`${apiUrl}/purchases/${p.id}/pdf`}
+                                                                target="_blank"
+                                                                rel="noopener"
+                                                            >
+                                                                <Printer className="h-4 w-4" />
+                                                            </a>
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                                             onClick={() => setSelectedPurchase(p)}
+                                                            title="Ver Detalle"
                                                         >
                                                             <Search className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-red-400 hover:text-red-600"
+                                                            className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                                                             onClick={() => setDeleteId(p.id)}
+                                                            title="Eliminar"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
