@@ -28,6 +28,14 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Switch } from '@/components/ui/switch'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 
 export default function TenantsListPage() {
     const router = useRouter()
@@ -424,100 +432,98 @@ export default function TenantsListPage() {
 
                 {/* Table */}
                 <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left relative">
-                            <thead className="text-xs text-neutral-500 uppercase bg-neutral-50/50 dark:bg-neutral-900/50 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
-                                <tr>
-                                    <th className="px-6 py-4 font-medium">Empresa</th>
-                                    <th className="px-6 py-4 font-medium">RUT</th>
-                                    <th className="px-6 py-4 font-medium">Esquema BD</th>
-                                    <th className="px-6 py-4 font-medium">Estado</th>
-                                    <th className="px-6 py-4 font-medium text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading && (
-                                    Array(3).fill(0).map((_, i) => (
-                                        <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800/50 bg-white dark:bg-neutral-900">
-                                            <td className="px-6 py-4"><Skeleton className="h-4 w-[250px]" /></td>
-                                            <td className="px-6 py-4"><Skeleton className="h-4 w-[100px]" /></td>
-                                            <td className="px-6 py-4"><Skeleton className="h-4 w-[120px]" /></td>
-                                            <td className="px-6 py-4"><Skeleton className="h-4 w-[60px]" /></td>
-                                            <td className="px-6 py-4" />
-                                        </tr>
-                                    ))
-                                )}
+                    <Table>
+                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
+                            <TableRow>
+                                <TableHead className="font-medium uppercase">Empresa</TableHead>
+                                <TableHead className="font-medium uppercase">RUT</TableHead>
+                                <TableHead className="font-medium uppercase">Esquema BD</TableHead>
+                                <TableHead className="font-medium uppercase">Estado</TableHead>
+                                <TableHead className="font-medium uppercase text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading && (
+                                Array(3).fill(0).map((_, i) => (
+                                    <TableRow key={i} className="border-b border-neutral-100 dark:border-neutral-800/50 bg-white dark:bg-neutral-900">
+                                        <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                                        <TableCell />
+                                    </TableRow>
+                                ))
+                            )}
 
-                                {!loading && filteredTenants.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-neutral-500">
-                                            {tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}
-                                        </td>
-                                    </tr>
-                                )}
+                            {!loading && filteredTenants.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-12 text-center text-neutral-500">
+                                        {tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
 
-                                {!loading && filteredTenants.map((tenant) => (
-                                    <tr key={tenant.id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-neutral-900 dark:text-neutral-100">
-                                            {tenant.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 font-mono">
-                                            {tenant.rut || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 font-mono text-xs">
-                                            {tenant.schema_name}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <Switch
-                                                    checked={tenant.is_active}
-                                                    onCheckedChange={(checked: boolean) => handleToggleStatus(tenant, checked)}
-                                                />
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-wider",
-                                                    tenant.is_active ? "text-emerald-600" : "text-neutral-400"
-                                                )}>
-                                                    {tenant.is_active ? 'Activo' : 'Inactivo'}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => openEditModal(tenant)}
-                                                    className="h-8 w-8 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
-                                                    title="Editar datos"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
+                            {!loading && filteredTenants.map((tenant) => (
+                                <TableRow key={tenant.id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                    <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
+                                        {tenant.name}
+                                    </TableCell>
+                                    <TableCell className="text-neutral-500 dark:text-neutral-400 font-mono">
+                                        {tenant.rut || '-'}
+                                    </TableCell>
+                                    <TableCell className="text-neutral-500 dark:text-neutral-400 font-mono text-xs">
+                                        {tenant.schema_name}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Switch
+                                                checked={tenant.is_active}
+                                                onCheckedChange={(checked: boolean) => handleToggleStatus(tenant, checked)}
+                                            />
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wider",
+                                                tenant.is_active ? "text-emerald-600" : "text-neutral-400"
+                                            )}>
+                                                {tenant.is_active ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => openEditModal(tenant)}
+                                                className="h-8 w-8 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+                                                title="Editar datos"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setTenantToDelete(tenant.id)}
+                                                className="h-8 w-8 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer"
+                                                disabled={!tenant.is_active}
+                                                title="Desactivar"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+
+                                            <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+
+                                            <Link href={`/saas-admin/tenants/${tenant.id}`}>
+                                                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
+                                                    Gestionar
                                                 </Button>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => setTenantToDelete(tenant.id)}
-                                                    className="h-8 w-8 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer"
-                                                    disabled={!tenant.is_active}
-                                                    title="Desactivar"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-
-                                                <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
-
-                                                <Link href={`/saas-admin/tenants/${tenant.id}`}>
-                                                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
-                                                        Gestionar
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            </Link>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
 
                 {/* Confirm Delete Dialog */}

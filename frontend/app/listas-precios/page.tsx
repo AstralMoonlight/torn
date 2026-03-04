@@ -9,6 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { getApiErrorMessage } from '@/services/api'
@@ -297,28 +305,28 @@ export default function PriceListsPage() {
 
             {/* Table */}
             <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase text-neutral-500 bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800">
-                        <tr>
-                            <th className="px-6 py-4 font-medium">Nombre</th>
-                            <th className="px-6 py-4 font-medium">Descripción</th>
-                            <th className="px-6 py-4 font-medium text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <Table>
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800">
+                        <TableRow>
+                            <TableHead className="font-medium">Nombre</TableHead>
+                            <TableHead className="font-medium">Descripción</TableHead>
+                            <TableHead className="font-medium text-right">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {/* Lista Base hardcodeada */}
                         {!loading && (
-                            <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 transition-colors">
-                                <td className="px-6 py-4 font-medium text-emerald-900 dark:text-emerald-100">
+                            <TableRow className="border-b border-neutral-100 dark:border-neutral-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 transition-colors">
+                                <TableCell className="font-medium text-emerald-900 dark:text-emerald-100">
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-emerald-500 shrink-0" />
                                         Precio Base (Catálogo General)
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 text-sm">
+                                </TableCell>
+                                <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">
                                     Precios por defecto de todos los productos del sistema.
-                                </td>
-                                <td className="px-6 py-4 text-right">
+                                </TableCell>
+                                <TableCell className="text-right">
                                     <Button
                                         variant="ghost" size="sm"
                                         className="h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer"
@@ -326,35 +334,35 @@ export default function PriceListsPage() {
                                     >
                                         <Pencil className="h-4 w-4 mr-1.5" /> Editar Precios
                                     </Button>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         )}
                         {loading && Array(3).fill(0).map((_, i) => (
-                            <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800">
-                                <td className="px-6 py-4"><Skeleton className="h-4 w-[200px]" /></td>
-                                <td className="px-6 py-4"><Skeleton className="h-4 w-[300px]" /></td>
-                                <td className="px-6 py-4" />
-                            </tr>
+                            <TableRow key={i} className="border-b border-neutral-100 dark:border-neutral-800">
+                                <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-[300px]" /></TableCell>
+                                <TableCell />
+                            </TableRow>
                         ))}
                         {!loading && priceLists.length === 0 && (
-                            <tr>
-                                <td colSpan={3} className="px-6 py-12 text-center text-neutral-400">
+                            <TableRow>
+                                <TableCell colSpan={3} className="py-12 text-center text-neutral-400">
                                     No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         )}
                         {!loading && priceLists.map(pl => (
-                            <tr key={pl.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                <td className="px-6 py-4 font-medium text-neutral-900 dark:text-neutral-100">
+                            <TableRow key={pl.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-blue-500 shrink-0" />
                                         {pl.name}
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400 text-sm">
+                                </TableCell>
+                                <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">
                                     {pl.description || <span className="italic text-neutral-300 dark:text-neutral-600">Sin descripción</span>}
-                                </td>
-                                <td className="px-6 py-4 text-right">
+                                </TableCell>
+                                <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
                                         <Button
                                             variant="ghost" size="icon"
@@ -373,11 +381,11 @@ export default function PriceListsPage() {
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
 
             {/* Create / Edit Modal */}

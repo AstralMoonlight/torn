@@ -11,6 +11,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -351,37 +359,37 @@ export default function TenantDetailsPage() {
                             {users.length === 0 ? (
                                 <div className="p-8 text-center text-neutral-500">Sin usuarios operativos registrados.</div>
                             ) : (
-                                <table className="w-full text-sm text-left relative">
-                                    <thead className="text-xs text-neutral-500 uppercase bg-neutral-50/50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
-                                        <tr>
-                                            <th className="px-6 py-4 font-medium">Global ID / Email</th>
-                                            <th className="px-6 py-4 font-medium">Nombre</th>
-                                            <th className="px-6 py-4 font-medium">Rol Local</th>
-                                            <th className="px-6 py-4 font-medium">Estado</th>
-                                            <th className="px-6 py-4 font-medium text-right">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                <Table>
+                                    <TableHeader className="bg-neutral-50/50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
+                                        <TableRow>
+                                            <TableHead className="font-medium uppercase">Global ID / Email</TableHead>
+                                            <TableHead className="font-medium uppercase">Nombre</TableHead>
+                                            <TableHead className="font-medium uppercase">Rol Local</TableHead>
+                                            <TableHead className="font-medium uppercase">Estado</TableHead>
+                                            <TableHead className="font-medium uppercase text-right">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {users.map(tu => (
-                                            <tr key={tu.user_id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                                <td className="px-6 py-4 font-medium text-neutral-900 dark:text-neutral-100">
+                                            <TableRow key={tu.user_id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                                <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
                                                     {tu.user.email}
                                                     {tu.user.is_superuser && <Badge variant="outline" className="ml-2 text-xs border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">Superadmin</Badge>}
-                                                </td>
-                                                <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">
+                                                </TableCell>
+                                                <TableCell className="text-neutral-500 dark:text-neutral-400">
                                                     {tu.user.full_name || '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Badge variant="secondary" className="font-mono text-xs bg-neutral-100 dark:bg-neutral-800">{tu.role_name}</Badge>
-                                                </td>
-                                                <td className="px-6 py-4">
+                                                </TableCell>
+                                                <TableCell>
                                                     {tu.is_active ?
                                                         <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0">Activo</Badge>
                                                         :
                                                         <Badge variant="secondary" className="text-neutral-500">Inactivo</Badge>
                                                     }
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
+                                                </TableCell>
+                                                <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <Button
                                                             variant="ghost"
@@ -401,11 +409,11 @@ export default function TenantDetailsPage() {
                                                             {tu.is_active ? <Trash2 className="h-4 w-4" /> : <ShieldPlus className="h-4 w-4" />}
                                                         </Button>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             )}
                         </div>
                     </div>

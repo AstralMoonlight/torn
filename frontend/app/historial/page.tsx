@@ -26,6 +26,14 @@ import {
     Loader2,
     Receipt,
 } from 'lucide-react'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { formatCLP } from '@/lib/format'
 
 
@@ -142,78 +150,76 @@ export default function HistorialPage() {
 
             {/* Table */}
             <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Folio</th>
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Tipo</th>
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden sm:table-cell text-center">Hora</th>
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden lg:table-cell">Cliente</th>
-                                <th className="text-right text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Total</th>
-                                <th className="text-right text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                            {loading ? (
-                                <tr><td colSpan={6} className="text-center py-12 text-neutral-400">Cargando...</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center py-12 text-neutral-400">Sin resultados</td></tr>
-                            ) : (
-                                Object.entries(groupedSales).map(([date, daySales]) => (
-                                    <Fragment key={date}>
-                                        <tr className="bg-neutral-100/50 dark:bg-neutral-800/60">
-                                            <td colSpan={6} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-neutral-500 dark:text-neutral-400 border-y border-neutral-100 dark:border-neutral-800">
-                                                {date}
-                                            </td>
-                                        </tr>
-                                        {daySales.map((sale) => (
-                                            <tr key={sale.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors group">
-                                                <td className="px-4 py-2.5 font-mono text-xs font-semibold text-neutral-900 dark:text-white">
-                                                    #{sale.folio}
-                                                </td>
-                                                <td className="px-4 py-2.5">
-                                                    <DteBadge tipo={sale.tipo_dte} />
-                                                </td>
-                                                <td className="px-4 py-2.5 text-xs text-neutral-500 hidden sm:table-cell text-center font-tabular">
-                                                    {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
-                                                </td>
-                                                <td className="px-4 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 hidden lg:table-cell truncate max-w-[200px]">
-                                                    {sale.customer?.razon_social || '—'}
-                                                </td>
-                                                <td className="px-4 py-2.5 text-right font-tabular text-xs font-semibold text-neutral-900 dark:text-white">
-                                                    {formatCLP(parseFloat(String(sale.monto_total)))}
-                                                </td>
-                                                <td className="px-4 py-2.5">
-                                                    <div className="flex justify-end gap-1">
-                                                        <a
-                                                            href={`${apiUrl}/sales/${sale.id}/pdf`}
-                                                            target="_blank"
-                                                            rel="noopener"
-                                                            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-blue-600 dark:hover:bg-neutral-800 transition"
-                                                            title="Ver PDF"
+                <Table>
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
+                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Folio</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Tipo</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden sm:table-cell text-center">Hora</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden lg:table-cell">Cliente</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Total</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                        {loading ? (
+                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-neutral-400">Cargando...</TableCell></TableRow>
+                        ) : filtered.length === 0 ? (
+                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-neutral-400">Sin resultados</TableCell></TableRow>
+                        ) : (
+                            Object.entries(groupedSales).map(([date, daySales]) => (
+                                <Fragment key={date}>
+                                    <TableRow className="bg-neutral-100/50 dark:bg-neutral-800/60 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/60">
+                                        <TableCell colSpan={6} className="text-[10px] font-bold uppercase tracking-[0.1em] text-neutral-500 dark:text-neutral-400 border-y border-neutral-100 dark:border-neutral-800">
+                                            {date}
+                                        </TableCell>
+                                    </TableRow>
+                                    {daySales.map((sale) => (
+                                        <TableRow key={sale.id} className="group">
+                                            <TableCell className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">
+                                                #{sale.folio}
+                                            </TableCell>
+                                            <TableCell>
+                                                <DteBadge tipo={sale.tipo_dte} />
+                                            </TableCell>
+                                            <TableCell className="text-xs text-neutral-500 hidden sm:table-cell text-center font-tabular">
+                                                {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
+                                            </TableCell>
+                                            <TableCell className="text-xs text-neutral-600 dark:text-neutral-400 hidden lg:table-cell truncate max-w-[200px]">
+                                                {sale.customer?.razon_social || '—'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-tabular text-xs font-semibold text-neutral-900 dark:text-white">
+                                                {formatCLP(parseFloat(String(sale.monto_total)))}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <a
+                                                        href={`${apiUrl}/sales/${sale.id}/pdf`}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-blue-600 dark:hover:bg-neutral-800 transition"
+                                                        title="Ver PDF"
+                                                    >
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                    </a>
+                                                    {sale.tipo_dte !== 61 && (
+                                                        <button
+                                                            onClick={() => setReturnDialog(sale)}
+                                                            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition"
+                                                            title="Nota de Crédito"
                                                         >
-                                                            <ExternalLink className="h-3.5 w-3.5" />
-                                                        </a>
-                                                        {sale.tipo_dte !== 61 && (
-                                                            <button
-                                                                onClick={() => setReturnDialog(sale)}
-                                                                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition"
-                                                                title="Nota de Crédito"
-                                                            >
-                                                                <RotateCcw className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </Fragment>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </Fragment>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
 
             {/* Return Dialog */}

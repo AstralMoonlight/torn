@@ -17,6 +17,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -134,84 +142,82 @@ export default function InventarioPage() {
 
             {/* Table */}
             <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">SKU</th>
-                                <th className="text-left text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Producto</th>
-                                <th className="text-right text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden sm:table-cell">Precio Neto</th>
-                                <th className="text-center text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium">Stock Total</th>
-                                <th className="text-center text-[10px] uppercase tracking-wider text-neutral-400 px-4 py-2.5 font-medium hidden lg:table-cell">Variantes</th>
-                                <th className="w-[50px]"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={5} className="text-center py-12 text-neutral-400">Cargando...</td>
-                                </tr>
-                            ) : filtered.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="text-center py-12 text-neutral-400">Sin resultados</td>
-                                </tr>
-                            ) : (
-                                filtered.map((p) => (
-                                    <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
-                                        <td className="px-4 py-2.5 font-mono text-xs text-neutral-500">{p.codigo_interno}</td>
-                                        <td className="px-4 py-2.5">
-                                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
-                                            {p.codigo_barras && (
-                                                <p className="text-xs text-neutral-400 font-mono">{p.codigo_barras}</p>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right font-tabular text-sm hidden sm:table-cell">
-                                            {formatCLP(parseFloat(p.precio_neto))}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-center">
-                                            {p.variants.length > 0 ? (
-                                                <Badge className="bg-neutral-100 text-neutral-600 hover:bg-neutral-200">
-                                                    {p.variants.reduce((acc, v) => acc + parseFloat(v.stock_actual), 0)} u.
-                                                </Badge>
-                                            ) : (
-                                                <StockBadge product={p} />
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-center text-xs text-neutral-400 font-tabular hidden lg:table-cell">
-                                            {p.variants.length > 0 ? (
-                                                <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
-                                            ) : (
-                                                <span className="text-[10px]">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-center">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Open menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => handleEdit(p)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Editar
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleDelete(p)} className="text-red-600 focus:text-red-600">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Eliminar
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <Table>
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
+                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">SKU</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Producto</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden sm:table-cell">Precio Neto</TableHead>
+                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Stock Total</TableHead>
+                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden lg:table-cell">Variantes</TableHead>
+                            <TableHead className="w-[50px] text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center py-12 text-neutral-400">Cargando...</TableCell>
+                            </TableRow>
+                        ) : filtered.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center py-12 text-neutral-400">Sin resultados</TableCell>
+                            </TableRow>
+                        ) : (
+                            filtered.map((p) => (
+                                <TableRow key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
+                                    <TableCell className="font-mono text-xs text-neutral-500">{p.codigo_interno}</TableCell>
+                                    <TableCell>
+                                        <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
+                                        {p.codigo_barras && (
+                                            <p className="text-xs text-neutral-400 font-mono">{p.codigo_barras}</p>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right font-tabular text-sm hidden sm:table-cell">
+                                        {formatCLP(parseFloat(p.precio_neto))}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {p.variants.length > 0 ? (
+                                            <Badge className="bg-neutral-100 text-neutral-600 hover:bg-neutral-200">
+                                                {p.variants.reduce((acc, v) => acc + parseFloat(v.stock_actual), 0)} u.
+                                            </Badge>
+                                        ) : (
+                                            <StockBadge product={p} />
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-center text-xs text-neutral-400 font-tabular hidden lg:table-cell">
+                                        {p.variants.length > 0 ? (
+                                            <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
+                                        ) : (
+                                            <span className="text-[10px]">—</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => handleEdit(p)}>
+                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    Editar
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="text-red-600 focus:text-red-600">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Eliminar
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
 
             {/* Product Wizard */}

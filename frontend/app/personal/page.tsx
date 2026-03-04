@@ -365,28 +365,28 @@ export default function PersonalPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-y border-neutral-100 dark:border-neutral-800">
-                                                    <th className="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider text-neutral-500">Menú / Sección</th>
+                                        <Table>
+                                            <TableHeader className="bg-neutral-50 dark:bg-neutral-900/50">
+                                                <TableRow className="border-y border-neutral-100 dark:border-neutral-800">
+                                                    <TableHead className="font-bold uppercase tracking-wider text-neutral-500">Menú / Sección</TableHead>
                                                     {roles.map(role => (
-                                                        <th key={role.id} className="py-3 px-6 text-center text-xs font-bold uppercase tracking-wider text-neutral-500">
+                                                        <TableHead key={role.id} className="text-center font-bold uppercase tracking-wider text-neutral-500">
                                                             {role.name}
-                                                        </th>
+                                                        </TableHead>
                                                     ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
                                                 {MENU_ITEMS.map((item, idx) => (
-                                                    <tr key={item} className="border-b border-neutral-100 dark:border-neutral-900 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30">
-                                                        <td className="py-3 px-6 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                                                    <TableRow key={item} className="border-b border-neutral-100 dark:border-neutral-900 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30">
+                                                        <TableCell className="font-medium text-neutral-700 dark:text-neutral-300">
                                                             {item}
-                                                        </td>
+                                                        </TableCell>
                                                         {roles.map(role => {
                                                             const isChecked = role.permissions?.[item] ?? false;
                                                             const isAdmin = role.name === 'ADMINISTRADOR';
                                                             return (
-                                                                <td key={role.id} className="py-3 px-6 text-center text-sm">
+                                                                <TableCell key={role.id} className="text-center">
                                                                     <div className="flex justify-center">
                                                                         <Checkbox
                                                                             checked={isChecked}
@@ -395,13 +395,13 @@ export default function PersonalPage() {
                                                                             className="h-4.5 w-4.5 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                                                         />
                                                                     </div>
-                                                                </td>
+                                                                </TableCell>
                                                             )
                                                         })}
-                                                    </tr>
+                                                    </TableRow>
                                                 ))}
-                                            </tbody>
-                                        </table>
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </CardContent>
                             </Card>
