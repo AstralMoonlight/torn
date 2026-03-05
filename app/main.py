@@ -60,6 +60,8 @@ from app.routers import auth
 app.include_router(auth.router)
 app.include_router(roles.router)
 app.include_router(price_lists.router)
+from app.routers import folios
+app.include_router(folios.router)
 
 
 @app.get("/")

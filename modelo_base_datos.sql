@@ -1667,5 +1667,36 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
+--
+-- Name: folio_request_logs; Type: TABLE; Schema: public; Owner: torn
+--
+
+CREATE TABLE public.folio_request_logs (
+    id integer NOT NULL,
+    dte_type integer NOT NULL,
+    amount_requested integer NOT NULL,
+    status character varying(20) DEFAULT 'PENDING'::character varying,
+    "timestamp" timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.folio_request_logs OWNER TO torn;
+
+CREATE SEQUENCE public.folio_request_logs_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.folio_request_logs_id_seq OWNER TO torn;
+
+ALTER SEQUENCE public.folio_request_logs_id_seq OWNED BY public.folio_request_logs.id;
+
+ALTER TABLE ONLY public.folio_request_logs ALTER COLUMN id SET DEFAULT nextval('public.folio_request_logs_id_seq'::regclass);
+
+ALTER TABLE ONLY public.folio_request_logs
+    ADD CONSTRAINT folio_request_logs_pkey PRIMARY KEY (id);
+
 \unrestrict Q2hNdhh7rBmsMcAOegrTi6Ml8hggY41qP4WSmwsGfpA1KKVKAa0XlX1e1abRBnG
 

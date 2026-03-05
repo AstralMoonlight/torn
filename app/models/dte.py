@@ -73,3 +73,27 @@ class CAF(Base):
         """Retorna representación string del objeto."""
         return f"<CAF(tipo={self.tipo_documento}, rango={self.folio_desde}-{self.folio_hasta})>"
 
+
+class FolioRequestLog(Base):
+    """Registro de solicitudes de folios al SII.
+
+    Trackea el historial de solicitudes de nuevos folios (CAF) realizadas por el usuario.
+
+    Attributes:
+        id (int): Identificador único (PK).
+        dte_type (int): Tipo de DTE solicitado (33, 39, 61, etc).
+        amount_requested (int): Cantidad de folios solicitados.
+        status (str): Estado de la solicitud (PENDING, COMPLETED, ERROR).
+        timestamp (datetime): Fecha y hora de la solicitud.
+    """
+    __tablename__ = "folio_request_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dte_type = Column(Integer, nullable=False, comment="33=Factura, 34=Exenta, 39=Boleta, 61=NC")
+    amount_requested = Column(Integer, nullable=False)
+    status = Column(String(20), default="PENDING", comment="PENDING|COMPLETED|ERROR")
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self) -> str:
+        return f"<FolioRequestLog(dte={self.dte_type}, amount={self.amount_requested}, status='{self.status}')>"
+
