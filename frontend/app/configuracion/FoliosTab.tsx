@@ -25,6 +25,7 @@ type FolioStock = {
     total: number;
     latest_folio_hasta: number;
     latest_folio_desde: number;
+    fecha_vencimiento: string | null;
 };
 
 type FolioLog = {
@@ -39,8 +40,13 @@ const DTE_NAMES: Record<number, string> = {
     33: "Factura Electrónica",
     34: "Factura Exenta",
     39: "Boleta Electrónica",
+    41: "Boleta Exenta",
+    52: "Guía de Despacho",
     56: "Nota de Débito",
     61: "Nota de Crédito",
+    110: "Factura de Exportación",
+    111: "ND de Exportación",
+    112: "NC de Exportación",
 };
 
 export default function FoliosTab() {
@@ -162,11 +168,11 @@ export default function FoliosTab() {
                                             <SelectValue placeholder="Seleccione Tipo de DTE" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="33">Factura Electrónica (33)</SelectItem>
-                                            <SelectItem value="34">Factura Exenta (34)</SelectItem>
-                                            <SelectItem value="39">Boleta Electrónica (39)</SelectItem>
-                                            <SelectItem value="61">Nota de Crédito (61)</SelectItem>
-                                            <SelectItem value="56">Nota de Débito (56)</SelectItem>
+                                            {Object.entries(DTE_NAMES).map(([code, name]) => (
+                                                <SelectItem key={code} value={code}>
+                                                    {name} ({code})
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -243,9 +249,16 @@ export default function FoliosTab() {
                                         </div>
                                     </div>
                                     {stock.total > 0 && (
-                                        <p className="text-xs text-muted-foreground mt-4">
-                                            Rango Actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
-                                        </p>
+                                        <div className="flex flex-col gap-1 mt-4">
+                                            <p className="text-xs text-muted-foreground">
+                                                Rango Actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
+                                            </p>
+                                            {stock.fecha_vencimiento && (
+                                                <p className="text-xs text-orange-600 dark:text-orange-400">
+                                                    Vence: {new Date(stock.fecha_vencimiento + 'T00:00:00').toLocaleDateString("es-CL")}
+                                                </p>
+                                            )}
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>

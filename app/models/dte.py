@@ -1,6 +1,6 @@
 """Modelos de Documento Tributario Electrónico (DTE) y Folios (CAF)."""
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -66,12 +66,13 @@ class CAF(Base):
     folio_desde = Column(Integer, nullable=False)
     folio_hasta = Column(Integer, nullable=False)
     ultimo_folio_usado = Column(Integer, nullable=False, default=0)
+    fecha_vencimiento = Column(Date, nullable=True, comment="Vigencia (6 meses desde autorización)")
     xml_caf = Column(Text, nullable=False, comment="XML del CAF entregado por el SII")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self) -> str:
         """Retorna representación string del objeto."""
-        return f"<CAF(tipo={self.tipo_documento}, rango={self.folio_desde}-{self.folio_hasta})>"
+        return f"<CAF(tipo={self.tipo_documento}, rango={self.folio_desde}-{self.folio_hasta}, vto={self.fecha_vencimiento})>"
 
 
 class FolioRequestLog(Base):

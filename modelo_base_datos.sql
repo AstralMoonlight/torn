@@ -66,6 +66,7 @@ CREATE TABLE public.cafs (
     folio_desde integer NOT NULL,
     folio_hasta integer NOT NULL,
     ultimo_folio_usado integer NOT NULL,
+    fecha_vencimiento date,
     xml_caf text NOT NULL,
     created_at timestamp with time zone DEFAULT now()
 );

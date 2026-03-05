@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -8,7 +8,7 @@ from app.models.dte import CAF, FolioRequestLog
 from app.models.user import User
 from app.dependencies.tenant import get_tenant_db, get_current_local_user, require_admin
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, date
 
 # --- Schemas Mínimos para Folios ---
 class FolioStockOut(BaseModel):
@@ -17,6 +17,7 @@ class FolioStockOut(BaseModel):
     total: int
     latest_folio_hasta: int
     latest_folio_desde: int
+    fecha_vencimiento: Optional[date] = None
     
 class FolioRequestIn(BaseModel):
     dte_type: int
@@ -43,8 +44,8 @@ def get_folios_status(
     Obtiene el estado actual (stock) de los folios por cada tipo de DTE.
     Retorna tarjetas de 33, 39, 61, 56.
     """
-    # DTEs más comunes que nos interesan trackear (Factura, Boleta, NC, ND)
-    target_dtes = [33, 34, 39, 56, 61]
+    # DTEs objetivos: Nacionales, Ajustes/Logística y Exportación
+    target_dtes = [33, 34, 39, 41, 52, 56, 61, 110, 111, 112]
     
     result = []
     
@@ -54,7 +55,8 @@ def get_folios_status(
             result.append(
                 FolioStockOut(
                     dte_type=dte_type, available=0, total=0,
-                    latest_folio_hasta=0, latest_folio_desde=0
+                    latest_folio_hasta=0, latest_folio_desde=0,
+                    fecha_vencimiento=None
                 )
             )
         else:
@@ -68,7 +70,8 @@ def get_folios_status(
                     available=available,
                     total=total,
                     latest_folio_hasta=caf.folio_hasta,
-                    latest_folio_desde=caf.folio_desde
+                    latest_folio_desde=caf.folio_desde,
+                    fecha_vencimiento=caf.fecha_vencimiento
                 )
             )
             
