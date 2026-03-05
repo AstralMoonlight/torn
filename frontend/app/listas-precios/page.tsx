@@ -307,32 +307,34 @@ export default function PriceListsPage() {
             <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800">
-                        <TableRow>
-                            <TableHead className="font-medium">Nombre</TableHead>
-                            <TableHead className="font-medium">Descripción</TableHead>
-                            <TableHead className="font-medium text-right">Acciones</TableHead>
+                        <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Nombre</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Descripción</TableHead>
+                            <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {/* Lista Base hardcodeada */}
                         {!loading && (
-                            <TableRow className="border-b border-neutral-100 dark:border-neutral-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-50/70 dark:hover:bg-emerald-900/20 transition-colors">
-                                <TableCell className="font-medium text-emerald-900 dark:text-emerald-100">
+                            <TableRow className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-emerald-500 shrink-0" />
+                                        <Tag className="h-4 w-4 text-neutral-400 shrink-0" />
                                         Precio Base (Catálogo General)
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">
+                                <TableCell className="text-sm text-neutral-500 dark:text-neutral-400">
                                     Precios por defecto de todos los productos del sistema.
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button
-                                        variant="ghost" size="sm"
-                                        className="h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                         onClick={openEditBase}
+                                        title="Editar Precios Base"
                                     >
-                                        <Pencil className="h-4 w-4 mr-1.5" /> Editar Precios
+                                        <Pencil className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
                             </TableRow>

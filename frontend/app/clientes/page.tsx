@@ -212,15 +212,15 @@ export default function CustomersPage() {
                 />
             </div>
 
-            <div className="border rounded-lg bg-white dark:bg-neutral-950 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[120px]">RUT</TableHead>
-                            <TableHead>Razón Social</TableHead>
-                            <TableHead className="hidden md:table-cell">Giro</TableHead>
-                            <TableHead className="hidden md:table-cell">Email</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
+                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
+                            <TableHead className="w-[120px] text-xs uppercase tracking-wider text-neutral-400 font-medium">RUT</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Razón Social</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Giro</TableHead>
+                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Email</TableHead>
+                            <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -238,37 +238,39 @@ export default function CustomersPage() {
                             </TableRow>
                         ) : (
                             filteredCustomers.map((customer) => (
-                                <TableRow key={customer.id}>
+                                <TableRow key={customer.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                                     <TableCell className="font-mono text-xs font-medium">{customer.rut}</TableCell>
                                     <TableCell className="font-medium">
                                         <div className="flex flex-col">
                                             <span>{customer.razon_social}</span>
-                                            <span className="md:hidden text-xs text-muted-foreground">{customer.giro}</span>
+                                            <span className="md:hidden text-xs text-neutral-400">{customer.giro}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-[200px]" title={customer.giro || ''}>
+                                    <TableCell className="hidden md:table-cell text-sm text-neutral-500 dark:text-neutral-400 truncate max-w-[200px]" title={customer.giro || ''}>
                                         {customer.giro}
                                     </TableCell>
-                                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                                    <TableCell className="hidden md:table-cell text-sm text-neutral-500 dark:text-neutral-400">
                                         {customer.email}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-1">
                                             <Button
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon"
                                                 onClick={() => handleOpenEdit(customer)}
-                                                className="h-8 w-8 p-0"
+                                                className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                title="Editar"
                                             >
-                                                <Pencil className="h-4 w-4 text-blue-600" />
+                                                <Pencil className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon"
                                                 onClick={() => handleDelete(customer)}
-                                                className="h-8 w-8 p-0"
+                                                className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                title="Eliminar"
                                             >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </TableCell>

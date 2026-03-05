@@ -193,23 +193,31 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <a
-                                                        href={`${apiUrl}/sales/${sale.id}/pdf`}
-                                                        target="_blank"
-                                                        rel="noopener"
-                                                        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-blue-600 dark:hover:bg-neutral-800 transition"
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                                         title="Ver PDF"
+                                                        asChild
                                                     >
-                                                        <ExternalLink className="h-3.5 w-3.5" />
-                                                    </a>
+                                                        <a
+                                                            href={`${apiUrl}/sales/${sale.id}/pdf`}
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                        >
+                                                            <ExternalLink className="h-4 w-4" />
+                                                        </a>
+                                                    </Button>
                                                     {sale.tipo_dte !== 61 && (
-                                                        <button
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
                                                             onClick={() => setReturnDialog(sale)}
-                                                            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition"
+                                                            className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                                                             title="Nota de Crédito"
                                                         >
-                                                            <RotateCcw className="h-3.5 w-3.5" />
-                                                        </button>
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        </Button>
                                                     )}
                                                 </div>
                                             </TableCell>

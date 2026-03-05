@@ -109,15 +109,15 @@ export default function ProvidersPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-md border">
+                    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>RUT</TableHead>
-                                    <TableHead>Razón Social</TableHead>
-                                    <TableHead className="hidden md:table-cell">Giro</TableHead>
-                                    <TableHead className="hidden lg:table-cell">Email</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
+                            <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
+                                <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
+                                    <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">RUT</TableHead>
+                                    <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Razón Social</TableHead>
+                                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Giro</TableHead>
+                                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Email</TableHead>
+                                    <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -139,31 +139,36 @@ export default function ProvidersPage() {
                                     </TableRow>
                                 ) : (
                                     filtered.map((provider) => (
-                                        <TableRow key={provider.id}>
+                                        <TableRow key={provider.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                                             <TableCell className="font-mono text-xs">{formatRut(provider.rut)}</TableCell>
                                             <TableCell className="font-medium">{provider.razon_social}</TableCell>
-                                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                                            <TableCell className="hidden md:table-cell text-sm text-neutral-500 dark:text-neutral-400">
                                                 {provider.giro}
                                             </TableCell>
-                                            <TableCell className="hidden lg:table-cell text-sm">
+                                            <TableCell className="hidden lg:table-cell text-sm text-neutral-500 dark:text-neutral-400">
                                                 {provider.email}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => handleEdit(provider)} className="gap-2">
-                                                            <Edit2 className="h-3.5 w-3.5" /> Editar
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDelete(provider.id)} className="gap-2 text-destructive focus:text-destructive">
-                                                            <Trash2 className="h-3.5 w-3.5" /> Desactivar
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEdit(provider)}
+                                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleDelete(provider.id)}
+                                                        className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                        title="Desactivar"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
