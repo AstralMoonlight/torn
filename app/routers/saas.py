@@ -19,10 +19,10 @@ router = APIRouter(prefix="/saas", tags=["SaaS Management"])
 
 @router.get("/actecos", response_model=list[ActecoOut])
 async def search_actecos(
-    q: str | None = None,
-    limit: int = 30,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db),
+    q: str | None = None,
+    limit: int = 30,
 ):
     """
     Busca códigos ACTECO por código o descripción.
