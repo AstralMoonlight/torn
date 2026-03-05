@@ -1,6 +1,6 @@
 """Modelo de Caja (Sesiones)."""
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -37,6 +37,7 @@ class CashSession(Base):
     final_cash_system = Column(Numeric(15, 2), default=0, comment="Efectivo esperado por ventas/retiros")
     final_cash_declared = Column(Numeric(15, 2), default=0, comment="Efectivo contado por cajero")
     difference = Column(Numeric(15, 2), default=0, comment="Diferencia (Sobra/Falta)")
+    audit_metadata = Column(JSON, nullable=True)
     
     status = Column(String(20), default="OPEN", index=True, comment="OPEN | CLOSED")
 

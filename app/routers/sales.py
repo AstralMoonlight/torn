@@ -21,7 +21,7 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
-from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -74,8 +74,8 @@ def list_sales(
 def create_sale(
     sale_in: SaleCreate, 
     db: Session = Depends(get_tenant_db),
-    current_user: TenantUser = Depends(get_current_tenant_user),
-    global_db: Session = Depends(get_global_db)
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user)
 ):
     """
     Registra una nueva venta en el sistema.
@@ -103,14 +103,6 @@ def create_sale(
         HTTPException(500): Si falla la generación del DTE.
     """
     # 0. Validar Caja Abierta
-    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
-    local_user = db.query(User).filter(User.email == saas_user.email).first()
-    if not local_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Usuario local no encontrado en la sucursal actual."
-        )
-        
     seller_id_to_use = local_user.id
     
     active_session = db.query(CashSession).filter(
@@ -233,6 +225,7 @@ def create_sale(
         user_id=seller_id_to_use,
         details=sale_details,
         stock_movements=stock_movements, # Vinculación automática
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None
     )
     db.add(new_sale)
     db.flush()  # Genera new_sale.id sin hacer commit todavía
@@ -308,8 +301,8 @@ def create_sale(
 def create_return(
     return_in: ReturnCreate, 
     db: Session = Depends(get_tenant_db),
-    current_user: TenantUser = Depends(get_current_tenant_user),
-    global_db: Session = Depends(get_global_db)
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user)
 ):
     """
     Registra una Devolución de mercadería (Nota de Crédito).
@@ -333,13 +326,6 @@ def create_return(
         HTTPException(400): Si el medio de devolución es inválido.
     """
     # 0. Validar Caja Abierta (si se devuelve efectivo)
-    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
-    local_user = db.query(User).filter(User.email == saas_user.email).first()
-    if not local_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Usuario local no encontrado en la sucursal actual."
-        )
     user_id = local_user.id
     
     # 1. Buscar Venta Original
@@ -417,7 +403,8 @@ def create_return(
         descripcion=f"Devolución: {return_in.reason}",
         details=sale_details,
         stock_movements=stock_movements,
-        related_sale_id=original_sale.id
+        related_sale_id=original_sale.id,
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None
     )
     db.add(nc_sale)
     db.flush()

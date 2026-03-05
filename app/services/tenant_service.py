@@ -154,6 +154,18 @@ def provision_new_tenant(
         connection.execute(insert_roles_sql)
         connection.execute(text(f"SELECT setval('\"{schema_name}\".roles_id_seq', 2)"))
 
+        role_id_res = connection.execute(text(f"""
+            SELECT id FROM "{schema_name}".roles WHERE name = 'ADMINISTRADOR'
+        """)).first()
+        admin_role_id = role_id_res[0] if role_id_res else 1
+
+        insert_system_user_sql = text(f"""
+            INSERT INTO "{schema_name}".users
+            (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
+            VALUES
+            ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
+        """)
+        connection.execute(insert_system_user_sql, {"role_id": admin_role_id})
         
         connection.commit()
 

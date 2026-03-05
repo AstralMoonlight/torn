@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 
 from app.database import engine, SessionLocal
 from app.models.saas import SaaSUser, Tenant, TenantUser
+from app.models.user import User
 from jose import JWTError, jwt
 
 # Importamos variables de seguridad (asumiendo que están en su utils original o auth.py)
@@ -108,6 +109,28 @@ async def get_tenant_db(
         tenant_session.close()
         connection.execution_options(schema_translate_map=None)
         connection.close()
+
+async def get_current_local_user(
+    current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
+    tenant_db: Session = Depends(get_tenant_db)
+) -> User:
+    """Retorna el usuario operativo local, con bypass para el administrador global SaaS."""
+    if current_user.is_superuser:
+        local_user = tenant_db.query(User).filter(User.is_system_user == True).first()
+        if not local_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Usuario de soporte inyectado no encontrado en el inquilino local."
+            )
+        return local_user
+    
+    local_user = tenant_db.query(User).filter(User.email == current_user.email).first()
+    if not local_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuario local no encontrado en la sucursal actual."
+        )
+    return local_user
 
 
 async def require_admin(tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)]):

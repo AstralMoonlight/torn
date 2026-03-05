@@ -16,7 +16,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/sellers", response_model=List[UserOut], summary="Listar Vendedores")
 def list_sellers(db: Session = Depends(get_tenant_db)):
     """Lista todos los usuarios con rol SELLER activos."""
-    return db.query(User).filter(User.role == "SELLER", User.is_active == True).all()
+    return db.query(User).filter(User.role == "SELLER", User.is_active == True, User.is_system_user == False).all()
 
 @router.get("/", response_model=List[UserOut], summary="Listar Todos los Usuarios")
 def list_all_users(
@@ -26,7 +26,7 @@ def list_all_users(
     global_db: Session = Depends(get_global_db)
 ):
     """Lista usuarios del esquema local (Solo activos)."""
-    query = db.query(User).filter(User.is_active == True)
+    query = db.query(User).filter(User.is_active == True, User.is_system_user == False)
     if role:
         query = query.filter(User.role == role)
     local_users = query.all()
@@ -163,6 +163,9 @@ def update_user(
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
+    if db_user.is_system_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No se puede modificar un usuario de sistema.")
+        
     old_email = db_user.email
     
     update_data = user_update.model_dump(exclude_unset=True, exclude={"password"})
@@ -216,6 +219,9 @@ def delete_user(
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    if db_user.is_system_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No se puede eliminar un usuario de sistema.")
     
     db_user.is_active = False
     db.commit()

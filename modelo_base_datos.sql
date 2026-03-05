@@ -122,7 +122,8 @@ CREATE TABLE public.cash_sessions (
     final_cash_system numeric(15,2),
     final_cash_declared numeric(15,2),
     difference numeric(15,2),
-    status character varying(20)
+    status character varying(20),
+    audit_metadata jsonb
 );
 
 
@@ -755,7 +756,8 @@ CREATE TABLE public.sales (
     created_at timestamp with time zone DEFAULT now(),
     related_sale_id integer,
     seller_id integer,
-    customer_id integer
+    customer_id integer,
+    audit_metadata jsonb
 );
 
 
@@ -967,7 +969,8 @@ CREATE TABLE public.users (
     password_hash character varying(255),
     pin character varying(10),
     role_id integer,
-    full_name character varying(100)
+    full_name character varying(100),
+    is_system_user boolean DEFAULT false
 );
 
 
@@ -1503,6 +1506,8 @@ CREATE INDEX ix_users_id ON public.users USING btree (id);
 --
 
 CREATE UNIQUE INDEX ix_users_rut ON public.users USING btree (rut);
+
+CREATE UNIQUE INDEX ix_users_system_user ON public.users USING btree (is_system_user) WHERE (is_system_user = true);
 
 
 --

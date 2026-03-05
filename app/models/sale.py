@@ -1,6 +1,6 @@
 """Modelos de Venta y Detalle de Venta."""
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -41,6 +41,7 @@ class Sale(Base):
     monto_total = Column(Numeric(15, 2), default=0)
     descripcion = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    audit_metadata = Column(JSON, nullable=True)
 
     # Relaciones
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")

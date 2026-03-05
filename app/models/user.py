@@ -1,6 +1,6 @@
 """Modelo de Usuario / Contribuyente."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, ForeignKey, JSON, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -57,6 +57,9 @@ class User(Base):
         updated_at (datetime): Última fecha de actualización.
     """
     __tablename__ = "users"
+    __table_args__ = (
+        Index('ix_users_system_user', 'is_system_user', unique=True, postgresql_where=(Column('is_system_user') == True)),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(150), unique=True, index=True, nullable=True) # Principal para personal
@@ -64,6 +67,7 @@ class User(Base):
     razon_social = Column(String(200), nullable=True, server_default="Sin Razón Social")
     is_active = Column(Boolean, default=True)
     is_owner = Column(Boolean, default=False, server_default="false") # Si es el dueño (Global) de la empresa
+    is_system_user = Column(Boolean, default=False, server_default="false") # Usuario de soporte/sistema
     
     # Personal Operativo
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)

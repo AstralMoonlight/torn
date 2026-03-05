@@ -14,8 +14,8 @@ from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut, CashSessionWithUserOut
 
-from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_global_user
-from app.models.saas import TenantUser, SaaSUser
+from app.dependencies.tenant import get_tenant_db, get_current_local_user, get_current_global_user
+from app.models.saas import SaaSUser
 from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
@@ -27,8 +27,8 @@ router = APIRouter(prefix="/cash", tags=["cash"])
 def open_session(
     session_in: CashSessionCreate, 
     db: Session = Depends(get_tenant_db),
-    current_user: TenantUser = Depends(get_current_tenant_user),
-    global_db: Session = Depends(get_global_db)
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user)
 ):
     """Abre una nueva sesión de caja.
 
@@ -45,11 +45,6 @@ def open_session(
     Raises:
         HTTPException(400): Si ya existe una sesión abierta.
     """
-    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
-    local_user = db.query(User).filter(User.email == saas_user.email).first()
-    if not local_user:
-        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
-        
     user_id = local_user.id
 
     # Verificar si ya tiene una abierta
@@ -81,7 +76,8 @@ def open_session(
         final_cash_system=0,
         final_cash_declared=0,
         difference=0,
-        status="OPEN"
+        status="OPEN",
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None
     )
     db.add(new_session)
     db.commit()
@@ -94,8 +90,7 @@ def open_session(
              description="Consulta el estado actual de la caja del usuario.")
 def session_status(
     db: Session = Depends(get_tenant_db),
-    current_user: TenantUser = Depends(get_current_tenant_user),
-    global_db: Session = Depends(get_global_db)
+    local_user: User = Depends(get_current_local_user)
 ):
     """Obtiene el estado de la caja actual.
     
@@ -109,11 +104,6 @@ def session_status(
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
-    local_user = db.query(User).filter(User.email == saas_user.email).first()
-    if not local_user:
-        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
-        
     user_id = local_user.id
         
     active_session = db.query(CashSession).filter(
@@ -153,8 +143,8 @@ def session_status(
 def close_session(
     close_in: CashSessionClose, 
     db: Session = Depends(get_tenant_db),
-    current_user: TenantUser = Depends(get_current_tenant_user),
-    global_db: Session = Depends(get_global_db)
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user)
 ):
     """Cierra la sesión de caja y realiza arqueo (Blind Cash Count).
 
@@ -171,11 +161,6 @@ def close_session(
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    saas_user = global_db.query(SaaSUser).filter(SaaSUser.id == current_user.user_id).first()
-    local_user = db.query(User).filter(User.email == saas_user.email).first()
-    if not local_user:
-        raise HTTPException(status_code=400, detail="Usuario local no encontrado en la sucursal actual.")
-        
     user_id = local_user.id
     active_session = db.query(CashSession).filter(
         CashSession.user_id == user_id,
@@ -206,6 +191,8 @@ def close_session(
     active_session.final_cash_declared = close_in.final_cash_declared
     active_session.difference = close_in.final_cash_declared - final_system
     active_session.status = "CLOSED"
+    if local_user.is_system_user:
+        active_session.audit_metadata = {"saas_admin_email": global_user.email, "closed_by": "system_user"}
     
     db.commit()
     db.refresh(active_session)
