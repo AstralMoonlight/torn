@@ -35,7 +35,13 @@ type Tab = 'products' | 'customers'
 interface DraftItem extends PriceItem {
     product_name: string
     tax_rate: number
+    precio_bruto_base: number  // Server-computed gross price for display ratio
 }
+
+// ── Tax rate normalizer ───────────────────────────────────────────────────
+// The DB may have rates stored as decimals (0.19) or as percentages (19).
+// Normalize to always be in decimal form.
+const normalizeTaxRate = (rate: number): number => rate > 1 ? rate / 100 : rate
 
 // ── Main Page Component ────────────────────────────────────────────────────
 
@@ -134,7 +140,8 @@ export default function PriceListsPage() {
             product_id: p.id,
             product_name: p.full_name,
             fixed_price: parseFloat(String(p.precio_neto)),
-            tax_rate: p.tax?.rate ?? 0.19
+            tax_rate: normalizeTaxRate(p.tax?.rate ?? 0.19),
+            precio_bruto_base: Number(p.precio_bruto)
         })))
 
         setOpenModal(true)
@@ -166,7 +173,8 @@ export default function PriceListsPage() {
             return {
                 ...item,
                 product_name: prod?.full_name ?? `Producto #${item.product_id}`,
-                tax_rate: prod?.tax?.rate ?? 0.19
+                tax_rate: normalizeTaxRate(prod?.tax?.rate ?? 0.19),
+                precio_bruto_base: prod ? Number(prod.precio_bruto) : 0
             }
         }))
 
@@ -251,7 +259,8 @@ export default function PriceListsPage() {
             product_id: p.id,
             product_name: p.full_name,
             fixed_price: parseFloat(String(p.precio_neto)),
-            tax_rate: p.tax?.rate ?? 0.19
+            tax_rate: normalizeTaxRate(p.tax?.rate ?? 0.19),
+            precio_bruto_base: Number(p.precio_bruto)
         }])
     }
 
@@ -509,7 +518,7 @@ export default function PriceListsPage() {
                                                             <div className="shrink-0 ml-2 text-right">
                                                                 <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
                                                                     ${(isGrossMode
-                                                                        ? Math.round(Number(p.precio_neto) * (1 + (p.tax?.rate ?? 0.19)))
+                                                                        ? Number(p.precio_bruto)
                                                                         : Number(p.precio_neto)
                                                                     ).toLocaleString('es-CL')}
                                                                 </p>
@@ -565,7 +574,7 @@ export default function PriceListsPage() {
                                                                         ? ''
                                                                         : isGrossMode
                                                                             ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate))
-                                                                            : item.fixed_price
+                                                                            : Number(item.fixed_price)
                                                                 }
                                                                 onChange={e => updateFixedPrice(item.product_id, e.target.value)}
                                                                 className="w-28 h-7 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
