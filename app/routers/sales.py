@@ -212,6 +212,11 @@ def create_sale(
         last_sale = db.query(Sale).filter(Sale.tipo_dte == tipo).order_by(Sale.folio.desc()).first()
         nuevo_folio = (last_sale.folio + 1) if last_sale else 1
 
+    # Serializar referencias para columna JSON (solo para Factura)
+    referencias_json = None
+    if sale_in.referencias:
+        referencias_json = [r.model_dump() for r in sale_in.referencias]
+
     # 5. Crear Venta
     new_sale = Sale(
         customer_id=customer.id,
@@ -225,7 +230,8 @@ def create_sale(
         user_id=seller_id_to_use,
         details=sale_details,
         stock_movements=stock_movements, # Vinculación automática
-        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None,
+        referencias=referencias_json,
     )
     db.add(new_sale)
     db.flush()  # Genera new_sale.id sin hacer commit todavía

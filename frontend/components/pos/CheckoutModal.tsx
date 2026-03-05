@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createSale, getPaymentMethods, getSalePdfUrl, type PaymentMethod } from '@/services/sales'
+import { createSale, getPaymentMethods, getSalePdfUrl, type PaymentMethod, type DocumentReference } from '@/services/sales'
 import { type Customer } from '@/services/customers'
 import { toast } from 'sonner'
 import {
@@ -29,6 +29,9 @@ import {
     Receipt,
     FileText,
     Printer,
+    ChevronDown,
+    ChevronRight,
+    FileStack,
 } from 'lucide-react'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
 import { formatCLP } from '@/lib/format'
@@ -80,6 +83,19 @@ interface Props {
 
 const GENERIC_RUT = '66666666-6'
 
+/** Tipos de documento de referencia más usados (SII Chile). */
+const REFERENCE_DOC_TYPES = [
+    { value: '801', label: '801 - Orden de Compra' },
+    { value: '52', label: '52 - Guía de Despacho Electrónica' },
+    { value: 'HES', label: 'HES - Hoja de Estado de Pago' },
+    { value: '802', label: '802 - Nota de Pedido' },
+    { value: '46', label: '46 - Factura de Compra' },
+] as const
+
+function formatDateForInput(d: Date): string {
+    return d.toISOString().slice(0, 10)
+}
+
 export default function CheckoutModal({ open, onClose }: Props) {
     const { items, totalFinal, clear, customer, setCustomer } = useCartStore()
     const { userId } = useSessionStore()
@@ -94,6 +110,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const [success, setSuccess] = useState(false)
     const [lastFolio, setLastFolio] = useState<number | null>(null)
     const [lastSaleId, setLastSaleId] = useState<number | null>(null)
+    const [refsSectionOpen, setRefsSectionOpen] = useState(false)
+    const [referencias, setReferencias] = useState<DocumentReference[]>([])
 
     // Load payment methods on open
     useEffect(() => {
@@ -109,6 +127,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setLastFolio(null)
             setLastSaleId(null)
             setDteType('boleta')
+            setReferencias([])
+            setRefsSectionOpen(false)
         }
     }, [open, totalFinal])
 
@@ -118,7 +138,18 @@ export default function CheckoutModal({ open, onClose }: Props) {
         setSuccess(false)
         setLastFolio(null)
         setLastSaleId(null)
+        setReferencias([])
         onClose()
+    }
+
+    const addReferencia = () => {
+        setReferencias((prev) => [...prev, { tipo_documento: '801', folio: '', fecha: formatDateForInput(new Date()) }])
+    }
+    const removeReferencia = (index: number) => {
+        setReferencias((prev) => prev.filter((_, i) => i !== index))
+    }
+    const updateReferencia = (index: number, field: keyof DocumentReference, value: string) => {
+        setReferencias((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
     }
 
     const handlePrint = async () => {
@@ -227,7 +258,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     payment_method_id: p.method.id,
                     amount: p.amount,
                 })),
-                seller_id: userId || undefined
+                seller_id: userId || undefined,
+                ...(isBoleta ? {} : { referencias: referencias.filter((r) => r.folio.trim() && r.fecha) }),
             })
 
             setSuccess(true)
@@ -360,6 +392,73 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                     placeholder={isBoleta ? 'Buscar cliente (opcional)…' : 'Buscar cliente por Nombre o RUT…'}
                                 />
                             </div>
+
+                            {/* Referencias (solo Factura) */}
+                            {!isBoleta && (
+                                <div className="space-y-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRefsSectionOpen((o) => !o)}
+                                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 transition-colors"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <FileStack className="h-3.5 w-3.5 text-neutral-500" />
+                                            Referencias (OC, Guía, etc.)
+                                            {referencias.length > 0 && (
+                                                <Badge variant="secondary" className="text-[10px]">{referencias.length}</Badge>
+                                            )}
+                                        </span>
+                                        {refsSectionOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                                    </button>
+                                    {refsSectionOpen && (
+                                        <div className="px-3 pb-3 pt-0 space-y-2 border-t border-neutral-200 dark:border-neutral-700">
+                                            <p className="text-[10px] text-neutral-500 pt-2">Opcional. Documentos previos que respaldan la factura.</p>
+                                            {referencias.map((ref, idx) => (
+                                                <div key={idx} className="grid grid-cols-[1fr 1fr auto] gap-1.5 items-end">
+                                                    <div className="space-y-0.5">
+                                                        <Label className="text-[10px] text-neutral-500">Tipo</Label>
+                                                        <select
+                                                            value={ref.tipo_documento}
+                                                            onChange={(e) => updateReferencia(idx, 'tipo_documento', e.target.value)}
+                                                            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                                        >
+                                                            {REFERENCE_DOC_TYPES.map((opt) => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <Label className="text-[10px] text-neutral-500">Folio</Label>
+                                                        <Input
+                                                            value={ref.folio}
+                                                            onChange={(e) => updateReferencia(idx, 'folio', e.target.value)}
+                                                            placeholder="Nº"
+                                                            className="h-8 text-xs"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-0.5">
+                                                        <div className="space-y-0.5">
+                                                            <Label className="text-[10px] text-neutral-500">Fecha</Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={ref.fecha}
+                                                                onChange={(e) => updateReferencia(idx, 'fecha', e.target.value)}
+                                                                className="h-8 w-[110px] text-xs"
+                                                            />
+                                                        </div>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 shrink-0" onClick={() => removeReferencia(idx)}>
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <Button type="button" variant="outline" size="sm" onClick={addReferencia} className="h-7 text-[11px] gap-1 w-full">
+                                                <Plus className="h-3 w-3" /> Añadir referencia
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <Separator />
 

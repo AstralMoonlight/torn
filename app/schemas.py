@@ -297,6 +297,13 @@ class SalePaymentCreate(BaseModel):
     transaction_code: Optional[str] = None
 
 
+class DocumentReferenceCreate(BaseModel):
+    """Referencia a documento previo (OC, Guía, etc.) para Factura Electrónica."""
+    tipo_documento: str  # ej. "801", "52", "HES"
+    folio: str
+    fecha: str  # YYYY-MM-DD
+
+
 class SaleCreate(BaseModel):
     """Datos requeridos para registrar una nueva venta."""
 
@@ -306,6 +313,7 @@ class SaleCreate(BaseModel):
     payments: List[SalePaymentCreate]  # Pagos múltiples
     descripcion: Optional[str] = None
     seller_id: Optional[int] = None
+    referencias: Optional[List[DocumentReferenceCreate]] = None
 
     @field_validator("rut_cliente")
     @classmethod
@@ -326,6 +334,12 @@ class SaleDetailOut(BaseModel):
     product: ProductOut  # Nested product details
 
 
+class DocumentReferenceOut(BaseModel):
+    tipo_documento: str
+    folio: str
+    fecha: str
+
+
 class SaleOut(BaseModel):
     """Representación completa de una venta."""
 
@@ -341,7 +355,8 @@ class SaleOut(BaseModel):
     descripcion: Optional[str] = None
     created_at: datetime
     related_sale_id: Optional[int] = None
-    
+    referencias: Optional[List[DocumentReferenceOut]] = None
+
     customer: CustomerOut
     details: List[SaleDetailOut]
 

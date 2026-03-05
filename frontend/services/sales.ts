@@ -12,6 +12,13 @@ export interface SaleItem {
     cantidad: number
 }
 
+/** Referencia a documento previo (OC, Guía, etc.) para Factura Electrónica. */
+export interface DocumentReference {
+    tipo_documento: string
+    folio: string
+    fecha: string // YYYY-MM-DD
+}
+
 export interface SaleCreate {
     rut_cliente: string
     tipo_dte?: number
@@ -19,6 +26,7 @@ export interface SaleCreate {
     payments: SalePaymentCreate[]
     descripcion?: string
     seller_id?: number
+    referencias?: DocumentReference[]
 }
 
 export interface SaleDetailOut {

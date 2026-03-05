@@ -42,6 +42,8 @@ class Sale(Base):
     descripcion = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     audit_metadata = Column(JSON, nullable=True)
+    # Referencias a documentos previos (OC, Guía, etc.) para Factura Electrónica SII
+    referencias = Column(JSON, nullable=True, comment="Lista de {tipo_documento, folio, fecha}")
 
     # Relaciones
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")
