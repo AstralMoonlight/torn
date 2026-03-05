@@ -134,7 +134,7 @@ export default function PriceListsPage() {
             product_id: p.id,
             product_name: p.full_name,
             fixed_price: parseFloat(String(p.precio_neto)),
-            tax_rate: p.tax?.rate ?? 19
+            tax_rate: p.tax?.rate ?? 0.19
         })))
 
         setOpenModal(true)
@@ -166,7 +166,7 @@ export default function PriceListsPage() {
             return {
                 ...item,
                 product_name: prod?.full_name ?? `Producto #${item.product_id}`,
-                tax_rate: prod?.tax?.rate ?? 19
+                tax_rate: prod?.tax?.rate ?? 0.19
             }
         }))
 
@@ -251,7 +251,7 @@ export default function PriceListsPage() {
             product_id: p.id,
             product_name: p.full_name,
             fixed_price: parseFloat(String(p.precio_neto)),
-            tax_rate: p.tax?.rate ?? 19
+            tax_rate: p.tax?.rate ?? 0.19
         }])
     }
 
@@ -265,7 +265,7 @@ export default function PriceListsPage() {
                 const val = parseFloat(rawValue)
                 if (isNaN(val)) return i
                 if (isGrossMode) {
-                    return { ...i, fixed_price: parseFloat((val / (1 + i.tax_rate / 100)).toFixed(4)) }
+                    return { ...i, fixed_price: parseFloat((val / (1 + i.tax_rate)).toFixed(4)) }
                 }
                 return { ...i, fixed_price: val }
             }
@@ -509,7 +509,7 @@ export default function PriceListsPage() {
                                                             <div className="shrink-0 ml-2 text-right">
                                                                 <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
                                                                     ${(isGrossMode
-                                                                        ? Math.round(Number(p.precio_neto) * (1 + (p.tax?.rate ?? 19) / 100))
+                                                                        ? Math.round(Number(p.precio_neto) * (1 + (p.tax?.rate ?? 0.19)))
                                                                         : Number(p.precio_neto)
                                                                     ).toLocaleString('es-CL')}
                                                                 </p>
@@ -564,7 +564,7 @@ export default function PriceListsPage() {
                                                                     String(item.fixed_price) === ''
                                                                         ? ''
                                                                         : isGrossMode
-                                                                            ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate / 100))
+                                                                            ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate))
                                                                             : item.fixed_price
                                                                 }
                                                                 onChange={e => updateFixedPrice(item.product_id, e.target.value)}
