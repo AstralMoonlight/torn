@@ -26,3 +26,4 @@ MANIFEST
 node_modules/
 *.log
 backend.pid
+data/
