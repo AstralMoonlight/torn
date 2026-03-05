@@ -508,7 +508,10 @@ export default function PriceListsPage() {
                                                             </div>
                                                             <div className="shrink-0 ml-2 text-right">
                                                                 <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
-                                                                    ${Number(p.precio_neto).toLocaleString('es-CL')}
+                                                                    ${(isGrossMode
+                                                                        ? Math.round(Number(p.precio_neto) * (1 + (p.tax?.rate ?? 19) / 100))
+                                                                        : Number(p.precio_neto)
+                                                                    ).toLocaleString('es-CL')}
                                                                 </p>
                                                                 <Plus className="h-3 w-3 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
                                                             </div>
