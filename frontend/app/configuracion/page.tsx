@@ -18,8 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Loader2, Save, Plus, Settings, Percent, Printer, LayoutGrid, Layers } from 'lucide-react'
+import { Loader2, Save, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText } from 'lucide-react'
 import { useUIStore } from '@/lib/store/uiStore'
+import FoliosTab from './FoliosTab'
 
 export default function ConfigurationPage() {
     const [settings, setSettings] = useState<SystemSettings | null>(null)
@@ -97,12 +98,15 @@ export default function ConfigurationPage() {
             </div>
 
             <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                     <TabsTrigger value="general" className="gap-2">
                         <Settings className="h-4 w-4" /> General
                     </TabsTrigger>
                     <TabsTrigger value="impuestos" className="gap-2">
                         <Percent className="h-4 w-4" /> Impuestos
+                    </TabsTrigger>
+                    <TabsTrigger value="folios" className="gap-2">
+                        <FileText className="h-4 w-4" /> Folios (CAF)
                     </TabsTrigger>
                 </TabsList>
 
@@ -275,6 +279,14 @@ export default function ConfigurationPage() {
                                     </TableBody>
                                 </Table>
                             </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="folios">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <FoliosTab />
                         </CardContent>
                     </Card>
                 </TabsContent>
