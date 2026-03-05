@@ -19,7 +19,6 @@ import {
     Settings,
     ShieldCheck,
     LogOut,
-    FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -65,7 +64,6 @@ const navGroups = [
         label: 'Sistema',
         items: [
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
-            { href: '/configuracion/folios', label: 'Folios (CAF)', icon: FileText, permissionKey: 'Configuración' },
             { href: '/saas-admin', label: 'Terminal SaaS Global', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
     }
