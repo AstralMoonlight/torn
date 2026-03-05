@@ -35,3 +35,9 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 El backend quedará en http://localhost:8000. Déjalo corriendo en una terminal y usa el frontend en otra.
+
+**Catálogo ACTECO (opcional):** Para que el formulario de Tenants pueda buscar actividades económicas SII, carga el catálogo una vez:
+
+```bash
+python scripts/seed_actecos.py
+```

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { getTenants, createTenant, updateTenant, deleteTenant, type Tenant } from '@/services/saas'
+import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem } from '@/services/saas'
 import { getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
 import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
@@ -59,24 +59,8 @@ export default function TenantsListPage() {
         economic_activities: [] as any[]
     })
     const [actecoSearch, setActecoSearch] = useState('')
-
-    // Lista de referencia ACTECO (SII)
-    const ACTECO_LIST = [
-        { code: "464903", name: "Venta al por mayor de artículos de perfumería, tocador y cosméticos", category: "1ra", taxable: true },
-        { code: "465909", name: "Venta al por mayor de otros tipos de maquinaria y equipo n.c.p.", category: "1ra", taxable: true },
-        { code: "477201", name: "Venta al por menor de productos farmacéuticos y medicinales", category: "1ra", taxable: true },
-        { code: "477399", name: "Venta al por menor de otros productos n.c.p. en comercios especializados", category: "1ra", taxable: true },
-        { code: "620100", name: "Actividades de programación informática", category: "2da", taxable: false },
-        { code: "620200", name: "Consultoría de informática y de gestión de instalaciones", category: "2da", taxable: false },
-        { code: "702000", name: "Actividades de consultoría de gestión", category: "2da", taxable: false },
-        { code: "471110", name: "Venta al por menor en comercios de alimentos, bebidas o tabaco (Supermercados)", category: "1ra", taxable: true },
-        { code: "471900", name: "Otras empresas de venta al por menor en comercios no especializados", category: "1ra", taxable: true },
-    ]
-
-    const filteredActecos = ACTECO_LIST.filter(a =>
-        a.name.toLowerCase().includes(actecoSearch.toLowerCase()) ||
-        a.code.includes(actecoSearch)
-    )
+    const [actecoResults, setActecoResults] = useState<ActecoItem[]>([])
+    const [actecoSearchLoading, setActecoSearchLoading] = useState(false)
 
     const filteredTenants = tenants.filter(t =>
         t.name.toLowerCase().includes(tenantSearch.toLowerCase()) ||
@@ -84,7 +68,7 @@ export default function TenantsListPage() {
         t.schema_name.toLowerCase().includes(tenantSearch.toLowerCase())
     )
 
-    const toggleActeco = (acteco: any) => {
+    const toggleActeco = (acteco: ActecoItem) => {
         const exists = formData.economic_activities.find(a => a.code === acteco.code)
         if (exists) {
             setFormData({
@@ -115,6 +99,22 @@ export default function TenantsListPage() {
     useEffect(() => {
         fetchTenants()
     }, [])
+
+    // Búsqueda ACTECO con debounce
+    useEffect(() => {
+        if (!openModal) return
+        const t = setTimeout(() => {
+            setActecoSearchLoading(true)
+            searchActecos(actecoSearch || undefined, 50)
+                .then(setActecoResults)
+                .catch((err) => {
+                    setActecoResults([])
+                    toast.error(getApiErrorMessage(err, 'Error al buscar actividades económicas'))
+                })
+                .finally(() => setActecoSearchLoading(false))
+        }, 300)
+        return () => clearTimeout(t)
+    }, [openModal, actecoSearch])
 
     const fetchTenants = () => {
         setLoading(true)
@@ -358,25 +358,36 @@ export default function TenantsListPage() {
 
                                     <div className="h-32 rounded border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-y-auto">
                                         <div className="p-2 space-y-1">
-                                            {filteredActecos.map(acteco => {
-                                                const isSelected = formData.economic_activities.find(a => a.code === acteco.code)
-                                                return (
-                                                    <div
-                                                        key={acteco.code}
-                                                        onClick={() => toggleActeco(acteco)}
-                                                        className={`flex items-center justify-between p-2 rounded text-xs cursor-pointer transition-colors ${isSelected
-                                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
-                                                            }`}
-                                                    >
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold">{acteco.code}</span>
-                                                            <span className="truncate max-w-[300px]">{acteco.name}</span>
+                                            {actecoSearchLoading ? (
+                                                <div className="flex items-center justify-center py-6 text-neutral-500 text-sm">
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                    Buscando...
+                                                </div>
+                                            ) : actecoResults.length === 0 ? (
+                                                <div className="py-6 text-center text-neutral-500 text-sm">
+                                                    {actecoSearch.trim() ? 'Sin resultados. Escribe código o nombre.' : 'Escribe para buscar por código o nombre (ACTECO SII).'}
+                                                </div>
+                                            ) : (
+                                                actecoResults.map(acteco => {
+                                                    const isSelected = formData.economic_activities.some((a: ActecoItem) => a.code === acteco.code)
+                                                    return (
+                                                        <div
+                                                            key={acteco.code}
+                                                            onClick={() => toggleActeco(acteco)}
+                                                            className={`flex items-center justify-between p-2 rounded text-xs cursor-pointer transition-colors ${isSelected
+                                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                                : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                                                                }`}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold">{acteco.code}</span>
+                                                                <span className="truncate max-w-[300px]">{acteco.name}</span>
+                                                            </div>
+                                                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                                                         </div>
-                                                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                                                    </div>
-                                                )
-                                            })}
+                                                    )
+                                                })
+                                            )}
                                         </div>
                                     </div>
 

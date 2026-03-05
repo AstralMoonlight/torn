@@ -4,6 +4,16 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
+
+class ActecoOut(BaseModel):
+    code: str
+    name: str
+    taxable: bool = True
+    category: Optional[str] = None
+    internet_available: bool = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 class TenantCreate(BaseModel):
     name: str
     rut: str

@@ -1,3 +1,4 @@
+from .acteco import Acteco
 from .product import Product
 from .user import User
 from .issuer import Issuer

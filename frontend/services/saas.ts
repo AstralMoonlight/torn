@@ -70,7 +70,23 @@ export interface TenantUserUpdate {
     full_name?: string
 }
 
+export interface ActecoItem {
+    code: string
+    name: string
+    taxable: boolean
+    category?: string
+    internet_available: boolean
+}
+
 import api from './api'
+
+export async function searchActecos(q?: string, limit = 30): Promise<ActecoItem[]> {
+    const params = new URLSearchParams()
+    if (q?.trim()) params.set('q', q.trim())
+    params.set('limit', String(Math.min(100, Math.max(1, limit))))
+    const { data } = await api.get<ActecoItem[]>(`/saas/actecos?${params.toString()}`)
+    return data
+}
 
 export async function getTenants(): Promise<Tenant[]> {
     const { data } = await api.get<Tenant[]>('/saas/tenants')

@@ -8,12 +8,36 @@ from app.models.saas import SaaSUser
 
 # Asumiremos la existencia de schemas Pydantic para el payload, 
 # pero los definiremos en app/schemas/saas_schemas.py después.
-from app.schemas_saas import TenantCreate, TenantOut, TenantUserOut, TenantUserCreate, TenantUpdate, TenantUserUpdate
+from app.schemas_saas import TenantCreate, TenantOut, TenantUserOut, TenantUserCreate, TenantUpdate, TenantUserUpdate, ActecoOut
 from app.models.saas import Tenant, TenantUser, SaaSPlan
+from app.models.acteco import Acteco
 from app.utils.security import get_password_hash
 from app.services.tenant_service import provision_new_tenant
 
 router = APIRouter(prefix="/saas", tags=["SaaS Management"])
+
+
+@router.get("/actecos", response_model=list[ActecoOut])
+async def search_actecos(
+    q: str | None = None,
+    limit: int = 30,
+    current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
+    global_db: Session = Depends(get_global_db),
+):
+    """
+    Busca códigos ACTECO por código o descripción.
+    Limita resultados para optimizar rendimiento (por defecto 30).
+    """
+    limit = min(max(1, limit), 100)
+    query = global_db.query(Acteco)
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            (Acteco.code.ilike(term)) | (Acteco.name.ilike(term))
+        )
+    rows = query.order_by(Acteco.code).limit(limit).all()
+    return rows
+
 
 @router.get("/tenants", response_model=list[TenantOut])
 async def list_tenants(
