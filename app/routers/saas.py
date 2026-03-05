@@ -345,3 +345,96 @@ async def update_tenant_user(
             
     return tenant_user
 
+
+@router.post("/tenants/{tenant_id}/inject-system-user", status_code=status.HTTP_200_OK)
+async def inject_system_user(
+    tenant_id: int,
+    current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
+    global_db: Session = Depends(get_global_db)
+):
+    """
+    Inyecta el usuario de sistema (Soporte Torn) en un tenant existente.
+    Útil para tenants creados antes de que se implementara esta funcionalidad.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    tenant = global_db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    try:
+        # Verificar si ya existe
+        existing = global_db.execute(
+            text(f'SELECT id FROM "{tenant.schema_name}".users WHERE is_system_user = true LIMIT 1')
+        ).fetchone()
+
+        if existing:
+            return {"status": "already_exists", "tenant": tenant.name, "schema": tenant.schema_name}
+
+        # Obtener rol ADMINISTRADOR del tenant
+        role_res = global_db.execute(
+            text(f"SELECT id FROM \"{tenant.schema_name}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
+        ).fetchone()
+        admin_role_id = role_res[0] if role_res else 1
+
+        # Insertar usuario de sistema
+        global_db.execute(text(f"""
+            INSERT INTO "{tenant.schema_name}".users
+            (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
+            VALUES
+            ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
+        """), {"role_id": admin_role_id})
+        global_db.commit()
+
+        return {"status": "injected", "tenant": tenant.name, "schema": tenant.schema_name}
+
+    except Exception as e:
+        global_db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error inyectando usuario de sistema: {str(e)}")
+
+
+@router.post("/tenants/inject-system-users-all", status_code=status.HTTP_200_OK)
+async def inject_system_users_all(
+    current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
+    global_db: Session = Depends(get_global_db)
+):
+    """
+    Inyecta el usuario de sistema (Soporte Torn) en TODOS los tenants que no lo tengan.
+    Endpoint de mantenimiento masivo.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    tenants = global_db.query(Tenant).filter(Tenant.is_active == True).all()
+    results = []
+
+    for tenant in tenants:
+        try:
+            existing = global_db.execute(
+                text(f'SELECT id FROM "{tenant.schema_name}".users WHERE is_system_user = true LIMIT 1')
+            ).fetchone()
+
+            if existing:
+                results.append({"tenant": tenant.name, "status": "already_exists"})
+                continue
+
+            role_res = global_db.execute(
+                text(f"SELECT id FROM \"{tenant.schema_name}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
+            ).fetchone()
+            admin_role_id = role_res[0] if role_res else 1
+
+            global_db.execute(text(f"""
+                INSERT INTO "{tenant.schema_name}".users
+                (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
+                VALUES
+                ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
+            """), {"role_id": admin_role_id})
+            global_db.commit()
+            results.append({"tenant": tenant.name, "status": "injected"})
+
+        except Exception as e:
+            global_db.rollback()
+            results.append({"tenant": tenant.name, "status": "error", "detail": str(e)})
+
+    return {"results": results}

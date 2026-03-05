@@ -970,7 +970,8 @@ CREATE TABLE public.users (
     pin character varying(10),
     role_id integer,
     full_name character varying(100),
-    is_system_user boolean DEFAULT false
+    is_system_user boolean DEFAULT false,
+    is_owner boolean DEFAULT false
 );
 
 
