@@ -392,7 +392,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                     disabled={!availableDtes.some(d => ![33, 39].includes(d.dte_type))}
                                                 >
                                                     {![33, 39].includes(dteType) && availableDtes.find(d => d.dte_type === dteType) ? (
-                                                        availableDtes.find(d => d.dte_type === dteType)?.dte_type === 34 ? 'Exenta (34)' :
+                                                        availableDtes.find(d => d.dte_type === dteType)?.dte_type === 34 ? 'Factura Exenta (34)' :
                                                             availableDtes.find(d => d.dte_type === dteType)?.dte_type === 41 ? 'Boleta E. (41)' :
                                                                 `DTE ${dteType}`
                                                     ) : (
@@ -403,7 +403,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             <DropdownMenuContent align="end" className="w-40 text-xs">
                                                 {availableDtes.find(d => d.dte_type === 34) && (
                                                     <DropdownMenuItem onClick={() => setDteType(34)} className="text-xs flex gap-2">
-                                                        <FileText className="h-3.5 w-3.5 text-neutral-500" /> Exenta (34)
+                                                        <FileText className="h-3.5 w-3.5 text-neutral-500" /> Factura Exenta (34)
                                                     </DropdownMenuItem>
                                                 )}
                                                 {availableDtes.find(d => d.dte_type === 41) && (

@@ -39,7 +39,7 @@ import { formatCLP } from '@/lib/format'
 function DteBadge({ tipo }: { tipo: number }) {
     const map: Record<number, { label: string; color: string }> = {
         33: { label: 'Factura', color: 'bg-blue-600' },
-        34: { label: 'Exenta', color: 'bg-blue-500' },
+        34: { label: 'Factura Exenta', color: 'bg-blue-500' },
         39: { label: 'Boleta', color: 'bg-emerald-600' },
         41: { label: 'Boleta Exenta', color: 'bg-emerald-500' },
         56: { label: 'N. Débito', color: 'bg-orange-500' },
