@@ -11,6 +11,12 @@ import {
     DialogFooter,
     DialogDescription,
 } from '@/components/ui/dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -360,27 +366,53 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {/* DTE Type Toggle */}
                             {availableDtes.length > 0 ? (
                                 <Tabs value={dteType.toString()} onValueChange={(v) => setDteType(Number(v))}>
-                                    <TabsList className={`grid w-full grid-cols-${Math.min(availableDtes.filter(d => [33, 34, 39, 41].includes(d.dte_type)).length, 4)}`}>
-                                        {availableDtes.find(d => d.dte_type === 39) && (
-                                            <TabsTrigger value="39" className="gap-1.5 text-xs">
-                                                <Receipt className="h-3.5 w-3.5" /> Boleta (39)
-                                            </TabsTrigger>
-                                        )}
-                                        {availableDtes.find(d => d.dte_type === 41) && (
-                                            <TabsTrigger value="41" className="gap-1.5 text-xs">
-                                                <Receipt className="h-3.5 w-3.5" /> Boleta E. (41)
-                                            </TabsTrigger>
-                                        )}
-                                        {availableDtes.find(d => d.dte_type === 33) && (
-                                            <TabsTrigger value="33" className="gap-1.5 text-xs">
-                                                <FileText className="h-3.5 w-3.5" /> Factura (33)
-                                            </TabsTrigger>
-                                        )}
-                                        {availableDtes.find(d => d.dte_type === 34) && (
-                                            <TabsTrigger value="34" className="gap-1.5 text-xs">
-                                                <FileText className="h-3.5 w-3.5" /> Exenta (34)
-                                            </TabsTrigger>
-                                        )}
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        <TabsTrigger
+                                            value="39"
+                                            className="gap-1.5 text-xs"
+                                            disabled={!availableDtes.some(d => d.dte_type === 39)}
+                                        >
+                                            <Receipt className="h-3.5 w-3.5" /> Boleta
+                                        </TabsTrigger>
+
+                                        <TabsTrigger
+                                            value="33"
+                                            className="gap-1.5 text-xs"
+                                            disabled={!availableDtes.some(d => d.dte_type === 33)}
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> Factura
+                                        </TabsTrigger>
+
+                                        {/* Dropdown Menu para los DTEs extra o seleccionados fuera de 33/39 */}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <TabsTrigger
+                                                    value={![33, 39].includes(dteType) ? dteType.toString() : "extra"}
+                                                    className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                                                    disabled={!availableDtes.some(d => ![33, 39].includes(d.dte_type))}
+                                                >
+                                                    {![33, 39].includes(dteType) && availableDtes.find(d => d.dte_type === dteType) ? (
+                                                        availableDtes.find(d => d.dte_type === dteType)?.dte_type === 34 ? 'Exenta (34)' :
+                                                            availableDtes.find(d => d.dte_type === dteType)?.dte_type === 41 ? 'Boleta E. (41)' :
+                                                                `DTE ${dteType}`
+                                                    ) : (
+                                                        "..."
+                                                    )}
+                                                </TabsTrigger>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-40 text-xs">
+                                                {availableDtes.find(d => d.dte_type === 34) && (
+                                                    <DropdownMenuItem onClick={() => setDteType(34)} className="text-xs flex gap-2">
+                                                        <FileText className="h-3.5 w-3.5 text-neutral-500" /> Exenta (34)
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {availableDtes.find(d => d.dte_type === 41) && (
+                                                    <DropdownMenuItem onClick={() => setDteType(41)} className="text-xs flex gap-2">
+                                                        <Receipt className="h-3.5 w-3.5 text-neutral-500" /> Boleta E. (41)
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TabsList>
                                 </Tabs>
                             ) : (
