@@ -299,9 +299,10 @@ class SalePaymentCreate(BaseModel):
 
 class DocumentReferenceCreate(BaseModel):
     """Referencia a documento previo (OC, Guía, etc.) para Factura Electrónica."""
-    tipo_documento: str  # ej. "801", "52", "HES"
+    tipo_documento: str  # ej. "801", "52", "HES", "33"
     folio: str
     fecha: str  # YYYY-MM-DD
+    sii_reason_code: Optional[int] = None  # 1: Anula, 2: Corrige Texto, 3: Corrige Monto
 
 
 class SaleCreate(BaseModel):
@@ -338,6 +339,7 @@ class DocumentReferenceOut(BaseModel):
     tipo_documento: str
     folio: str
     fecha: str
+    sii_reason_code: Optional[int] = None
 
 
 class SaleOut(BaseModel):
@@ -368,6 +370,8 @@ class ReturnItem(BaseModel):
 
 class ReturnCreate(BaseModel):
     original_sale_id: int
+    tipo_dte: int = 61
+    sii_reason_code: int = 1
     items: List[ReturnItem]
     reason: str
     return_method_id: int # ID de medio de pago para devolución (Caja o Credito)

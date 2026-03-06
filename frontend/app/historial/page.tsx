@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState, Fragment } from 'react'
-import { getSales, getPaymentMethods, type SaleOut, type PaymentMethod } from '@/services/sales'
+import { getSales, getPaymentMethods, createReturn, getFoliosStatus, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { createReturn } from '@/services/sales'
 import {
     Dialog,
     DialogContent,
@@ -40,8 +39,14 @@ import { formatCLP } from '@/lib/format'
 function DteBadge({ tipo }: { tipo: number }) {
     const map: Record<number, { label: string; color: string }> = {
         33: { label: 'Factura', color: 'bg-blue-600' },
+        34: { label: 'Exenta', color: 'bg-blue-500' },
         39: { label: 'Boleta', color: 'bg-emerald-600' },
+        41: { label: 'Boleta Exenta', color: 'bg-emerald-500' },
+        56: { label: 'N. Débito', color: 'bg-orange-500' },
         61: { label: 'N. Crédito', color: 'bg-red-500' },
+        110: { label: 'Factura Export.', color: 'bg-indigo-600' },
+        111: { label: 'ND Export.', color: 'bg-indigo-500' },
+        112: { label: 'NC Export.', color: 'bg-pink-500' },
     }
     const info = map[tipo] || { label: `DTE ${tipo}`, color: 'bg-neutral-500' }
     return <Badge className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
@@ -56,16 +61,27 @@ export default function HistorialPage() {
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [returnMethodId, setReturnMethodId] = useState<number>(0)
     const [submittingReturn, setSubmittingReturn] = useState(false)
+    const [availableAdjustments, setAvailableAdjustments] = useState<FolioStockOut[]>([])
+    const [returnDteType, setReturnDteType] = useState<number>(61)
+    const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
 
     useEffect(() => {
         Promise.all([
             getSales(),
             getPaymentMethods(),
+            getFoliosStatus(),
         ])
-            .then(([s, m]) => {
+            .then(([s, m, f]) => {
                 setSales(s)
                 setMethods(m)
                 if (m.length > 0) setReturnMethodId(m[0].id)
+
+                const adjs = f.filter(d => [56, 61, 111, 112].includes(d.dte_type) && d.available_folios > 0)
+                setAvailableAdjustments(adjs)
+                if (adjs.length > 0) {
+                    const nc = adjs.find(a => a.dte_type === 61)
+                    setReturnDteType(nc ? 61 : adjs[0].dte_type)
+                }
             })
             .catch(() => toast.error('Error cargando historial'))
             .finally(() => setLoading(false))
@@ -103,6 +119,8 @@ export default function HistorialPage() {
         try {
             await createReturn({
                 original_sale_id: returnDialog.id,
+                tipo_dte: returnDteType,
+                sii_reason_code: siiReasonCode,
                 items: returnDialog.details.map((d) => ({
                     product_id: d.product_id,
                     cantidad: Number(d.cantidad),
@@ -110,7 +128,7 @@ export default function HistorialPage() {
                 reason: returnReason,
                 return_method_id: returnMethodId,
             })
-            toast.success('Nota de Crédito emitida')
+            toast.success('Documento de Ajuste emitido')
             setReturnDialog(null)
             setReturnReason('')
             // Refresh sales
@@ -208,13 +226,13 @@ export default function HistorialPage() {
                                                             <ExternalLink className="h-4 w-4" />
                                                         </a>
                                                     </Button>
-                                                    {sale.tipo_dte !== 61 && (
+                                                    {![56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => setReturnDialog(sale)}
                                                             className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                                                            title="Nota de Crédito"
+                                                            title="Generar Nota (Ajuste)"
                                                         >
                                                             <RotateCcw className="h-4 w-4" />
                                                         </Button>
@@ -236,7 +254,7 @@ export default function HistorialPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
                             <RotateCcw className="h-4 w-4 text-red-500" />
-                            Nota de Crédito
+                            Generar Nota de Ajuste
                         </DialogTitle>
                         <DialogDescription>
                             Folio #{returnDialog?.folio} — {formatCLP(parseFloat(String(returnDialog?.monto_total || 0)))}
@@ -244,10 +262,39 @@ export default function HistorialPage() {
                     </DialogHeader>
 
                     <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">Tipo de Documento *</Label>
+                                <select
+                                    value={returnDteType}
+                                    onChange={(e) => setReturnDteType(parseInt(e.target.value))}
+                                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs"
+                                >
+                                    {availableAdjustments.map((a) => (
+                                        <option key={a.dte_type} value={a.dte_type}>
+                                            {a.dte_type === 61 ? 'N. Crédito (61)' : a.dte_type === 56 ? 'N. Débito (56)' : a.dte_type === 111 ? 'ND Export. (111)' : `DTE ${a.dte_type}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">Razón SII *</Label>
+                                <select
+                                    value={siiReasonCode}
+                                    onChange={(e) => setSiiReasonCode(parseInt(e.target.value))}
+                                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs truncate"
+                                >
+                                    <option value={1}>1 - Anula Documento</option>
+                                    <option value={2}>2 - Corrige Texto</option>
+                                    <option value={3}>3 - Corrige Monto</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Motivo de la devolución *</Label>
+                            <Label className="text-xs">Motivo descriptivo *</Label>
                             <Input
-                                placeholder="Ej: Producto defectuoso"
+                                placeholder="Ej: Error en digitación"
                                 value={returnReason}
                                 onChange={(e) => setReturnReason(e.target.value)}
                                 className="h-9 text-sm"
@@ -294,7 +341,7 @@ export default function HistorialPage() {
                             className="gap-1.5 text-xs"
                         >
                             {submittingReturn ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
-                            Emitir NC
+                            Emitir Documento
                         </Button>
                     </DialogFooter>
                 </DialogContent>

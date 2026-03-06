@@ -1,0 +1,498 @@
+[33mcommit 1b5389670f72d31eef229628e3d61bfa20a135e9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/pos-invoice-references[m[33m)[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 20:50:46 2026 -0300
+
+    feat: add multiple document references support for invoices in POS. Closes #10
+    
+    Made-with: Cursor
+
+[33mcommit 416b2dbec6ef904b8a0fe0334958fc8aa5d0453e[m[33m ([m[1;32mfeature/full-acteco-codes[m[33m)[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 20:39:31 2026 -0300
+
+    feat: migrate ACTECOs to DB, add search API and searchable combobox. Closes #9
+    
+    Made-with: Cursor
+
+[33mcommit 575dde95717cdd7c604dfce5c35d54c740c20770[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 19:11:29 2026 -0300
+
+    chore: ignore data directory
+
+[33mcommit 66ee534644052f28d226142550f8c0dc65e73336[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 19:10:55 2026 -0300
+
+    clean: remove old folios page after refactor
+
+[33mcommit 152b5dcc6a5482a837cfcd8d35ba4cd8ed0b4a60[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:56:27 2026 -0300
+
+    feat: Add extended DTE types and CAF expiration date support
+
+[33mcommit 21ee55536465815e47f49ac972a9a50c80b8c651[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:20:08 2026 -0300
+
+    refactor: Move Folios UI into Configuration tabs
+
+[33mcommit 7561e5018143220372b5d2bd84216526ce1cf41c[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:18:55 2026 -0300
+
+    Revert "fix: Add Folios to sidebar navigation"
+    
+    This reverts commit 805c2d5bbd43f7313cc0468a25d555fc0cfd148f.
+
+[33mcommit 805c2d5bbd43f7313cc0468a25d555fc0cfd148f[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:16:41 2026 -0300
+
+    fix: Add Folios to sidebar navigation
+
+[33mcommit 9c0644a92629914abf2f467bfd5a70966a174d8c[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:12:25 2026 -0300
+
+    feat: Folio (CAF) Management UI and backend structure
+
+[33mcommit e8b94de2488e58ee8c48eb0f0e0d59eb6132d9ac[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 18:04:47 2026 -0300
+
+    corrección en tenants antiguos erro500
+
+[33mcommit 277adc4cd77fbe91e0495b0df4f40493765d64cf[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 14:22:58 2026 -0300
+
+    fix: use servidor precio_bruto and normalize tax_rate to prevent format inconsistencies
+
+[33mcommit 834baec47a0e083cc2b1fb40ed69375e56f43f98[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 14:12:47 2026 -0300
+
+    fix: correct tax rate calculation and restore JSX structure. Closes #8
+
+[33mcommit 8b795b0e086976af7bd610ef49d2ef1005614f33[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 14:05:26 2026 -0300
+
+    fe: sync net/gross toggle state with product catalog search results. Closes #8
+
+[33mcommit 8ac37fae2086f0e882a46c9127f102f43bfc9f25[m
+Merge: e6e643c 472a5ac
+Author: AstralMoonlight <120393343+AstralMoonlight@users.noreply.github.com>
+Date:   Thu Mar 5 13:59:22 2026 -0300
+
+    Merge pull request #19 from AstralMoonlight/feature/support-system-user
+    
+    Implementar Usuario de Soporte Sistema para acceso God Mode #17
+
+[33mcommit 472a5acf90ffa719ddb800e2a34070f313948830[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 13:53:27 2026 -0300
+
+    Implementar Usuario de Soporte Sistema para acceso God Mode #17
+
+[33mcommit e6e643c353d67fe66cc7ef30aaeab79500f8a7a2[m
+Merge: 4109d0b 320c0c1
+Author: AstralMoonlight <120393343+AstralMoonlight@users.noreply.github.com>
+Date:   Thu Mar 5 13:29:01 2026 -0300
+
+    Merge pull request #18 from AstralMoonlight/feature/standardize-tables
+    
+    Feature/standardize tables
+
+[33mcommit 320c0c1231f77a106333104fe8b471664bafdce2[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 13:27:11 2026 -0300
+
+    feat: estandarizar tablas y automatizar ejecución del entorno
+    
+    Detalles:
+    - Unificación de la lógica y diseño de tablas en los módulos del sistema.
+    - Inclusión de run.py para el levantamiento concurrente de Backend (FastAPI) y Frontend (Next.js).
+    - Implementación de limpieza automática de puertos 8000 y 3000 al iniciar.
+
+[33mcommit ef9cd3824a50dfb8203ff3014a41922fecb6f523[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Thu Mar 5 13:25:09 2026 -0300
+
+    feat(scripts): implementar script de ejecución unificada (run.py)
+    
+    Este script automatiza el levantamiento simultáneo del entorno de desarrollo para el proyecto Torn. Incluye limpieza de puertos 8000/3000 con 'fuser', gestión de hilos para logs con prefijos de color y manejo de cierre limpio de procesos.
+
+[33mcommit fddfecea989c7aa61e511cadc454528dffe7db1a[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 22:27:27 2026 -0300
+
+    fe: standardize table UI, spacing, and action buttons globally. Closes #7
+
+[33mcommit 4109d0b8dfe4897c022876845a4179103309eb2f[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 22:01:36 2026 -0300
+
+    refactor(ui): refactor list views to use semantic shadcn tables Cierra #6
+
+[33mcommit 98fd50fea3b41ce5b291a7f4b7311f86d2b02dfc[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 20:31:28 2026 -0300
+
+    fe(price-lists): show browsable product catalog grid in create/edit modal
+
+[33mcommit a767e69c4a4157e3da113fb82f9e8a7d0211f6b4[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 20:16:16 2026 -0300
+
+    fe(price-lists): show browsable product catalog grid in create/edit modal
+
+[33mcommit 90b0f8c8dd295726f8ef51b19f01b8925e5862f7[m[33m ([m[1;31morigin/feature/price-lists[m[33m)[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 20:03:57 2026 -0300
+
+    fe: add net/gross price toggle in price list manager
+
+[33mcommit d882498202a80a70cc09847d3b172c6556d0afe9[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 19:37:47 2026 -0300
+
+    fe: implement base price list UX in management view
+
+[33mcommit 704eada42622ff475b400418ba48fd16048224bf[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 19:11:13 2026 -0300
+
+    fe: integrate price list logic and auto-switching in POS. Closes #3
+
+[33mcommit 8e573481bece9a9d907219461c1645f63c45861f[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 19:04:35 2026 -0300
+
+    fe: implement tenant-level price list management UI in sidebar (Fase 3A) #3
+
+[33mcommit 7579a478096054968100703aa3bdbb0ab1528b19[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 18:52:42 2026 -0300
+
+    api: implement price list management and price calculation logic (Fase 2) #3
+
+[33mcommit 43dcf9012d2944c22f9db48a3bb22fa2c6269cf7[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 18:45:34 2026 -0300
+
+    db: implement schema for price lists and customer relations (Fase 1) #3
+
+[33mcommit da3909408d050aede24770ba56f7095576172119[m
+Merge: 0c27d2b 0971cca
+Author: AstralMoonlight <120393343+AstralMoonlight@users.noreply.github.com>
+Date:   Tue Mar 3 18:10:21 2026 -0300
+
+    Merge pull request #4 from AstralMoonlight/feature/logout-modal
+    
+    feat: add logout confirmation modal across SaaS admin and POS layouts…
+
+[33mcommit 0971ccaf554b8e495e8e1a3ced16ccd5a0cb1cf9[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 18:09:23 2026 -0300
+
+    feat: add logout confirmation modal across SaaS admin and POS layouts. Closes #2
+
+[33mcommit 0c27d2bf85ef6b2c64b60c4aef1cf36f3cb1f25c[m
+Merge: 07822ae 056e2ee
+Author: AstralMoonlight <120393343+AstralMoonlight@users.noreply.github.com>
+Date:   Tue Mar 3 17:52:42 2026 -0300
+
+    Merge pull request #3 from AstralMoonlight/feature/rut-validation
+    
+    feat: add RUT auto-formatting and real-time validation to Tenant modal
+
+[33mcommit 056e2ee9a1a3da8e0a5273367d05d542549377e2[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 17:44:49 2026 -0300
+
+    feat: add RUT auto-formatting and real-time validation to Tenant modal
+    
+    - Added handleRutChange for live formatting (dots + dash + K uppercase)
+    - Added isRutValid computed from validateRut (existing lib/rut.ts, no new deps)
+    - Input border turns red and error text appears when RUT is mathematically invalid
+    - Submit button disabled when RUT is non-empty and invalid
+
+[33mcommit 07822ae3359393e24847e34c1f7e7caf78b3df60[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Mar 3 17:23:35 2026 -0300
+
+    chore: ignorar archivo pid del backend
+
+[33mcommit dad2323539531e7c829b7c4a1c70663020e8d652[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 21 06:34:00 2026 -0300
+
+    feat: add cash session history audit report and UI consistency fixes
+
+[33mcommit 51b5fddcda999d9a7d73276034e078388a74b375[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 21 05:40:04 2026 -0300
+
+    feat: full dark theme normalization
+    
+    - globals.css: shift all dark mode CSS variables from blue-tinted (222° hue)
+      to pure neutral grey (0° hue). Fixes sidebar, inputs, cards, popovers
+      and all borders system-wide.
+    - Sidebar: dark bg changed from neutral-950 to neutral-900 (lighter grey)
+    - AppShell: dark bg changed from neutral-950 to neutral-900
+    - historial/page.tsx: date group separators changed from blue to neutral grey
+    - compras/page.tsx: Imprimir button standardized to blue Button style,
+      product search card border neutral, textarea bg neutral-900, monto total
+      text neutral instead of blue
+    - dashboard/page.tsx: removed purple from KPI colorMap (replaced with indigo),
+      KPI card bg uses CSS var instead of hardcoded neutral-950
+
+[33mcommit aee44ce111b346c43a2f01076368d8b71640744e[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 21 04:58:58 2026 -0300
+
+    fix: resolve 500 errors on customers/providers/products endpoints
+    
+    - Fix CustomerOut.current_balance: Optional[Decimal] = Decimal(0)
+    - Fix ProductOut.unidad_medida: Optional[str] = 'unidad'
+    - Rewrite scripts/seed_tenants.py with unique data per tenant
+      - tenant_167603513: electronics store (Samsung, Logitech, Xiaomi)
+      - tenant_763989569: medical supply distributor (3M, Medline, BD)
+      - Both have products with variants, purchases and sales history
+      - All Chilean RUTs computed with correct modulo-11 check digit
+    - POS terminal: filter variants from grid (parent -> modal flow)
+    - POS ProductGrid: modal with inline search for >8 variants
+    - POS variant display mode: add Configuracion setting (grouped/flat)
+      - Persisted to localStorage via uiStore
+      - Applies instantly without page reload
+    - CORS: expand allowed origins to all localhost variants
+
+[33mcommit 15bb67faebb37089dc2c44dd2f3c9e70f769973f[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 21 03:23:22 2026 -0300
+
+    fix: resolve global vs local user id mapping, sync saas admin roles to local users, fix impersonate button routing and session injection, hide inactive users from pos
+
+[33mcommit f7a47227c418f50f289b3afa031fea760378b439[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 21 01:19:13 2026 -0300
+
+    feat: implement multi-tenancy, SaaS admin panel, and tenant activation enforcement
+
+[33mcommit e518e0306213aebb3439b158f57bf7657f463d49[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Fri Feb 20 21:13:09 2026 -0300
+
+    chore: save state before multi-tenant SaaS migration
+
+[33mcommit 834cca7c12a16bb05ac27144d7801a988093f5e1[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Wed Feb 18 06:24:41 2026 -0300
+
+    corrección en variantes
+
+[33mcommit 01b351472e3e99bffd77888d4469212ab1a04e9d[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Wed Feb 18 05:05:57 2026 -0300
+
+    feat: Implement SKU/EAN-13 auto-generation and simplified variant management
+
+[33mcommit 391abb2f35f84e6c029a416b9c5793a325a49ecd[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Wed Feb 18 04:42:55 2026 -0300
+
+    feat: dynamic permissions, customer separation, login fix & full_name migration
+    
+    - Added dynamic permissions system with Role model and management UI
+    - Separated Customers from Users (staff only)
+    - Fixed login NetworkError: normalized RUTs, merged duplicates
+    - Migrated User model from razon_social to full_name
+    - Added UserLogin RUT validation schema
+    - Fixed frontend regressions in vendedores and roles pages
+    - Added access denied page, logout functionality
+
+[33mcommit d26980773e771f01a66fe077505057be8bcdc9e0[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Wed Feb 18 02:02:04 2026 -0300
+
+    feat: implement basic RBAC with roles table and sidebar filtering
+
+[33mcommit 5366fb83ddf2c4993cde606295b1f8f42e86f400[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Feb 17 23:58:55 2026 -0300
+
+    feat: searchable provider selection, POS UI refinements, and PDF naming customization
+    
+    - Added 'ciudad' field to Provider model and schemas
+    - Implemented searchable provider combobox in Purchases page
+    - Refined POS cart to show Neto+IVA breakdown and Gross total
+    - Customized PDF filenames to show Doc Type and Folio
+    - Auto-close success modal after printing in POS
+    - Relocated notifications to bottom-center
+
+[33mcommit 0583f955d27709735bc2b1cf116de5ef994b6fbb[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Feb 17 22:25:55 2026 -0300
+
+    Implementación de impresión a dos copias, historial agrupado por día y sincronización con zona horaria America/Santiago
+
+[33mcommit f15220c166be2b0cf5b7b523b75f0f1c2537e1d6[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Feb 17 19:01:30 2026 -0300
+
+    feat: implementación completa de CRUD de compras, historial con impresión y corrección de stock por variantes
+
+[33mcommit 6ea308279998c372370a263e536da9932142d2c4[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Tue Feb 17 18:28:49 2026 -0300
+
+    Fix: backend connectivity, DB schema columns, and implement product full_name display
+
+[33mcommit 87a7188243648bb8561b6382fb52fe4b28185ff4[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Mon Feb 16 20:12:11 2026 -0300
+
+    CRUD de Vendedores, Validación RUT y corrección de sincronización de productos y sesión
+
+[33mcommit bdd8b3cc18759386554d797343720f11a7d64c81[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Mon Feb 16 19:42:01 2026 -0300
+
+    fix: resolve backend connection refused and add psycopg2-binary
+
+[33mcommit 9a5d091bf7ada877e8e4633a2523e9fc67feaab2[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Mon Feb 16 19:24:11 2026 -0300
+
+    fix: asegurar enlaces de deps en frontend para dev (pantalla en blanco al navegar)
+    
+    - predev en frontend ejecuta link-frontend-deps.js antes de next dev
+    - link script sale con mensaje claro si no existe node_modules en la raíz
+    - README con instrucción de instalar desde la raíz (npm install)
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+[33mcommit 4282222e9a7c716908223cbe3d555d4b3dbd6589[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Mon Feb 16 19:21:00 2026 -0300
+
+    Estado actual: monorepo, frontend (Next), backend (FastAPI), marcas/vendedores/dashboard, fix build y dev RAM
+    
+    Co-authored-by: Cursor <cursoragent@cursor.com>
+
+[33mcommit a52eea4a356f4c897ef14e10c5d4d5069674fba5[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 06:39:45 2026 -0300
+
+    feat(frontend): complete POS UI — terminal, caja, inventario, historial
+    
+    - Backend: add GET /sales/ and GET /sales/payment-methods/ endpoints
+    - Services: products, sales, cash, customers API layer
+    - Stores: enhanced cartStore (IVA calc) and sessionStore (persistence)
+    - Layout: sidebar navigation with cash session badge
+    - POS terminal: product grid, variant picker, cart ticket, checkout modal
+    - Caja: open/close session with blind count (arqueo)
+    - Inventario: stock table with low-stock alerts
+    - Historial: sales list, returns/credit notes, PDF reprint
+    - Print: 80mm thermal ticket CSS
+    - Toast: Sonner for user feedback
+
+[33mcommit 8a6754c4cfa592da44294117bcb12125fc292609[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 05:59:22 2026 -0300
+
+    feat(frontend): initialize POS frontend skeleton with Next.js, Tailwind, Shadcn, Zustand
+    
+    - Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
+    - Shadcn/UI components (Button, Card, Input, Separator)
+    - Zustand stores (cartStore, sessionStore)
+    - Axios service with CORS interceptors
+    - Smoke test dashboard with backend health check
+    - CORS middleware added to FastAPI backend
+
+[33mcommit f9b79e5693cf09ce6e952173a037d3cef5faf1a1[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 03:40:27 2026 -0300
+
+    docs: comprehensive codebase documentation (Google Style) & developer guide
+
+[33mcommit e02075958cd944758c929f24d83f0ea8f1b760c6[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 03:24:06 2026 -0300
+
+    feat(core): world-class POS architecture upgrade & technical report
+
+[33mcommit 8f968d4b15e7052d6e39bd0e7abf7f3af31f71b8[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 03:12:23 2026 -0300
+
+    feat: POS features (Cash, Payments, Inventory History)
+
+[33mcommit dff6ad7da2e7cf5a740a30e7dcf4e7fc92ca086a[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:59:30 2026 -0300
+
+    feat: product variants support (hierarchy)
+
+[33mcommit e9089ec9d0b47cd2e30c7d91628cde0386011222[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:53:30 2026 -0300
+
+    chore: enable API documentation updates and improvements
+
+[33mcommit a34863943f91681fbe1dc882ebed603d8af13e17[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:50:59 2026 -0300
+
+    feat: inventory management, POS features, and tests
+
+[33mcommit f4e7778d6534ea3b7eda077e14f6d58b7b76e099[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:41:02 2026 -0300
+
+    test: full cycle execution, XML generation and PDF preview ready
+
+[33mcommit a232dac48c3c80d188ca1d7cd13391d81df267d7[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:35:30 2026 -0300
+
+    feat: atomic DTE generation and HTML preview
+
+[33mcommit 93f73c4e3ce79c4645fc2ed9f5257372229a24c4[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:09:36 2026 -0300
+
+    fix(template): correct Jinja2 variable names to match Sale model fields
+
+[33mcommit 8b4a125cf50849b2d7801c38803081b7c7922b8d[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 02:09:05 2026 -0300
+
+    feat(quality): RUT validator, pytest integration tests, eager loading, Decimal safety
+
+[33mcommit f1744ed4a91ab53a0ca7aa545e3094f77e08dd75[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 01:57:23 2026 -0300
+
+    feat(issuer): add IssuerUpdate schema for partial updates
+
+[33mcommit 6944e0589d0ab59aa7f3e8a07f0759de07e35aea[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 01:54:12 2026 -0300
+
+    feat(issuer): add issuer management and tipo_dte to sales
+
+[33mcommit 8724f6807d97faa07a84903cd11e284ec115ecd9[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 01:38:02 2026 -0300
+
+    feat(sales): implement sales management, products, customers and dte models
+
+[33mcommit b36d1b11e355d5f67642890c2484e43f1a47fa9d[m
+Author: Jonathan Isla <j.isla.sepulveda@gmail.com>
+Date:   Sat Feb 14 01:23:13 2026 -0300
+
+    Cimientos listos: Base de datos y Clientes

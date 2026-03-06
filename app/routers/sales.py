@@ -124,6 +124,21 @@ def create_sale(
             detail=f"Cliente con RUT {sale_in.rut_cliente} no encontrado",
         )
 
+    # 1.5 Validar Referencias para Documentos de Ajuste
+    ADJUSTMENT_DTES = [56, 61, 111, 112]
+    if sale_in.tipo_dte in ADJUSTMENT_DTES:
+        if not sale_in.referencias:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Los documentos de ajuste (DTE {sale_in.tipo_dte}) requieren obligatoriamente referencias al documento original."
+            )
+        for ref in sale_in.referencias:
+            if not ref.tipo_documento or not ref.folio or not ref.sii_reason_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Las referencias de un documento de ajuste deben incluir tipo_documento, folio y sii_reason_code."
+                )
+
     # 2. Validar Productos y Calcular Totales
     total_neto = Decimal("0")
     sale_details = []
@@ -388,8 +403,12 @@ def create_return(
     iva = total_neto * Decimal("0.19")
     total = total_neto + iva
 
-    # 3. Registrar Nota de Crédito (Sale Tipo 61)
-    tipo = 61 # NC
+    # 3. Registrar Documento de Ajuste
+    tipo = return_in.tipo_dte
+    ADJUSTMENT_DTES = [56, 61, 111, 112]
+    if tipo not in ADJUSTMENT_DTES:
+        raise HTTPException(status_code=400, detail="El tipo de DTE para ajuste debe ser 56, 61, 111 o 112.")
+
     caf = db.query(CAF).filter(CAF.tipo_documento == tipo).first()
     # Si no hay CAF 61, fallamos? O usamos DTE 61 dummy?
     # Asumimos que hay CAF 61 o usamos logica dummy.
@@ -399,6 +418,14 @@ def create_return(
         caf.ultimo_folio_usado = nuevo_folio
         db.add(caf)
 
+    # Generar la referencia al documento original automáticamente
+    referencias_json = [{
+        "tipo_documento": str(original_sale.tipo_dte),
+        "folio": str(original_sale.folio),
+        "fecha": original_sale.fecha_emision.strftime("%Y-%m-%d"),
+        "sii_reason_code": return_in.sii_reason_code
+    }]
+
     nc_sale = Sale(
         customer_id=original_sale.customer_id,
         folio=nuevo_folio,
@@ -406,10 +433,11 @@ def create_return(
         monto_neto=total_neto,
         iva=iva,
         monto_total=total,
-        descripcion=f"Devolución: {return_in.reason}",
+        descripcion=f"Ajuste Venta #{original_sale.folio}: {return_in.reason}",
         details=sale_details,
         stock_movements=stock_movements,
         related_sale_id=original_sale.id,
+        referencias=referencias_json,
         audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None
     )
     db.add(nc_sale)

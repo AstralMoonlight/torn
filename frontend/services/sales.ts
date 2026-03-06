@@ -29,6 +29,15 @@ export interface SaleCreate {
     referencias?: DocumentReference[]
 }
 
+export interface FolioStockOut {
+    dte_type: number
+    caf_valid: boolean
+    available_folios: number
+    latest_folio_hasta: number
+    latest_folio_desde: number
+    expiration_date?: string
+}
+
 export interface SaleDetailOut {
     product_id: number
     cantidad: string
@@ -75,6 +84,8 @@ export interface PaymentMethod {
 
 export interface ReturnCreate {
     original_sale_id: number
+    tipo_dte: number
+    sii_reason_code: number
     items: { product_id: number; cantidad: number }[]
     reason: string
     return_method_id: number
@@ -101,5 +112,10 @@ export function getSalePdfUrl(saleId: number): string {
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
     const { data } = await api.get<PaymentMethod[]>('/sales/payment-methods/')
+    return data
+}
+
+export async function getFoliosStatus(): Promise<FolioStockOut[]> {
+    const { data } = await api.get<FolioStockOut[]>('/folios/status')
     return data
 }

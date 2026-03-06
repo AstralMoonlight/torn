@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createSale, getPaymentMethods, getSalePdfUrl, type PaymentMethod, type DocumentReference } from '@/services/sales'
+import { createSale, getPaymentMethods, getSalePdfUrl, getFoliosStatus, type PaymentMethod, type DocumentReference, type FolioStockOut } from '@/services/sales'
 import { type Customer } from '@/services/customers'
 import { toast } from 'sonner'
 import {
@@ -101,7 +101,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const { userId } = useSessionStore()
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [payments, setPayments] = useState<PaymentLine[]>([])
-    const [dteType, setDteType] = useState<'boleta' | 'factura'>('boleta')
+    const [dteType, setDteType] = useState<number>(39)
+    const [availableDtes, setAvailableDtes] = useState<FolioStockOut[]>([])
 
     // Customer State is now managed by cartStore to allow auto-switching lists
 
@@ -116,17 +117,27 @@ export default function CheckoutModal({ open, onClose }: Props) {
     // Load payment methods on open
     useEffect(() => {
         if (open) {
-            getPaymentMethods()
-                .then((m) => {
+            Promise.all([
+                getPaymentMethods(),
+                getFoliosStatus()
+            ])
+                .then(([m, f]) => {
                     setMethods(m)
                     const cash = m.find((pm) => pm.code === 'EFECTIVO')
                     if (cash) setPayments([{ method: cash, amount: roundCash(totalFinal) }])
+
+                    const validDtes = f.filter(d => d.available_folios > 0)
+                    setAvailableDtes(validDtes)
+                    if (validDtes.length > 0) {
+                        const boleta = validDtes.find(d => d.dte_type === 39)
+                        setDteType(boleta ? 39 : validDtes[0].dte_type)
+                    }
                 })
-                .catch(() => toast.error('Error cargando medios de pago'))
+                .catch(() => toast.error('Error cargando datos de caja'))
             setSuccess(false)
             setLastFolio(null)
             setLastSaleId(null)
-            setDteType('boleta')
+            setDteType(39)
             setReferencias([])
             setRefsSectionOpen(false)
         }
@@ -238,18 +249,18 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const suggestedBills = useMemo(() => getSuggestedBills(totalFinal), [totalFinal])
 
     // Determine effective RUT
-    const isBoleta = dteType === 'boleta'
+    const isBoleta = [39, 41].includes(dteType)
     const effectiveRut = customer?.rut || (isBoleta ? GENERIC_RUT : '')
 
     // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
-    const canSubmit = (isBoleta || !!customer) && remaining <= 0
+    const canSubmit = (isBoleta || !!customer) && remaining <= 0 && availableDtes.length > 0
 
     const handleSubmit = async () => {
         setSubmitting(true)
         try {
             const sale = await createSale({
                 rut_cliente: effectiveRut,
-                tipo_dte: isBoleta ? 39 : 33,
+                tipo_dte: dteType,
                 items: items.map((i) => ({
                     product_id: i.product.id,
                     cantidad: i.quantity,
@@ -347,18 +358,36 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     ) : (
                         <div className="space-y-4">
                             {/* DTE Type Toggle */}
-                            <Tabs value={dteType} onValueChange={(v) => setDteType(v as 'boleta' | 'factura')}>
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="boleta" className="gap-1.5 text-xs">
-                                        <Receipt className="h-3.5 w-3.5" />
-                                        Boleta (39)
-                                    </TabsTrigger>
-                                    <TabsTrigger value="factura" className="gap-1.5 text-xs">
-                                        <FileText className="h-3.5 w-3.5" />
-                                        Factura (33)
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+                            {availableDtes.length > 0 ? (
+                                <Tabs value={dteType.toString()} onValueChange={(v) => setDteType(Number(v))}>
+                                    <TabsList className={`grid w-full grid-cols-${Math.min(availableDtes.filter(d => [33, 34, 39, 41].includes(d.dte_type)).length, 4)}`}>
+                                        {availableDtes.find(d => d.dte_type === 39) && (
+                                            <TabsTrigger value="39" className="gap-1.5 text-xs">
+                                                <Receipt className="h-3.5 w-3.5" /> Boleta (39)
+                                            </TabsTrigger>
+                                        )}
+                                        {availableDtes.find(d => d.dte_type === 41) && (
+                                            <TabsTrigger value="41" className="gap-1.5 text-xs">
+                                                <Receipt className="h-3.5 w-3.5" /> Boleta E. (41)
+                                            </TabsTrigger>
+                                        )}
+                                        {availableDtes.find(d => d.dte_type === 33) && (
+                                            <TabsTrigger value="33" className="gap-1.5 text-xs">
+                                                <FileText className="h-3.5 w-3.5" /> Factura (33)
+                                            </TabsTrigger>
+                                        )}
+                                        {availableDtes.find(d => d.dte_type === 34) && (
+                                            <TabsTrigger value="34" className="gap-1.5 text-xs">
+                                                <FileText className="h-3.5 w-3.5" /> Exenta (34)
+                                            </TabsTrigger>
+                                        )}
+                                    </TabsList>
+                                </Tabs>
+                            ) : (
+                                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-md text-center font-medium border border-red-200">
+                                    No hay folios de venta disponibles. Solicite folios al SII.
+                                </div>
+                            )}
 
                             {/* Customer Section — Smart Autocomplete */}
                             <div className="space-y-1.5">
@@ -559,7 +588,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-xs"
                             >
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                {isBoleta ? 'Emitir Boleta' : 'Emitir Factura'}
+                                {`Emitir ${dteType === 33 ? 'Factura' : dteType === 34 ? 'Exenta' : dteType === 41 ? 'Boleta Exenta' : 'Boleta'}`}
                             </Button>
                         </DialogFooter>
                     )}
