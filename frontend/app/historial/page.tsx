@@ -41,7 +41,7 @@ function DteBadge({ tipo }: { tipo: number }) {
         33: { label: 'Factura', color: 'bg-blue-600' },
         34: { label: 'Factura Exenta', color: 'bg-blue-500' },
         39: { label: 'Boleta', color: 'bg-emerald-600' },
-        41: { label: 'Exenta', color: 'bg-emerald-500' },
+        41: { label: 'Boleta Exenta', color: 'bg-emerald-500' },
         56: { label: 'N. Débito', color: 'bg-orange-500' },
         61: { label: 'N. Crédito', color: 'bg-red-500' },
         110: { label: 'Factura Export.', color: 'bg-indigo-600' },
