@@ -31,11 +31,11 @@ export interface SaleCreate {
 
 export interface FolioStockOut {
     dte_type: number
-    caf_valid: boolean
-    available_folios: number
+    available: number
+    total: number
     latest_folio_hasta: number
     latest_folio_desde: number
-    expiration_date?: string
+    fecha_vencimiento?: string
 }
 
 export interface SaleDetailOut {

@@ -126,7 +126,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     const cash = m.find((pm) => pm.code === 'EFECTIVO')
                     if (cash) setPayments([{ method: cash, amount: roundCash(totalFinal) }])
 
-                    const validDtes = f.filter(d => d.available_folios > 0)
+                    const validDtes = f.filter(d => d.available > 0)
                     setAvailableDtes(validDtes)
                     if (validDtes.length > 0) {
                         const boleta = validDtes.find(d => d.dte_type === 39)

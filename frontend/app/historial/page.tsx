@@ -76,7 +76,7 @@ export default function HistorialPage() {
                 setMethods(m)
                 if (m.length > 0) setReturnMethodId(m[0].id)
 
-                const adjs = f.filter(d => [56, 61, 111, 112].includes(d.dte_type) && d.available_folios > 0)
+                const adjs = f.filter(d => [56, 61, 111, 112].includes(d.dte_type) && d.available > 0)
                 setAvailableAdjustments(adjs)
                 if (adjs.length > 0) {
                     const nc = adjs.find(a => a.dte_type === 61)
