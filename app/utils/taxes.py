@@ -62,6 +62,31 @@ def resolve_tax_rate(product, tipo_dte: Optional[int]) -> Decimal:
     return normalize_tax_rate(tax.rate)
 
 
+#: Tipos de documento de compra que se registran como afectos a IVA.
+#: `Purchase.tipo_documento` es texto: FACTURA | BOLETA | SIN_DOCUMENTO.
+PURCHASE_TAXED_DOCUMENTS = frozenset({"FACTURA"})
+
+
+def resolve_purchase_tax_rate(product, tipo_documento: Optional[str]) -> Decimal:
+    """Determina la tasa de impuesto aplicable a una línea de compra.
+
+    Args:
+        product: Instancia de `Product` (puede tener `tax` en `None`).
+        tipo_documento: `Purchase.tipo_documento`.
+
+    Returns:
+        La tasa a aplicar sobre el neto de la línea, o cero si el documento no
+        se registra como afecto.
+    """
+    if (tipo_documento or "").strip().upper() not in PURCHASE_TAXED_DOCUMENTS:
+        return Decimal("0")
+
+    tax = getattr(product, "tax", None)
+    if tax is None:
+        return DEFAULT_TAX_RATE
+    return normalize_tax_rate(tax.rate)
+
+
 def quantize_money(amount: Decimal) -> Decimal:
     """Redondea un monto a dos decimales con redondeo comercial (half-up)."""
     return Decimal(amount).quantize(_CENT, rounding=ROUND_HALF_UP)

@@ -16,6 +16,7 @@ from app.models.inventory import StockMovement
 from app.models.issuer import Issuer
 from app.schemas import PurchaseCreate, PurchaseOut
 from app.utils.formatters import format_clp, format_number
+from app.utils.taxes import quantize_money, resolve_purchase_tax_rate
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
@@ -51,6 +52,7 @@ def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenan
     db.flush()  # Para obtener el ID
 
     total_neto = Decimal(0)
+    total_iva = Decimal(0)
     
     # 2. Procesar ítems
     for item in purchase_in.items:
@@ -72,6 +74,9 @@ def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenan
         # Calcular subtotal del ítem
         subtotal = item.cantidad * item.precio_costo_unitario
         total_neto += subtotal
+        total_iva += subtotal * resolve_purchase_tax_rate(
+            product, purchase_in.tipo_documento
+        )
         
         # Crear detalle de compra
         detail = PurchaseDetail(
@@ -101,14 +106,11 @@ def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenan
             )
             db.add(movement)
 
-    # 3. Finalizar totales (asumiendo IVA 19% si es Factura)
+    # 3. Finalizar totales. El IVA sale del impuesto de cada producto, no de una
+    # tasa fija: un producto exento no debe sumar impuesto ni siquiera en factura.
     db_purchase.monto_neto = total_neto
-    if db_purchase.tipo_documento == "FACTURA":
-        db_purchase.iva = total_neto * Decimal("0.19")
-    else:
-        db_purchase.iva = Decimal(0)
-        
-    db_purchase.monto_total = db_purchase.monto_neto + db_purchase.iva
+    db_purchase.iva = quantize_money(total_iva)
+    db_purchase.monto_total = quantize_money(db_purchase.monto_neto + db_purchase.iva)
     
     db.commit()
     db.refresh(db_purchase)
@@ -163,6 +165,7 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
         db_purchase.fecha_compra = purchase_in.fecha_compra
 
     total_neto = Decimal(0)
+    total_iva = Decimal(0)
 
     # 5. Procesar nuevos ítems y aplicar stock nuevo
     for item in purchase_in.items:
@@ -173,6 +176,9 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
 
         subtotal = item.cantidad * item.precio_costo_unitario
         total_neto += subtotal
+        total_iva += subtotal * resolve_purchase_tax_rate(
+            product, purchase_in.tipo_documento
+        )
 
         detail = PurchaseDetail(
             purchase_id=db_purchase.id,
@@ -196,13 +202,10 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
                 description=f"Actualización Compra #{db_purchase.id} (Folio {db_purchase.folio or 'S/N'})"
             ))
 
-    # 6. Recalcular totales
+    # 6. Recalcular totales (ver nota sobre el IVA por línea en create_purchase)
     db_purchase.monto_neto = total_neto
-    if db_purchase.tipo_documento == "FACTURA":
-        db_purchase.iva = total_neto * Decimal("0.19")
-    else:
-        db_purchase.iva = Decimal(0)
-    db_purchase.monto_total = db_purchase.monto_neto + db_purchase.iva
+    db_purchase.iva = quantize_money(total_iva)
+    db_purchase.monto_total = quantize_money(db_purchase.monto_neto + db_purchase.iva)
 
     db.commit()
     db.refresh(db_purchase)
