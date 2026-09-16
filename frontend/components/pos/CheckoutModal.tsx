@@ -46,11 +46,16 @@ import { formatCLP } from '@/lib/format'
 // Chilean Rounding Law (Ley de Redondeo - Ley 21.054)
 // Ends in 1-5 -> Round down to 0
 // Ends in 6-9 -> Round up to 10
+/**
+ * Redondea un monto en efectivo a la decena más cercana, según la regla
+ * chilena: de 5 hacia arriba sube a la decena siguiente, de 4 hacia abajo baja
+ * a la decena actual. Los pagos con tarjeta se cobran exactos.
+ */
 function roundCash(amount: number): number {
     const integerAmount = Math.round(amount)
     const lastDigit = integerAmount % 10
     if (lastDigit === 0) return integerAmount
-    if (lastDigit <= 5) return integerAmount - lastDigit
+    if (lastDigit < 5) return integerAmount - lastDigit
     return integerAmount + (10 - lastDigit)
 }
 
