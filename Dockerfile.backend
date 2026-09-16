@@ -2,6 +2,13 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# postgresql-client aporta `psql`, que app/services/tenant_service.py invoca
+# para aprovisionar el esquema de cada inquilino. Sin él la creación de
+# empresas falla dentro del contenedor.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir bcrypt==4.0.1

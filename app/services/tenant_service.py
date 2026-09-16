@@ -108,19 +108,37 @@ def provision_new_tenant(
             fd, temp_path = tempfile.mkstemp(suffix=".sql")
             with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
                 tmp.write(final_sql)
-                
+
+            # Las credenciales salen del mismo entorno que usa app/database.py.
+            # Estaban fijas a torn@localhost:5433, lo que rompía el
+            # aprovisionamiento en cualquier despliegue (Docker incluido).
             env = os.environ.copy()
-            env["PGPASSWORD"] = "torn"
-            
-            result = subprocess.run(
-                ["psql", "-U", "torn", "-h", "localhost", "-p", "5433", "-d", "torn_db", "-v", "ON_ERROR_STOP=1", "-f", temp_path],
-                env=env, capture_output=True, text=True
-            )
-            os.remove(temp_path)
-            
+            env["PGPASSWORD"] = os.getenv("TORN_DB_PASSWORD", "torn")
+
+            try:
+                result = subprocess.run(
+                    [
+                        "psql",
+                        "-U", os.getenv("TORN_DB_USER", "torn"),
+                        "-h", os.getenv("TORN_DB_HOST", "localhost"),
+                        "-p", os.getenv("TORN_DB_PORT", "5432"),
+                        "-d", os.getenv("TORN_DB_NAME", "torn_db"),
+                        "-v", "ON_ERROR_STOP=1",
+                        "-f", temp_path,
+                    ],
+                    env=env, capture_output=True, text=True
+                )
+            except FileNotFoundError:
+                raise Exception(
+                    "No se encontró el binario 'psql'. Es necesario para aprovisionar "
+                    "el esquema del inquilino; instala postgresql-client en la imagen."
+                )
+            finally:
+                os.remove(temp_path)
+
             if result.returncode != 0:
                 raise Exception(f"psql error: {result.stderr}")
-                
+
         except FileNotFoundError:
             raise Exception("No se encontró modelo_base_datos.sql para aprovisionar las tablas")
         
