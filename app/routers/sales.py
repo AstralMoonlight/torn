@@ -359,6 +359,35 @@ def create_return(
     if not original_sale:
         raise HTTPException(status_code=404, detail="Venta original no encontrada")
 
+    # 1.5 Cuánto queda por devolver de cada producto.
+    # Sin este control se puede devolver más de lo vendido, o devolver la misma
+    # venta varias veces: cada devolución reingresa stock, emite una NC y abona
+    # la cuenta corriente del cliente, así que el exceso se traduce en
+    # inventario y dinero inventados.
+    vendido = {}
+    for d in original_sale.details:
+        vendido[d.product_id] = vendido.get(d.product_id, Decimal("0")) + d.cantidad
+
+    devuelto = {}
+    notas_previas = db.query(Sale).filter(Sale.related_sale_id == original_sale.id).all()
+    for nc in notas_previas:
+        for d in nc.details:
+            devuelto[d.product_id] = devuelto.get(d.product_id, Decimal("0")) + d.cantidad
+
+    for item in return_in.items:
+        disponible = vendido.get(item.product_id, Decimal("0")) - devuelto.get(
+            item.product_id, Decimal("0")
+        )
+        if item.cantidad > disponible:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede devolver {item.cantidad} unidad(es) del producto "
+                    f"{item.product_id}: la venta #{original_sale.folio} tiene "
+                    f"{disponible} disponible(s) para devolución."
+                ),
+            )
+
     # 2. Calcular Montos de Devolución
     # La NC hereda el tipo de DTE del documento original para efectos de IVA:
     # devolver una Boleta Exenta no puede generar impuesto.
@@ -371,9 +400,7 @@ def create_return(
         product = db.query(Product).get(item.product_id)
         if not product:
             raise HTTPException(status_code=404, detail=f"Producto {item.product_id} no encontrado")
-        
-        # Validar que la cantidad no exceda lo vendido? (Omitido por simplicidad, confiamos en operador)
-        
+
         # Reingreso de Stock
         if product.controla_stock:
             product.stock_actual += item.cantidad
