@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta, timezone
 from typing import Annotated, Optional
 
@@ -11,11 +12,14 @@ from app.database import get_db
 from app.dependencies.tenant import get_global_db, get_current_global_user
 from app.models.saas import SaaSUser, TenantUser
 from app.schemas_saas import SaaSUserLogin, SaaSToken, SaaSUserOut, AvailableTenant
+from app.utils.schemas import safe_schema_name
 from app.utils.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     verify_password,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,13 +39,20 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
             try:
                 # Query the specific tenant's 'roles' table for this role_name
                 res = global_db.execute(
-                    text(f'SELECT permissions FROM "{tu.tenant.schema_name}".roles WHERE name = :role_name'),
+                    text(f'SELECT permissions FROM "{safe_schema_name(tu.tenant.schema_name)}".roles WHERE name = :role_name'),
                     {"role_name": tu.role_name}
                 ).first()
                 if res and res[0]:
                     perms = res[0]
             except Exception:
-                pass
+                # El usuario conserva el acceso con permisos vacíos, pero el
+                # fallo tiene que quedar registrado: antes se descartaba en
+                # silencio y un esquema inválido o una tabla `roles` ausente
+                # eran indistinguibles de un rol sin permisos.
+                logger.warning(
+                    "No se pudieron leer los permisos del rol %r en el tenant %s",
+                    tu.role_name, tu.tenant_id, exc_info=True,
+                )
                 
         results.append(AvailableTenant(
             id=tu.tenant.id,

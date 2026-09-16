@@ -28,6 +28,7 @@ import app.models.cash
 import app.models.dte
 import app.models.issuer
 import app.models.payment
+from app.utils.schemas import safe_schema_name
 
 def _generate_schema_name(rut: str) -> str:
     """Genera un nombre de esquema seguro basado en el RUT para PostgreSQL."""
@@ -84,7 +85,7 @@ def provision_new_tenant(
     connection = engine.connect()
     try:
         # A. Crear Esquema PostgreSQL
-        connection.execute(text(f'CREATE SCHEMA "{schema_name}"'))
+        connection.execute(text(f'CREATE SCHEMA "{safe_schema_name(schema_name)}"'))
         connection.commit()
         
         # B. Generar Tablas Operativas usando el Script Base Puro vía psql
@@ -103,7 +104,7 @@ def provision_new_tenant(
                 clean_lines.append(line)
             
             sql_script = '\n'.join(clean_lines).replace("public.", "")
-            final_sql = f'SET search_path TO "{schema_name}";\n' + sql_script
+            final_sql = f'SET search_path TO "{safe_schema_name(schema_name)}";\n' + sql_script
             
             fd, temp_path = tempfile.mkstemp(suffix=".sql")
             with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
@@ -148,7 +149,7 @@ def provision_new_tenant(
             primary_acteco = economic_activities[0].get("code", "")
 
         insert_issuer_sql = text(f"""
-            INSERT INTO "{schema_name}".issuers (rut, razon_social, giro, acteco, direccion, comuna, ciudad, created_at, updated_at)
+            INSERT INTO "{safe_schema_name(schema_name)}".issuers (rut, razon_social, giro, acteco, direccion, comuna, ciudad, created_at, updated_at)
             VALUES (:rut, :razon_social, :giro, :acteco, :direccion, :comuna, :ciudad, NOW(), NOW())
         """)
         connection.execute(insert_issuer_sql, {
@@ -163,22 +164,22 @@ def provision_new_tenant(
         
         # D. Cargar Roles por defecto
         insert_roles_sql = text(f"""
-            INSERT INTO "{schema_name}".roles 
+            INSERT INTO "{safe_schema_name(schema_name)}".roles 
             (id, name, description, permissions, can_manage_users, can_view_reports, can_edit_products, can_perform_sales, can_perform_returns)
             VALUES 
                 (1, 'ADMINISTRADOR', 'Acceso total al sistema', '{{"all": true}}'::jsonb, true, true, true, true, true),
                 (2, 'VENDEDOR', 'Rol para generar ventas y administrar caja', '{{"sales": true, "cash": true}}'::jsonb, false, false, true, true, false)
         """)
         connection.execute(insert_roles_sql)
-        connection.execute(text(f"SELECT setval('\"{schema_name}\".roles_id_seq', 2)"))
+        connection.execute(text(f"SELECT setval('\"{safe_schema_name(schema_name)}\".roles_id_seq', 2)"))
 
         role_id_res = connection.execute(text(f"""
-            SELECT id FROM "{schema_name}".roles WHERE name = 'ADMINISTRADOR'
+            SELECT id FROM "{safe_schema_name(schema_name)}".roles WHERE name = 'ADMINISTRADOR'
         """)).first()
         admin_role_id = role_id_res[0] if role_id_res else 1
 
         insert_system_user_sql = text(f"""
-            INSERT INTO "{schema_name}".users
+            INSERT INTO "{safe_schema_name(schema_name)}".users
             (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
             VALUES
             ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
@@ -196,7 +197,7 @@ def provision_new_tenant(
         global_db.rollback()
         new_tenant.is_active = False
         global_db.commit()
-        raise Exception(f"Fallo crítico aprovisionando esquema {schema_name}: {str(e)}")
+        raise Exception(f"Fallo crítico aprovisionando esquema {safe_schema_name(schema_name)}: {str(e)}")
     finally:
         connection = connection.execution_options(schema_translate_map=None)
         connection.close()

@@ -13,6 +13,7 @@ from app.models.saas import Tenant, TenantUser, SaaSPlan
 from app.models.acteco import Acteco
 from app.utils.security import get_password_hash
 from app.services.tenant_service import provision_new_tenant
+from app.utils.schemas import safe_schema_name
 
 router = APIRouter(prefix="/saas", tags=["SaaS Management"])
 
@@ -118,7 +119,7 @@ async def update_tenant(
                 acteco = update_data["economic_activities"][0].get("code")
 
             update_issuer_sql = text(f"""
-                UPDATE "{tenant.schema_name}".issuers
+                UPDATE "{safe_schema_name(tenant.schema_name)}".issuers
                 SET razon_social = :name,
                     giro = :giro,
                     acteco = COALESCE(:acteco, acteco),
@@ -257,14 +258,14 @@ async def assign_user_to_tenant(
     try:
         # Resolver el ID del rol
         res_role = global_db.execute(
-            text(f'SELECT id FROM "{tenant.schema_name}".roles WHERE name = :role_name LIMIT 1'),
+            text(f'SELECT id FROM "{safe_schema_name(tenant.schema_name)}".roles WHERE name = :role_name LIMIT 1'),
             {"role_name": user_data.role_name}
         ).fetchone()
         role_id_local = res_role[0] if res_role else None
         
         # Insertar o actualizar el usuario en la BD local de ese Tenant
         global_db.execute(text(f'''
-            INSERT INTO "{tenant.schema_name}".users (email, full_name, password_hash, role, role_id, is_active)
+            INSERT INTO "{safe_schema_name(tenant.schema_name)}".users (email, full_name, password_hash, role, role_id, is_active)
             VALUES (:email, :full_name, :pwd, :role, :role_id, true)
             ON CONFLICT (email) DO UPDATE SET
             full_name = EXCLUDED.full_name,
@@ -331,7 +332,7 @@ async def update_tenant_user(
             role_id_local = None
             if "role_name" in data_dict:
                 res_role = global_db.execute(
-                    text(f'SELECT id FROM "{tenant.schema_name}".roles WHERE name = :role_name LIMIT 1'),
+                    text(f'SELECT id FROM "{safe_schema_name(tenant.schema_name)}".roles WHERE name = :role_name LIMIT 1'),
                     {"role_name": data_dict["role_name"]}
                 ).fetchone()
                 role_id_local = res_role[0] if res_role else None
@@ -360,7 +361,7 @@ async def update_tenant_user(
                 params["role_id"] = role_id_local
                 
             if updates:
-                query_str = f'UPDATE "{tenant.schema_name}".users SET ' + ", ".join(updates) + " WHERE email = :email"
+                query_str = f'UPDATE "{safe_schema_name(tenant.schema_name)}".users SET ' + ", ".join(updates) + " WHERE email = :email"
                 global_db.execute(text(query_str), params)
                 global_db.commit()
                 
@@ -390,7 +391,7 @@ async def inject_system_user(
     try:
         # Verificar si ya existe
         existing = global_db.execute(
-            text(f'SELECT id FROM "{tenant.schema_name}".users WHERE is_system_user = true LIMIT 1')
+            text(f'SELECT id FROM "{safe_schema_name(tenant.schema_name)}".users WHERE is_system_user = true LIMIT 1')
         ).fetchone()
 
         if existing:
@@ -398,13 +399,13 @@ async def inject_system_user(
 
         # Obtener rol ADMINISTRADOR del tenant
         role_res = global_db.execute(
-            text(f"SELECT id FROM \"{tenant.schema_name}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
+            text(f"SELECT id FROM \"{safe_schema_name(tenant.schema_name)}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
         ).fetchone()
         admin_role_id = role_res[0] if role_res else 1
 
         # Insertar usuario de sistema
         global_db.execute(text(f"""
-            INSERT INTO "{tenant.schema_name}".users
+            INSERT INTO "{safe_schema_name(tenant.schema_name)}".users
             (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
             VALUES
             ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
@@ -436,7 +437,7 @@ async def inject_system_users_all(
     for tenant in tenants:
         try:
             existing = global_db.execute(
-                text(f'SELECT id FROM "{tenant.schema_name}".users WHERE is_system_user = true LIMIT 1')
+                text(f'SELECT id FROM "{safe_schema_name(tenant.schema_name)}".users WHERE is_system_user = true LIMIT 1')
             ).fetchone()
 
             if existing:
@@ -444,12 +445,12 @@ async def inject_system_users_all(
                 continue
 
             role_res = global_db.execute(
-                text(f"SELECT id FROM \"{tenant.schema_name}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
+                text(f"SELECT id FROM \"{safe_schema_name(tenant.schema_name)}\".roles WHERE name = 'ADMINISTRADOR' LIMIT 1")
             ).fetchone()
             admin_role_id = role_res[0] if role_res else 1
 
             global_db.execute(text(f"""
-                INSERT INTO "{tenant.schema_name}".users
+                INSERT INTO "{safe_schema_name(tenant.schema_name)}".users
                 (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)
                 VALUES
                 ('0-0', 'Soporte Torn', 'soporte@torn.cl', 'Soporte Sistema', true, true, :role_id, 'ADMIN', 'INVALID_HASH')
