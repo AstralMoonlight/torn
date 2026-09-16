@@ -3,41 +3,71 @@ Torn - Facturador Electrónico (SII Chile)
 Punto de entrada principal de la aplicación FastAPI.
 """
 
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
 from app.routers import customers, health, issuer, products, sales, inventory, cash, reports, brands, providers, purchases, stats, users, config, auth, roles, price_lists
 
+logger = logging.getLogger(__name__)
+
+#: Orígenes permitidos por CORS. Se sobrescriben con TORN_CORS_ORIGINS
+#: (lista separada por comas) para no tener que tocar el código al desplegar.
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+_cors_env = os.getenv("TORN_CORS_ORIGINS", "").strip()
+CORS_ORIGINS = (
+    [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
+    if _cors_env
+    else _DEFAULT_CORS_ORIGINS
+)
+
+#: `create_all` al arrancar es cómodo en local pero pisa el terreno de Alembic
+#: y obliga a tener la BD viva sólo para importar la app (rompe los tests).
+AUTO_CREATE_TABLES = os.getenv("TORN_AUTO_CREATE_TABLES", "1").lower() not in (
+    "0", "false", "no",
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Inicializa recursos al arrancar y los libera al apagar."""
+    if AUTO_CREATE_TABLES:
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as exc:  # pragma: no cover - depende del entorno
+            logger.warning("No se pudieron crear las tablas al arrancar: %s", exc)
+    yield
+
+
 app = FastAPI(
     title="Torn - Facturador Electrónico",
     description="Sistema de facturación electrónica para el SII de Chile",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:3002",
-        "http://127.0.0.1:3002",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    """Crear tablas en la BD (si no existen) al iniciar la app."""
-    Base.metadata.create_all(bind=engine)
 
 # ── Routers ──────────────────────────────────────────────────────────
 from app.routers import saas
