@@ -27,6 +27,7 @@ import {
 } from '@/services/price_lists'
 import { getProducts, type Product } from '@/services/products'
 import { getCustomers, type Customer } from '@/services/customers'
+import { normalizeTaxRate } from '@/lib/taxes'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -39,9 +40,7 @@ interface DraftItem extends PriceItem {
 }
 
 // ── Tax rate normalizer ───────────────────────────────────────────────────
-// The DB may have rates stored as decimals (0.19) or as percentages (19).
 // Normalize to always be in decimal form.
-const normalizeTaxRate = (rate: number): number => rate > 1 ? rate / 100 : rate
 
 // ── Main Page Component ────────────────────────────────────────────────────
 

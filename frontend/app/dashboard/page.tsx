@@ -167,8 +167,8 @@ export default function DashboardPage() {
                 />
                 <KPICard
                     title="IVA Por Pagar"
-                    value={formatCLP(currentStats.sales_total * 0.19)}
-                    subtitle="Estimado 19%"
+                    value={formatCLP(currentStats.sales_tax)}
+                    subtitle="Registrado en las ventas"
                     icon={Receipt}
                     color="amber"
                 />

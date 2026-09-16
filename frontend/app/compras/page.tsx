@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dialog'
 import { getProviders, type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
+import { productTaxRate } from '@/lib/taxes'
 import { createPurchase, getPurchases, deletePurchase, type Purchase, type PurchaseCreate, type PurchaseItem } from '@/services/purchases'
 import { getApiErrorMessage } from '@/services/api'
 import { formatRut } from '@/lib/rut'
@@ -150,7 +151,15 @@ export default function ComprasPage() {
     }
 
     const totalNeto = items.reduce((sum, item) => sum + (item.cantidad * item.precio_costo), 0)
-    const totalIva = tipoDoc === 'FACTURA' ? totalNeto * 0.19 : 0
+    // El IVA se calcula por línea con el impuesto de cada producto, igual que
+    // en el backend (app/utils/taxes.py): un insumo exento no suma impuesto
+    // aunque el documento sea factura.
+    const totalIva = tipoDoc === 'FACTURA'
+        ? items.reduce(
+            (sum, item) => sum + item.cantidad * item.precio_costo * productTaxRate(item.product),
+            0,
+        )
+        : 0
     const totalFinal = totalNeto + totalIva
 
     const handleSave = async () => {

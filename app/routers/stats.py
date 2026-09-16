@@ -24,6 +24,11 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     sales = db.query(Sale).filter(Sale.fecha_emision >= start_date).all()
     
     total_sales = sum(s.monto_total for s in sales)
+    # Neto e IVA se acumulan desde lo registrado en cada venta. Derivarlos de
+    # `total_sales` asumiendo 19% da cifras falsas en cuanto hay documentos
+    # exentos o productos con otra tasa.
+    total_net = sum(s.monto_neto or Decimal(0) for s in sales)
+    total_tax = sum(s.iva or Decimal(0) for s in sales)
     count_sales = len(sales)
     
     # Calcular margen (Detalle por detalle para mayor precisión)
@@ -45,6 +50,8 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
 
     return StatPeriod(
         sales_total=total_sales,
+        sales_net=total_net,
+        sales_tax=total_tax,
         sales_count=count_sales,
         margin_total=margin_total,
         period=period_name
@@ -195,12 +202,16 @@ def get_report(
     
     sales_period = db.query(Sale).filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date).all()
     total_ventas = sum(s.monto_total for s in sales_period)
+    total_neto = sum(s.monto_neto or Decimal(0) for s in sales_period)
+    total_iva = sum(s.iva or Decimal(0) for s in sales_period)
     total_utilidad = sum(item.utilidad for item in items)
 
     return ReportOut(
         fecha=ref_date, # Devolvemos la fecha referencial solicitada
         period=period_label,
         total_ventas=total_ventas,
+        total_neto=total_neto,
+        total_iva=total_iva,
         total_utilidad=total_utilidad,
         items=items
     )

@@ -2,6 +2,9 @@ import api from './api'
 
 export interface StatPeriod {
     sales_total: number
+    /** Neto e IVA reales acumulados en las ventas del periodo. */
+    sales_net: number
+    sales_tax: number
     sales_count: number
     margin_total: number
     period: string
@@ -51,6 +54,9 @@ export interface ReportOut {
     fecha: string
     period: string
     total_ventas: number
+    /** Neto e IVA reales del periodo, ya calculados por el backend. */
+    total_neto: number
+    total_iva: number
     total_utilidad: number
     items: ReportItem[]
 }

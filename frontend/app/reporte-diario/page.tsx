@@ -69,8 +69,11 @@ export default function DailyReportPage() {
 
     // Calculations (safe fallback to 0)
     const totalVentasBrutas = Number(report?.total_ventas || 0)
-    const totalIva = Math.round(totalVentasBrutas - (totalVentasBrutas / 1.19))
-    const totalVentasNetas = totalVentasBrutas - totalIva
+    // Neto e IVA vienen calculados del backend a partir de lo registrado en
+    // cada venta. Dividir el bruto por 1.19 daba cifras falsas con documentos
+    // exentos o productos con otra tasa.
+    const totalIva = Number(report?.total_iva || 0)
+    const totalVentasNetas = Number(report?.total_neto || 0)
     const totalUtilidadReal = Number(report?.total_utilidad || 0)
     const totalCostos = totalVentasNetas - totalUtilidadReal
     const itemCount = report?.items.length || 0

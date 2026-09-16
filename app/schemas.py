@@ -583,6 +583,11 @@ class PurchaseOut(BaseModel):
 
 class StatPeriod(BaseModel):
     sales_total: Decimal
+    #: Neto e IVA acumulados tal como quedaron registrados en cada venta. El
+    #: frontend los derivaba de `sales_total` asumiendo 19%, lo que no cuadra
+    #: con documentos exentos ni con productos de otra tasa.
+    sales_net: Decimal = Decimal(0)
+    sales_tax: Decimal = Decimal(0)
     sales_count: int
     margin_total: Decimal
     period: str  # 'Diario' | 'Semanal' | 'Mensual'
@@ -619,5 +624,8 @@ class ReportOut(BaseModel):
     fecha: datetime
     period: str  # 'Diario' | 'Semanal' | 'Mensual'
     total_ventas: Decimal
+    #: Ver la nota de StatPeriod: el reporte los calculaba dividiendo por 1.19.
+    total_neto: Decimal = Decimal(0)
+    total_iva: Decimal = Decimal(0)
     total_utilidad: Decimal
     items: List[ReportItem]
