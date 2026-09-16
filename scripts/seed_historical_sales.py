@@ -1,5 +1,12 @@
 """Script para generar ventas históricas de prueba (últimos 30 días)."""
 
+import os
+import sys
+
+# Ejecutar desde la raíz del proyecto: python scripts/<archivo>.py
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
 import random
 from datetime import datetime, timedelta
 from decimal import Decimal

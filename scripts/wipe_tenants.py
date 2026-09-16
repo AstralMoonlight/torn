@@ -1,3 +1,10 @@
+import os
+import sys
+
+# Ejecutar desde la raíz del proyecto: python scripts/<archivo>.py
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
 from sqlalchemy import text
 from app.database import engine, SessionLocal
 from app.models.saas import Tenant, TenantUser

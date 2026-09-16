@@ -1,3 +1,10 @@
+import os
+import sys
+
+# Ejecutar desde la raíz del proyecto: python scripts/<archivo>.py
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
 from app.database import SessionLocal, engine, Base
 from app.models.dte import CAF
 from app.models.product import Product

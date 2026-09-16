@@ -1,5 +1,12 @@
 """Script de inicialización de datos para demostración completa."""
 
+import os
+import sys
+
+# Ejecutar desde la raíz del proyecto: python scripts/<archivo>.py
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
 from decimal import Decimal
 
 from sqlalchemy.orm import Session

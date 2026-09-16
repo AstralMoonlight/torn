@@ -117,7 +117,8 @@ Torn/
 │   ├── services/         # capa Axios por dominio (api.ts + 15 módulos)
 │   └── lib/              # utils.ts, rut.ts, store (Zustand)
 ├── alembic/          # Migraciones (6 revisiones)
-├── scripts/          # Mantenimiento/seed (seed_actecos, sync_*, migrate_brands, ...)
+├── scripts/          # Mantenimiento/seed (seed_*, setup_*, migrate_*, sync_*, create_admin)
+│   └── legacy/           # Scripts manuales previos al multi-inquilino (ver su README)
 ├── tests/            # Pytest de integración (inventory, pos, sales, world_class)
 ├── data/             # Datos auxiliares (actecos_sii.json) — ignorado por git
 ├── Dockerfile.backend / Dockerfile.frontend / docker-compose.yml
@@ -150,7 +151,7 @@ Estado del working tree al iniciar (`git status`), sobre el commit `afebc00`:
 | Nuevo | `Dockerfile.backend` | Imagen `python:3.10-slim`, instala `requirements.txt` y fuerza `bcrypt==4.0.1` aparte, expone 8000 y arranca uvicorn. |
 | Nuevo | `Dockerfile.frontend` | Imagen `node:20-alpine`, copia `frontend/`, `npm install`, expone 3000 y ejecuta `npm run dev`. |
 | Nuevo | `docker-compose.yml` | Orquestación de los tres servicios (`db`, `backend`, `frontend`) descrita arriba. |
-| Nuevo | `create_admin.py` | Script de bootstrap que crea/resetea el usuario `admin@torn.cl` con `is_superuser=True`. |
+| Nuevo | `scripts/create_admin.py` | Script de bootstrap que crea/resetea el usuario `admin@torn.cl` con `is_superuser=True`. |
 | Modificado | `requirements.txt` | Reemplazado el listado corto y pineado (`fastapi>=0.115.0`, `uvicorn[standard]>=0.32.0`, …) por el listado completo del entorno (38 paquetes, incluyendo transitivos), ya sin versiones. |
 | Modificado | `frontend/package-lock.json` | Actualización de versiones resueltas del árbol npm (~233 inserciones / 193 borrados): bumps de `@babel/*`, `caniuse-lite`, `electron-to-chromium`, etc. `package.json` no cambió. |
 | Eliminado | `.env.example` | Se borró la plantilla de variables (`TORN_DB_USER/PASSWORD/HOST/PORT/NAME`). `.env` real existe y está en `.gitignore`. |
@@ -189,11 +190,9 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   duplica la gestión de dependencias.
 - **Frontend en modo dev dentro de Docker**: `Dockerfile.frontend` ejecuta `npm run dev`, no `build` + `start`.
 - **Credenciales por defecto en el repo**: `docker-compose.yml` trae `POSTGRES_PASSWORD: password123` y
-  `create_admin.py` crea `admin@torn.cl / admin123`. Aceptable en local, no en despliegue.
+  `scripts/create_admin.py` crea `admin@torn.cl / admin123`. Aceptable en local, no en despliegue.
 - **Deuda menor**: uso de `Query.get()` legacy de SQLAlchemy 1.x en `app/routers/sales.py` (warnings en pytest)
   y `create_all()` conviviendo con Alembic.
-- **Raíz desordenada**: scripts `migrate_*.py`, `seed_*.py`, `fix_admin.py` y `test_*.py` sueltos en la raíz,
-  estos últimos compitiendo con `tests/`.
 - **Precio de venta**: `create_sale` cobra `product.precio_neto` e ignora la lista de precios que el POS sí
   resuelve, de modo que el cliente puede pagar distinto de lo cotizado.
 - **`CAF.tipo_documento` es UNIQUE**: impide cargar un segundo CAF del mismo tipo cuando se agotan los folios,

@@ -12,6 +12,13 @@ Variables de entorno soportadas:
     TORN_DB_NAME     (default: torn_db)
 """
 
+import os
+import sys
+
+# Ejecutar desde la raíz del proyecto: python scripts/<archivo>.py
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
 import sys
 
 from sqlalchemy import text
