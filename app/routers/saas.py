@@ -19,7 +19,7 @@ router = APIRouter(prefix="/saas", tags=["SaaS Management"])
 
 
 @router.get("/actecos", response_model=list[ActecoOut])
-async def search_actecos(
+def search_actecos(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db),
     q: str | None = None,
@@ -41,7 +41,7 @@ async def search_actecos(
 
 
 @router.get("/tenants", response_model=list[TenantOut])
-async def list_tenants(
+def list_tenants(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
 ):
@@ -53,7 +53,7 @@ async def list_tenants(
     return tenants
 
 @router.post("/tenants", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
-async def register_tenant(
+def register_tenant(
     tenant_data: TenantCreate,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
@@ -85,7 +85,7 @@ async def register_tenant(
         )
 
 @router.patch("/tenants/{tenant_id}", response_model=TenantOut)
-async def update_tenant(
+def update_tenant(
     tenant_id: int,
     tenant_data: TenantUpdate,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
@@ -149,7 +149,7 @@ async def update_tenant(
     return tenant
 
 @router.delete("/tenants/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_tenant(
+def delete_tenant(
     tenant_id: int,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
@@ -168,7 +168,7 @@ async def delete_tenant(
 
 
 @router.get("/tenants/{tenant_id}/users", response_model=list[TenantUserOut])
-async def list_tenant_users(
+def list_tenant_users(
     tenant_id: int,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
@@ -183,7 +183,7 @@ async def list_tenant_users(
 from sqlalchemy import text
 
 @router.post("/tenants/{tenant_id}/users", response_model=TenantUserOut)
-async def assign_user_to_tenant(
+def assign_user_to_tenant(
     tenant_id: int,
     user_data: TenantUserCreate,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
@@ -288,7 +288,7 @@ async def assign_user_to_tenant(
     return new_tenant_user
 
 @router.patch("/tenants/{tenant_id}/users/{user_id}", response_model=TenantUserOut)
-async def update_tenant_user(
+def update_tenant_user(
     tenant_id: int,
     user_id: int,
     update_data: TenantUserUpdate,
@@ -372,7 +372,7 @@ async def update_tenant_user(
 
 
 @router.post("/tenants/{tenant_id}/inject-system-user", status_code=status.HTTP_200_OK)
-async def inject_system_user(
+def inject_system_user(
     tenant_id: int,
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
@@ -420,7 +420,7 @@ async def inject_system_user(
 
 
 @router.post("/tenants/inject-system-users-all", status_code=status.HTTP_200_OK)
-async def inject_system_users_all(
+def inject_system_users_all(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
 ):

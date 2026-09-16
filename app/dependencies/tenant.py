@@ -2,6 +2,13 @@
 
 Provee la sesión de base de datos enrutada dinámicamente al esquema
 correspondiente al Tenant solicitado, garantizando aislamiento de datos físicos.
+
+Todas estas dependencias son `def` y no `async def` **a propósito**. FastAPI
+ejecuta las dependencias `async` en el event loop, y aquí las consultas son
+síncronas (psycopg2): declararlas `async` hace que cada request bloquee el loop
+mientras espera a la base, en vez de delegarse al threadpool. Ninguna usa
+`await`, así que nada gana con ser corrutina. No las conviertas a `async` sin
+migrar antes a un driver asíncrono.
 """
 
 from typing import Annotated, Optional
@@ -31,7 +38,7 @@ def get_global_db():
         db.close()
 
 
-async def get_current_global_user(
+def get_current_global_user(
     token: Annotated[str, Depends(oauth2_scheme)], 
     global_db: Session = Depends(get_global_db)
 ) -> SaaSUser:
@@ -56,7 +63,7 @@ async def get_current_global_user(
     return user
 
 
-async def get_current_tenant_user(
+def get_current_tenant_user(
     x_tenant_id: Annotated[int, Header(description="ID del Tenant a consultar")],
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
@@ -82,7 +89,7 @@ async def get_current_tenant_user(
     return tenant_user
 
 
-async def get_tenant_db(
+def get_tenant_db(
     x_tenant_id: Annotated[int, Header()],
     tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],
     global_db: Session = Depends(get_global_db)
@@ -110,7 +117,7 @@ async def get_tenant_db(
         connection.execution_options(schema_translate_map=None)
         connection.close()
 
-async def get_current_local_user(
+def get_current_local_user(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     tenant_db: Session = Depends(get_tenant_db)
 ) -> User:
@@ -133,7 +140,7 @@ async def get_current_local_user(
     return local_user
 
 
-async def require_admin(tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)]):
+def require_admin(tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)]):
     """Dependencia para verificar que el usuario operativo tiene rol ADMINISTRADOR."""
     if tenant_user.role_name != "ADMINISTRADOR" and not tenant_user.user.is_superuser:
         raise HTTPException(

@@ -67,7 +67,7 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
     return results
 
 @router.post("/token", response_model=SaaSToken)
-async def login_for_access_token(
+def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     global_db: Session = Depends(get_global_db),
 ):
@@ -97,7 +97,7 @@ async def login_for_access_token(
     }
 
 @router.post("/login", response_model=SaaSToken)
-async def login_json(
+def login_json(
     login_data: SaaSUserLogin,
     global_db: Session = Depends(get_global_db)
 ):
@@ -125,12 +125,12 @@ async def login_json(
     }
 
 @router.get("/users/me", response_model=SaaSUserOut)
-async def read_users_me(current_user: Annotated[SaaSUser, Depends(get_current_global_user)]):
+def read_users_me(current_user: Annotated[SaaSUser, Depends(get_current_global_user)]):
     """Obtiene el perfil del usuario actual (Nivel SaaS)."""
     return current_user
 
 @router.get("/validate")
-async def validate_session(
+def validate_session(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
     global_db: Session = Depends(get_global_db)
 ):
