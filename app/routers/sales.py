@@ -21,6 +21,8 @@ from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
+from app.utils.folios import siguiente_folio
+from app.utils.taxes import quantize_money, resolve_tax_rate
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 
@@ -140,7 +142,9 @@ def create_sale(
                 )
 
     # 2. Validar Productos y Calcular Totales
+    tipo = sale_in.tipo_dte
     total_neto = Decimal("0")
+    total_iva = Decimal("0")
     sale_details = []
     stock_movements = []
 
@@ -188,6 +192,11 @@ def create_sale(
         subtotal_linea = precio_unitario * cantidad
         total_neto += subtotal_linea
 
+        # El IVA se calcula por línea: un DTE exento no lleva impuesto y un
+        # producto puede tener su propia tasa (o ser exento dentro de un
+        # documento afecto).
+        total_iva += subtotal_linea * resolve_tax_rate(product, tipo)
+
         detail_obj = SaleDetail(
             product_id=product.id,
             cantidad=cantidad,
@@ -198,8 +207,8 @@ def create_sale(
         sale_details.append(detail_obj)
 
     # 3. Calcular IVA y Total
-    iva = total_neto * Decimal("0.19")
-    total = total_neto + iva
+    iva = quantize_money(total_iva)
+    total = quantize_money(total_neto + iva)
 
     # Validar Pagos
     total_payments = sum(p.amount for p in sale_in.payments)
@@ -212,20 +221,25 @@ def create_sale(
         )
 
     # 4. Asignar Folio (CAF según tipo de DTE)
-    tipo = sale_in.tipo_dte
     caf = db.query(CAF).filter(
         CAF.tipo_documento == tipo,
         CAF.ultimo_folio_usado < CAF.folio_hasta,
     ).order_by(CAF.id.asc()).first()
 
-    if caf:
-        nuevo_folio = caf.ultimo_folio_usado + 1
-        caf.ultimo_folio_usado = nuevo_folio
-        db.add(caf)
-    else:
-        # MODO SIMULACIÓN: Si no hay CAF, usamos correlativo manual basándonos en ventas anteriores
-        last_sale = db.query(Sale).filter(Sale.tipo_dte == tipo).order_by(Sale.folio.desc()).first()
-        nuevo_folio = (last_sale.folio + 1) if last_sale else 1
+    if not caf:
+        # Sin CAF vigente no se puede emitir: inventar un correlativo produce
+        # documentos con folios no autorizados por el SII.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"No hay folios disponibles para el DTE tipo {tipo}. "
+                "Carga un CAF vigente antes de emitir."
+            ),
+        )
+
+    nuevo_folio = siguiente_folio(caf)
+    caf.ultimo_folio_usado = nuevo_folio
+    db.add(caf)
 
     # Serializar referencias para columna JSON (solo para Factura)
     referencias_json = None
@@ -268,18 +282,9 @@ def create_sale(
             customer.current_balance += payment_in.amount
             db.add(customer)
 
-    # 5.2 Actualizar sale_id en movimientos de stock (Si los hubo)
-    # Buscamos los movimientos en la sesión que tengan sale_id nulo y sean de estos productos?
-    # Mas facil: Lo hacemos arriba si tuvieramos el ID, pero no lo teniamos.
-    # Hack: Iterar details y buscar movimiento? 
-    # Mejor: Al crear movement arriba, no teniamos sale_id.
-    # Solucion: Flush sale primero (ya hecho) y luego recorrer items de nuevo? No eficiente.
-    # Solucion correcta: Agregar movements a una lista temporal y asignarle sale_id aqui.
-    
-    # Re-implements stock logic inside loop? No.
-    # Just set sale_id on flush? SQLAlchemy handles relationships?
-    # If we added `sale.stock_movements.append(movement)`?
-    
+    # 5.2 Los movimientos de stock ya quedan vinculados a la venta: se pasan en
+    # `stock_movements=` al construir `Sale`, y SQLAlchemy propaga el sale_id.
+
     # 6. Generar XML DTE y guardarlo atómicamente
     try:
         issuer = db.query(Issuer).first()
@@ -355,7 +360,10 @@ def create_return(
         raise HTTPException(status_code=404, detail="Venta original no encontrada")
 
     # 2. Calcular Montos de Devolución
+    # La NC hereda el tipo de DTE del documento original para efectos de IVA:
+    # devolver una Boleta Exenta no puede generar impuesto.
     total_neto = Decimal("0")
+    total_iva = Decimal("0")
     sale_details = []
     stock_movements = []
 
@@ -392,7 +400,8 @@ def create_return(
         
         subtotal = precio_unitario * item.cantidad
         total_neto += subtotal
-        
+        total_iva += subtotal * resolve_tax_rate(product, original_sale.tipo_dte)
+
         sale_details.append(SaleDetail(
             product_id=product.id,
             cantidad=item.cantidad,
@@ -400,8 +409,8 @@ def create_return(
             subtotal=subtotal
         ))
 
-    iva = total_neto * Decimal("0.19")
-    total = total_neto + iva
+    iva = quantize_money(total_iva)
+    total = quantize_money(total_neto + iva)
 
     # 3. Registrar Documento de Ajuste
     tipo = return_in.tipo_dte
@@ -409,14 +418,23 @@ def create_return(
     if tipo not in ADJUSTMENT_DTES:
         raise HTTPException(status_code=400, detail="El tipo de DTE para ajuste debe ser 56, 61, 111 o 112.")
 
-    caf = db.query(CAF).filter(CAF.tipo_documento == tipo).first()
-    # Si no hay CAF 61, fallamos? O usamos DTE 61 dummy?
-    # Asumimos que hay CAF 61 o usamos logica dummy.
-    nuevo_folio = 1 # Dummy por ahora si no hay CAF
-    if caf:
-        nuevo_folio = caf.ultimo_folio_usado + 1
-        caf.ultimo_folio_usado = nuevo_folio
-        db.add(caf)
+    caf = db.query(CAF).filter(
+        CAF.tipo_documento == tipo,
+        CAF.ultimo_folio_usado < CAF.folio_hasta,
+    ).order_by(CAF.id.asc()).first()
+
+    if not caf:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"No hay folios disponibles para el DTE tipo {tipo}. "
+                "Carga un CAF vigente antes de emitir la nota de crédito."
+            ),
+        )
+
+    nuevo_folio = siguiente_folio(caf)
+    caf.ultimo_folio_usado = nuevo_folio
+    db.add(caf)
 
     # Generar la referencia al documento original automáticamente
     referencias_json = [{
@@ -434,6 +452,10 @@ def create_return(
         iva=iva,
         monto_total=total,
         descripcion=f"Ajuste Venta #{original_sale.folio}: {return_in.reason}",
+        # La NC queda a nombre de quien la emite, igual que una venta: sin esto
+        # sales.user_id viola su NOT NULL y la devolución falla al persistir.
+        user_id=user_id,
+        seller_id=user_id,
         details=sale_details,
         stock_movements=stock_movements,
         related_sale_id=original_sale.id,

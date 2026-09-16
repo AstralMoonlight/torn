@@ -7,6 +7,7 @@ from sqlalchemy import desc
 from app.models.dte import CAF, FolioRequestLog
 from app.models.user import User
 from app.dependencies.tenant import get_tenant_db, get_current_local_user, require_admin
+from app.utils.folios import folios_disponibles, folios_totales
 from pydantic import BaseModel, Field
 from datetime import datetime, date
 
@@ -60,10 +61,9 @@ def get_folios_status(
                 )
             )
         else:
-            total = caf.folio_hasta - caf.folio_desde + 1
-            available = caf.folio_hasta - caf.ultimo_folio_usado
-            if available < 0: available = 0
-            
+            total = folios_totales(caf)
+            available = folios_disponibles(caf)
+
             result.append(
                 FolioStockOut(
                     dte_type=dte_type,
