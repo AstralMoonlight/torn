@@ -61,7 +61,9 @@ class CAF(Base):
     __tablename__ = "cafs"
 
     id = Column(Integer, primary_key=True, index=True)
-    tipo_documento = Column(Integer, unique=True, nullable=False,
+    # Sin UNIQUE: un inquilino carga un CAF nuevo cada vez que el SII le
+    # autoriza folios, asi que conviven varios del mismo tipo.
+    tipo_documento = Column(Integer, nullable=False, index=True,
                             comment="33=Factura, 34=Exenta, 39=Boleta, 61=NC")
     folio_desde = Column(Integer, nullable=False)
     folio_hasta = Column(Integer, nullable=False)

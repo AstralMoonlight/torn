@@ -161,3 +161,42 @@ class TestIvaPorDocumentoYProducto:
         resp = _vender(client, prod.id, 33, 1000)
         assert resp.status_code == 201, resp.text
         assert Decimal(resp.json()["iva"]) == Decimal("0")
+
+
+class TestMultiplesCafPorTipo:
+    """Un inquilino acumula varios CAF del mismo tipo conforme el SII autoriza folios."""
+
+    def test_la_emision_salta_al_siguiente_caf_al_agotarse(self, client, entorno_venta):
+        db = entorno_venta
+        db.add(CAF(
+            tipo_documento=33, folio_desde=10, folio_hasta=11,
+            ultimo_folio_usado=0, xml_caf="DUMMY",
+        ))
+        db.add(CAF(
+            tipo_documento=33, folio_desde=900, folio_hasta=910,
+            ultimo_folio_usado=0, xml_caf="DUMMY",
+        ))
+        prod = Product(codigo_interno="P-MULTI", nombre="Producto", precio_neto=1000)
+        db.add(prod)
+        db.commit()
+
+        folios = [_vender(client, prod.id, 33, 1190).json()["folio"] for _ in range(3)]
+        assert folios == [10, 11, 900], "Agotado el primer CAF debe continuar en el segundo"
+
+    def test_el_status_suma_todos_los_caf_del_tipo(self, client, entorno_venta):
+        db = entorno_venta
+        db.add(CAF(
+            tipo_documento=33, folio_desde=10, folio_hasta=11,
+            ultimo_folio_usado=0, xml_caf="DUMMY",
+        ))
+        db.add(CAF(
+            tipo_documento=33, folio_desde=900, folio_hasta=910,
+            ultimo_folio_usado=0, xml_caf="DUMMY",
+        ))
+        db.commit()
+
+        caf_33 = next(f for f in client.get("/folios/status").json() if f["dte_type"] == 33)
+        assert caf_33["total"] == 13          # 2 + 11
+        assert caf_33["available"] == 13
+        assert caf_33["latest_folio_desde"] == 900
+        assert caf_33["latest_folio_hasta"] == 910

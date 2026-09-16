@@ -51,8 +51,16 @@ def get_folios_status(
     result = []
     
     for dte_type in target_dtes:
-        caf = db.query(CAF).filter(CAF.tipo_documento == dte_type).first()
-        if not caf:
+        # Un inquilino acumula varios CAF del mismo tipo a medida que el SII le
+        # autoriza folios. El stock es la suma de todos, no el del primero.
+        cafs = (
+            db.query(CAF)
+            .filter(CAF.tipo_documento == dte_type)
+            .order_by(CAF.folio_desde.asc())
+            .all()
+        )
+
+        if not cafs:
             result.append(
                 FolioStockOut(
                     dte_type=dte_type, available=0, total=0,
@@ -60,21 +68,25 @@ def get_folios_status(
                     fecha_vencimiento=None
                 )
             )
-        else:
-            total = folios_totales(caf)
-            available = folios_disponibles(caf)
+            continue
 
-            result.append(
-                FolioStockOut(
-                    dte_type=dte_type,
-                    available=available,
-                    total=total,
-                    latest_folio_hasta=caf.folio_hasta,
-                    latest_folio_desde=caf.folio_desde,
-                    fecha_vencimiento=caf.fecha_vencimiento
-                )
+        # El rango informado es el del CAF más nuevo, y la fecha de vencimiento
+        # la del que se consumirá a continuación (el criterio que usa la venta:
+        # el más antiguo con folios libres), que es la que de verdad urge.
+        ultimo = cafs[-1]
+        en_uso = next((c for c in cafs if folios_disponibles(c) > 0), None)
+
+        result.append(
+            FolioStockOut(
+                dte_type=dte_type,
+                available=sum(folios_disponibles(c) for c in cafs),
+                total=sum(folios_totales(c) for c in cafs),
+                latest_folio_hasta=ultimo.folio_hasta,
+                latest_folio_desde=ultimo.folio_desde,
+                fecha_vencimiento=(en_uso or ultimo).fecha_vencimiento,
             )
-            
+        )
+
     return result
 
 @router.post("/request", response_model=FolioRequestLogOut, summary="Solicitar Folios al SII")

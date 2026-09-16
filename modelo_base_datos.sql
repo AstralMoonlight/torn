@@ -1157,11 +1157,10 @@ ALTER TABLE ONLY public.cafs
 
 
 --
--- Name: cafs cafs_tipo_documento_key; Type: CONSTRAINT; Schema: public; Owner: torn
+-- Name: cafs ix_cafs_tipo_documento_folio_desde; Type: INDEX; Schema: public; Owner: torn
 --
 
-ALTER TABLE ONLY public.cafs
-    ADD CONSTRAINT cafs_tipo_documento_key UNIQUE (tipo_documento);
+CREATE INDEX ix_cafs_tipo_documento_folio_desde ON public.cafs USING btree (tipo_documento, folio_desde);
 
 
 --
