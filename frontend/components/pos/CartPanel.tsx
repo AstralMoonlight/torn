@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useCartStore } from '@/lib/store/cartStore'
+import { useCartStore, isExemptDte } from '@/lib/store/cartStore'
 import { Trash2, Minus, Plus, ShoppingBag, CreditCard, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function CartPanel({ onClose }: Props) {
-    const { items, totalNeto, totalIva, totalFinal, removeItem, updateQuantity, clear } = useCartStore()
+    const { items, totalNeto, totalIva, totalFinal, tipoDte, removeItem, updateQuantity, clear } = useCartStore()
     const [checkoutOpen, setCheckoutOpen] = useState(false)
 
     return (
@@ -124,7 +124,7 @@ export default function CartPanel({ onClose }: Props) {
                             <span>{formatCLP(totalNeto)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-neutral-500">
-                            <span>IVA (19%)</span>
+                            <span>{isExemptDte(tipoDte) ? 'IVA (exento)' : 'IVA (19%)'}</span>
                             <span>{formatCLP(totalIva)}</span>
                         </div>
                         <Separator className="my-1.5" />

@@ -21,8 +21,11 @@ interface CartState {
     customer: Customer | null
     priceList: PriceListRead | null
     isRecalculating: boolean
+    /** Tipo de DTE en curso; define si el carro lleva IVA o no. */
+    tipoDte: number
 
     setCustomer: (customer: Customer | null, autoSwitchList?: PriceListRead | null) => void
+    setTipoDte: (tipoDte: number) => void
     setPriceList: (list: PriceListRead | null) => void
     addItem: (product: Product, qty?: number) => Promise<void>
     removeItem: (productId: number) => void
@@ -35,9 +38,20 @@ interface CartState {
     totalFinal: number
 }
 
-function recalcTotals(items: CartItem[]) {
+/**
+ * Tipos de DTE sin IVA: 34 Factura Exenta, 41 Boleta Exenta y los de
+ * exportación. Debe mantenerse alineado con `EXEMPT_DTES` en
+ * `app/utils/taxes.py`, que es lo que el backend cobra realmente.
+ */
+export const EXEMPT_DTES = [34, 41, 110, 111, 112]
+
+export function isExemptDte(tipoDte: number): boolean {
+    return EXEMPT_DTES.includes(tipoDte)
+}
+
+function recalcTotals(items: CartItem[], tipoDte: number) {
     const totalNeto = items.reduce((acc, i) => acc + i.subtotal, 0)
-    const totalIva = Math.round(totalNeto * 0.19)
+    const totalIva = isExemptDte(tipoDte) ? 0 : Math.round(totalNeto * 0.19)
     const totalFinal = totalNeto + totalIva
     return { totalNeto, totalIva, totalFinal }
 }
@@ -49,6 +63,7 @@ export const useCartStore = create<CartState>()(
             customer: null,
             priceList: null,
             isRecalculating: false,
+            tipoDte: 39,
             totalNeto: 0,
             totalIva: 0,
             totalFinal: 0,
@@ -59,6 +74,9 @@ export const useCartStore = create<CartState>()(
                     await recalculatePrices(set, get)
                 }
             },
+
+            setTipoDte: (tipoDte) =>
+                set((state) => ({ tipoDte, ...recalcTotals(state.items, tipoDte) })),
 
             setPriceList: async (list) => {
                 set({ priceList: list })
@@ -129,27 +147,27 @@ export const useCartStore = create<CartState>()(
                     ]
                 }
 
-                set({ items: newItems, ...recalcTotals(newItems) })
+                set({ items: newItems, ...recalcTotals(newItems, get().tipoDte) })
             },
 
             removeItem: (productId) =>
                 set((state) => {
                     const newItems = state.items.filter((i) => i.product.id !== productId)
-                    return { items: newItems, ...recalcTotals(newItems) }
+                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
                 }),
 
             updateQuantity: (productId, qty) =>
                 set((state) => {
                     if (qty <= 0) {
                         const newItems = state.items.filter((i) => i.product.id !== productId)
-                        return { items: newItems, ...recalcTotals(newItems) }
+                        return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
                     }
                     const newItems = state.items.map((i) =>
                         i.product.id === productId
                             ? { ...i, quantity: qty, subtotal: qty * i.precio_neto }
                             : i
                     )
-                    return { items: newItems, ...recalcTotals(newItems) }
+                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
                 }),
 
             clear: () =>
@@ -199,7 +217,7 @@ async function recalculatePrices(set: any, get: any) {
             }
         })
 
-        set({ items: newItems, ...recalcTotals(newItems) })
+        set({ items: newItems, ...recalcTotals(newItems, state.tipoDte) })
     } catch (err) {
         console.error('Failed to recalculate prices', err)
         toast.error('Error al recalcular precios de la lista')

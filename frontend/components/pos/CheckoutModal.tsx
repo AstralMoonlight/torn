@@ -103,7 +103,7 @@ function formatDateForInput(d: Date): string {
 }
 
 export default function CheckoutModal({ open, onClose }: Props) {
-    const { items, totalFinal, clear, customer, setCustomer } = useCartStore()
+    const { items, totalFinal, clear, customer, setCustomer, setTipoDte } = useCartStore()
     const { userId } = useSessionStore()
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [payments, setPayments] = useState<PaymentLine[]>([])
@@ -112,6 +112,13 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
     // Customer State is now managed by cartStore to allow auto-switching lists
 
+
+    // El carro recalcula el IVA según el DTE elegido: un documento exento no
+    // lleva impuesto, y el total mostrado debe coincidir con el que cobra el
+    // backend (app/utils/taxes.py).
+    useEffect(() => {
+        setTipoDte(dteType)
+    }, [dteType, setTipoDte])
 
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
