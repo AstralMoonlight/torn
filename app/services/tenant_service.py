@@ -5,7 +5,9 @@ en 'public' hasta la creación física del esquema y corrida de migraciones
 Alembic (Tenant-Aware).
 """
 
+import logging
 import re
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import Connection
@@ -29,6 +31,8 @@ import app.models.dte
 import app.models.issuer
 import app.models.payment
 from app.utils.schemas import safe_schema_name
+
+logger = logging.getLogger(__name__)
 
 def _generate_schema_name(rut: str) -> str:
     """Genera un nombre de esquema seguro basado en el RUT para PostgreSQL."""
@@ -83,10 +87,12 @@ def provision_new_tenant(
     
     # 3. Aislamiento Físico: Creación del Esquema y Migraciones
     connection = engine.connect()
+    esquema_creado = False
     try:
         # A. Crear Esquema PostgreSQL
         connection.execute(text(f'CREATE SCHEMA "{safe_schema_name(schema_name)}"'))
         connection.commit()
+        esquema_creado = True
         
         # B. Generar Tablas Operativas usando el Script Base Puro vía psql
         import subprocess
@@ -194,12 +200,70 @@ def provision_new_tenant(
         command.stamp(alembic_cfg, "head")
         
     except Exception as e:
-        global_db.rollback()
-        new_tenant.is_active = False
-        global_db.commit()
-        raise Exception(f"Fallo crítico aprovisionando esquema {safe_schema_name(schema_name)}: {str(e)}")
+        # Aprovisionar no es atómico: el `CREATE SCHEMA` y el registro del
+        # inquilino ya se confirmaron por separado, así que un `rollback()` aquí
+        # no deshace nada. Hay que limpiar a mano, o queda un esquema a medio
+        # crear y una fila en `public.tenants` que bloquea ese RUT para siempre,
+        # porque el schema_name se deriva de él.
+        _limpiar_aprovisionamiento_fallido(
+            global_db, connection, new_tenant, schema_name, esquema_creado
+        )
+        raise Exception(
+            f"Fallo aprovisionando el esquema {schema_name}: {e}. "
+            "Se revirtió la creación; puedes reintentar con el mismo RUT."
+        )
     finally:
         connection = connection.execution_options(schema_translate_map=None)
         connection.close()
-        
+
     return new_tenant
+
+
+def _limpiar_aprovisionamiento_fallido(
+    global_db: Session,
+    connection: Connection,
+    tenant: Tenant,
+    schema_name: str,
+    esquema_creado: bool,
+) -> None:
+    """Revierte un aprovisionamiento incompleto, dejando el RUT reutilizable.
+
+    Nunca propaga sus propios errores: el fallo original es el que interesa.
+
+    Args:
+        global_db: Sesión sobre el esquema `public`.
+        connection: Conexión usada para crear el esquema.
+        tenant: Fila ya persistida en `public.tenants`.
+        schema_name: Esquema a eliminar.
+        esquema_creado: Si el `CREATE SCHEMA` llegó a ejecutarse.
+    """
+    if esquema_creado:
+        try:
+            connection.rollback()
+            connection.execute(
+                text(f'DROP SCHEMA IF EXISTS "{safe_schema_name(schema_name)}" CASCADE')
+            )
+            connection.commit()
+        except Exception:
+            logger.exception(
+                "No se pudo eliminar el esquema %s tras un aprovisionamiento "
+                "fallido. Hay que borrarlo a mano antes de reintentar.",
+                schema_name,
+            )
+
+    try:
+        global_db.rollback()
+        # Las membresías se crean después de esta función, pero se limpian por
+        # si el fallo ocurre en un reintento sobre un inquilino ya enlazado.
+        global_db.query(TenantUser).filter(TenantUser.tenant_id == tenant.id).delete(
+            synchronize_session=False
+        )
+        global_db.delete(tenant)
+        global_db.commit()
+    except Exception:
+        global_db.rollback()
+        logger.exception(
+            "No se pudo eliminar el registro del inquilino %s tras un "
+            "aprovisionamiento fallido.",
+            tenant.id,
+        )
