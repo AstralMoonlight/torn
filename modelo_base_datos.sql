@@ -1698,5 +1698,69 @@ ALTER TABLE ONLY public.folio_request_logs ALTER COLUMN id SET DEFAULT nextval('
 ALTER TABLE ONLY public.folio_request_logs
     ADD CONSTRAINT folio_request_logs_pkey PRIMARY KEY (id);
 
+
+--
+-- Sincronizacion con las migraciones de Alembic posteriores al volcado.
+-- El aprovisionamiento de inquilinos crea las tablas desde este archivo y luego
+-- hace `alembic stamp head`, asi que lo que falte aqui no lo anade nadie: el
+-- esquema nace declarandose al dia sin estarlo. Estas definiciones equivalen a
+-- c3ddcda6f3fe (listas de precios) y a1b2c3d4e5f6 (referencias en ventas).
+--
+
+CREATE TABLE public.price_lists (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    description character varying(500),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.price_lists OWNER TO torn;
+
+CREATE SEQUENCE public.price_lists_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.price_lists_id_seq OWNER TO torn;
+
+ALTER SEQUENCE public.price_lists_id_seq OWNED BY public.price_lists.id;
+
+ALTER TABLE ONLY public.price_lists ALTER COLUMN id SET DEFAULT nextval('public.price_lists_id_seq'::regclass);
+
+ALTER TABLE ONLY public.price_lists
+    ADD CONSTRAINT price_lists_pkey PRIMARY KEY (id);
+
+CREATE INDEX ix_price_lists_id ON public.price_lists USING btree (id);
+
+CREATE TABLE public.price_list_product (
+    price_list_id integer NOT NULL,
+    product_id integer NOT NULL,
+    fixed_price numeric(15,2) NOT NULL
+);
+
+ALTER TABLE public.price_list_product OWNER TO torn;
+
+ALTER TABLE ONLY public.price_list_product
+    ADD CONSTRAINT price_list_product_pkey PRIMARY KEY (price_list_id, product_id);
+
+ALTER TABLE ONLY public.price_list_product
+    ADD CONSTRAINT price_list_product_price_list_id_fkey FOREIGN KEY (price_list_id) REFERENCES public.price_lists(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.price_list_product
+    ADD CONSTRAINT price_list_product_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+
+ALTER TABLE public.customers ADD COLUMN price_list_id integer;
+
+ALTER TABLE ONLY public.customers
+    ADD CONSTRAINT fk_customers_price_list_id FOREIGN KEY (price_list_id) REFERENCES public.price_lists(id) ON DELETE SET NULL;
+
+ALTER TABLE public.sales ADD COLUMN referencias json;
+
+COMMENT ON COLUMN public.sales.referencias IS 'Lista de {tipo_documento, folio, fecha}';
+
 \unrestrict Q2hNdhh7rBmsMcAOegrTi6Ml8hggY41qP4WSmwsGfpA1KKVKAa0XlX1e1abRBnG
 

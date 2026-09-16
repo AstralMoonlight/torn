@@ -194,10 +194,19 @@ def provision_new_tenant(
         
         connection.commit()
 
-        # D. Registrar el esquema en Alembic como actualizado ("stamp head")
+        # D. Registrar el esquema en Alembic como actualizado ("stamp head").
+        #
+        # `alembic/env.py` deduce el `version_table_schema` del
+        # schema_translate_map de la conexión. Sin configurarlo, el stamp no
+        # apuntaba al esquema del inquilino y éste quedaba sin tabla
+        # `alembic_version`: las migraciones futuras no tenían dónde partir.
+        connection.execution_options(
+            schema_translate_map={None: safe_schema_name(schema_name)}
+        )
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.attributes['connection'] = connection
         command.stamp(alembic_cfg, "head")
+        connection.commit()
         
     except Exception as e:
         # Aprovisionar no es atómico: el `CREATE SCHEMA` y el registro del
