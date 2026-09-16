@@ -53,7 +53,7 @@ Detectado exclusivamente a partir de los archivos de dependencias y configuraci�
 | python-dotenv | `python-dotenv`, `load_dotenv()` en `app/database.py` |
 | python-multipart | `python-multipart` (formularios OAuth2) |
 | PyYAML, anyio, click, idna, six, tomli, tzdata, typing_extensions, typing-inspection, exceptiongroup | `requirements.txt` (dependencias transitivas) |
-| Pytest | `tests/` + `pytest_output.txt`, `pytest_output_final.txt` (no está listado en `requirements.txt`) |
+| Pytest + httpx | `requirements-dev.txt`, `tests/` |
 
 ### Frontend — `frontend/package.json`
 
@@ -128,12 +128,14 @@ Torn/
 
 - **frontend → backend**: el frontend es headless y consume la API por HTTP. `frontend/services/api.ts`
   usa Axios contra `NEXT_PUBLIC_API_URL` (`http://localhost:8000` en `frontend/.env.local` y en
-  `docker-compose.yml`). El backend habilita CORS explícito para `localhost:3000/3001/3002` en `app/main.py`.
+  `docker-compose.yml`). El backend configura CORS con `TORN_CORS_ORIGINS` y, si no está definida, cae a los
+  `localhost:3000/3001/3002` de desarrollo (`app/main.py`).
 - **Aislamiento por tenant**: el cliente envía el JWT (`Authorization: Bearer`) y la cabecera `X-Tenant-Id`.
   `app/dependencies/tenant.py` valida el token contra `public.saas_users`, resuelve el `schema_name` del
   tenant y entrega una sesión SQLAlchemy apuntando a ese esquema.
 - **backend → PostgreSQL**: `app/database.py` construye la URL desde `TORN_DB_USER/PASSWORD/HOST/PORT/NAME`.
-  El esquema se versiona con Alembic; además `main.py` hace `Base.metadata.create_all()` en el startup.
+  El esquema se versiona con Alembic; `main.py` hace además `create_all()` al arrancar, salvo que
+  `TORN_AUTO_CREATE_TABLES=0`.
 - **docker (raíz) → ambos**: `docker-compose.yml` levanta `db` (postgres:18-alpine con healthcheck),
   `backend` (build desde `Dockerfile.backend`, `env_file: .env`, override `TORN_DB_HOST: db`, puerto 8000,
   `depends_on: db healthy`) y `frontend` (build desde `Dockerfile.frontend` con contexto raíz, puerto 3000,
@@ -182,19 +184,77 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   firma XML según esquema SII, Timbre Electrónico TED). Sin esto los DTEs no son válidos ante el SII.
 - **Envío al SII**: `DTE.track_id` y `DTE.estado_sii` existen en el modelo, pero no se detecta cliente ni
   servicio que haga el envío/consulta de estado.
-- **`.env.example` eliminado**: no queda plantilla de variables de entorno versionada para nuevos entornos.
-- **Dependencias de desarrollo sin declarar**: `pytest` (y el cliente HTTP de pruebas, si aplica) no figuran en
-  `requirements.txt`; no hay `requirements-dev.txt`.
 - **`requirements.txt` sin versiones**: por decisión explícita del proyecto; implica builds no reproducibles.
 - **`bcrypt` pineado fuera de `requirements.txt`**: `Dockerfile.backend` instala `bcrypt==4.0.1` aparte, lo que
   duplica la gestión de dependencias.
 - **Frontend en modo dev dentro de Docker**: `Dockerfile.frontend` ejecuta `npm run dev`, no `build` + `start`.
 - **Credenciales por defecto en el repo**: `docker-compose.yml` trae `POSTGRES_PASSWORD: password123` y
   `create_admin.py` crea `admin@torn.cl / admin123`. Aceptable en local, no en despliegue.
-- **Deuda menor**: uso de `Query.get()` legacy de SQLAlchemy 1.x en `app/routers/sales.py` (warnings en pytest),
-  `@app.on_event("startup")` deprecado en FastAPI, y `create_all()` conviviendo con Alembic.
-- **Archivos residuales versionados**: `witch mainq` (volcado accidental de un comando git), `test.db`,
-  `pytest_output*.txt` y varios scripts `migrate_*.py` / `test_*.py` sueltos en la raíz.
+- **Deuda menor**: uso de `Query.get()` legacy de SQLAlchemy 1.x en `app/routers/sales.py` (warnings en pytest)
+  y `create_all()` conviviendo con Alembic.
+- **Raíz desordenada**: scripts `migrate_*.py`, `seed_*.py`, `fix_admin.py` y `test_*.py` sueltos en la raíz,
+  estos últimos compitiendo con `tests/`.
+- **Precio de venta**: `create_sale` cobra `product.precio_neto` e ignora la lista de precios que el POS sí
+  resuelve, de modo que el cliente puede pagar distinto de lo cotizado.
+- **`CAF.tipo_documento` es UNIQUE**: impide cargar un segundo CAF del mismo tipo cuando se agotan los folios,
+  pese a que `create_sale` ya consulta ordenando por `id`.
+- **IVA fijo en compras y reportes**: `app/routers/purchases.py`, `dashboard/page.tsx` y `reporte-diario/page.tsx`
+  siguen asumiendo 19%.
+
+---
+
+## 4.bis Revisión del 2026-09-16
+
+Auditoría completa del repositorio. Lo corregido en esa sesión:
+
+### Causa raíz del frontend roto
+
+`.gitignore` heredaba `lib/` y `lib64/` de la plantilla de Python. Sin barra
+inicial esos patrones no se anclan a la raíz y también capturaban
+`frontend/lib/`. Resultado: `frontend/lib/format.ts` y `frontend/lib/hooks/`
+nunca entraron al repositorio y se perdieron al clonar; `rut.ts` y
+`store/uiStore.ts` sobrevivían sólo en local. `tsc` reportaba 20 errores y
+`npm run build` no pasaba. Se anclaron los patrones, se versionaron los archivos
+supervivientes y se **reconstruyeron** `format.ts` y `useBarcodeScanner.ts` a
+partir de sus llamadas (ambos lo indican en su docstring; conviene revisarlos).
+
+### Defectos con impacto tributario
+
+| Defecto | Efecto |
+|---|---|
+| Folio calculado como `ultimo_folio_usado + 1` | Un CAF de 1000-1100 emitía su primer documento con folio 1, fuera del rango autorizado |
+| `available = folio_hasta - ultimo_folio_usado` | `/folios/status` informaba 1100 folios donde había 101 |
+| `iva = total_neto * Decimal("0.19")` fijo | Factura/Boleta Exenta (34/41) salían con IVA; el `Tax` del producto se ignoraba |
+| NC creada sin `user_id`/`seller_id` | Toda devolución fallaba contra el NOT NULL de `sales.user_id` |
+| Venta sin CAF inventaba un correlativo | Se emitían documentos con folios no autorizados en silencio; ahora devuelve 409 |
+
+La aritmética de folios vive en `app/utils/folios.py` y las tasas en
+`app/utils/taxes.py`; `frontend/lib/store/cartStore.ts` replica `EXEMPT_DTES`
+para que el total del POS coincida con el que cobra el backend.
+
+### Seguridad y despliegue
+
+- `SECRET_KEY` caía a una constante pública si no estaba definida, lo que
+  permitía firmar un JWT para cualquier usuario. Ahora es obligatoria si
+  `TORN_ENV` es staging o production.
+- `tenant_service.py` invocaba `psql` con usuario, host, puerto y contraseña
+  fijos en el código; pasa a leer las `TORN_DB_*`.
+- `Dockerfile.backend` instala `postgresql-client`: `python:3.10-slim` no trae
+  `psql`, así que el aprovisionamiento de empresas fallaba en el contenedor.
+- CORS configurable con `TORN_CORS_ORIGINS`; `on_event` reemplazado por lifespan.
+
+### Tests
+
+La suite no podía ejecutarse (8 errores de conexión): `conftest` sobreescribía
+`get_db`, que los routers dejaron de usar al migrar a tenant-per-schema. Ahora
+corre sobre SQLite en memoria con las dependencias de tenant sustituidas.
+**15 tests en verde**, incluyendo `tests/test_folios_impuestos.py`, que cubre
+las regresiones anteriores. Se añadió CI en `.github/workflows/ci.yml`.
+
+Dos bugs que la suite destapó: `CashSessionCreate.user_id` era obligatorio pero
+el endpoint lo ignora (abrir caja daba 422), y el índice único de
+`users.is_system_user` sólo declaraba `postgresql_where`, degradando a UNIQUE
+total fuera de PostgreSQL.
 
 ---
 
