@@ -3,6 +3,7 @@ from decimal import Decimal
 from app.models.product import Product
 from app.models.inventory import StockMovement
 from app.models.user import User
+from app.models.customer import Customer
 from app.models.dte import CAF, DTE
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
@@ -52,9 +53,9 @@ class TestInventory:
         # Payment Method
         pm = PaymentMethod(code="EFECTIVO", name="Efectivo")
         db_session.add(pm)
-        # Cliente
-        user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
-        db_session.add(user)
+        # Cliente (entidad Customer, separada de los usuarios operativos)
+        customer = Customer(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
+        db_session.add(customer)
         # Producto (Stock 10)
         prod = Product(
             codigo_interno="PROD-STOCK",
@@ -100,8 +101,8 @@ class TestInventory:
              db_session.commit()
         client.post("/cash/open", json={"start_amount": 5000})
 
-        user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
-        db_session.add(user)
+        customer = Customer(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
+        db_session.add(customer)
         prod = Product(
             codigo_interno="PROD-LOW",
             nombre="Poco Stock",

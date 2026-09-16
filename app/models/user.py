@@ -50,15 +50,23 @@ class User(Base):
         comuna (str): Comuna de residencia (opcional).
         ciudad (str): Ciudad de residencia (opcional).
         email (str): Correo electrónico de contacto.
-        current_balance (Numeric): Deuda acumulada en Cuenta Corriente.
-            Valor positivo indica deuda del cliente hacia el negocio.
         is_active (bool): Si el usuario está habilitado.
         created_at (datetime): Fecha de creación del registro.
         updated_at (datetime): Última fecha de actualización.
     """
     __tablename__ = "users"
     __table_args__ = (
-        Index('ix_users_system_user', 'is_system_user', unique=True, postgresql_where=(Column('is_system_user') == True)),
+        # Índice parcial: a lo más un usuario de sistema por esquema. Sin la
+        # cláusula WHERE el índice sería UNIQUE sobre todo el booleano y sólo
+        # permitiría dos usuarios en total, que es lo que ocurre en SQLite si
+        # se declara únicamente `postgresql_where`.
+        Index(
+            'ix_users_system_user',
+            'is_system_user',
+            unique=True,
+            postgresql_where=(Column('is_system_user') == True),
+            sqlite_where=(Column('is_system_user') == True),
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)

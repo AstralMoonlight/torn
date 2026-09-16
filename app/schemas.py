@@ -396,7 +396,10 @@ class PaymentMethodOut(BaseModel):
 
 class CashSessionCreate(BaseModel):
     start_amount: Decimal
-    user_id: int
+    #: Vestigio del API pre-multitenant. El endpoint deriva el cajero del token
+    #: (`get_current_local_user`) y descarta este valor; se mantiene opcional
+    #: para no romper a los clientes que todavía lo envían.
+    user_id: Optional[int] = None
     force_close_previous: bool = False
 
 

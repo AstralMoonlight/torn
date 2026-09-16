@@ -7,6 +7,7 @@ from app.models.payment import PaymentMethod, SalePayment
 from app.models.sale import Sale
 from app.models.inventory import StockMovement
 from app.models.user import User
+from app.models.customer import Customer
 from app.models.dte import CAF
 from app.models.issuer import Issuer
 
@@ -21,24 +22,15 @@ class TestPOS:
         db_session.add(issuer)
         caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
         db_session.add(caf)
-        client_user = User(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
-        db_session.add(client_user)
-        
-        # Cajero (Simulado ID 1 en router, pero necesitamos que exista en DB)
+        customer = Customer(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
+        db_session.add(customer)
+
+        # Cajero adicional. El cajero efectivo de la venta es el usuario local
+        # inyectado por el fixture `client` (id=1).
         cashier = User(rut="99999999-9", razon_social="Cajero 1", email="cashier@test.com")
         db_session.add(cashier)
-        db_session.flush() # ID 2 probably? Router said DEFAULT_USER_ID = 1.
-        # If seed ran, ID 1 might be Issuer? No, Issuer is checking Issuer table. 
-        # User table? Seed created Customer (User). 
-        # Wait, seed creates Customer. ID could be anything.
-        # Let's force ID 1 for cashier if possible or update router to look for specific ID.
-        # Router hardcodes user_id=1.
-        # So we must ensure User with ID 1 exists.
-        
-        # In test DB, it starts empty.
-        # Let's create User ID 1 specifically.
-        # If autoincrement starts at 1.
-        
+        db_session.flush()
+
         # Product
         prod = Product(
             codigo_interno="POS-PROD",
@@ -72,7 +64,7 @@ class TestPOS:
         }
         resp = client.post("/sales/", json=sale_data)
         assert resp.status_code == 409
-        assert "No hay turno" in resp.json()["detail"]
+        assert "turno de caja abierto" in resp.json()["detail"]
 
         # 3. Abrir Caja
         resp = client.post("/cash/open", json={"start_amount": 10000})

@@ -7,6 +7,7 @@ from app.models.payment import PaymentMethod, SalePayment
 from app.models.sale import Sale
 from app.models.inventory import StockMovement
 from app.models.user import User
+from app.models.customer import Customer
 from app.models.dte import CAF
 from app.models.issuer import Issuer
 
@@ -20,10 +21,13 @@ class TestWorldClass:
         db_session.add(issuer)
         caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
         db_session.add(caf)
+        # La Nota de Crédito consume folios de su propio CAF (tipo 61).
+        caf_nc = CAF(tipo_documento=61, folio_desde=500, folio_hasta=600, ultimo_folio_usado=0, xml_caf="DUMMY")
+        db_session.add(caf_nc)
         
         # Cliente
-        client_user = User(rut="12345678-5", razon_social="Cliente Fiador", email="fiado@test.com", current_balance=0)
-        db_session.add(client_user)
+        customer = Customer(rut="12345678-5", razon_social="Cliente Fiador", email="fiado@test.com", current_balance=0)
+        db_session.add(customer)
         
         # Cajero
         cashier = User(rut="99999999-9", razon_social="Cajero WC", email="cashier@test.com")
@@ -66,8 +70,8 @@ class TestWorldClass:
         sale_id = resp.json()["id"]
         
         # Verify Debt
-        db_session.refresh(client_user)
-        assert client_user.current_balance == Decimal("11900")
+        db_session.refresh(customer)
+        assert customer.current_balance == Decimal("11900")
         
         # Verify Stock
         db_session.refresh(prod)
@@ -94,8 +98,8 @@ class TestWorldClass:
         assert prod.stock_actual == 10
         
         # Verify Debt Reduced
-        db_session.refresh(client_user)
-        assert client_user.current_balance == 0
+        db_session.refresh(customer)
+        assert customer.current_balance == 0
         
         # Verify Stock Movement
         mov = db_session.query(StockMovement).filter_by(description=f"Devolución venta f.{resp.json()['related_sale_id']}: Arrepentimiento").first()
