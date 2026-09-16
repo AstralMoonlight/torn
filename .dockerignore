@@ -1,0 +1,43 @@
+# Sin esto, el `COPY frontend/ .` del Dockerfile arrastra el node_modules del
+# host por encima del que instala npm dentro de la imagen. Eso metía el binario
+# Windows `@next/swc-win32-x64-msvc` en un contenedor Linux, además de ~300 MB
+# de caché `.next` construida en el host.
+
+# Dependencias y artefactos de build
+node_modules
+**/node_modules
+.next
+**/.next
+out
+**/out
+build
+dist
+
+# Entornos Python
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+
+# Secretos y configuración local
+.env
+.env.local
+**/.env.local
+
+# Control de versiones y metadatos
+.git
+.gitignore
+.github
+
+# Artefactos de test y bases locales
+.pytest_cache
+test.db
+pytest_output*.txt
+
+# Documentación y herramientas que no afectan al runtime
+*.md
+!README.md
+.vscode
+.idea

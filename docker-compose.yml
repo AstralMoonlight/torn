@@ -37,6 +37,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      # Este compose es el entorno de desarrollo: `dev` levanta el servidor de
+      # Next con recarga en caliente. Para producción se construye con
+      # `--target runner` y NEXT_PUBLIC_API_URL como --build-arg, porque Next
+      # incrusta las NEXT_PUBLIC_* en el bundle al compilar.
+      target: dev
     container_name: torn_frontend
     restart: always
     ports:

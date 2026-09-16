@@ -1,12 +1,73 @@
-FROM node:20-alpine
+# Multi-stage. El objetivo `dev` mantiene el servidor de desarrollo con recarga
+# en caliente, que es lo que usa docker-compose; `runner` produce la imagen de
+# producción.
+#
+#   desarrollo : docker compose up -d            (compose apunta a `dev`)
+#   producción : docker build -f Dockerfile.frontend --target runner \
+#                  --build-arg NEXT_PUBLIC_API_URL=https://api.ejemplo.cl .
+
+# ── Dependencias ─────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-COPY frontend/package*.json ./
-RUN npm install
+# `npm ci` respeta el lockfile exactamente; `npm install` puede resolver
+# versiones distintas y hacer que la imagen no reproduzca lo probado.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
 
+
+# ── Desarrollo ───────────────────────────────────────────────────────
+FROM node:20-alpine AS dev
+
+WORKDIR /app
+ENV NODE_ENV=development
+
+COPY --from=deps /app/node_modules ./node_modules
 COPY frontend/ .
 
 EXPOSE 3000
 
 CMD ["npm", "run", "dev"]
+
+
+# ── Build de producción ──────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Next incrusta las variables NEXT_PUBLIC_* en el bundle al compilar, así que
+# tiene que llegar como argumento de build y no como variable de runtime: en
+# producción, ponerla en `environment:` no surte efecto.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY frontend/ .
+
+RUN npm run build
+
+
+# ── Producción ───────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Sin privilegios de root.
+RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
+
+# `output: "standalone"` (next.config.ts) deja en .next/standalone un servidor
+# autocontenido con sólo las dependencias que el build rastrea, así que no hace
+# falta copiar node_modules. Los estáticos van aparte, fuera del trazado.
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+# El servidor standalone se arranca con node, no con `npm start`.
+CMD ["node", "server.js"]
