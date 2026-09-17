@@ -90,3 +90,19 @@ def resolve_purchase_tax_rate(product, tipo_documento: Optional[str]) -> Decimal
 def quantize_money(amount: Decimal) -> Decimal:
     """Redondea un monto a dos decimales con redondeo comercial (half-up)."""
     return Decimal(amount).quantize(_CENT, rounding=ROUND_HALF_UP)
+
+
+def round_to_nearest_ten(amount: Decimal) -> Decimal:
+    """Redondea a la decena de pesos más cercana (regla chilena de efectivo).
+
+    El último dígito 0-4 baja a la decena actual, 5-9 sube a la siguiente.
+    Misma regla que `roundCash` en `frontend/components/pos/CheckoutModal.tsx`;
+    si una cambia, la otra tiene que cambiar junto.
+    """
+    pesos = int(Decimal(amount).to_integral_value(rounding=ROUND_HALF_UP))
+    last_digit = pesos % 10
+    if last_digit < 5:
+        pesos -= last_digit
+    else:
+        pesos += 10 - last_digit
+    return Decimal(pesos)

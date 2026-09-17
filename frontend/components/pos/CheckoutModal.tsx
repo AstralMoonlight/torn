@@ -257,11 +257,22 @@ export default function CheckoutModal({ open, onClose }: Props) {
     }
 
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0)
-    // Remaining shows true debt
-    const remaining = Math.max(0, totalFinal - totalPaid)
-    // Change is always cash, so it should be rounded
-    const rawChange = totalPaid > totalFinal ? totalPaid - totalFinal : 0
-    const change = roundCash(rawChange)
+
+    // El redondeo a la decena sólo se aplica a la porción pagada en efectivo
+    // (app/utils/taxes.py::round_to_nearest_ten, misma regla que roundCash).
+    // No es vuelto: es un ajuste al monto exigible, así que el "remaining" y
+    // el botón de cobro tienen que medirse contra el total ya ajustado, no
+    // contra totalFinal. Si no, el monto sugerido (redondeado) nunca alcanza
+    // para habilitar el cobro y el backend igual lo rechazaría.
+    const cashDeclared = payments.filter((p) => p.method.code === 'EFECTIVO').reduce((s, p) => s + p.amount, 0)
+    const nonCashDeclared = totalPaid - cashDeclared
+    const cashOwed = Math.max(totalFinal - nonCashDeclared, 0)
+    const roundingAdjustment = cashDeclared > 0 ? roundCash(cashOwed) - cashOwed : 0
+    const adjustedTotal = totalFinal + roundingAdjustment
+
+    // Remaining shows true debt against the rounding-adjusted total
+    const remaining = Math.max(0, adjustedTotal - totalPaid)
+    const change = totalPaid > adjustedTotal ? totalPaid - adjustedTotal : 0
 
     // Show smart cash only when there's a cash payment line
     const hasCashPayment = payments.some((p) => p.method.code === 'EFECTIVO')
@@ -606,6 +617,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                         {formatCLP(totalPaid)}
                                     </span>
                                 </div>
+                                {roundingAdjustment !== 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-500">Redondeo</span>
+                                        <span className="text-neutral-700 dark:text-neutral-300">{formatCLP(roundingAdjustment)}</span>
+                                    </div>
+                                )}
                                 {remaining > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-red-500">Faltante</span>

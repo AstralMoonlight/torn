@@ -34,6 +34,7 @@
                 <TasaIVA>19</TasaIVA>
                 <IVA>{{ sale.iva | int }}</IVA>
                 <MntTotal>{{ sale.monto_total | int }}</MntTotal>
+                {% if sale.ajuste_redondeo %}<MntRedondeo>{{ sale.ajuste_redondeo | int }}</MntRedondeo>{% endif %}
             </Totales>
         </Encabezado>
         {% for detail in sale.details %}

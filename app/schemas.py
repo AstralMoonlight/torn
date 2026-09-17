@@ -358,6 +358,7 @@ class SaleOut(BaseModel):
     iva: Decimal
     monto_total: Decimal
     vuelto: Decimal
+    ajuste_redondeo: Decimal
     descripcion: Optional[str] = None
     created_at: datetime
     related_sale_id: Optional[int] = None

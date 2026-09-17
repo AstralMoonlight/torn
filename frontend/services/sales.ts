@@ -68,6 +68,8 @@ export interface SaleOut {
     monto_neto: string
     iva: string
     monto_total: string
+    vuelto: string
+    ajuste_redondeo: string
     descripcion: string | null
     created_at: string
     related_sale_id: number | null

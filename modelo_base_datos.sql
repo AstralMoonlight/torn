@@ -1770,5 +1770,13 @@ ALTER TABLE public.sales ADD COLUMN vuelto numeric(15,2) NOT NULL DEFAULT 0;
 
 COMMENT ON COLUMN public.sales.vuelto IS 'Excedente pagado sobre el total, entregado en efectivo';
 
+--
+-- Equivale a e5f6a7b8c9d0 (ajuste_redondeo en ventas).
+--
+
+ALTER TABLE public.sales ADD COLUMN ajuste_redondeo numeric(15,2) NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.sales.ajuste_redondeo IS 'Ajuste por redondeo a la decena de la porción pagada en efectivo';
+
 \unrestrict Q2hNdhh7rBmsMcAOegrTi6Ml8hggY41qP4WSmwsGfpA1KKVKAa0XlX1e1abRBnG
 

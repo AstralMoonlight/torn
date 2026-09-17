@@ -23,7 +23,7 @@ from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
 from app.utils.folios import siguiente_folio
 from app.utils.pricing import resolve_unit_price
-from app.utils.taxes import quantize_money, resolve_tax_rate
+from app.utils.taxes import quantize_money, resolve_tax_rate, round_to_nearest_ten
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 
@@ -222,34 +222,51 @@ def create_sale(
     iva = quantize_money(total_iva)
     total = quantize_money(total_neto + iva)
 
+    cash_method_ids = {
+        pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "EFECTIVO").all()
+    }
+    cash_declared = sum(
+        p.amount for p in sale_in.payments if p.payment_method_id in cash_method_ids
+    )
+    non_cash_declared = sum(
+        p.amount for p in sale_in.payments if p.payment_method_id not in cash_method_ids
+    )
+
+    # Redondeo a la decena (regla chilena): sólo se aplica a la porción que se
+    # paga en efectivo, no es vuelto sino un ajuste legal del monto cobrado.
+    # Con pago mixto, la tarjeta/crédito interno cubre su parte exacta y el
+    # redondeo cae sobre lo que queda por cubrir en efectivo.
+    ajuste_redondeo = Decimal("0")
+    if cash_declared > 0:
+        cash_owed = max(total - non_cash_declared, Decimal("0"))
+        ajuste_redondeo = round_to_nearest_ten(cash_owed) - cash_owed
+
+    total_ajustado = quantize_money(total + ajuste_redondeo)
+
     # Validar Pagos
     total_payments = sum(p.amount for p in sale_in.payments)
-    if total_payments < total:
+    if total_payments < total_ajustado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Monto de pagos ({total_payments}) inferior al total de la venta ({total})"
+            detail=(
+                f"Monto de pagos ({total_payments}) inferior al total de la venta "
+                f"(${total_ajustado}, incluye ${ajuste_redondeo} de ajuste por redondeo)"
+            ),
         )
 
-    # El excedente sobre el total se entrega como vuelto, siempre en
+    # El excedente sobre el total ajustado se entrega como vuelto, siempre en
     # efectivo: no tiene sentido devolver cambio de un pago con tarjeta o
     # crédito interno. Si no hay efectivo suficiente en los pagos para
     # cubrirlo, la combinación de pagos no es válida.
-    vuelto = quantize_money(total_payments - total)
-    if vuelto > 0:
-        cash_method_ids = {
-            pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "EFECTIVO").all()
-        }
-        cash_paid = sum(
-            p.amount for p in sale_in.payments if p.payment_method_id in cash_method_ids
+    vuelto = quantize_money(total_payments - total_ajustado)
+    if vuelto > 0 and cash_declared < vuelto:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"El vuelto (${vuelto}) no puede superar el efectivo recibido "
+                f"(${cash_declared}); los demás medios de pago no dan cambio."
+            ),
         )
-        if cash_paid < vuelto:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"El vuelto (${vuelto}) no puede superar el efectivo recibido "
-                    f"(${cash_paid}); los demás medios de pago no dan cambio."
-                ),
-            )
 
     # 4. Asignar Folio (CAF según tipo de DTE)
     caf = db.query(CAF).filter(
@@ -286,6 +303,7 @@ def create_sale(
         iva=iva,
         monto_total=total,
         vuelto=vuelto,
+        ajuste_redondeo=ajuste_redondeo,
         descripcion=sale_in.descripcion,
         seller_id=seller_id_to_use,
         user_id=seller_id_to_use,
