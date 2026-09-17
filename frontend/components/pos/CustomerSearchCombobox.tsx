@@ -16,16 +16,14 @@ import {
     Loader2,
     Search,
     User as UserIcon,
+    UserCheck,
     Plus,
-    X,
-    CheckCircle2,
 } from 'lucide-react'
 
 interface Props {
     value: Customer | null
     onChange: (customer: Customer | null) => void
     required?: boolean
-    placeholder?: string
 }
 
 /**
@@ -53,16 +51,19 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     )
 }
 
+const SEARCH_PLACEHOLDER = 'Buscar por Nombre o RUT…'
+
 export default function CustomerSearchCombobox({
     value,
     onChange,
-    placeholder = 'Buscar por Nombre o RUT…',
+    required = false,
 }: Props) {
-    // La búsqueda vive dentro de un Dialog (no un dropdown flotando sobre el
-    // input) — este selector se usa dentro de CartPanel, un panel angosto y
-    // con poco alto libre debajo (Referencias, totales, botón Cobrar), y un
-    // dropdown absoluto ahí terminaba tapando todo eso. El Dialog tiene su
-    // propio fondo/overlay, así que no hay nada que pueda quedar cubierto.
+    // Trigger de un solo ícono (no una barra de búsqueda entera): dentro de
+    // CartPanel comparte fila con los tabs de tipo de documento, y la idea es
+    // ocupar el mínimo espacio posible en pantalla. Toda la interacción
+    // (buscar, cambiar, quitar) vive en el Dialog que abre al hacer clic —
+    // que además tiene su propio overlay, así que nunca tapa nada del panel
+    // como sí lo hacía el dropdown absoluto que tenía antes.
     const [searchOpen, setSearchOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Customer[]>([])
@@ -118,13 +119,13 @@ export default function CustomerSearchCombobox({
 
     // ── Reset search state each time the dialog opens, autofocus ──
     useEffect(() => {
-        if (searchOpen) {
+        if (searchOpen && !value) {
             setQuery('')
             setResults([])
             setHighlightedIndex(-1)
             setTimeout(() => inputRef.current?.focus(), 50)
         }
-    }, [searchOpen])
+    }, [searchOpen, value])
 
     // ── Scroll highlighted item into view ────────────────────────
     useEffect(() => {
@@ -167,10 +168,6 @@ export default function CustomerSearchCombobox({
         setSearchOpen(false)
     }
 
-    const clearCustomer = () => {
-        onChange(null)
-    }
-
     // ── Customer creation handler ────────────────────────────────
     const handleCreateSuccess = async (data: CustomerCreate) => {
         try {
@@ -183,141 +180,144 @@ export default function CustomerSearchCombobox({
         }
     }
 
-    const createCustomerDialog = (
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogContent className="sm:max-w-lg z-[100]">
-                <DialogHeader>
-                    <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
-                </DialogHeader>
-                <CustomerForm
-                    onSubmit={handleCreateSuccess}
-                    onCancel={() => setCreateOpen(false)}
-                />
-            </DialogContent>
-        </Dialog>
-    )
-
-    // ── RENDER: Selected state (chip) ────────────────────────────
-    if (value) {
-        return (
-            <>
-                <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-primary truncate">
-                            {value.razon_social}
-                        </p>
-                        <p className="text-[11px] font-mono text-primary/80">
-                            {value.rut}
-                        </p>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-primary hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
-                        onClick={clearCustomer}
-                        type="button"
-                    >
-                        <X className="h-3.5 w-3.5" />
-                    </Button>
-                </div>
-
-                {createCustomerDialog}
-            </>
-        )
-    }
-
-    // ── RENDER: Trigger (abre el Dialog de búsqueda) ─────────────
     return (
         <>
             <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+                title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${value
+                    ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+                    : required
+                        ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
+                        : 'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                    }`}
             >
-                <Search className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{placeholder}</span>
+                {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
             </button>
 
             <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
                 <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-                    <DialogTitle className="sr-only">Buscar cliente</DialogTitle>
-                    <div className="relative border-b border-border">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        <Input
-                            ref={inputRef}
-                            placeholder={placeholder}
-                            value={query}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="h-12 rounded-none border-0 pl-10 pr-9 text-sm focus-visible:ring-0"
-                            autoComplete="off"
-                        />
-                        {loading && (
-                            <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                        )}
-                    </div>
+                    <DialogTitle className="sr-only">Cliente</DialogTitle>
 
-                    <div ref={listRef} className="max-h-[340px] overflow-y-auto">
-                        {query.length < 2 && (
-                            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-                                Escribe al menos 2 caracteres para buscar.
-                            </div>
-                        )}
-
-                        {query.length >= 2 && results.length === 0 && !loading && (
-                            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-                                <UserIcon className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
-                                No se encontraron clientes para &ldquo;{query}&rdquo;
-                            </div>
-                        )}
-
-                        {results.map((customer, idx) => (
-                            <button
-                                key={customer.id}
-                                data-combobox-item
-                                onClick={() => selectCustomer(customer)}
-                                onMouseEnter={() => setHighlightedIndex(idx)}
-                                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
-                                    }`}
-                            >
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
-                                    <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                </div>
+                    {value ? (
+                        // ── Ya hay un cliente elegido: mostrarlo y ofrecer cambiar/quitar ──
+                        <div className="p-4 space-y-3">
+                            <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5">
+                                <UserCheck className="h-5 w-5 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm truncate text-foreground">
-                                        <HighlightedText text={customer.razon_social} query={query} />
-                                    </p>
-                                    <p className="text-[11px] font-mono text-muted-foreground">
-                                        <HighlightedText text={customer.rut} query={query} />
-                                    </p>
+                                    <p className="text-sm font-medium text-primary truncate">{value.razon_social}</p>
+                                    <p className="text-[11px] font-mono text-primary/80">{value.rut}</p>
                                 </div>
-                            </button>
-                        ))}
-
-                        {/* "Crear nuevo" — always visible */}
-                        <button
-                            data-combobox-item
-                            onClick={() => {
-                                setSearchOpen(false)
-                                setCreateOpen(true)
-                            }}
-                            onMouseEnter={() => setHighlightedIndex(results.length)}
-                            className={`flex w-full items-center gap-2 px-4 py-3 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
-                                }`}
-                        >
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0">
-                                <Plus className="h-3 w-3 text-muted-foreground" />
                             </div>
-                            <span className="text-xs font-medium text-foreground">
-                                Crear nuevo cliente
-                            </span>
-                        </button>
-                    </div>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => onChange(null)}>
+                                    Cambiar cliente
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1 text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                        onChange(null)
+                                        setSearchOpen(false)
+                                    }}
+                                >
+                                    Quitar cliente
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        // ── Búsqueda ──
+                        <>
+                            <div className="relative border-b border-border">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    ref={inputRef}
+                                    placeholder={SEARCH_PLACEHOLDER}
+                                    value={query}
+                                    onChange={(e) => handleInputChange(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="h-12 rounded-none border-0 pl-10 pr-9 text-sm focus-visible:ring-0"
+                                    autoComplete="off"
+                                />
+                                {loading && (
+                                    <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                )}
+                            </div>
+
+                            <div ref={listRef} className="max-h-[340px] overflow-y-auto">
+                                {query.length < 2 && (
+                                    <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                                        Escribe al menos 2 caracteres para buscar.
+                                    </div>
+                                )}
+
+                                {query.length >= 2 && results.length === 0 && !loading && (
+                                    <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                                        <UserIcon className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                                        No se encontraron clientes para &ldquo;{query}&rdquo;
+                                    </div>
+                                )}
+
+                                {results.map((customer, idx) => (
+                                    <button
+                                        key={customer.id}
+                                        data-combobox-item
+                                        onClick={() => selectCustomer(customer)}
+                                        onMouseEnter={() => setHighlightedIndex(idx)}
+                                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
+                                            }`}
+                                    >
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm truncate text-foreground">
+                                                <HighlightedText text={customer.razon_social} query={query} />
+                                            </p>
+                                            <p className="text-[11px] font-mono text-muted-foreground">
+                                                <HighlightedText text={customer.rut} query={query} />
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+
+                                {/* "Crear nuevo" — always visible */}
+                                <button
+                                    data-combobox-item
+                                    onClick={() => {
+                                        setSearchOpen(false)
+                                        setCreateOpen(true)
+                                    }}
+                                    onMouseEnter={() => setHighlightedIndex(results.length)}
+                                    className={`flex w-full items-center gap-2 px-4 py-3 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
+                                        }`}
+                                >
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0">
+                                        <Plus className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                    <span className="text-xs font-medium text-foreground">
+                                        Crear nuevo cliente
+                                    </span>
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
 
-            {createCustomerDialog}
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogContent className="sm:max-w-lg z-[100]">
+                    <DialogHeader>
+                        <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
+                    </DialogHeader>
+                    <CustomerForm
+                        onSubmit={handleCreateSuccess}
+                        onCancel={() => setCreateOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
