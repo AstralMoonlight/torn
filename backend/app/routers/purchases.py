@@ -14,8 +14,10 @@ from app.models.purchase import Purchase, PurchaseDetail
 from app.models.product import Product
 from app.models.inventory import StockMovement
 from app.models.issuer import Issuer
+from app.models.settings import SystemSettings
 from app.schemas import PurchaseCreate, PurchaseOut
 from app.utils.formatters import format_clp, format_number
+from app.utils.print_settings import resolve_print_format
 from app.utils.taxes import quantize_money, resolve_purchase_tax_rate
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -265,7 +267,11 @@ def get_purchase_pdf(purchase_id: int, db: Session = Depends(get_tenant_db)):
     if not issuer:
         raise HTTPException(status_code=404, detail="Emisor no configurado. Use PUT /issuer/ primero.")
 
-    template = _html_env.get_template("purchase_print.html")
+    settings = db.query(SystemSettings).first()
+    print_format = resolve_print_format(settings, "purchase")
+    template_name = "purchase_print_80mm.html" if print_format == "80mm" else "purchase_print.html"
+
+    template = _html_env.get_template(template_name)
     html_content = template.render(
         purchase=purchase,
         issuer=issuer,

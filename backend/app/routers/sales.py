@@ -24,6 +24,7 @@ from app.utils.formatters import format_clp, format_number
 from app.utils.folios import siguiente_folio
 from app.utils.pricing import resolve_unit_price
 from app.utils.taxes import quantize_money, resolve_tax_rate, round_to_nearest_ten
+from app.utils.print_settings import resolve_print_format
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 
@@ -622,7 +623,7 @@ def get_sale_pdf(sale_id: int, db: Session = Depends(get_tenant_db)):
 
     # Cargar configuración del sistema para el formato de impresión
     settings = db.query(SystemSettings).first()
-    print_format = settings.print_format if settings else "80mm"
+    print_format = resolve_print_format(settings, str(sale.tipo_dte))
 
     # Seleccionar plantilla según formato
     template_name = "factura_80mm.html" if print_format == "80mm" else "factura_carta.html"

@@ -15,16 +15,36 @@ export interface TaxCreate {
     is_default?: boolean
 }
 
+export type PrintFormat = '80mm' | 'carta'
+
 export interface SystemSettings {
     id: number
-    print_format: '80mm' | 'carta'
+    print_format: PrintFormat
+    print_formats: Record<string, PrintFormat>
     iva_default_id: number | null
 }
 
 export interface SettingsUpdate {
-    print_format?: '80mm' | 'carta'
+    print_format?: PrintFormat
+    print_formats?: Record<string, PrintFormat>
     iva_default_id?: number | null
 }
+
+/**
+ * Tipos de documento con formato de impresión configurable por separado.
+ * "33".."61" son `Sale.tipo_dte`; "purchase" es el comprobante de compra
+ * (no es un DTE). Debe reflejar `DOCUMENT_TYPES` en
+ * `backend/app/utils/print_settings.py`.
+ */
+export const DOCUMENT_PRINT_TYPES: { key: string; label: string }[] = [
+    { key: '33', label: 'Factura' },
+    { key: '34', label: 'Factura Exenta' },
+    { key: '39', label: 'Boleta' },
+    { key: '41', label: 'Boleta Exenta' },
+    { key: '56', label: 'Nota de Débito' },
+    { key: '61', label: 'Nota de Crédito' },
+    { key: 'purchase', label: 'Compras (Comprobante Proveedor)' },
+]
 
 export async function getTaxes(): Promise<Tax[]> {
     const { data } = await api.get<Tax[]>('/config/taxes/')

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -116,6 +116,7 @@ class TaxOut(TaxBase):
 
 class SettingsBase(BaseModel):
     print_format: str = "80mm"
+    print_formats: Dict[str, str] = Field(default_factory=dict)
     iva_default_id: Optional[int] = None
 
 class SettingsUpdate(SettingsBase):

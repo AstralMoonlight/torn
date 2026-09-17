@@ -7,7 +7,9 @@ import {
     getTaxes,
     createTax,
     Tax,
-    SystemSettings
+    SystemSettings,
+    DOCUMENT_PRINT_TYPES,
+    type PrintFormat,
 } from '@/services/config'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -49,12 +51,27 @@ export default function ConfigurationPage() {
         }
     }
 
+    function resolvePrintFormat(key: string): PrintFormat {
+        return settings?.print_formats?.[key] ?? settings?.print_format ?? '80mm'
+    }
+
+    function setDocPrintFormat(key: string, format: PrintFormat) {
+        setSettings(s => s ? { ...s, print_formats: { ...s.print_formats, [key]: format } } : null)
+    }
+
     async function handleSaveSettings() {
         if (!settings) return
         setSaving(true)
         try {
+            // Se manda una entrada explícita por cada tipo de documento (no sólo
+            // las que el usuario tocó), para no depender de merges parciales en
+            // el backend.
+            const print_formats: Record<string, PrintFormat> = {}
+            for (const { key } of DOCUMENT_PRINT_TYPES) {
+                print_formats[key] = resolvePrintFormat(key)
+            }
             await updateSettings({
-                print_format: settings.print_format,
+                print_formats,
                 iva_default_id: settings.iva_default_id
             })
             toast.success('Configuración guardada')
@@ -119,39 +136,44 @@ export default function ConfigurationPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-3">
-                                <Label>Formato de Documentos (Ticket/Factura)</Label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setSettings(s => s ? { ...s, print_format: '80mm' } : null)}
-                                        className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === '80mm'
-                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
-                                            }`}
-                                    >
-                                        <Printer className="h-8 w-8" />
-                                        <div className="text-center">
-                                            <p className="font-bold">Termico 80mm</p>
-                                            <p className="text-xs opacity-70">Ideal para tickets rápidos</p>
-                                        </div>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setSettings(s => s ? { ...s, print_format: 'carta' } : null)}
-                                        className={`flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all ${settings?.print_format === 'carta'
-                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
-                                            }`}
-                                    >
-                                        <div className="h-8 w-6 border-2 border-current rounded-sm relative">
-                                            <div className="absolute top-1 left-1 right-1 h-0.5 bg-current opacity-30"></div>
-                                            <div className="absolute top-2.5 left-1 right-1 h-0.5 bg-current opacity-30"></div>
-                                            <div className="absolute top-4 left-1 right-1 h-0.5 bg-current opacity-30"></div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="font-bold">Carta / A4</p>
-                                            <p className="text-xs opacity-70">Formato factura tradicional</p>
-                                        </div>
-                                    </button>
+                                <div>
+                                    <Label>Formato de Impresión por Tipo de Documento</Label>
+                                    <p className="text-xs text-neutral-500 mt-1">
+                                        Cada documento que puedes emitir imprime con su propio formato.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    {DOCUMENT_PRINT_TYPES.map(({ key, label }) => {
+                                        const current = resolvePrintFormat(key)
+                                        return (
+                                            <div
+                                                key={key}
+                                                className="flex items-center justify-between gap-4 rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800"
+                                            >
+                                                <span className="text-sm font-medium">{label}</span>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setDocPrintFormat(key, '80mm')}
+                                                        className={`flex items-center gap-2 rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === '80mm'
+                                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
+                                                            : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-900'
+                                                            }`}
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5" /> Térmico 80mm
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDocPrintFormat(key, 'carta')}
+                                                        className={`rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === 'carta'
+                                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
+                                                            : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-900'
+                                                            }`}
+                                                    >
+                                                        Carta / A4
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
 
