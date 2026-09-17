@@ -104,7 +104,7 @@ export default function CartPanel({ onClose }: Props) {
                                     </div>
                                     <button
                                         onClick={() => removeItem(item.product.id)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition md:opacity-0 md:group-hover:opacity-100"
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition"
                                     >
                                         <Trash2 className="h-3 w-3" />
                                     </button>
