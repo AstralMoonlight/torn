@@ -1,8 +1,8 @@
 'use client'
 
-import { getApiErrorDetail } from '@/services/api'
+import { getApiErrorDetail, fetchBlobUrl } from '@/services/api'
 import { useEffect, useState, Fragment } from 'react'
-import { getSales, getPaymentMethods, createReturn, getFoliosStatus, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
+import { getSales, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -142,7 +142,15 @@ export default function HistorialPage() {
         }
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+    const verPdf = async (saleId: number) => {
+        try {
+            const blobUrl = await fetchBlobUrl(getSalePdfPath(saleId))
+            window.open(blobUrl, '_blank')
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+        } catch (err) {
+            toast.error(getApiErrorDetail(err, 'No se pudo cargar el documento.'))
+        }
+    }
 
     return (
         <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
@@ -216,15 +224,9 @@ export default function HistorialPage() {
                                                         size="icon"
                                                         className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                                         title="Ver PDF"
-                                                        asChild
+                                                        onClick={() => verPdf(sale.id)}
                                                     >
-                                                        <a
-                                                            href={`${apiUrl}/sales/${sale.id}/pdf`}
-                                                            target="_blank"
-                                                            rel="noopener"
-                                                        >
-                                                            <ExternalLink className="h-4 w-4" />
-                                                        </a>
+                                                        <ExternalLink className="h-4 w-4" />
                                                     </Button>
                                                     {![56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
                                                         <Button

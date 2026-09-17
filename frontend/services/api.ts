@@ -108,4 +108,23 @@ api.interceptors.request.use((config) => {
     return config
 })
 
+/**
+ * Descarga un recurso protegido (PDF/HTML de impresión) como blob y devuelve
+ * una URL local para abrirlo o imprimirlo.
+ *
+ * Los endpoints de impresión (`/sales/{id}/pdf`, `/purchases/{id}/pdf`)
+ * requieren `Authorization` y `X-Tenant-ID`. Un `<a href>` o un `fetch()`
+ * directo a esa URL no los envía (esos headers sólo los agrega el
+ * interceptor de `api`), así que el backend responde 401 "Not
+ * authenticated". Pasar por `api.get` con `responseType: 'blob'` sí los
+ * incluye.
+ *
+ * El caller es responsable de revocar la URL (`URL.revokeObjectURL`) cuando
+ * ya no la necesite.
+ */
+export async function fetchBlobUrl(path: string): Promise<string> {
+    const response = await api.get(path, { responseType: 'blob' })
+    return URL.createObjectURL(response.data)
+}
+
 export default api

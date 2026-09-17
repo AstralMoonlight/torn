@@ -64,3 +64,7 @@ export async function updatePurchase(id: number, purchase: PurchaseCreate): Prom
 export async function deletePurchase(id: number): Promise<void> {
     await api.delete(`/purchases/${id}`)
 }
+
+export function getPurchasePdfPath(purchaseId: number): string {
+    return `/purchases/${purchaseId}/pdf`
+}

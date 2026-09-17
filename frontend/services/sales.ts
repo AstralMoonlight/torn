@@ -108,8 +108,8 @@ export async function createReturn(ret: ReturnCreate): Promise<SaleOut> {
     return data
 }
 
-export function getSalePdfUrl(saleId: number): string {
-    return `${api.defaults.baseURL}/sales/${saleId}/pdf`
+export function getSalePdfPath(saleId: number): string {
+    return `/sales/${saleId}/pdf`
 }
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {

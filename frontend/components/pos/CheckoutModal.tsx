@@ -1,6 +1,6 @@
 'use client'
 
-import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus, fetchBlobUrl } from '@/services/api'
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createSale, getPaymentMethods, getSalePdfUrl, getFoliosStatus, type PaymentMethod, type DocumentReference, type FolioStockOut } from '@/services/sales'
+import { createSale, getPaymentMethods, getSalePdfPath, getFoliosStatus, type PaymentMethod, type DocumentReference, type FolioStockOut } from '@/services/sales'
 import { toast } from 'sonner'
 import {
     Loader2,
@@ -196,12 +196,10 @@ export default function CheckoutModal({ open, onClose }: Props) {
         if (!lastSaleId) return
 
         try {
-            // Fetch as blob to avoid CORS issues with iframe.contentWindow.print()
-            const response = await fetch(getSalePdfUrl(lastSaleId))
-            if (!response.ok) throw new Error("Error loading PDF")
-
-            const blob = await response.blob()
-            const blobUrl = URL.createObjectURL(blob)
+            // Vía `api` (no fetch()/<a href> directos): el endpoint exige
+            // Authorization + X-Tenant-ID, que sólo el interceptor de axios
+            // agrega — un fetch a la URL pelada responde 401.
+            const blobUrl = await fetchBlobUrl(getSalePdfPath(lastSaleId))
 
             const iframeId = 'receipt-hidden-frame'
             let iframe = document.getElementById(iframeId) as HTMLIFrameElement
@@ -229,8 +227,9 @@ export default function CheckoutModal({ open, onClose }: Props) {
             iframe.src = blobUrl
         } catch (err) {
             console.error("Fetch error:", err)
-            // Fallback to direct URL if fetch fails
-            window.open(getSalePdfUrl(lastSaleId), '_blank')
+            // No hay fallback a la URL directa: sin el token no carga (401),
+            // así que sólo se puede avisar y dejar que reimpriman desde Historial.
+            toast.error(getApiErrorDetail(err, 'No se pudo cargar el documento para imprimir.'))
             handleFinish()
         }
     }

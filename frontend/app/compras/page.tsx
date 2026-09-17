@@ -46,8 +46,8 @@ import {
 import { type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
-import { createPurchase, getPurchases, deletePurchase, type Purchase, type PurchaseCreate } from '@/services/purchases'
-import { getApiErrorMessage } from '@/services/api'
+import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type Purchase, type PurchaseCreate } from '@/services/purchases'
+import { getApiErrorMessage, fetchBlobUrl } from '@/services/api'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 
@@ -80,7 +80,15 @@ export default function ComprasPage() {
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+    const verPdfCompra = async (purchaseId: number) => {
+        try {
+            const blobUrl = await fetchBlobUrl(getPurchasePdfPath(purchaseId))
+            window.open(blobUrl, '_blank')
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'No se pudo cargar el documento.'))
+        }
+    }
 
     useEffect(() => {
         loadInitialData()
@@ -514,15 +522,9 @@ export default function ComprasPage() {
                                                             size="icon"
                                                             className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                                             title="Imprimir Comprobante"
-                                                            asChild
+                                                            onClick={() => verPdfCompra(p.id)}
                                                         >
-                                                            <a
-                                                                href={`${apiUrl}/purchases/${p.id}/pdf`}
-                                                                target="_blank"
-                                                                rel="noopener"
-                                                            >
-                                                                <Printer className="h-4 w-4" />
-                                                            </a>
+                                                            <Printer className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
@@ -565,15 +567,14 @@ export default function ComprasPage() {
                                     {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
                             </div>
-                            <a
-                                href={`${apiUrl}/purchases/${selectedPurchase?.id}/pdf`}
-                                target="_blank"
-                                rel="noopener"
+                            <button
+                                type="button"
+                                onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}
                                 className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 active:scale-95 transition shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                                 Imprimir
-                            </a>
+                            </button>
                         </div>
                     </DialogHeader>
                     {selectedPurchase && (
