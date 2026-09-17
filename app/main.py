@@ -7,7 +7,8 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
@@ -92,6 +93,23 @@ app.include_router(roles.router)
 app.include_router(price_lists.router)
 from app.routers import folios
 app.include_router(folios.router)
+
+
+@app.exception_handler(HTTPException)
+async def logged_http_exception_handler(request: Request, exc: HTTPException):
+    """Registra el detail de cada HTTPException antes de responder.
+
+    El frontend (dev, Turbopack) intercepta el AxiosError vía console.error
+    y lo muestra en su propio overlay de depuración, que sólo trae el
+    mensaje genérico ("Request failed with status code 400") y no el
+    `detail` real que arma el backend — para verlo hay que ir al toast de
+    la app o, más confiable, acá.
+    """
+    logger.warning(
+        "HTTP %s en %s %s: %s",
+        exc.status_code, request.method, request.url.path, exc.detail,
+    )
+    return await http_exception_handler(request, exc)
 
 
 @app.get("/")

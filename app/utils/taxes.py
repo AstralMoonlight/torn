@@ -19,7 +19,16 @@ DEFAULT_TAX_RATE = Decimal("0.19")
 #: 34 = Factura Exenta, 41 = Boleta Exenta, 110/111/112 = documentos de exportación.
 EXEMPT_DTES = frozenset({34, 41, 110, 111, 112})
 
-_CENT = Decimal("0.01")
+#: El peso chileno no tiene submúltiplos en uso: nadie cobra ni paga
+#: centavos. `quantize_money` redondeaba a 2 decimales (Decimal("0.01")),
+#: así que un IVA por línea que no cerraba en un peso exacto (p.ej.
+#: 950 * 0.19 = 180.50) dejaba el total con una fracción de peso que el
+#: frontend nunca podía reproducir (trabaja en pesos enteros, `Math.round`).
+#: Para efectivo el redondeo a la decena lo disimulaba; para cualquier otro
+#: medio de pago, que exige el monto exacto, la venta se rechazaba con un
+#: "vuelto" fantasma de unos centavos. Ver issue reportado en sesión: boleta
+#: con Débito rechazada por "$0.50" de diferencia.
+_PESO = Decimal("1")
 
 
 def normalize_tax_rate(rate) -> Decimal:
@@ -88,8 +97,14 @@ def resolve_purchase_tax_rate(product, tipo_documento: Optional[str]) -> Decimal
 
 
 def quantize_money(amount: Decimal) -> Decimal:
-    """Redondea un monto a dos decimales con redondeo comercial (half-up)."""
-    return Decimal(amount).quantize(_CENT, rounding=ROUND_HALF_UP)
+    """Redondea un monto al peso entero más cercano (redondeo half-up).
+
+    El CLP no tiene centavos: iva/total/vuelto/ajuste_redondeo siempre deben
+    quedar en pesos enteros para que coincidan con lo que el frontend calcula
+    (también en pesos enteros) y con lo que se declara en el DTE (que ya
+    trunca a entero vía el filtro `|int` en las plantillas XML).
+    """
+    return Decimal(amount).quantize(_PESO, rounding=ROUND_HALF_UP)
 
 
 def round_to_nearest_ten(amount: Decimal) -> Decimal:

@@ -9,6 +9,14 @@ Cubren tres defectos que estaban en producción:
   por lo que un CAF recién cargado declaraba muchos más folios de los reales.
 * El IVA era `Decimal("0.19")` fijo, así que una Boleta/Factura Exenta o un
   producto exento salían con 19% de impuesto.
+* `quantize_money` redondeaba a centavos (2 decimales) en vez de al peso
+  entero: un IVA por línea que no cerraba en un peso exacto (950 * 0.19 =
+  180.50) dejaba el total con una fracción de peso que el frontend —que
+  siempre trabaja en pesos enteros— nunca podía igualar. Con efectivo el
+  redondeo a la decena lo disimulaba; con cualquier otro medio de pago,
+  que exige el monto exacto, la venta se rechazaba con un vuelto fantasma
+  de unos centavos ("El vuelto ($0.50) no puede superar el efectivo
+  recibido ($0)").
 """
 
 from decimal import Decimal
@@ -200,3 +208,43 @@ class TestMultiplesCafPorTipo:
         assert caf_33["available"] == 13
         assert caf_33["latest_folio_desde"] == 900
         assert caf_33["latest_folio_hasta"] == 910
+
+
+class TestRedondeoAPesoEntero:
+    """quantize_money debe cerrar en pesos enteros, no en centavos (#42)."""
+
+    def test_quantize_money_redondea_a_peso_no_a_centavo(self):
+        from app.utils.taxes import quantize_money
+        # 950 * 0.19 = 180.50: el caso exacto que rechazaba las ventas con
+        # cualquier medio de pago que no fuera efectivo.
+        assert quantize_money(Decimal("180.50")) == Decimal("181")
+        assert quantize_money(Decimal("180.49")) == Decimal("180")
+        assert quantize_money(Decimal("180.00")) == Decimal("180")
+
+    def test_venta_con_iva_fraccionario_acepta_pago_exacto_no_efectivo(self, client, entorno_venta):
+        """Un producto cuyo IVA por línea no cierra en un peso exacto debe
+        poder pagarse con Débito por el monto justo, sin vuelto fantasma."""
+        db = entorno_venta
+        db.add(PaymentMethod(code="DEBITO", name="Débito"))
+        db.add(CAF(
+            tipo_documento=39, folio_desde=1, folio_hasta=100,
+            ultimo_folio_usado=0, xml_caf="DUMMY",
+        ))
+        # neto 950 -> iva 180.50 -> total exacto 1130.50, que antes del fix
+        # quedaba en 1130.50 (centavos) en vez de 1131 (peso entero).
+        prod = Product(codigo_interno="P-FRAC", nombre="Producto Fraccionario", precio_neto=950)
+        db.add(prod)
+        db.commit()
+
+        debito_id = db.query(PaymentMethod).filter(PaymentMethod.code == "DEBITO").first().id
+
+        resp = client.post("/sales/", json={
+            "rut_cliente": "12345678-5",
+            "tipo_dte": 39,
+            "items": [{"product_id": prod.id, "cantidad": "1"}],
+            "payments": [{"payment_method_id": debito_id, "amount": "1131"}],
+        })
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert Decimal(body["monto_total"]) == Decimal("1131")
+        assert Decimal(body["vuelto"]) == Decimal("0")
