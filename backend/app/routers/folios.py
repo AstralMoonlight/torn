@@ -1,13 +1,16 @@
 import asyncio
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.models.dte import CAF, FolioRequestLog
+from app.models.issuer import Issuer
 from app.models.user import User
 from app.dependencies.tenant import get_tenant_db, get_current_local_user, require_admin
+from app.utils.caf_parser import CAFParseError, parse_caf_xml
 from app.utils.folios import folios_disponibles, folios_totales
+from app.utils.validators import validar_rut
 from pydantic import BaseModel, Field
 from datetime import datetime, date
 
@@ -30,7 +33,18 @@ class FolioRequestLogOut(BaseModel):
     amount_requested: int
     status: str
     timestamp: datetime
-    
+
+    class Config:
+        from_attributes = True
+
+class CAFOut(BaseModel):
+    id: int
+    tipo_documento: int
+    folio_desde: int
+    folio_hasta: int
+    fecha_vencimiento: Optional[date] = None
+    created_at: datetime
+
     class Config:
         from_attributes = True
 
@@ -88,6 +102,90 @@ def get_folios_status(
         )
 
     return result
+
+@router.post("/upload", response_model=CAFOut, status_code=status.HTTP_201_CREATED, summary="Cargar CAF")
+async def upload_caf(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_tenant_db),
+    admin_user = Depends(require_admin),
+):
+    """Carga un archivo CAF real entregado por el SII.
+
+    Reemplaza la carga manual por script (`scripts/setup_caf.py`,
+    `scripts/inject_folios.py`): parsea `folio_desde`/`folio_hasta` y la
+    fecha de vencimiento desde el propio XML en vez de pedirlos por
+    formulario, y valida que el CAF sea utilizable antes de guardarlo.
+    """
+    raw = await file.read()
+    try:
+        xml_content = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        xml_content = raw.decode("latin-1")
+
+    try:
+        parsed = parse_caf_xml(xml_content)
+    except CAFParseError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    issuer = db.query(Issuer).first()
+    if not issuer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Emisor no configurado. Use PUT /issuer/ primero.",
+        )
+
+    try:
+        rut_caf = validar_rut(parsed.rut_emisor)
+        rut_issuer = validar_rut(issuer.rut)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"RUT inválido: {e}")
+
+    if rut_caf != rut_issuer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El CAF pertenece al RUT {rut_caf}, pero el Emisor configurado es {rut_issuer}.",
+        )
+
+    if parsed.fecha_vencimiento < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El CAF venció el {parsed.fecha_vencimiento.isoformat()}. Solicita uno nuevo al SII.",
+        )
+
+    # Los rangos del mismo tipo de documento no pueden solaparse: dos CAF
+    # cubriendo el mismo folio harían que `siguiente_folio` (app/utils/folios.py)
+    # pudiera repetir un folio ya emitido.
+    overlapping = (
+        db.query(CAF)
+        .filter(
+            CAF.tipo_documento == parsed.tipo_documento,
+            CAF.folio_desde <= parsed.folio_hasta,
+            CAF.folio_hasta >= parsed.folio_desde,
+        )
+        .first()
+    )
+    if overlapping:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"El rango {parsed.folio_desde}-{parsed.folio_hasta} se solapa con un CAF "
+                f"ya cargado ({overlapping.folio_desde}-{overlapping.folio_hasta})."
+            ),
+        )
+
+    caf = CAF(
+        tipo_documento=parsed.tipo_documento,
+        folio_desde=parsed.folio_desde,
+        folio_hasta=parsed.folio_hasta,
+        ultimo_folio_usado=0,
+        fecha_vencimiento=parsed.fecha_vencimiento,
+        xml_caf=xml_content,
+    )
+    db.add(caf)
+    db.commit()
+    db.refresh(caf)
+    return caf
+
 
 @router.post("/request", response_model=FolioRequestLogOut, summary="Solicitar Folios al SII")
 def request_folios(
