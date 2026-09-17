@@ -37,6 +37,7 @@ import {
     Printer,
     ChevronDown,
     ChevronRight,
+    ChevronLeft,
     FileStack,
 } from 'lucide-react'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
@@ -128,6 +129,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const [lastSaleId, setLastSaleId] = useState<number | null>(null)
     const [refsSectionOpen, setRefsSectionOpen] = useState(false)
     const [referencias, setReferencias] = useState<DocumentReference[]>([])
+    // El checkout es de 2 pasos (Documento -> Pago) para que revisar/corregir
+    // el tipo de documento o el cliente no obligue a scrollear en medio de un
+    // formulario de pago a medio llenar: "Atrás" vuelve a Documento sin
+    // perder nada, porque todo sigue viviendo en este mismo estado.
+    const [step, setStep] = useState<'documento' | 'pago'>('documento')
 
     // totalFinal puede cambiar mientras el modal ya está abierto (recálculo
     // async de precio de lista, IVA según el tipo de DTE, etc.). El efecto de
@@ -169,6 +175,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setDteType(39)
             setReferencias([])
             setRefsSectionOpen(false)
+            setStep('documento')
         }
     }, [open])
 
@@ -307,8 +314,16 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const isBoleta = [39, 41].includes(dteType)
     const effectiveRut = customer?.rut || (isBoleta ? GENERIC_RUT : '')
 
+    // Paso "Documento" -> "Pago": Boleta siempre puede avanzar (cliente
+    // genérico de respaldo), Factura/Exenta necesitan cliente seleccionado.
+    const canGoNext = (isBoleta || !!customer) && availableDtes.length > 0
+
     // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
     const canSubmit = (isBoleta || !!customer) && remaining <= 0 && !changeExceedsCash && availableDtes.length > 0
+
+    const goNext = () => {
+        if (canGoNext) setStep('pago')
+    }
 
     const handleSubmit = async () => {
         setSubmitting(true)
@@ -369,8 +384,13 @@ export default function CheckoutModal({ open, onClose }: Props) {
             <Dialog open={open} onOpenChange={(open) => !open && !success && onClose()}>
                 <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => success && e.preventDefault()}>
                     <DialogHeader>
-                        <DialogTitle className="text-xl">
-                            {success ? '✅ Venta Exitosa' : 'Cobrar'}
+                        <DialogTitle className="text-xl flex items-center gap-2">
+                            {success ? '✅ Venta Exitosa' : step === 'documento' ? 'Cobrar — Documento' : 'Cobrar — Pago'}
+                            {!success && (
+                                <span className="text-[10px] font-normal text-muted-foreground uppercase tracking-wider">
+                                    Paso {step === 'documento' ? '1' : '2'} de 2
+                                </span>
+                            )}
                         </DialogTitle>
                         <DialogDescription>
                             {success
@@ -410,7 +430,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 </Button>
                             </div>
                         </div>
-                    ) : (
+                    ) : step === 'documento' ? (
                         <div className="space-y-4">
                             {/* DTE Type Toggle */}
                             {availableDtes.length > 0 ? (
@@ -524,7 +544,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                         <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border">
                                             <p className="text-[10px] text-muted-foreground pt-2">Opcional. Documentos previos que respaldan la factura.</p>
                                             {referencias.map((ref, idx) => (
-                                                <div key={idx} className="grid grid-cols-[1fr 1fr auto] gap-1.5 items-end">
+                                                <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-1.5 items-end">
                                                     <div className="space-y-0.5">
                                                         <Label className="text-[10px] text-muted-foreground">Tipo</Label>
                                                         <select
@@ -569,9 +589,9 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                     )}
                                 </div>
                             )}
-
-                            <Separator />
-
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
                             {/* Payment Methods */}
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
@@ -670,10 +690,26 @@ export default function CheckoutModal({ open, onClose }: Props) {
                         </div>
                     )}
 
-                    {!success && (
+                    {!success && step === 'documento' && (
                         <DialogFooter className="gap-2 sm:gap-0">
                             <Button variant="outline" onClick={onClose} disabled={submitting} className="text-xs">
                                 Cancelar
+                            </Button>
+                            <Button
+                                onClick={goNext}
+                                disabled={!canGoNext}
+                                className="gap-2 text-xs"
+                            >
+                                Siguiente
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </DialogFooter>
+                    )}
+
+                    {!success && step === 'pago' && (
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button variant="outline" onClick={() => setStep('documento')} disabled={submitting} className="text-xs gap-1.5">
+                                <ChevronLeft className="h-4 w-4" /> Atrás
                             </Button>
                             <Button
                                 onClick={handleSubmit}
