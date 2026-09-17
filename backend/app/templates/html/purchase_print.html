@@ -280,6 +280,12 @@
                 window.print();
             }, 500);
         };
+        // Cierra la pestaña sola tras imprimir o cancelar. En el iframe oculto del
+        // POS es no-op (window.close() no hace nada fuera de una pestaña abierta
+        // por window.open()), así que es seguro tenerlo en ambos contextos.
+        window.addEventListener('afterprint', function () {
+            window.close();
+        });
     </script>
 </body>
 
