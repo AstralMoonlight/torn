@@ -561,36 +561,78 @@ export default function PriceListsPage() {
                                        lo que ya está en la lista no quede tapado ni empujado hacia abajo. ── */
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
                                         {/* Columna izquierda: lo que ya está en la lista */}
-                                        <div className="space-y-2 min-w-0">
-                                            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">
-                                                En esta lista ({draftItems.length})
-                                            </p>
-                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[380px] overflow-y-auto p-1.5">
+                                        <div className="space-y-2 min-w-0 flex flex-col">
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shrink-0">
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-tight">
+                                                        Esta lista ({draftItems.length})
+                                                    </p>
+                                                    <p className="text-[11px] text-neutral-400 leading-tight">
+                                                        Precios que se guardarán al confirmar
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="relative shrink-0">
+                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                                <Input
+                                                    placeholder="Buscar dentro de esta lista..."
+                                                    value={draftSearch}
+                                                    onChange={e => setDraftSearch(e.target.value)}
+                                                    disabled={draftItems.length === 0}
+                                                    className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                                />
+                                            </div>
+                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[336px] overflow-y-auto p-1.5">
                                                 {draftItems.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
                                                         <Package className="h-7 w-7 mb-2 opacity-40" />
                                                         Aún no has agregado productos.
-                                                        <br />Selecciónalos del catálogo a la derecha.
+                                                        <br />Selecciónalos del catálogo de la derecha →
                                                     </div>
-                                                ) : (
-                                                    <div className="space-y-1.5">
-                                                        {draftItems.map(item => (
-                                                            <PriceListItemRow
-                                                                key={item.product_id}
-                                                                item={item}
-                                                                isGrossMode={isGrossMode}
-                                                                onPriceChange={updateFixedPrice}
-                                                                onRemove={removeProduct}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                ) : (() => {
+                                                    const visibleItems = draftItems.filter(item =>
+                                                        item.product_name.toLowerCase().includes(draftSearch.toLowerCase())
+                                                    )
+                                                    return visibleItems.length === 0 ? (
+                                                        <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                            Sin resultados para &quot;{draftSearch}&quot; en esta lista.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1.5">
+                                                            {visibleItems.map(item => (
+                                                                <PriceListItemRow
+                                                                    key={item.product_id}
+                                                                    item={item}
+                                                                    isGrossMode={isGrossMode}
+                                                                    onPriceChange={updateFixedPrice}
+                                                                    onRemove={removeProduct}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )
+                                                })()}
                                             </div>
                                         </div>
 
                                         {/* Columna derecha: catálogo disponible para agregar */}
-                                        <div className="space-y-2 min-w-0">
-                                            <div className="relative">
+                                        <div className="space-y-2 min-w-0 flex flex-col">
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 shrink-0">
+                                                    <Package className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-tight">
+                                                        Catálogo completo
+                                                    </p>
+                                                    <p className="text-[11px] text-neutral-400 leading-tight">
+                                                        Haz clic en un producto para agregarlo a la lista ←
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="relative shrink-0">
                                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
                                                 <Input
                                                     placeholder="Buscar producto por nombre o código..."
