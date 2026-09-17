@@ -23,6 +23,7 @@ class Sale(Base):
         monto_neto (Numeric): Suma de valores netos de los ítems.
         iva (Numeric): Impuesto al Valor Agregado (19%).
         monto_total (Numeric): Total a pagar (Neto + IVA).
+        vuelto (Numeric): Excedente pagado sobre el total, entregado en efectivo.
         descripcion (str): Glosa u observación global.
         created_at (datetime): Fecha de registro en sistema.
         related_sale_id (int): ID de venta origen en caso de NC (FK).
@@ -39,6 +40,8 @@ class Sale(Base):
     monto_neto = Column(Numeric(15, 2), default=0)
     iva = Column(Numeric(15, 2), default=0)
     monto_total = Column(Numeric(15, 2), default=0)
+    vuelto = Column(Numeric(15, 2), nullable=False, default=0, server_default="0",
+                     comment="Excedente pagado sobre el total, entregado en efectivo")
     descripcion = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     audit_metadata = Column(JSON, nullable=True)

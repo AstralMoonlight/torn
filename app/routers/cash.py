@@ -172,19 +172,35 @@ def close_session(
 
     # Calcular Sistema
     # Sumar pagos en efectivo desde active_session.start_time
+    cash_sales_filter = (
+        Sale.created_at >= active_session.start_time,
+        Sale.seller_id == user_id,
+        PaymentMethod.code == "EFECTIVO",
+    )
     total_sales_cash = db.query(func.coalesce(func.sum(SalePayment.amount), 0))\
         .join(Sale)\
         .join(PaymentMethod)\
-        .filter(
-            Sale.created_at >= active_session.start_time,
-            Sale.seller_id == user_id,
-            PaymentMethod.code == "EFECTIVO"
-        ).scalar()
-    
+        .filter(*cash_sales_filter).scalar()
+
     # Note: This logic assumes all sales after open belong to this session.
     # In a multi-user environment, we need seller_id.
-    
-    final_system = active_session.start_amount + total_sales_cash
+
+    # El vuelto sale del cajón en efectivo: lo que realmente queda es lo
+    # cobrado en efectivo menos lo devuelto como cambio. Se resta sobre
+    # ventas distintas (no por fila de pago) para no descontarlo dos veces
+    # si una venta tuviera más de un pago en efectivo.
+    cash_sale_ids = (
+        db.query(Sale.id)
+        .join(SalePayment)
+        .join(PaymentMethod)
+        .filter(*cash_sales_filter)
+        .distinct()
+        .subquery()
+    )
+    total_vuelto = db.query(func.coalesce(func.sum(Sale.vuelto), 0))\
+        .filter(Sale.id.in_(db.query(cash_sale_ids.c.id))).scalar()
+
+    final_system = active_session.start_amount + total_sales_cash - total_vuelto
     
     active_session.end_time = get_now()
     active_session.final_cash_system = final_system

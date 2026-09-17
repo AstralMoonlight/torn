@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 from app.utils.validators import validar_rut
@@ -291,6 +291,7 @@ class SaleItem(BaseModel):
 
     product_id: int
     cantidad: Decimal
+    descuento: Decimal = Field(default=Decimal("0"), ge=0)
 
 
 class SalePaymentCreate(BaseModel):
@@ -356,6 +357,7 @@ class SaleOut(BaseModel):
     monto_neto: Decimal
     iva: Decimal
     monto_total: Decimal
+    vuelto: Decimal
     descripcion: Optional[str] = None
     created_at: datetime
     related_sale_id: Optional[int] = None

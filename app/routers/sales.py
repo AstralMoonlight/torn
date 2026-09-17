@@ -190,12 +190,23 @@ def create_sale(
 
         precio_unitario = resolve_unit_price(db, product, customer)
         cantidad = item.cantidad
-        subtotal_linea = precio_unitario * cantidad
+        subtotal_bruto_linea = precio_unitario * cantidad
+
+        descuento = item.descuento
+        if descuento > subtotal_bruto_linea:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"El descuento (${descuento}) supera el subtotal de la línea "
+                    f"(${subtotal_bruto_linea}) para {product.nombre}"
+                ),
+            )
+        subtotal_linea = subtotal_bruto_linea - descuento
         total_neto += subtotal_linea
 
         # El IVA se calcula por línea: un DTE exento no lleva impuesto y un
         # producto puede tener su propia tasa (o ser exento dentro de un
-        # documento afecto).
+        # documento afecto). Se calcula sobre el subtotal ya descontado.
         total_iva += subtotal_linea * resolve_tax_rate(product, tipo)
 
         detail_obj = SaleDetail(
@@ -203,7 +214,7 @@ def create_sale(
             cantidad=cantidad,
             precio_unitario=precio_unitario,
             subtotal=subtotal_linea,
-            descuento=0,
+            descuento=descuento,
         )
         sale_details.append(detail_obj)
 
@@ -213,13 +224,32 @@ def create_sale(
 
     # Validar Pagos
     total_payments = sum(p.amount for p in sale_in.payments)
-    # Permitimos margen de error de 1 peso por redondeo? O exacto?
-    # Por ahora exacto o mayor (si es efectivo da vuelto, pero no registramos vuelto aun)
     if total_payments < total:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Monto de pagos ({total_payments}) inferior al total de la venta ({total})"
         )
+
+    # El excedente sobre el total se entrega como vuelto, siempre en
+    # efectivo: no tiene sentido devolver cambio de un pago con tarjeta o
+    # crédito interno. Si no hay efectivo suficiente en los pagos para
+    # cubrirlo, la combinación de pagos no es válida.
+    vuelto = quantize_money(total_payments - total)
+    if vuelto > 0:
+        cash_method_ids = {
+            pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "EFECTIVO").all()
+        }
+        cash_paid = sum(
+            p.amount for p in sale_in.payments if p.payment_method_id in cash_method_ids
+        )
+        if cash_paid < vuelto:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"El vuelto (${vuelto}) no puede superar el efectivo recibido "
+                    f"(${cash_paid}); los demás medios de pago no dan cambio."
+                ),
+            )
 
     # 4. Asignar Folio (CAF según tipo de DTE)
     caf = db.query(CAF).filter(
@@ -255,6 +285,7 @@ def create_sale(
         monto_neto=total_neto,
         iva=iva,
         monto_total=total,
+        vuelto=vuelto,
         descripcion=sale_in.descripcion,
         seller_id=seller_id_to_use,
         user_id=seller_id_to_use,

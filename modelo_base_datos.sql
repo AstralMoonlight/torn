@@ -1762,5 +1762,13 @@ ALTER TABLE public.sales ADD COLUMN referencias json;
 
 COMMENT ON COLUMN public.sales.referencias IS 'Lista de {tipo_documento, folio, fecha}';
 
+--
+-- Equivale a d4e5f6a7b8c9 (vuelto en ventas).
+--
+
+ALTER TABLE public.sales ADD COLUMN vuelto numeric(15,2) NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.sales.vuelto IS 'Excedente pagado sobre el total, entregado en efectivo';
+
 \unrestrict Q2hNdhh7rBmsMcAOegrTi6Ml8hggY41qP4WSmwsGfpA1KKVKAa0XlX1e1abRBnG
 

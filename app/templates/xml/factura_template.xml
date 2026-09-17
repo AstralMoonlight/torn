@@ -43,6 +43,7 @@
             <QtyItem>{{ detail.cantidad }}</QtyItem>
             <UnmdItem>{{ detail.product.unidad_medida }}</UnmdItem>
             <PrcItem>{{ detail.precio_unitario | int }}</PrcItem>
+            {% if detail.descuento %}<DescuentoMonto>{{ detail.descuento | int }}</DescuentoMonto>{% endif %}
             <MontoItem>{{ detail.subtotal | int }}</MontoItem>
         </Detalle>
         {% endfor %}
