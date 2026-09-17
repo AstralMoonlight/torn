@@ -219,7 +219,10 @@ export default function CartPanel({ onClose }: Props) {
                     <div className="px-4 pt-3 space-y-2 border-b border-border pb-3">
                         {availableDtes.length > 0 ? (
                             <div className="space-y-1.5">
-                                <div className="flex items-center gap-1.5">
+                                {/* flex-wrap: si el ícono de cliente se expande (panel inline,
+                                    no modal), no cabe junto a los tabs y baja a su propia línea
+                                    en vez de quedar apretado o cortado. */}
+                                <div className="flex flex-wrap items-center gap-1.5">
                                     <Tabs value={tipoDte.toString()} onValueChange={(v) => setTipoDte(Number(v))} className="flex-1 min-w-0">
                                         <TabsList className="grid w-full grid-cols-3">
                                             <TabsTrigger

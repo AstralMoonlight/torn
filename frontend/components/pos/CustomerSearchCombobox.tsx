@@ -18,6 +18,8 @@ import {
     User as UserIcon,
     UserCheck,
     Plus,
+    ChevronDown,
+    ChevronRight,
 } from 'lucide-react'
 
 interface Props {
@@ -61,13 +63,13 @@ export default function CustomerSearchCombobox({
     required = false,
     compact = true,
 }: Props) {
-    // Trigger compacto (ícono, `compact`) o de barra completa (`!compact`,
-    // usado cuando el documento exige cliente, p.ej. Factura) — ver render
-    // del botón más abajo. Toda la interacción (buscar, cambiar, quitar)
-    // vive en el Dialog que abre al hacer clic —
-    // que además tiene su propio overlay, así que nunca tapa nada del panel
-    // como sí lo hacía el dropdown absoluto que tenía antes.
-    const [searchOpen, setSearchOpen] = useState(false)
+    // Panel inline (no modal): se expande en el flujo normal del documento,
+    // empujando lo que viene después en vez de taparlo — el dropdown
+    // absoluto que tenía antes sí tapaba Referencias/Totales, y abrir un
+    // Dialog para elegir cliente en cada venta resultó ser demasiada
+    // ventana emergente. Sólo "Crear nuevo cliente" (formulario largo, poco
+    // frecuente) se queda como Dialog más abajo.
+    const [expanded, setExpanded] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Customer[]>([])
     const [loading, setLoading] = useState(false)
@@ -120,15 +122,15 @@ export default function CustomerSearchCombobox({
         return () => clearTimeout(debounceRef.current)
     }, [])
 
-    // ── Reset search state each time the dialog opens, autofocus ──
+    // ── Reset search state each time the panel expands, autofocus ─
     useEffect(() => {
-        if (searchOpen && !value) {
+        if (expanded && !value) {
             setQuery('')
             setResults([])
             setHighlightedIndex(-1)
             setTimeout(() => inputRef.current?.focus(), 50)
         }
-    }, [searchOpen, value])
+    }, [expanded, value])
 
     // ── Scroll highlighted item into view ────────────────────────
     useEffect(() => {
@@ -156,9 +158,12 @@ export default function CustomerSearchCombobox({
                     selectCustomer(results[highlightedIndex])
                 } else if (highlightedIndex === results.length) {
                     // "Crear nuevo" row
-                    setSearchOpen(false)
+                    setExpanded(false)
                     setCreateOpen(true)
                 }
+                break
+            case 'Escape':
+                setExpanded(false)
                 break
         }
     }
@@ -168,7 +173,7 @@ export default function CustomerSearchCombobox({
         onChange(c)
         setQuery('')
         setResults([])
-        setSearchOpen(false)
+        setExpanded(false)
     }
 
     // ── Customer creation handler ────────────────────────────────
@@ -194,7 +199,7 @@ export default function CustomerSearchCombobox({
             {compact ? (
                 <button
                     type="button"
-                    onClick={() => setSearchOpen(true)}
+                    onClick={() => setExpanded((o) => !o)}
                     title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
                     className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${triggerToneClass}`}
                 >
@@ -203,44 +208,44 @@ export default function CustomerSearchCombobox({
             ) : (
                 // Factura necesita más datos del cliente que Boleta, así que en vez del
                 // ícono compacto ocupa toda la barra del carrito para que sea evidente
-                // que hay que completarlo — sigue abriendo el mismo Dialog al hacer clic.
+                // que hay que completarlo.
                 <button
                     type="button"
-                    onClick={() => setSearchOpen(true)}
+                    onClick={() => setExpanded((o) => !o)}
                     className={`flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm transition-colors ${triggerToneClass}`}
                 >
                     {value ? <UserCheck className="h-3.5 w-3.5 shrink-0" /> : <UserIcon className="h-3.5 w-3.5 shrink-0" />}
                     <span className="truncate flex-1 text-left">
                         {value ? `${value.razon_social} — ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
                     </span>
+                    {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />}
                 </button>
             )}
 
-            <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-                <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-                    <DialogTitle className="sr-only">Cliente</DialogTitle>
-
+            {expanded && (
+                <div className={`${compact ? 'basis-full w-full' : ''} rounded-lg border border-border bg-muted/50 overflow-hidden`}>
                     {value ? (
                         // ── Ya hay un cliente elegido: mostrarlo y ofrecer cambiar/quitar ──
-                        <div className="p-4 space-y-3">
-                            <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5">
-                                <UserCheck className="h-5 w-5 text-primary shrink-0" />
+                        <div className="p-2.5 space-y-2">
+                            <div className="flex items-center gap-2.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-2">
+                                <UserCheck className="h-4 w-4 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-primary truncate">{value.razon_social}</p>
-                                    <p className="text-[11px] font-mono text-primary/80">{value.rut}</p>
+                                    <p className="text-xs font-medium text-primary truncate">{value.razon_social}</p>
+                                    <p className="text-[10px] font-mono text-primary/80">{value.rut}</p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button type="button" variant="outline" className="flex-1" onClick={() => onChange(null)}>
+                            <div className="flex gap-1.5">
+                                <Button type="button" size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => onChange(null)}>
                                     Cambiar cliente
                                 </Button>
                                 <Button
                                     type="button"
+                                    size="sm"
                                     variant="outline"
-                                    className="flex-1 text-destructive hover:text-destructive"
+                                    className="flex-1 h-7 text-xs text-destructive hover:text-destructive"
                                     onClick={() => {
                                         onChange(null)
-                                        setSearchOpen(false)
+                                        setExpanded(false)
                                     }}
                                 >
                                     Quitar cliente
@@ -251,31 +256,30 @@ export default function CustomerSearchCombobox({
                         // ── Búsqueda ──
                         <>
                             <div className="relative border-b border-border">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                                 <Input
                                     ref={inputRef}
                                     placeholder={SEARCH_PLACEHOLDER}
                                     value={query}
                                     onChange={(e) => handleInputChange(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    className="h-12 rounded-none border-0 pl-10 pr-9 text-sm focus-visible:ring-0"
+                                    className="h-9 rounded-none border-0 pl-8 pr-8 text-xs bg-transparent focus-visible:ring-0"
                                     autoComplete="off"
                                 />
                                 {loading && (
-                                    <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
                                 )}
                             </div>
 
-                            <div ref={listRef} className="max-h-[340px] overflow-y-auto">
+                            <div ref={listRef} className="max-h-48 overflow-y-auto">
                                 {query.length < 2 && (
-                                    <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
                                         Escribe al menos 2 caracteres para buscar.
                                     </div>
                                 )}
 
                                 {query.length >= 2 && results.length === 0 && !loading && (
-                                    <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-                                        <UserIcon className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
                                         No se encontraron clientes para &ldquo;{query}&rdquo;
                                     </div>
                                 )}
@@ -286,17 +290,17 @@ export default function CustomerSearchCombobox({
                                         data-combobox-item
                                         onClick={() => selectCustomer(customer)}
                                         onMouseEnter={() => setHighlightedIndex(idx)}
-                                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
+                                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
                                             }`}
                                     >
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
-                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shrink-0">
+                                            <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm truncate text-foreground">
+                                            <p className="text-xs truncate text-foreground">
                                                 <HighlightedText text={customer.razon_social} query={query} />
                                             </p>
-                                            <p className="text-[11px] font-mono text-muted-foreground">
+                                            <p className="text-[10px] font-mono text-muted-foreground">
                                                 <HighlightedText text={customer.rut} query={query} />
                                             </p>
                                         </div>
@@ -307,25 +311,25 @@ export default function CustomerSearchCombobox({
                                 <button
                                     data-combobox-item
                                     onClick={() => {
-                                        setSearchOpen(false)
+                                        setExpanded(false)
                                         setCreateOpen(true)
                                     }}
                                     onMouseEnter={() => setHighlightedIndex(results.length)}
-                                    className={`flex w-full items-center gap-2 px-4 py-3 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
+                                    className={`flex w-full items-center gap-2 px-3 py-2 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
                                         }`}
                                 >
-                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0">
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-background shrink-0">
                                         <Plus className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-xs font-medium text-foreground">
+                                    <span className="text-[11px] font-medium text-foreground">
                                         Crear nuevo cliente
                                     </span>
                                 </button>
                             </div>
                         </>
                     )}
-                </DialogContent>
-            </Dialog>
+                </div>
+            )}
 
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogContent className="sm:max-w-lg z-[100]">
