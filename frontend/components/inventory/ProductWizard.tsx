@@ -32,6 +32,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { createBrand, getBrands, Brand } from '@/services/brands'
+import { type Tax } from '@/services/config'
 
 interface VariantRow {
     nombre: string      // e.g. "Talla 42", "Rojo XL"
@@ -67,7 +68,7 @@ export default function ProductWizard({ open, onClose }: Props) {
     const [selectedBrand, setSelectedBrand] = useState<string>('')
     const [selectedTax, setSelectedTax] = useState<string>('')
     const [brands, setBrands] = useState<Brand[]>([])
-    const [taxes, setTaxes] = useState<any[]>([])
+    const [taxes, setTaxes] = useState<Tax[]>([])
     const [isCreatingBrand, setIsCreatingBrand] = useState(false)
     const [newBrandName, setNewBrandName] = useState('')
 

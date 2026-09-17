@@ -25,7 +25,6 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createSale, getPaymentMethods, getSalePdfUrl, getFoliosStatus, type PaymentMethod, type DocumentReference, type FolioStockOut } from '@/services/sales'
-import { type Customer } from '@/services/customers'
 import { toast } from 'sonner'
 import {
     Loader2,
@@ -59,9 +58,6 @@ function roundCash(amount: number): number {
     if (lastDigit < 5) return integerAmount - lastDigit
     return integerAmount + (10 - lastDigit)
 }
-
-// Chilean bill denominations
-const BILLS = [1000, 2000, 5000, 10000, 20000]
 
 function getSuggestedBills(total: number): number[] {
     const suggestions: number[] = []
@@ -465,7 +461,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                 const list = await getPriceList(c.price_list_id)
                                                 setCustomer(c, list)
                                                 toast.success(`Lista aplicada: ${list.name}`)
-                                            } catch (err) {
+                                            } catch {
                                                 setCustomer(c)
                                             }
                                         } else {

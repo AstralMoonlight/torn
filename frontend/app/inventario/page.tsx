@@ -63,8 +63,7 @@ export default function InventarioPage() {
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
-    const loadProducts = () => {
-        setLoading(true)
+    const fetchProducts = () => {
         getProducts()
             .then(setProducts)
             .catch((error) => {
@@ -72,6 +71,13 @@ export default function InventarioPage() {
                 toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
             })
             .finally(() => setLoading(false))
+    }
+
+    // Usado fuera del efecto de montaje (ej. tras eliminar), donde `loading`
+    // ya pudo haber vuelto a `false` y sí hay que reactivarlo.
+    const loadProducts = () => {
+        setLoading(true)
+        fetchProducts()
     }
 
     const handleDelete = async (product: Product) => {
@@ -92,7 +98,10 @@ export default function InventarioPage() {
         setEditDialogOpen(true)
     }
 
-    useEffect(() => { loadProducts() }, [])
+    // `loading` ya arranca en `true` (useState(true) arriba), así que el
+    // montaje inicial no necesita el setLoading(true) síncrono de
+    // loadProducts(): llama directo a fetchProducts().
+    useEffect(() => { fetchProducts() }, [])
 
     // Filter only root products (parents or standalone) to avoid duplicates
     // Filter only root products (parents or standalone) to avoid duplicates

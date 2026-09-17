@@ -11,6 +11,7 @@ import {
     PieChart,
     Pie,
     Cell,
+    type PieLabelRenderProps,
 } from 'recharts'
 import { formatCLP } from '@/lib/format'
 
@@ -84,9 +85,9 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                                     paddingAngle={4}
                                     dataKey="total"
                                     nameKey="nombre"
-                                    label={((props: any) =>
-                                        `${props.name ?? ''} ${((props.percent as number ?? 0) * 100).toFixed(0)}%`
-                                    ) as any}
+                                    label={(props: PieLabelRenderProps) =>
+                                        `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%`
+                                    }
                                 >
                                     {paymentData.map((_, i) => (
                                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />

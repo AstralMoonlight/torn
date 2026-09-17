@@ -269,7 +269,7 @@ export default function PriceListsPage() {
     const updateFixedPrice = (product_id: number, rawValue: string) => {
         setDraftItems(prev => prev.map(i => {
             if (i.product_id === product_id) {
-                if (rawValue === '') return { ...i, fixed_price: '' as any }
+                if (rawValue === '') return { ...i, fixed_price: '' }
                 const val = parseFloat(rawValue)
                 if (isNaN(val)) return i
                 if (isGrossMode) {

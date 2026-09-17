@@ -48,10 +48,6 @@ jobs:
         run: npm ci
 
       - name: Lint
-        # Informativo por ahora: el código arrastra 56 errores de lint previos
-        # (sobre todo `no-explicit-any` en la capa de servicios). Se limpian en
-        # #37 y entonces esto vuelve a ser bloqueante. El gate real es el build.
-        continue-on-error: true
         run: npm run lint
 
       - name: Build

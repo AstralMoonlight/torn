@@ -3,14 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { openSession, closeSession, getSessionStatus, getAllSessions, type CashSessionWithUser } from '@/services/cash'
-import { getSellers, User } from '@/services/users'
-import { getApiErrorMessage, getApiErrorDetail, getApiErrorStatus } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
@@ -29,7 +27,7 @@ import {
 
 
 export default function CajaPage() {
-    const { status, sessionId, user, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
+    const { status, user, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
     const [montoInicial, setMontoInicial] = useState('')
     const [efectivoContado, setEfectivoContado] = useState('')
     const [opening, setOpening] = useState(false)
@@ -49,7 +47,7 @@ export default function CajaPage() {
         try {
             const data = await getAllSessions()
             setHistorySessions(data)
-        } catch (error) {
+        } catch {
             toast.error('Error al cargar historial')
         } finally {
             setLoadingHistory(false)
@@ -134,7 +132,7 @@ export default function CajaPage() {
             setSession(session.id, monto, session.start_time, sellerId)
             setMontoInicial('')
             toast.success('Sesión anterior cerrada y nueva caja abierta')
-        } catch (error) {
+        } catch {
             toast.error('Error al forzar apertura de caja')
         } finally {
             setOpening(false)

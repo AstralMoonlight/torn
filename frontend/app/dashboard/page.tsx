@@ -9,17 +9,14 @@ import {
     ShoppingCart,
     Receipt,
     TrendingUp,
-    AlertOctagon,
-    CalendarDays,
     Wallet,
-    Percent,
     ArrowUpRight,
     ArrowDownRight
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCLP } from '@/lib/format'
 import dynamic from 'next/dynamic'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -99,7 +96,9 @@ export default function DashboardPage() {
     const [selectedPeriod, setSelectedPeriod] = useState<Period>('daily')
 
     useEffect(() => {
-        setLoading(true)
+        // loading ya arranca en `true` (useState(true) arriba); no hace falta
+        // volver a fijarlo aquí, y hacerlo disparaba
+        // react-hooks/set-state-in-effect.
         Promise.all([
             getDashboard(),
             getDashboardSummary(),

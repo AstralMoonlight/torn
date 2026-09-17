@@ -1,21 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { Button } from '@/components/ui/button'
 import { ShieldAlert, Users, Building, LogOut } from 'lucide-react'
 import ThemeToggle from '@/components/layout/ThemeToggle'
 import { LogoutConfirmModal } from '@/components/layout/LogoutConfirmModal'
+import { useHydrated } from '@/lib/hooks/useHydrated'
 
 export default function SaaSAdminPage() {
     const router = useRouter()
     const { user, token } = useSessionStore()
-    const [isMounted, setIsMounted] = useState(false)
-
-    useEffect(() => {
-        setIsMounted(true)
-    }, [])
+    const isMounted = useHydrated()
 
     useEffect(() => {
         if (!isMounted) return

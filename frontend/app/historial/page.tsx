@@ -20,7 +20,6 @@ import { toast } from 'sonner'
 import {
     History,
     Search,
-    FileText,
     RotateCcw,
     ExternalLink,
     Loader2,

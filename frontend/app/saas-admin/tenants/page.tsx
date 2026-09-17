@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem, type EconomicActivity } from '@/services/saas'
 import { getApiErrorMessage } from '@/services/api'
@@ -11,7 +10,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
@@ -38,7 +37,6 @@ import {
 } from '@/components/ui/table'
 
 export default function TenantsListPage() {
-    const router = useRouter()
     const [tenants, setTenants] = useState<Tenant[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreating, setIsCreating] = useState(false)

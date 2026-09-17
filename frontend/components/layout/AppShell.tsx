@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import { Toaster } from '@/components/ui/toaster'
@@ -8,6 +8,7 @@ import MobileNav from './MobileNav'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getSessionStatus } from '@/services/cash'
 import { validateSession } from '@/services/auth'
+import { useHydrated } from '@/lib/hooks/useHydrated'
 
 // Definición de grupos para el guardián de rutas
 const NAV_PERMISSION_MAP = [
@@ -36,11 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const availableTenants = useSessionStore((s) => s.availableTenants)
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
 
-    const [isMounted, setIsMounted] = useState(false)
-
-    useEffect(() => {
-        setIsMounted(true)
-    }, [])
+    const isMounted = useHydrated()
 
     // Auth & Route Protection
     useEffect(() => {

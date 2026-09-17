@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Copy, FileText, Search, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,7 +62,7 @@ export default function FoliosTab() {
 
     const { toast } = useToast();
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const [resStocks, resLogs] = await Promise.all([
@@ -81,11 +81,11 @@ export default function FoliosTab() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     const handleRequestFolios = async () => {
         if (!selectedDte || !amount) {
@@ -115,7 +115,7 @@ export default function FoliosTab() {
                 setAmount("");
                 setSelectedDte("");
                 fetchData();
-            } catch (error) {
+            } catch {
                 toast({
                     variant: "destructive",
                     title: "Error",

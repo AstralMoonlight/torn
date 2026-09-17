@@ -2,13 +2,12 @@
 
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useHydrated } from '@/lib/hooks/useHydrated'
 
 export default function ThemeToggle() {
     const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
 
-    useEffect(() => setMounted(true), [])
     if (!mounted) return <div className="h-8 w-8" />
 
     const isDark = theme === 'dark'

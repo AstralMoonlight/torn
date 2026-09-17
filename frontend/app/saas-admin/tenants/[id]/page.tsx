@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getTenantUsers, addTenantUser, getTenants, updateTenant, updateTenantUser, type TenantUser, type TenantUserCreate, type Tenant, type TenantUpdate, type TenantUserUpdate } from '@/services/saas'
 import { getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
-import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, User as UserIcon, Edit, Settings, Trash2 } from 'lucide-react'
+import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,12 +51,7 @@ export default function TenantDetailsPage() {
     const [editPassword, setEditPassword] = useState('')
     const [editFullName, setEditFullName] = useState('')
 
-    useEffect(() => {
-        if (!tenantId) return
-        loadData()
-    }, [tenantId])
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true)
         try {
             const list = await getTenants()
@@ -73,7 +68,12 @@ export default function TenantDetailsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [tenantId])
+
+    useEffect(() => {
+        if (!tenantId) return
+        loadData()
+    }, [tenantId, loadData])
 
     const maxUsersLimit = tenant?.max_users_override || 3 // By default testing
     const isAtLimit = users.filter(u => u.is_active).length >= maxUsersLimit

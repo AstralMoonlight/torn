@@ -19,7 +19,7 @@ interface LogoutConfirmModalProps {
 }
 
 export function LogoutConfirmModal({ children }: LogoutConfirmModalProps) {
-    const handleConfirm = (e: React.MouseEvent) => {
+    const handleConfirm = () => {
         // Ejecuta el cierre de sesión y redirecciona al login
         useSessionStore.getState().logout()
         window.location.href = '/login'

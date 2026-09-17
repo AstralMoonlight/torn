@@ -56,7 +56,6 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 export default function CustomerSearchCombobox({
     value,
     onChange,
-    required = false,
     placeholder = 'Buscar por Nombre o RUT…',
 }: Props) {
     const [query, setQuery] = useState('')

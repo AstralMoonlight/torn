@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { Loader2, Package, RefreshCw } from 'lucide-react'
 import { Product, updateProduct } from '@/services/products'
 import { getBrands, Brand } from '@/services/brands'
+import { type Tax } from '@/services/config'
 
 interface Props {
     open: boolean
@@ -41,7 +42,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
     // Variants state (local copy for editing)
     const [variants, setVariants] = useState<Product[]>([])
     const [brands, setBrands] = useState<Brand[]>([])
-    const [taxes, setTaxes] = useState<any[]>([])
+    const [taxes, setTaxes] = useState<Tax[]>([])
 
     useEffect(() => {
         if (open && product) {

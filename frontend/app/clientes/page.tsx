@@ -18,34 +18,13 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Search, Loader2 } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
 
-// Basic RUT formatter and validator
-const formatRut = (rut: string): string => {
-    // Remove non-alphanumeric
-    const clean = rut.replace(/[^0-9kK]/g, '').toUpperCase()
-    if (clean.length < 2) return clean
-
-    const body = clean.slice(0, -1)
-    const dv = clean.slice(-1)
-
-    // Format body with dots
-    let formattedBody = ''
-    for (let i = body.length - 1, j = 0; i >= 0; i--, j++) {
-        formattedBody = body.charAt(i) + formattedBody
-        if (j % 3 === 2 && i > 0) {
-            formattedBody = '.' + formattedBody
-        }
-    }
-
-    return `${formattedBody}-${dv}`
-}
-
+// Basic RUT validator
 const validateRut = (rut: string): boolean => {
     const clean = rut.replace(/[^0-9kK]/g, '').toUpperCase()
     if (clean.length < 2) return false

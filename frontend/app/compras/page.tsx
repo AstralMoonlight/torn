@@ -9,7 +9,6 @@ import {
     Package,
     Calendar,
     FileText,
-    Truck,
     Clock,
     Printer
 } from 'lucide-react'
@@ -44,12 +43,11 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { getProviders, type Provider } from '@/services/providers'
+import { type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
-import { createPurchase, getPurchases, deletePurchase, type Purchase, type PurchaseCreate, type PurchaseItem } from '@/services/purchases'
+import { createPurchase, getPurchases, deletePurchase, type Purchase, type PurchaseCreate } from '@/services/purchases'
 import { getApiErrorMessage } from '@/services/api'
-import { formatRut } from '@/lib/rut'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 
@@ -61,7 +59,6 @@ interface CartItem {
 
 
 export default function ComprasPage() {
-    const [providers, setProviders] = useState<Provider[]>([])
     const [products, setProducts] = useState<Product[]>([])
     const [items, setItems] = useState<CartItem[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
@@ -108,7 +105,7 @@ export default function ComprasPage() {
         try {
             const data = await getPurchases()
             setPurchases(data)
-        } catch (err) {
+        } catch {
             toast.error('Error al actualizar historial')
         } finally {
             setLoadingPurchases(false)
@@ -210,7 +207,7 @@ export default function ComprasPage() {
             toast.success('Compra eliminada y stock revertido')
             setDeleteId(null)
             refreshPurchases()
-        } catch (error) {
+        } catch {
             toast.error('Error al eliminar compra')
         }
     }

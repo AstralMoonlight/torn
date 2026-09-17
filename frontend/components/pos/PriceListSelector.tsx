@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { getPriceLists, type PriceListRead } from '@/services/price_lists'
 import { useCartStore } from '@/lib/store/cartStore'
+import { useHydrated } from '@/lib/hooks/useHydrated'
 import { Tag } from 'lucide-react'
 
 export default function PriceListSelector() {
@@ -27,8 +28,7 @@ export default function PriceListSelector() {
     }
 
     // Don't render until client loads (zustand hydration)
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
+    const mounted = useHydrated()
     if (!mounted) return null
 
     return (

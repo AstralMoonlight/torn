@@ -6,7 +6,6 @@ import {
     updateSettings,
     getTaxes,
     createTax,
-    updateTax,
     Tax,
     SystemSettings
 } from '@/services/config'
@@ -43,7 +42,7 @@ export default function ConfigurationPage() {
             const [s, t] = await Promise.all([getSettings(), getTaxes()])
             setSettings(s)
             setTaxes(t)
-        } catch (error) {
+        } catch {
             toast.error('Error al cargar configuración')
         } finally {
             setLoading(false)
@@ -59,7 +58,7 @@ export default function ConfigurationPage() {
                 iva_default_id: settings.iva_default_id
             })
             toast.success('Configuración guardada')
-        } catch (error) {
+        } catch {
             toast.error('Error al guardar configuración')
         } finally {
             setSaving(false)
@@ -77,7 +76,7 @@ export default function ConfigurationPage() {
             toast.success('Impuesto creado')
             setNewTax({ name: '', rate: 19 })
             loadData()
-        } catch (error) {
+        } catch {
             toast.error('Error al crear impuesto')
         }
     }

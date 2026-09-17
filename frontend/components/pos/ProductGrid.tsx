@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { Product } from '@/services/products'
 import { useCartStore } from '@/lib/store/cartStore'
-import { useUIStore, type PosVariantDisplay } from '@/lib/store/uiStore'
+import { type PosVariantDisplay } from '@/lib/store/uiStore'
 import { Package, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'

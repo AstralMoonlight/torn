@@ -24,6 +24,15 @@ export interface UserCreateInput {
     password?: string
 }
 
+/** Campos que acepta PUT /users/{id} (equivale a `UserUpdate` del backend). */
+export interface UserUpdateInput {
+    full_name?: string
+    email?: string
+    role_id?: number
+    is_active?: boolean
+    password?: string
+}
+
 export const getUsers = async (): Promise<User[]> => {
     const response = await api.get('/users/')
     return response.data
@@ -39,7 +48,7 @@ export const createUser = async (data: UserCreateInput): Promise<User> => {
     return response.data
 }
 
-export const updateUser = async (id: number, data: Record<string, any>): Promise<User> => {
+export const updateUser = async (id: number, data: UserUpdateInput): Promise<User> => {
     const response = await api.put(`/users/${id}`, data)
     return response.data
 }

@@ -126,7 +126,7 @@ export const useCartStore = create<CartState>()(
                             const resolution = await resolvePrice(product.id, customer.id)
                             resolved_price = parseFloat(resolution.resolved_price)
                             source = resolution.source
-                        } catch (err) {
+                        } catch {
                             console.error('Backend resolution failed, using base price')
                         }
                     }
@@ -189,7 +189,7 @@ async function recalculatePrices(
 
     set({ isRecalculating: true })
     try {
-        const { getPriceList, getPriceLists } = await import('@/services/price_lists')
+        const { getPriceList } = await import('@/services/price_lists')
 
         const customPrices = new Map<number, number>()
 

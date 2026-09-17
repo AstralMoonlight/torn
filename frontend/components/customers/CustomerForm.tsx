@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DialogFooter } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
-import { CustomerCreate, Customer } from '@/services/customers'
+import { CustomerCreate } from '@/services/customers'
 import { formatRut, validateRut } from '@/lib/rut'
 import { toast } from 'sonner'
 

@@ -6,7 +6,7 @@ import { formatCLP, formatDate, getTodayChile } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Printer, Info, Wallet, BarChart2, Calendar, Filter } from 'lucide-react'
+import { Printer, Info, Wallet, BarChart2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import {

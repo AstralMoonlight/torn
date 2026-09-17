@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,15 +9,12 @@ import {
     ShieldCheck,
     Plus,
     Pencil,
-    Trash2,
     Loader2,
     Mail,
-    CreditCard,
     Search,
     RefreshCw,
     Save,
     CheckCircle2,
-    XCircle,
     UserCircle
 } from 'lucide-react'
 import {
@@ -40,7 +37,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from 'sonner'
 import { useSessionStore } from '@/lib/store/sessionStore'
-import { getUsers, deleteUser, updateUser, type User } from '@/services/users'
+import { getUsers, updateUser, type User } from '@/services/users'
 import { roleService, type Role } from '@/services/roles'
 import UserDialog from '@/components/users/UserDialog'
 import { Switch } from '@/components/ui/switch'
@@ -84,40 +81,40 @@ export default function PersonalPage() {
     const activeStaffCount = staff.filter(u => u.is_active).length
     const canActivateMore = activeStaffCount < maxUsers
 
-    useEffect(() => {
-        loadAll()
-    }, [selectedTenantId])
+    const fetchStaff = useCallback(async () => {
+        try {
+            setStaffLoading(true)
+            const data = await getUsers()
+            // In a real multi-tenant app, the API already filters by tenant
+            setStaff(data)
+        } catch {
+            toast.error('Error al cargar personal')
+        } finally {
+            setStaffLoading(false)
+        }
+    }, [])
 
-    const loadAll = async () => {
+    const fetchRoles = useCallback(async () => {
+        try {
+            const rolesData = await roleService.getRoles()
+            setRoles(rolesData.filter(r => r.name !== 'CLIENTE'))
+        } catch {
+            toast.error('Error al cargar roles')
+        }
+    }, [])
+
+    const loadAll = useCallback(async () => {
         try {
             setLoading(true)
             await Promise.all([fetchStaff(), fetchRoles()])
         } finally {
             setLoading(false)
         }
-    }
+    }, [fetchStaff, fetchRoles])
 
-    const fetchStaff = async () => {
-        try {
-            setStaffLoading(true)
-            const data = await getUsers()
-            // In a real multi-tenant app, the API already filters by tenant
-            setStaff(data)
-        } catch (error) {
-            toast.error('Error al cargar personal')
-        } finally {
-            setStaffLoading(false)
-        }
-    }
-
-    const fetchRoles = async () => {
-        try {
-            const rolesData = await roleService.getRoles()
-            setRoles(rolesData.filter(r => r.name !== 'CLIENTE'))
-        } catch (error) {
-            toast.error('Error al cargar roles')
-        }
-    }
+    useEffect(() => {
+        loadAll()
+    }, [selectedTenantId, loadAll])
 
     const handleCreate = () => {
         setSelectedUser(null)
@@ -141,7 +138,7 @@ export default function PersonalPage() {
             await updateUser(user.id, { is_active: !user.is_active })
             toast.success(user.is_active ? 'Usuario desactivado' : 'Usuario activado')
             fetchStaff()
-        } catch (error) {
+        } catch {
             toast.error('No se pudo cambiar el estado del usuario')
         }
     }
@@ -170,7 +167,7 @@ export default function PersonalPage() {
                 )
             )
             toast.success('Permisos actualizados correctamente')
-        } catch (error) {
+        } catch {
             toast.error('Error al guardar permisos')
         } finally {
             setSavingRoles(false)
@@ -192,7 +189,7 @@ export default function PersonalPage() {
                 }
             }))
             toast.success('Rol actualizado')
-        } catch (error) {
+        } catch {
             toast.error('Error al actualizar rol')
         } finally {
             setUpdatingUserId(null)
@@ -377,7 +374,7 @@ export default function PersonalPage() {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {MENU_ITEMS.map((item, idx) => (
+                                                {MENU_ITEMS.map((item) => (
                                                     <TableRow key={item} className="border-b border-neutral-100 dark:border-neutral-900 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30">
                                                         <TableCell className="font-medium text-neutral-700 dark:text-neutral-300">
                                                             {item}
