@@ -49,6 +49,20 @@ export default function CartPanel({ onClose }: Props) {
     const [availableDtes, setAvailableDtes] = useState<FolioStockOut[]>([])
     const [refsSectionOpen, setRefsSectionOpen] = useState(false)
 
+    // `totalNeto`/`totalIva`/`totalFinal` no están en el `partialize` del
+    // store (sólo items/customer/priceList) — es a propósito, son campos
+    // derivados. Pero al recargar la página con un carro ya persistido en
+    // localStorage, la rehidratación de zustand restaura `items` sin volver
+    // a correr `recalcTotals`, así que quedan en 0 hasta la próxima acción
+    // que sí lo dispare (agregar/quitar producto, cambiar cantidad...). Sin
+    // este efecto, un F5 con productos en el carro mostraba Total $0 aunque
+    // cada línea individual sí tuviera su precio correcto.
+    useEffect(() => {
+        if (items.length > 0 && totalFinal === 0) {
+            setTipoDte(tipoDte)
+        }
+    }, [items.length, totalFinal, tipoDte, setTipoDte])
+
     // El stock de folios se carga una vez al montar el panel — ya no hace
     // falta esperar a abrir el modal de cobro para saber qué documentos se
     // pueden emitir, porque la elección ahora vive acá.

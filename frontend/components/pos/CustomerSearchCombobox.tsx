@@ -58,14 +58,18 @@ export default function CustomerSearchCombobox({
     onChange,
     placeholder = 'Buscar por Nombre o RUT…',
 }: Props) {
+    // La búsqueda vive dentro de un Dialog (no un dropdown flotando sobre el
+    // input) — este selector se usa dentro de CartPanel, un panel angosto y
+    // con poco alto libre debajo (Referencias, totales, botón Cobrar), y un
+    // dropdown absoluto ahí terminaba tapando todo eso. El Dialog tiene su
+    // propio fondo/overlay, así que no hay nada que pueda quedar cubierto.
+    const [searchOpen, setSearchOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Customer[]>([])
-    const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
     const [createOpen, setCreateOpen] = useState(false)
 
-    const containerRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
     const listRef = useRef<HTMLDivElement>(null)
@@ -74,7 +78,6 @@ export default function CustomerSearchCombobox({
     const performSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
             setResults([])
-            setIsOpen(false)
             return
         }
 
@@ -82,7 +85,6 @@ export default function CustomerSearchCombobox({
         try {
             const data = await searchCustomers(q)
             setResults(data)
-            setIsOpen(true)
             setHighlightedIndex(-1)
         } catch {
             setResults([])
@@ -98,7 +100,6 @@ export default function CustomerSearchCombobox({
 
             if (val.length < 2) {
                 setResults([])
-                setIsOpen(false)
                 return
             }
 
@@ -115,16 +116,15 @@ export default function CustomerSearchCombobox({
         return () => clearTimeout(debounceRef.current)
     }, [])
 
-    // ── Close dropdown on click outside ──────────────────────────
+    // ── Reset search state each time the dialog opens, autofocus ──
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setIsOpen(false)
-            }
+        if (searchOpen) {
+            setQuery('')
+            setResults([])
+            setHighlightedIndex(-1)
+            setTimeout(() => inputRef.current?.focus(), 50)
         }
-        document.addEventListener('mousedown', handler)
-        return () => document.removeEventListener('mousedown', handler)
-    }, [])
+    }, [searchOpen])
 
     // ── Scroll highlighted item into view ────────────────────────
     useEffect(() => {
@@ -137,14 +137,6 @@ export default function CustomerSearchCombobox({
     // ── Keyboard navigation ──────────────────────────────────────
     const totalItems = results.length + 1 // +1 for "Crear nuevo" row
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (!isOpen && e.key !== 'Escape') {
-            // If dropdown closed and user presses down, trigger search
-            if (e.key === 'ArrowDown' && query.length >= 2) {
-                performSearch(query)
-            }
-            return
-        }
-
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
@@ -160,13 +152,9 @@ export default function CustomerSearchCombobox({
                     selectCustomer(results[highlightedIndex])
                 } else if (highlightedIndex === results.length) {
                     // "Crear nuevo" row
-                    setIsOpen(false)
+                    setSearchOpen(false)
                     setCreateOpen(true)
                 }
-                break
-            case 'Escape':
-                e.preventDefault()
-                setIsOpen(false)
                 break
         }
     }
@@ -176,13 +164,11 @@ export default function CustomerSearchCombobox({
         onChange(c)
         setQuery('')
         setResults([])
-        setIsOpen(false)
+        setSearchOpen(false)
     }
 
     const clearCustomer = () => {
         onChange(null)
-        setQuery('')
-        setTimeout(() => inputRef.current?.focus(), 50)
     }
 
     // ── Customer creation handler ────────────────────────────────
@@ -196,6 +182,20 @@ export default function CustomerSearchCombobox({
             toast.error('Error al crear cliente')
         }
     }
+
+    const createCustomerDialog = (
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogContent className="sm:max-w-lg z-[100]">
+                <DialogHeader>
+                    <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
+                </DialogHeader>
+                <CustomerForm
+                    onSubmit={handleCreateSuccess}
+                    onCancel={() => setCreateOpen(false)}
+                />
+            </DialogContent>
+        </Dialog>
+    )
 
     // ── RENDER: Selected state (chip) ────────────────────────────
     if (value) {
@@ -222,106 +222,89 @@ export default function CustomerSearchCombobox({
                     </Button>
                 </div>
 
-                {/* Stacked create dialog (in case we need it later) */}
-                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                    <DialogContent className="sm:max-w-lg z-[100]">
-                        <DialogHeader>
-                            <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
-                        </DialogHeader>
-                        <CustomerForm
-                            onSubmit={handleCreateSuccess}
-                            onCancel={() => setCreateOpen(false)}
-                        />
-                    </DialogContent>
-                </Dialog>
+                {createCustomerDialog}
             </>
         )
     }
 
-    // ── RENDER: Search state ─────────────────────────────────────
+    // ── RENDER: Trigger (abre el Dialog de búsqueda) ─────────────
     return (
         <>
-            <div ref={containerRef} className="relative">
-                {/* Search input */}
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                    <Input
-                        ref={inputRef}
-                        placeholder={placeholder}
-                        value={query}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onFocus={() => {
-                            if (query.length >= 2 && results.length > 0) setIsOpen(true)
-                        }}
-                        className="pl-8 pr-8 h-9 text-sm"
-                        autoComplete="off"
-                    />
-                    {loading && (
-                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                    )}
-                </div>
+            <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+            >
+                <Search className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{placeholder}</span>
+            </button>
 
-                {/* Dropdown */}
-                {isOpen && (
-                    <div
-                        ref={listRef}
-                        className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
-                    >
-                        {/* Results */}
-                        <div className="max-h-[200px] overflow-y-auto">
-                            {results.length === 0 && !loading && (
-                                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                                    <UserIcon className="h-5 w-5 mx-auto mb-1 opacity-40" />
-                                    No se encontraron clientes para &ldquo;{query}&rdquo;
+            <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+                <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+                    <DialogTitle className="sr-only">Buscar cliente</DialogTitle>
+                    <div className="relative border-b border-border">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                            ref={inputRef}
+                            placeholder={placeholder}
+                            value={query}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="h-12 rounded-none border-0 pl-10 pr-9 text-sm focus-visible:ring-0"
+                            autoComplete="off"
+                        />
+                        {loading && (
+                            <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        )}
+                    </div>
+
+                    <div ref={listRef} className="max-h-[340px] overflow-y-auto">
+                        {query.length < 2 && (
+                            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                                Escribe al menos 2 caracteres para buscar.
+                            </div>
+                        )}
+
+                        {query.length >= 2 && results.length === 0 && !loading && (
+                            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                                <UserIcon className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                                No se encontraron clientes para &ldquo;{query}&rdquo;
+                            </div>
+                        )}
+
+                        {results.map((customer, idx) => (
+                            <button
+                                key={customer.id}
+                                data-combobox-item
+                                onClick={() => selectCustomer(customer)}
+                                onMouseEnter={() => setHighlightedIndex(idx)}
+                                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
+                                    }`}
+                            >
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                                    <UserIcon className="h-4 w-4 text-muted-foreground" />
                                 </div>
-                            )}
-
-                            {results.map((customer, idx) => (
-                                <button
-                                    key={customer.id}
-                                    data-combobox-item
-                                    onClick={() => selectCustomer(customer)}
-                                    onMouseEnter={() => setHighlightedIndex(idx)}
-                                    className={`
-                                        flex w-full items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer
-                                        ${idx === highlightedIndex
-                                            ? 'bg-muted'
-                                            : 'hover:bg-accent/50'
-                                        }
-                                        ${idx > 0 ? 'border-t border-border' : ''}
-                                    `}
-                                >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
-                                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate text-foreground">
-                                            <HighlightedText text={customer.razon_social} query={query} />
-                                        </p>
-                                        <p className="text-[11px] font-mono text-muted-foreground dark:text-muted-foreground">
-                                            <HighlightedText text={customer.rut} query={query} />
-                                        </p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm truncate text-foreground">
+                                        <HighlightedText text={customer.razon_social} query={query} />
+                                    </p>
+                                    <p className="text-[11px] font-mono text-muted-foreground">
+                                        <HighlightedText text={customer.rut} query={query} />
+                                    </p>
+                                </div>
+                            </button>
+                        ))}
 
                         {/* "Crear nuevo" — always visible */}
                         <button
                             data-combobox-item
                             onClick={() => {
-                                setIsOpen(false)
+                                setSearchOpen(false)
                                 setCreateOpen(true)
                             }}
                             onMouseEnter={() => setHighlightedIndex(results.length)}
-                            className={`
-                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-border transition-colors cursor-pointer
-                                ${highlightedIndex === results.length
-                                    ? 'bg-muted'
-                                    : 'hover:bg-accent/50'
-                                }
-                            `}
+                            className={`flex w-full items-center gap-2 px-4 py-3 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
+                                }`}
                         >
                             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0">
                                 <Plus className="h-3 w-3 text-muted-foreground" />
@@ -331,21 +314,10 @@ export default function CustomerSearchCombobox({
                             </span>
                         </button>
                     </div>
-                )}
-            </div>
-
-            {/* Stacked Create Customer Dialog */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="sm:max-w-lg z-[100]">
-                    <DialogHeader>
-                        <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
-                    </DialogHeader>
-                    <CustomerForm
-                        onSubmit={handleCreateSuccess}
-                        onCancel={() => setCreateOpen(false)}
-                    />
                 </DialogContent>
             </Dialog>
+
+            {createCustomerDialog}
         </>
     )
 }
