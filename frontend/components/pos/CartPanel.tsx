@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
 import { getFoliosStatus, type FolioStockOut, type DocumentReference } from '@/services/sales'
+import type { Customer } from '@/services/customers'
 import { toast } from 'sonner'
 
 interface Props {
@@ -73,6 +74,22 @@ export default function CartPanel({ onClose }: Props) {
     }, [])
 
     const isBoleta = [39, 41].includes(tipoDte)
+
+    const handleCustomerChange = async (c: Customer | null) => {
+        if (c && c.price_list_id) {
+            try {
+                const { getPriceList } = await import('@/services/price_lists')
+                const list = await getPriceList(c.price_list_id)
+                setCustomer(c, list)
+                toast.success(`Lista aplicada: ${list.name}`)
+            } catch {
+                setCustomer(c)
+            }
+        } else {
+            setCustomer(c)
+            if (c) toast.info('Cliente sin lista especial (Precio Base)')
+        }
+    }
 
     const addReferencia = () => {
         setReferencias([...referencias, { tipo_documento: '801', folio: '', fecha: formatDateForInput(new Date()) }])
@@ -201,78 +218,77 @@ export default function CartPanel({ onClose }: Props) {
                         en medio del pago si hay que corregir algo. */}
                     <div className="px-4 pt-3 space-y-2 border-b border-border pb-3">
                         {availableDtes.length > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                                <Tabs value={tipoDte.toString()} onValueChange={(v) => setTipoDte(Number(v))} className="flex-1 min-w-0">
-                                    <TabsList className="grid w-full grid-cols-3">
-                                        <TabsTrigger
-                                            value="39"
-                                            className="gap-1.5 text-xs"
-                                            disabled={!availableDtes.some((d) => d.dte_type === 39)}
-                                        >
-                                            <Receipt className="h-3.5 w-3.5" /> Boleta
-                                        </TabsTrigger>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <Tabs value={tipoDte.toString()} onValueChange={(v) => setTipoDte(Number(v))} className="flex-1 min-w-0">
+                                        <TabsList className="grid w-full grid-cols-3">
+                                            <TabsTrigger
+                                                value="39"
+                                                className="gap-1.5 text-xs"
+                                                disabled={!availableDtes.some((d) => d.dte_type === 39)}
+                                            >
+                                                <Receipt className="h-3.5 w-3.5" /> Boleta
+                                            </TabsTrigger>
 
-                                        <TabsTrigger
-                                            value="33"
-                                            className="gap-1.5 text-xs"
-                                            disabled={!availableDtes.some((d) => d.dte_type === 33)}
-                                        >
-                                            <FileText className="h-3.5 w-3.5" /> Factura
-                                        </TabsTrigger>
+                                            <TabsTrigger
+                                                value="33"
+                                                className="gap-1.5 text-xs"
+                                                disabled={!availableDtes.some((d) => d.dte_type === 33)}
+                                            >
+                                                <FileText className="h-3.5 w-3.5" /> Factura
+                                            </TabsTrigger>
 
-                                        {/* Dropdown para los DTEs extra (exentos) fuera de 33/39 */}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <TabsTrigger
-                                                    value={![33, 39].includes(tipoDte) ? tipoDte.toString() : 'extra'}
-                                                    className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                                    disabled={!availableDtes.some((d) => ![33, 39].includes(d.dte_type))}
-                                                >
-                                                    {![33, 39].includes(tipoDte) && availableDtes.find((d) => d.dte_type === tipoDte) ? (
-                                                        tipoDte === 34 ? 'Exenta (34)' : tipoDte === 41 ? 'Bol. Exenta (41)' : `DTE ${tipoDte}`
-                                                    ) : (
-                                                        '...'
+                                            {/* Dropdown para los DTEs extra (exentos) fuera de 33/39 */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <TabsTrigger
+                                                        value={![33, 39].includes(tipoDte) ? tipoDte.toString() : 'extra'}
+                                                        className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                                                        disabled={!availableDtes.some((d) => ![33, 39].includes(d.dte_type))}
+                                                    >
+                                                        {![33, 39].includes(tipoDte) && availableDtes.find((d) => d.dte_type === tipoDte) ? (
+                                                            tipoDte === 34 ? 'Exenta (34)' : tipoDte === 41 ? 'Bol. Exenta (41)' : `DTE ${tipoDte}`
+                                                        ) : (
+                                                            '...'
+                                                        )}
+                                                    </TabsTrigger>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-44 text-xs">
+                                                    {availableDtes.find((d) => d.dte_type === 34) && (
+                                                        <DropdownMenuItem onClick={() => setTipoDte(34)} className="text-xs flex gap-2">
+                                                            <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Factura Exenta (34)
+                                                        </DropdownMenuItem>
                                                     )}
-                                                </TabsTrigger>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-44 text-xs">
-                                                {availableDtes.find((d) => d.dte_type === 34) && (
-                                                    <DropdownMenuItem onClick={() => setTipoDte(34)} className="text-xs flex gap-2">
-                                                        <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Factura Exenta (34)
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {availableDtes.find((d) => d.dte_type === 41) && (
-                                                    <DropdownMenuItem onClick={() => setTipoDte(41)} className="text-xs flex gap-2">
-                                                        <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TabsList>
-                                </Tabs>
+                                                    {availableDtes.find((d) => d.dte_type === 41) && (
+                                                        <DropdownMenuItem onClick={() => setTipoDte(41)} className="text-xs flex gap-2">
+                                                            <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TabsList>
+                                    </Tabs>
 
-                                {/* Cliente: ícono compacto, no una barra de búsqueda entera — el
-                                    detalle (buscar/cambiar/quitar) vive en el Dialog que abre al
-                                    hacer clic, para no ocupar una fila propia acá. */}
-                                <CustomerSearchCombobox
-                                    value={customer}
-                                    onChange={async (c) => {
-                                        if (c && c.price_list_id) {
-                                            try {
-                                                const { getPriceList } = await import('@/services/price_lists')
-                                                const list = await getPriceList(c.price_list_id)
-                                                setCustomer(c, list)
-                                                toast.success(`Lista aplicada: ${list.name}`)
-                                            } catch {
-                                                setCustomer(c)
-                                            }
-                                        } else {
-                                            setCustomer(c)
-                                            if (c) toast.info('Cliente sin lista especial (Precio Base)')
-                                        }
-                                    }}
-                                    required={!isBoleta}
-                                />
+                                    {/* Boleta: cliente opcional, basta un ícono compacto junto a
+                                        los tabs. Factura (y exentas): el cliente es obligatorio y
+                                        lleva más datos, así que baja a una barra propia más abajo. */}
+                                    {isBoleta && (
+                                        <CustomerSearchCombobox
+                                            value={customer}
+                                            onChange={handleCustomerChange}
+                                            required={false}
+                                        />
+                                    )}
+                                </div>
+
+                                {!isBoleta && (
+                                    <CustomerSearchCombobox
+                                        compact={false}
+                                        value={customer}
+                                        onChange={handleCustomerChange}
+                                        required
+                                    />
+                                )}
                             </div>
                         ) : (
                             <div className="p-2 bg-destructive/10 text-destructive text-xs rounded-md text-center font-medium border border-destructive/30">

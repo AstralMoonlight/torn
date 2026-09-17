@@ -24,6 +24,8 @@ interface Props {
     value: Customer | null
     onChange: (customer: Customer | null) => void
     required?: boolean
+    /** Ícono h-9 w-9 (default) vs. barra completa — ver comentario donde se usa el trigger. */
+    compact?: boolean
 }
 
 /**
@@ -57,11 +59,12 @@ export default function CustomerSearchCombobox({
     value,
     onChange,
     required = false,
+    compact = true,
 }: Props) {
-    // Trigger de un solo ícono (no una barra de búsqueda entera): dentro de
-    // CartPanel comparte fila con los tabs de tipo de documento, y la idea es
-    // ocupar el mínimo espacio posible en pantalla. Toda la interacción
-    // (buscar, cambiar, quitar) vive en el Dialog que abre al hacer clic —
+    // Trigger compacto (ícono, `compact`) o de barra completa (`!compact`,
+    // usado cuando el documento exige cliente, p.ej. Factura) — ver render
+    // del botón más abajo. Toda la interacción (buscar, cambiar, quitar)
+    // vive en el Dialog que abre al hacer clic —
     // que además tiene su propio overlay, así que nunca tapa nada del panel
     // como sí lo hacía el dropdown absoluto que tenía antes.
     const [searchOpen, setSearchOpen] = useState(false)
@@ -180,21 +183,38 @@ export default function CustomerSearchCombobox({
         }
     }
 
+    const triggerToneClass = value
+        ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+        : required
+            ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
+            : 'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+
     return (
         <>
-            <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
-                className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${value
-                    ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
-                    : required
-                        ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
-                        : 'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                    }`}
-            >
-                {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
-            </button>
+            {compact ? (
+                <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
+                    className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${triggerToneClass}`}
+                >
+                    {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
+                </button>
+            ) : (
+                // Factura necesita más datos del cliente que Boleta, así que en vez del
+                // ícono compacto ocupa toda la barra del carrito para que sea evidente
+                // que hay que completarlo — sigue abriendo el mismo Dialog al hacer clic.
+                <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    className={`flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm transition-colors ${triggerToneClass}`}
+                >
+                    {value ? <UserCheck className="h-3.5 w-3.5 shrink-0" /> : <UserIcon className="h-3.5 w-3.5 shrink-0" />}
+                    <span className="truncate flex-1 text-left">
+                        {value ? `${value.razon_social} — ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
+                    </span>
+                </button>
+            )}
 
             <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
                 <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
