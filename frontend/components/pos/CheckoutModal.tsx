@@ -239,9 +239,19 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
     const updatePaymentMethod = (index: number, methodId: number) => {
         const method = methods.find((m) => m.id === methodId)
-        if (method) {
-            setPayments(payments.map((p, i) => (i === index ? { ...p, method } : p)))
-        }
+        if (!method) return
+        // El monto de la línea se recalcula para el medio nuevo: si venía de
+        // Efectivo, arrastraba el monto redondeado a la decena (ver
+        // roundCash), y ese redondeo sólo aplica al pago en efectivo — con
+        // tarjeta se cobra exacto. Sin este recálculo, cambiar de Efectivo a
+        // Débito/Crédito dejaba un faltante o sobrante de hasta $9 que nadie
+        // pedía cobrar ni devolver.
+        setPayments((prev) => {
+            const otherLinesTotal = prev.reduce((s, p, i) => (i === index ? s : s + p.amount), 0)
+            const remainingForThisLine = Math.max(0, totalFinal - otherLinesTotal)
+            const amount = method.code === 'EFECTIVO' ? roundCash(remainingForThisLine) : remainingForThisLine
+            return prev.map((p, i) => (i === index ? { ...p, method, amount } : p))
+        })
     }
 
     const applySmartCash = (amount: number) => {
