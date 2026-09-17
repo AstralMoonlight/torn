@@ -292,7 +292,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                             disabled={!newBrandName.trim()}
                                             className="h-9 w-9 px-0 shrink-0 "
                                         >
-                                            <Plus className="h-4 w-4 text-white" />
+                                            <Plus className="h-4 w-4 text-primary-foreground" />
                                         </Button>
                                         <Button
                                             type="button"
@@ -450,7 +450,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                                     />
                                                 </td>
                                                 <td className="py-1.5">
-                                                    <button onClick={() => removeVariant(i)} className="text-destructive/70 hover:text-destructive">
+                                                    <button onClick={() => removeVariant(i)} className="text-destructive hover:text-destructive/80">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                 </td>

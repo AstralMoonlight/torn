@@ -30,7 +30,7 @@ export function LogoutConfirmModal({ children }: LogoutConfirmModalProps) {
             <AlertDialogTrigger asChild>
                 {children}
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-white  border-border">
+            <AlertDialogContent className="bg-card border-border">
                 <AlertDialogHeader className="gap-2">
                     <AlertDialogTitle className="flex items-center gap-2 text-xl text-foreground">
                         <LogOut className="h-5 w-5 text-destructive" />

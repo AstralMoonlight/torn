@@ -153,7 +153,7 @@ export default function POSPage() {
             {showMobileCart && (
                 <div className="lg:hidden fixed inset-0 z-50">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileCart(false)} />
-                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-white  shadow-xl animate-in slide-in-from-bottom">
+                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-card shadow-xl animate-in slide-in-from-bottom">
                         <div className="flex justify-center py-2">
                             <div className="h-1 w-10 rounded-full bg-border" />
                         </div>

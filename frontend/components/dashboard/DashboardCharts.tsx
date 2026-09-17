@@ -37,7 +37,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sales by Hour */}
-            <div className="rounded-xl border border-border bg-white p-4  ">
+            <div className="rounded-xl border border-border bg-card p-4 ">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por Hora</h3>
                 {salesData.length > 0 ? (
                     <div className="h-64">
@@ -70,7 +70,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
             </div>
 
             {/* Payment Methods Pie */}
-            <div className="rounded-xl border border-border bg-white p-4  ">
+            <div className="rounded-xl border border-border bg-card p-4 ">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Medios de Pago</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">

@@ -22,7 +22,7 @@ export default function CartPanel({ onClose }: Props) {
     return (
         <div className="flex h-full max-h-[85vh] lg:max-h-full flex-col bg-card">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5  shrink-0">
+            <div className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
                 <div className="flex items-center gap-2">
                     <ShoppingBag className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                     <h2 className="font-semibold text-sm text-foreground">Ticket</h2>
@@ -104,7 +104,7 @@ export default function CartPanel({ onClose }: Props) {
                                     </div>
                                     <button
                                         onClick={() => removeItem(item.product.id)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-md text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition md:opacity-0 md:group-hover:opacity-100"
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition md:opacity-0 md:group-hover:opacity-100"
                                     >
                                         <Trash2 className="h-3 w-3" />
                                     </button>

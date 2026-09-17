@@ -194,7 +194,7 @@ export default function CustomersPage() {
                 />
             </div>
 
-            <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/60">
                         <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">

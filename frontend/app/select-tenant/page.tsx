@@ -64,7 +64,7 @@ export default function SelectTenantPage() {
 
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-4">
-                <div className="w-full max-w-sm text-center border-border space-y-6 bg-white  p-10 rounded-3xl shadow-2xl border">
+                <div className="w-full max-w-sm text-center border-border space-y-6 bg-card p-10 rounded-3xl shadow-2xl border">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted text-muted-foreground rotate-3">
                         <Building2 className="w-10 h-10" />
                     </div>
@@ -88,7 +88,7 @@ export default function SelectTenantPage() {
     if (activeTenants.length === 0 && inactiveTenants.length > 0) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-4">
-                <div className="w-full max-w-sm relative overflow-hidden text-center space-y-6 bg-white  p-10 rounded-3xl shadow-2xl border border-border">
+                <div className="w-full max-w-sm relative overflow-hidden text-center space-y-6 bg-card p-10 rounded-3xl shadow-2xl border border-border">
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[120px] font-black text-muted/50 select-none pointer-events-none leading-none opacity-50">
                         OFF
                     </div>
@@ -109,7 +109,7 @@ export default function SelectTenantPage() {
 
                         <div className="pt-4 flex flex-col gap-3">
                             <Button
-                                className="w-full h-12  text-white font-bold shadow-lg shadow-primary/20 cursor-pointer"
+                                className="w-full h-12 font-bold shadow-lg shadow-primary/20 cursor-pointer"
                                 onClick={() => window.open('https://pagos.tu-sistema.com', '_blank')}
                             >
                                 <Store className="mr-2 h-5 w-5" /> Reactivar mi cuenta
@@ -134,9 +134,9 @@ export default function SelectTenantPage() {
     // CASO C: Listado normal (incluye activeTenants y opcionalmente inactiveTenants como deshabilitados)
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <div className="w-full max-w-md space-y-8 bg-white  p-8 rounded-2xl shadow-xl border border-border">
+            <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border">
                 <div className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white mb-2 shadow-lg shadow-primary/20">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-primary-foreground mb-2 shadow-lg shadow-primary/20">
                         <Building2 className="w-6 h-6" />
                     </div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">

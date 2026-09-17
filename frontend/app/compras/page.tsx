@@ -426,7 +426,7 @@ export default function ComprasPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                     onClick={() => removeItem(index)}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
@@ -568,7 +568,7 @@ export default function ComprasPage() {
                             <button
                                 type="button"
                                 onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}
-                                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 active:scale-95 transition shadow-sm"
+                                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                                 Imprimir

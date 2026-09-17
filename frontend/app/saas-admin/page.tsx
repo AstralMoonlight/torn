@@ -32,7 +32,7 @@ export default function SaaSAdminPage() {
             <div className="max-w-5xl mx-auto space-y-8">
 
                 {/* Header Container */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white  p-8 rounded-2xl border border-border shadow-sm w-full">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card p-8 rounded-2xl border border-border shadow-sm w-full">
                     <div className="flex items-center gap-4">
                         <div className="h-14 w-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30">
                             <ShieldAlert className="h-7 w-7" />
@@ -70,7 +70,7 @@ export default function SaaSAdminPage() {
                                 Gestiona las instancias, esquemas provisionados, RUT y límites de usuarios de forma centralizada.
                             </p>
                         </div>
-                        <Button className="mt-auto w-full  text-white cursor-pointer shadow-sm shadow-primary/20 py-6 text-base" onClick={() => router.push('/saas-admin/tenants')}>
+                        <Button className="mt-auto w-full cursor-pointer shadow-sm shadow-primary/20 py-6 text-base" onClick={() => router.push('/saas-admin/tenants')}>
                             Ver Todas las Empresas
                         </Button>
                     </div>
@@ -86,7 +86,7 @@ export default function SaaSAdminPage() {
                                 Administra cuentas SaaS físicas y los permisos transversales para el acceso al panel global.
                             </p>
                         </div>
-                        <Button variant="outline" disabled className="mt-auto w-full border-border text-muted-foreground  dark:text-muted-foreground py-6 text-base">
+                        <Button variant="outline" disabled className="mt-auto w-full border-border text-muted-foreground dark:text-muted-foreground py-6 text-base">
                             Próximamente
                         </Button>
                     </div>

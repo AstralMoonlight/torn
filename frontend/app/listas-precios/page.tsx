@@ -357,7 +357,7 @@ export default function PriceListsPage() {
             />
 
             {/* Table */}
-            <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/60 border-b border-border">
                         <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
@@ -445,7 +445,7 @@ export default function PriceListsPage() {
 
             {/* Create / Edit Modal */}
             <Dialog open={openModal} onOpenChange={setOpenModal}>
-                <DialogContent className="sm:max-w-4xl bg-white  border-border max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
                             {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}
@@ -582,7 +582,7 @@ export default function PriceListsPage() {
                                                     className="pl-9 border-border text-sm"
                                                 />
                                             </div>
-                                            <div className="rounded-lg border border-border bg-white  h-[336px] overflow-y-auto p-1.5">
+                                            <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {draftItems.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
                                                         <Package className="h-7 w-7 mb-2 opacity-40" />
@@ -638,7 +638,7 @@ export default function PriceListsPage() {
                                                     className="pl-9 border-border text-sm"
                                                 />
                                             </div>
-                                            <div className="rounded-lg border border-border bg-white  h-[336px] overflow-y-auto p-1.5">
+                                            <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {allProducts.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
                                                         <Package className="h-7 w-7 mb-2 opacity-40" />
@@ -719,7 +719,7 @@ export default function PriceListsPage() {
                                     </div>
                                 )}
 
-                                <div className="rounded-lg border border-border bg-white  max-h-64 overflow-y-auto">
+                                <div className="rounded-lg border border-border bg-card max-h-64 overflow-y-auto">
                                     {filteredCustomers.length === 0
                                         ? <p className="text-xs text-muted-foreground px-4 py-3 text-center">Sin clientes que coincidan</p>
                                         : filteredCustomers.map(c => {
@@ -766,7 +766,7 @@ export default function PriceListsPage() {
 
             {/* Delete Confirm */}
             <AlertDialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-white  border-border">
+                <AlertDialogContent className="bg-card border-border">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-destructive">¿Eliminar lista de precios?</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">

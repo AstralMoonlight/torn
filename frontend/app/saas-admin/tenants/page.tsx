@@ -239,7 +239,7 @@ export default function TenantsListPage() {
                     </Button>
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
-                        <DialogContent className="sm:max-w-2xl bg-white  border-border max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-xl">
                                     {editingTenantId ? 'Editar Empresa' : 'Crear nuevo Tenant'}
@@ -323,7 +323,7 @@ export default function TenantsListPage() {
                                             <SelectTrigger className="border-border">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-white  border-border">
+                                            <SelectContent className="bg-card border-border">
                                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                                                     <SelectItem key={day} value={day.toString()} className="cursor-pointer">
                                                         Día {day}
@@ -350,11 +350,11 @@ export default function TenantsListPage() {
                                             placeholder="Buscar por código o nombre..."
                                             value={actecoSearch}
                                             onChange={e => setActecoSearch(e.target.value)}
-                                            className="pl-9 bg-white  border-border text-sm"
+                                            className="pl-9 bg-card border-border text-sm"
                                         />
                                     </div>
 
-                                    <div className="h-32 rounded border border-border bg-white  overflow-y-auto">
+                                    <div className="h-32 rounded border border-border bg-card overflow-y-auto">
                                         <div className="p-2 space-y-1">
                                             {actecoSearchLoading ? (
                                                 <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
@@ -416,7 +416,7 @@ export default function TenantsListPage() {
                     </Dialog>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-4 bg-white  p-4 rounded-xl border border-border shadow-sm">
+                <div className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -440,7 +440,7 @@ export default function TenantsListPage() {
                 </div>
 
                 {/* Table */}
-                <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
+                <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <Table>
                         <TableHeader className="bg-muted/50 border-b border-border">
                             <TableRow>
@@ -454,7 +454,7 @@ export default function TenantsListPage() {
                         <TableBody>
                             {loading && (
                                 Array(3).fill(0).map((_, i) => (
-                                    <TableRow key={i} className="border-b border-border/50 bg-white ">
+                                    <TableRow key={i} className="border-b border-border/50 bg-card ">
                                         <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
@@ -537,7 +537,7 @@ export default function TenantsListPage() {
 
                 {/* Confirm Delete Dialog */}
                 <AlertDialog open={!!tenantToDelete} onOpenChange={(open: boolean) => !open && setTenantToDelete(null)}>
-                    <AlertDialogContent className="bg-white  border-border">
+                    <AlertDialogContent className="bg-card border-border">
                         <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
                                 <AlertTriangle className="h-5 w-5" />

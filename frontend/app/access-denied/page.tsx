@@ -7,7 +7,7 @@ import Link from 'next/link'
 export default function AccessDenied() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <div className="w-full max-w-md space-y-8 bg-white  p-8 rounded-2xl shadow-xl border border-border text-center">
+            <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border text-center">
                 <div className="space-y-4">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 text-destructive mb-2">
                         <ShieldAlert className="w-10 h-10" />

@@ -240,7 +240,7 @@ export default function TenantDetailsPage() {
                                     <Settings className="mr-2 h-4 w-4" /> Límites de Usuarios
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-white  border-border max-h-[90vh] overflow-y-auto">
+                            <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
                                     <DialogTitle className="text-xl">Ajustar Cupos</DialogTitle>
                                     <DialogDescription className="text-muted-foreground">
@@ -285,7 +285,7 @@ export default function TenantDetailsPage() {
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddUser} autoComplete="off" className={`bg-white  p-6 rounded-xl border ${isAtLimit ? 'border-destructive/30 opacity-80' : 'border-border'} shadow-sm`}>
+                        <form onSubmit={handleAddUser} autoComplete="off" className={`bg-card p-6 rounded-xl border ${isAtLimit ? 'border-destructive/30 opacity-80' : 'border-border'} shadow-sm`}>
                             {isAtLimit && (
                                 <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
                                     Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la Configuración SaaS.
@@ -337,7 +337,7 @@ export default function TenantDetailsPage() {
                                         <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
                                             <SelectValue placeholder="Selecciona Rol" />
                                         </SelectTrigger>
-                                        <SelectContent className="border-border bg-white  cursor-pointer">
+                                        <SelectContent className="border-border bg-card cursor-pointer">
                                             <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
                                             <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                             <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
@@ -345,7 +345,7 @@ export default function TenantDetailsPage() {
                                     </Select>
                                 </div>
                                 <div className="md:w-32">
-                                    <Button type="submit" className="w-full h-10  text-white cursor-pointer shadow-sm shadow-primary/20" disabled={isSubmitting || isAtLimit}>
+                                    <Button type="submit" className="w-full h-10 cursor-pointer shadow-sm shadow-primary/20" disabled={isSubmitting || isAtLimit}>
                                         {isSubmitting ? '...' : <><UserPlus className="mr-2 h-4 w-4" /> Asignar</>}
                                     </Button>
                                 </div>
@@ -355,7 +355,7 @@ export default function TenantDetailsPage() {
 
                     {/* Lista de Usuarios */}
                     <div className="space-y-4">
-                        <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
+                        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                             {users.length === 0 ? (
                                 <div className="p-8 text-center text-muted-foreground">Sin usuarios operativos registrados.</div>
                             ) : (
@@ -374,7 +374,7 @@ export default function TenantDetailsPage() {
                                             <TableRow key={tu.user_id} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
                                                 <TableCell className="font-medium text-foreground">
                                                     {tu.user.email}
-                                                    {tu.user.is_superuser && <Badge variant="outline" className="ml-2 text-xs border-border text-muted-foreground  dark:text-muted-foreground">Superadmin</Badge>}
+                                                    {tu.user.is_superuser && <Badge variant="outline" className="ml-2 text-xs border-border text-muted-foreground dark:text-muted-foreground">Superadmin</Badge>}
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {tu.user.full_name || '-'}
@@ -428,7 +428,7 @@ export default function TenantDetailsPage() {
                         setEditFullName('');
                     }
                 }}>
-                    <DialogContent className="sm:max-w-md bg-white  border-border max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="text-xl">Editar Operador</DialogTitle>
                             <DialogDescription className="text-muted-foreground">
@@ -446,7 +446,7 @@ export default function TenantDetailsPage() {
                                     <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
                                         <SelectValue placeholder="Selecciona Rol" />
                                     </SelectTrigger>
-                                    <SelectContent className="border-border bg-white  cursor-pointer">
+                                    <SelectContent className="border-border bg-card cursor-pointer">
                                         <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
                                         <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                         <SelectItem value="BODEGUERO">Bodeguero</SelectItem>

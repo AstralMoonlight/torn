@@ -600,7 +600,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             min={0}
                                         />
                                         {payments.length > 1 && (
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive/70 hover:text-destructive shrink-0" onClick={() => removePaymentLine(index)}>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive shrink-0" onClick={() => removePaymentLine(index)}>
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         )}

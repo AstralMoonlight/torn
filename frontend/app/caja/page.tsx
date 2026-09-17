@@ -92,7 +92,7 @@ export default function CajaPage() {
         } catch (err) {
             if (getApiErrorStatus(err) === 409) {
                 toast.custom((t) => (
-                    <div className="bg-white  p-4 rounded-lg shadow-lg border border-border max-w-sm">
+                    <div className="bg-card p-4 rounded-lg shadow-lg border border-border max-w-sm">
                         <h3 className="font-bold text-foreground mb-2">¡Caja ya abierta!</h3>
                         <p className="text-sm text-muted-foreground dark:text-muted-foreground mb-4">
                             Ya tienes una caja abierta en otro dispositivo.
@@ -186,7 +186,7 @@ export default function CajaPage() {
 
                 <TabsContent value="gestion" className="space-y-4 max-w-2xl">
                     {/* User Info Card */}
-                    <div className="rounded-xl border border-border bg-white p-4   flex shadow-sm items-center gap-3">
+                    <div className="rounded-xl border border-border bg-card p-4 flex shadow-sm items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
                             {(user?.full_name || user?.email || '?')[0].toUpperCase()}
                         </div>

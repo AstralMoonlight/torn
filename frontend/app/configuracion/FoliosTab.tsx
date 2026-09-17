@@ -207,7 +207,7 @@ export default function FoliosTab() {
                 {loading ? (
                     [1, 2, 3, 4].map(i => (
                         <Card key={i} className="animate-pulse">
-                            <CardHeader className="h-32 bg-slate-100 dark:bg-slate-800" />
+                            <CardHeader className="h-32 bg-muted" />
                         </Card>
                     ))
                 ) : (
