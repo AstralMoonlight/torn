@@ -1,5 +1,6 @@
 'use client'
 
+import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { useEffect, useState, useMemo } from 'react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -299,25 +300,25 @@ export default function CheckoutModal({ open, onClose }: Props) {
             // No auto-open, user must click print or finish
         } catch (err: unknown) {
             console.error("Sale Error:", err)
-            const response = (err as any)?.response
-            const detail = response?.data?.detail
-
-            // Construct a more helpful error message
-            let errorMessage = 'Error al crear la venta'
-            if (typeof detail === 'string') {
-                errorMessage = detail
-            } else if (typeof detail === 'object') {
-                errorMessage = JSON.stringify(detail)
-            } else if (response?.status === 422) {
-                errorMessage = 'Error de validación (422). Revise los datos.'
-            }
+            const status = getApiErrorStatus(err)
+            // El backend explica el motivo real en `detail` ("Stock insuficiente
+            // para ...", "No hay folios disponibles ..."); es lo que le sirve al
+            // cajero. El 422 es el único caso sin mensaje aprovechable.
+            const errorMessage = getApiErrorDetail(
+                err,
+                status === 422
+                    ? 'Error de validación (422). Revise los datos.'
+                    : 'Error al crear la venta',
+            )
 
             toast.error(errorMessage, {
-                description: `Code: ${response?.status || 'Unknown'}`,
+                description: `Code: ${status ?? 'Unknown'}`,
                 duration: 5000,
                 action: {
                     label: 'Copiar',
-                    onClick: () => navigator.clipboard.writeText(JSON.stringify(response?.data || err))
+                    onClick: () => navigator.clipboard.writeText(
+                        JSON.stringify({ status, detail: errorMessage }),
+                    )
                 }
             })
         } finally {

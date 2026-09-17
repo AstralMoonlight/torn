@@ -134,7 +134,7 @@ export default function ComprasPage() {
         setItems([...items, {
             product,
             cantidad: 1,
-            precio_costo: parseFloat(product.costo_unitario as any) || 0
+            precio_costo: parseFloat(product.costo_unitario) || 0
         }])
         setSearchQuery('')
         setIsSearching(false)
@@ -342,7 +342,7 @@ export default function ComprasPage() {
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <p className="text-sm font-bold text-neutral-600 dark:text-neutral-300">
-                                                                        Costo: {formatCLP(parseFloat(product.costo_unitario as any) || 0)}
+                                                                        Costo: {formatCLP(parseFloat(product.costo_unitario) || 0)}
                                                                     </p>
                                                                     <Plus className="h-4 w-4 ml-auto text-blue-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </div>
@@ -616,7 +616,7 @@ export default function ComprasPage() {
                                                     <p className="text-[10px] text-neutral-400 font-mono">{d.product?.codigo_interno}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center font-tabular text-xs">
-                                                    {parseFloat(d.cantidad as any)}
+                                                    {parseFloat(String(d.cantidad))}
                                                 </TableCell>
                                                 <TableCell className="text-right font-tabular text-xs">
                                                     {formatCLP(d.precio_costo_unitario)}

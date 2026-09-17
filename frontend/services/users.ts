@@ -15,6 +15,15 @@ export interface User {
     }
 }
 
+/** Campos que acepta POST /users/ (equivale a `UserCreate` del backend). */
+export interface UserCreateInput {
+    full_name: string
+    rut?: string
+    email?: string
+    role_id?: number
+    password?: string
+}
+
 export const getUsers = async (): Promise<User[]> => {
     const response = await api.get('/users/')
     return response.data
@@ -25,7 +34,7 @@ export const getSellers = async (): Promise<User[]> => {
     return response.data
 }
 
-export const createUser = async (data: any): Promise<User> => {
+export const createUser = async (data: UserCreateInput): Promise<User> => {
     const response = await api.post('/users/', data)
     return response.data
 }

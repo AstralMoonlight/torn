@@ -1,3 +1,14 @@
+/**
+ * Actividad económica (ACTECO) del SII asociada a un inquilino.
+ * Ver el comentario de `Tenant.economic_activities` en app/models/saas.py.
+ */
+export interface EconomicActivity {
+    code: string
+    name: string
+    category?: string
+    taxable?: boolean
+}
+
 export interface Tenant {
     id: number
     name: string
@@ -13,7 +24,7 @@ export interface Tenant {
     city?: string
     giro?: string
     billing_day: number
-    economic_activities?: any[]
+    economic_activities?: EconomicActivity[]
 
     created_at: string
 }
@@ -26,7 +37,7 @@ export interface TenantCreate {
     city?: string
     giro?: string
     billing_day?: number
-    economic_activities?: any[]
+    economic_activities?: EconomicActivity[]
 }
 
 export interface TenantUpdate {
@@ -38,7 +49,7 @@ export interface TenantUpdate {
     city?: string
     giro?: string
     billing_day?: number
-    economic_activities?: any[]
+    economic_activities?: EconomicActivity[]
 }
 
 export interface TenantUser {

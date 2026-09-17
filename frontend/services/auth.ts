@@ -18,21 +18,24 @@ export interface AvailableTenant {
     max_users: number
 }
 
+/** Usuario global del SaaS, tal como lo devuelven /auth/login y /auth/validate. */
+export interface SessionUser {
+    id: number
+    rut: string
+    email: string
+    name: string
+    full_name?: string
+    is_superuser: boolean
+    role: string
+    role_obj?: {
+        permissions: Record<string, boolean>
+    }
+}
+
 export interface LoginResponse {
     access_token: string
     token_type: string
-    user: {
-        id: number
-        rut: string
-        email: string
-        name: string
-        full_name?: string
-        is_superuser: boolean
-        role: string
-        role_obj?: {
-            permissions: Record<string, boolean>
-        }
-    }
+    user: SessionUser
     available_tenants: AvailableTenant[]
 }
 
@@ -44,7 +47,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
     return data
 }
 
-export async function validateSession(): Promise<{ user: any, available_tenants: AvailableTenant[] }> {
-    const { data } = await api.get('/auth/validate')
+export async function validateSession(): Promise<{ user: SessionUser; available_tenants: AvailableTenant[] }> {
+    const { data } = await api.get<{ user: SessionUser; available_tenants: AvailableTenant[] }>('/auth/validate')
     return data
 }
