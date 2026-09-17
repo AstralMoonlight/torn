@@ -593,7 +593,7 @@ export default function ComprasPage() {
                                 {selectedPurchase.observacion && (
                                     <div className="col-span-2">
                                         <p className="text-xs text-neutral-500 uppercase font-bold">Observación</p>
-                                        <p className="italic">"{selectedPurchase.observacion}"</p>
+                                        <p className="italic">&ldquo;{selectedPurchase.observacion}&rdquo;</p>
                                     </div>
                                 )}
                             </div>

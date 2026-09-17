@@ -10,6 +10,8 @@ export interface Customer {
     ciudad: string | null
     email: string | null
     current_balance: string
+    /** Lista de precios asignada, si el cliente tiene una. */
+    price_list_id: number | null
     is_active: boolean
 }
 

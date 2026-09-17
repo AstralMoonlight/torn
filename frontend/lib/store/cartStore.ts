@@ -188,7 +188,7 @@ async function recalculatePrices(set: any, get: any) {
     try {
         const { getPriceList, getPriceLists } = await import('@/services/price_lists')
 
-        let customPrices = new Map<number, number>()
+        const customPrices = new Map<number, number>()
 
         if (state.priceList) {
             // Load the full list to get the fixed prices

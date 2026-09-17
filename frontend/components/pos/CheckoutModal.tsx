@@ -447,10 +447,10 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <CustomerSearchCombobox
                                     value={customer}
                                     onChange={async (c) => {
-                                        if (c && (c as any).price_list_id) {
+                                        if (c && c.price_list_id) {
                                             try {
                                                 const { getPriceList } = await import('@/services/price_lists')
-                                                const list = await getPriceList((c as any).price_list_id)
+                                                const list = await getPriceList(c.price_list_id)
                                                 setCustomer(c, list)
                                                 toast.success(`Lista aplicada: ${list.name}`)
                                             } catch (err) {

@@ -177,7 +177,7 @@ export default function PriceListsPage() {
             }
         }))
 
-        const assignedIds = custs.filter(c => (c as any).price_list_id === id).map(c => c.id)
+        const assignedIds = custs.filter(c => c.price_list_id === id).map(c => c.id)
         setSelectedCustomerIds(assignedIds)
 
         setOpenModal(true)

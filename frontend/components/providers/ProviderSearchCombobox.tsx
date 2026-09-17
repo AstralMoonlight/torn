@@ -246,7 +246,7 @@ export default function ProviderSearchCombobox({
                             {results.length === 0 && !loading && (
                                 <div className="px-3 py-4 text-center text-xs text-neutral-400">
                                     <Truck className="h-5 w-5 mx-auto mb-1 opacity-40" />
-                                    No se encontraron proveedores para "{query}"
+                                    No se encontraron proveedores para &ldquo;{query}&rdquo;
                                 </div>
                             )}
 

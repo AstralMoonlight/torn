@@ -177,8 +177,10 @@ class CustomerOut(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
-    email: Optional[str] = None
     current_balance: Optional[Decimal] = Decimal(0)
+    #: Lista de precios asignada. Sin este campo el POS no puede aplicarla: se
+    #: la pedía al cliente devuelto por la API y nunca venía.
+    price_list_id: Optional[int] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
