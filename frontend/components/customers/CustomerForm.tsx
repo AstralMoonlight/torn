@@ -117,7 +117,7 @@ export default function CustomerForm({ initialData, onSubmit, onCancel, isEditin
                 <Button variant="outline" onClick={onCancel} disabled={saving}>
                     Cancelar
                 </Button>
-                <Button onClick={handleSubmit} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleSubmit} disabled={saving} className="">
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Guardar
                 </Button>

@@ -32,6 +32,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
 import { deleteProduct } from '@/services/products'
@@ -50,9 +52,9 @@ function StockBadge({ product }: { product: Product }) {
         return <Badge variant="destructive" className="text-[10px] gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
     }
     if (stock <= min) {
-        return <Badge className="bg-amber-500 text-[10px] gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
+        return <Badge variant="outline" className="text-[10px] gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
     }
-    return <Badge className="bg-emerald-600 text-[10px]">{stock}</Badge>
+    return <Badge variant="secondary" className="text-[10px]">{stock}</Badge>
 }
 
 export default function InventarioPage() {
@@ -123,24 +125,21 @@ export default function InventarioPage() {
         : allProducts
 
     return (
-        <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <Package className="h-6 w-6 text-blue-600" />
-                    <div>
-                        <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Inventario</h1>
-                        <p className="text-xs text-neutral-500">{allProducts.length} productos</p>
-                    </div>
-                </div>
-                <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4" /> Nuevo Producto
-                </Button>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={Package}
+                title="Inventario"
+                description={`${allProducts.length} productos`}
+                actions={
+                    <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs">
+                        <Plus className="h-4 w-4" /> Nuevo Producto
+                    </Button>
+                }
+            />
 
             {/* Search */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar por nombre, SKU o código de barras..."
                     value={search}
@@ -150,35 +149,35 @@ export default function InventarioPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
-                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">SKU</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Producto</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden sm:table-cell">Precio Neto</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Stock Total</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden lg:table-cell">Variantes</TableHead>
-                            <TableHead className="w-[50px] text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                    <TableHeader className="bg-muted">
+                        <TableRow className="border-b border-border">
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SKU</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Producto</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Precio Neto</TableHead>
+                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Stock Total</TableHead>
+                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Variantes</TableHead>
+                            <TableHead className="w-[50px] text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <TableBody className="divide-y divide-border">
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-neutral-400">Cargando...</TableCell>
+                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Cargando...</TableCell>
                             </TableRow>
                         ) : filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-neutral-400">Sin resultados</TableCell>
+                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell>
                             </TableRow>
                         ) : (
                             filtered.map((p) => (
-                                <TableRow key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
-                                    <TableCell className="font-mono text-xs text-neutral-500">{p.codigo_interno}</TableCell>
+                                <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
+                                    <TableCell className="font-mono text-xs text-muted-foreground">{p.codigo_interno}</TableCell>
                                     <TableCell>
-                                        <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.full_name}</p>
+                                        <p className="text-sm font-medium text-foreground">{p.full_name}</p>
                                         {p.codigo_barras && (
-                                            <p className="text-xs text-neutral-400 font-mono">{p.codigo_barras}</p>
+                                            <p className="text-xs text-muted-foreground font-mono">{p.codigo_barras}</p>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right font-tabular text-sm hidden sm:table-cell">
@@ -186,14 +185,14 @@ export default function InventarioPage() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {p.variants.length > 0 ? (
-                                            <Badge className="bg-neutral-100 text-neutral-600 hover:bg-neutral-200">
+                                            <Badge className="bg-muted text-muted-foreground hover:bg-accent">
                                                 {p.variants.reduce((acc, v) => acc + parseFloat(v.stock_actual), 0)} u.
                                             </Badge>
                                         ) : (
                                             <StockBadge product={p} />
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-center text-xs text-neutral-400 font-tabular hidden lg:table-cell">
+                                    <TableCell className="text-center text-xs text-muted-foreground font-tabular hidden lg:table-cell">
                                         {p.variants.length > 0 ? (
                                             <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
                                         ) : (
@@ -203,7 +202,7 @@ export default function InventarioPage() {
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                                                     <span className="sr-only">Abrir menu</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
@@ -215,7 +214,7 @@ export default function InventarioPage() {
                                                     Editar
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="text-red-600 focus:text-red-600">
+                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="text-destructive focus:text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Eliminar
                                                 </DropdownMenuItem>
@@ -246,6 +245,6 @@ export default function InventarioPage() {
                     if (refresh) loadProducts()
                 }}
             />
-        </div>
+        </PageContainer>
     )
 }

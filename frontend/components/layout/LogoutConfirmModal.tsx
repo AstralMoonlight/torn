@@ -30,23 +30,23 @@ export function LogoutConfirmModal({ children }: LogoutConfirmModalProps) {
             <AlertDialogTrigger asChild>
                 {children}
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+            <AlertDialogContent className="bg-white  border-border">
                 <AlertDialogHeader className="gap-2">
-                    <AlertDialogTitle className="flex items-center gap-2 text-xl text-neutral-900 dark:text-neutral-100">
-                        <LogOut className="h-5 w-5 text-red-500" />
+                    <AlertDialogTitle className="flex items-center gap-2 text-xl text-foreground">
+                        <LogOut className="h-5 w-5 text-destructive" />
                         ¿Seguro que deseas cerrar sesión?
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-neutral-500 dark:text-neutral-400">
+                    <AlertDialogDescription className="text-muted-foreground">
                         Tu sesión actual se cerrará y tendrás que volver a ingresar tus credenciales para acceder al sistema.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="mt-6 gap-3 sm:gap-2">
-                    <AlertDialogCancel className="mt-0 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:text-neutral-300">
+                    <AlertDialogCancel className="mt-0 border-border hover:bg-accent">
                         Cancelar
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirm}
-                        className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer"
                     >
                         Cerrar Sesión
                     </AlertDialogAction>

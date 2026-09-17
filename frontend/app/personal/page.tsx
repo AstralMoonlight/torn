@@ -38,6 +38,8 @@ import {
 import { toast } from 'sonner'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getUsers, updateUser, type User } from '@/services/users'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import { roleService, type Role } from '@/services/roles'
 import UserDialog from '@/components/users/UserDialog'
 import { Switch } from '@/components/ui/switch'
@@ -204,36 +206,30 @@ export default function PersonalPage() {
     if (loading) {
         return (
             <div className="flex h-[400px] flex-col items-center justify-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="text-sm text-neutral-500 animate-pulse">Cargando personal y roles...</p>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground animate-pulse">Cargando personal y roles...</p>
             </div>
         )
     }
 
     return (
-        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white flex items-center gap-3">
-                        <Users className="h-8 w-8 text-blue-600" />
-                        Gestión de Personal
-                    </h2>
-                    <p className="text-neutral-500 mt-1">
-                        Controla el acceso, roles y cupos de los trabajadores de tu empresa.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="h-9 px-3 gap-1.5 border-neutral-200 dark:border-neutral-800">
-                        <UserCircle className="h-3.5 w-3.5 text-blue-500" />
-                        Cupos: <span className={cn("font-bold", activeStaffCount >= maxUsers ? "text-red-500" : "text-emerald-600")}>
+        <PageContainer>
+            <PageHeader
+                icon={Users}
+                title="Gestión de Personal"
+                description="Controla el acceso, roles y cupos de los trabajadores de tu empresa."
+                actions={
+                    <Badge variant="outline" className="h-9 px-3 gap-1.5">
+                        <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                        Cupos: <span className={cn("font-bold", activeStaffCount >= maxUsers && "text-destructive")}>
                             {activeStaffCount} / {maxUsers}
                         </span>
                     </Badge>
-                </div>
-            </div>
+                }
+            />
 
             <Tabs defaultValue="list" className="space-y-6">
-                <TabsList className="bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+                <TabsList className="bg-muted">
                     <TabsTrigger value="list" className="gap-2">
                         <Users className="h-4 w-4" /> Personal
                     </TabsTrigger>
@@ -244,14 +240,14 @@ export default function PersonalPage() {
 
                 <TabsContent value="list" className="space-y-4">
                     <div className="flex justify-end">
-                        <Button onClick={handleCreate} disabled={!canActivateMore} className="bg-blue-600 hover:bg-blue-700 gap-2 shadow-lg shadow-blue-600/20">
+                        <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
                             <Plus className="h-4 w-4" /> Nuevo Personal
                         </Button>
                     </div>
 
-                    <Card className="border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+                    <Card className="border-border shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-neutral-50 dark:bg-neutral-900/50">
+                            <TableHeader className="bg-muted/50">
                                 <TableRow>
                                     <TableHead className="w-[300px]">Nombre / Rol</TableHead>
                                     <TableHead>Email (Identificador)</TableHead>
@@ -263,35 +259,35 @@ export default function PersonalPage() {
                             <TableBody>
                                 {staff.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-32 text-center text-neutral-500 italic">
+                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
                                             No hay personal registrado. Comienza agregando uno nuevo.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     staff.map((user) => (
-                                        <TableRow key={user.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50 transition-colors">
+                                        <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shrink-0">
+                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
                                                         <UserCircle className="h-5 w-5" />
                                                     </div>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="font-semibold text-neutral-900 dark:text-white truncate flex items-center gap-2">
+                                                        <span className="font-semibold text-foreground truncate flex items-center gap-2">
                                                             {user.name}
                                                             {user.is_owner && (
-                                                                <Badge className="bg-blue-600 h-4 text-[8px] px-1 font-black">ADMIN</Badge>
+                                                                <Badge className="bg-primary h-4 text-[8px] px-1 font-black">ADMIN</Badge>
                                                             )}
                                                         </span>
-                                                        <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">
+                                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                                                             {user.role_obj?.name || user.role || 'Vendedor'}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 truncate max-w-[180px]">
-                                                    <Mail className="h-3.5 w-3.5 text-neutral-400" />
-                                                    {user.email || <span className="text-neutral-300 italic">Sin email</span>}
+                                                <div className="flex items-center gap-1.5 text-muted-foreground dark:text-muted-foreground truncate max-w-[180px]">
+                                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    {user.email || <span className="text-muted-foreground italic">Sin email</span>}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -303,7 +299,7 @@ export default function PersonalPage() {
                                                     />
                                                     <span className={cn(
                                                         "text-[10px] font-bold uppercase tracking-wider",
-                                                        user.is_active ? "text-emerald-600" : "text-neutral-400"
+                                                        user.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                                     )}>
                                                         {user.is_active ? 'Activo' : 'Inactivo'}
                                                     </span>
@@ -311,7 +307,7 @@ export default function PersonalPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-400 hover:text-blue-600" onClick={() => handleEdit(user)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)}>
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -327,7 +323,7 @@ export default function PersonalPage() {
                 <TabsContent value="roles" className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="relative max-w-xs w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar usuario..."
                                 value={rolesSearchTerm}
@@ -339,7 +335,7 @@ export default function PersonalPage() {
                             <Button variant="outline" size="sm" onClick={loadAll} disabled={savingRoles}>
                                 <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar
                             </Button>
-                            <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20">
+                            <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
                                 <Save className="h-4 w-4 mr-2" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
                             </Button>
                         </div>
@@ -348,11 +344,11 @@ export default function PersonalPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Matrix Table */}
                         <div className="lg:col-span-8 space-y-4">
-                            <Card className="border-neutral-200 dark:border-neutral-800">
+                            <Card className="border-border">
                                 <CardHeader className="py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                                            <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                            <ShieldCheck className="h-5 w-5 text-primary" />
                                         </div>
                                         <div>
                                             <CardTitle className="text-lg">Configuración de Accesos</CardTitle>
@@ -363,11 +359,11 @@ export default function PersonalPage() {
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
                                         <Table>
-                                            <TableHeader className="bg-neutral-50 dark:bg-neutral-900/50">
-                                                <TableRow className="border-y border-neutral-100 dark:border-neutral-800">
-                                                    <TableHead className="font-bold uppercase tracking-wider text-neutral-500">Menú / Sección</TableHead>
+                                            <TableHeader className="bg-muted/50">
+                                                <TableRow className="border-y border-border">
+                                                    <TableHead className="font-bold uppercase tracking-wider text-muted-foreground">Menú / Sección</TableHead>
                                                     {roles.map(role => (
-                                                        <TableHead key={role.id} className="text-center font-bold uppercase tracking-wider text-neutral-500">
+                                                        <TableHead key={role.id} className="text-center font-bold uppercase tracking-wider text-muted-foreground">
                                                             {role.name}
                                                         </TableHead>
                                                     ))}
@@ -375,8 +371,8 @@ export default function PersonalPage() {
                                             </TableHeader>
                                             <TableBody>
                                                 {MENU_ITEMS.map((item) => (
-                                                    <TableRow key={item} className="border-b border-neutral-100 dark:border-neutral-900 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30">
-                                                        <TableCell className="font-medium text-neutral-700 dark:text-neutral-300">
+                                                    <TableRow key={item} className="border-b border-border last:border-0 hover:bg-accent/50">
+                                                        <TableCell className="font-medium text-foreground">
                                                             {item}
                                                         </TableCell>
                                                         {roles.map(role => {
@@ -389,7 +385,7 @@ export default function PersonalPage() {
                                                                             checked={isChecked}
                                                                             onCheckedChange={() => togglePermission(role.id, item)}
                                                                             disabled={isAdmin}
-                                                                            className="h-4.5 w-4.5 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                                                            className="h-4.5 w-4.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                                                         />
                                                                     </div>
                                                                 </TableCell>
@@ -406,21 +402,21 @@ export default function PersonalPage() {
 
                         {/* User Role Assignment */}
                         <div className="lg:col-span-4 space-y-4">
-                            <Card className="border-neutral-200 dark:border-neutral-800 sticky top-20">
+                            <Card className="border-border sticky top-20">
                                 <CardHeader className="py-4">
                                     <CardTitle className="text-lg flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-blue-500" /> Asignación Rápida
+                                        <Users className="h-5 w-5 text-primary" /> Asignación Rápida
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="px-2 space-y-1">
                                     {filteredRolesUsers.length === 0 ? (
-                                        <p className="text-center py-10 text-xs text-neutral-400 italic">No hay resultados</p>
+                                        <p className="text-center py-10 text-xs text-muted-foreground italic">No hay resultados</p>
                                     ) : (
                                         filteredRolesUsers.slice(0, 8).map(user => (
-                                            <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                                            <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
                                                 <div className="flex flex-col min-w-0 pr-2">
                                                     <span className="text-sm font-medium truncate">{user.name}</span>
-                                                    <span className="text-[10px] text-neutral-400">{user.rut}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{user.rut}</span>
                                                 </div>
                                                 <Select
                                                     value={user.role_id?.toString() || ""}
@@ -442,18 +438,18 @@ export default function PersonalPage() {
                                         ))
                                     )}
                                     {filteredRolesUsers.length > 8 && (
-                                        <p className="text-center pt-2 text-[10px] text-neutral-400">Carga más resultados usando el buscador</p>
+                                        <p className="text-center pt-2 text-[10px] text-muted-foreground">Carga más resultados usando el buscador</p>
                                     )}
                                 </CardContent>
                             </Card>
 
                             <div className="grid grid-cols-1 gap-2">
-                                <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 rounded-xl">
-                                    <div className="flex items-center gap-1.5 mb-1 text-blue-700 dark:text-blue-400">
+                                <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                                    <div className="flex items-center gap-1.5 mb-1 text-primary">
                                         <CheckCircle2 className="h-3.5 w-3.5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">Info: Admin</span>
                                     </div>
-                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 leading-relaxed">
+                                    <p className="text-[10px] text-primary leading-relaxed">
                                         El rol ADMINISTRADOR tiene todos los permisos activos por defecto y no se puede limitar.
                                     </p>
                                 </div>
@@ -472,6 +468,6 @@ export default function PersonalPage() {
                 roles={roles}
                 canActivateMore={canActivateMore}
             />
-        </div>
+        </PageContainer>
     )
 }

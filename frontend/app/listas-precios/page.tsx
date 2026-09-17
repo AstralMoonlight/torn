@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Loader2, Tag, Search, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,15 +55,15 @@ function PriceListItemRow({
     onRemove?: (productId: number) => void
 }) {
     return (
-        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group">
-            <span className="flex-1 min-w-0 text-sm truncate text-neutral-800 dark:text-neutral-200">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border group">
+            <span className="flex-1 min-w-0 text-sm truncate text-foreground">
                 {item.product_name}
             </span>
             <div className="flex items-center gap-1 shrink-0">
-                <Label className="text-xs text-neutral-400 mr-1 hidden sm:inline">
+                <Label className="text-xs text-muted-foreground mr-1 hidden sm:inline">
                     {isGrossMode ? 'Bruto:' : 'Neto:'}
                 </Label>
-                <span className="text-xs text-neutral-400">$</span>
+                <span className="text-xs text-muted-foreground">$</span>
                 <Input
                     type="number"
                     min="0"
@@ -73,14 +75,14 @@ function PriceListItemRow({
                                 : Number(item.fixed_price)
                     }
                     onChange={e => onPriceChange(item.product_id, e.target.value)}
-                    className="w-24 h-7 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
+                    className="w-24 h-7 text-sm text-right border-border focus-visible:ring-ring"
                 />
             </div>
             {onRemove && (
                 <button
                     type="button"
                     onClick={() => onRemove(item.product_id)}
-                    className="text-neutral-300 hover:text-red-500 transition-colors shrink-0"
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
                     title="Quitar de la lista"
                 >
                     <X className="h-4 w-4" />
@@ -342,51 +344,46 @@ export default function PriceListsPage() {
     // ── Render ────────────────────────────────────────────────────────────
 
     return (
-        <div className="p-6 md:p-10 space-y-6 max-w-5xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-                        <Tag className="h-6 w-6 text-blue-600" />
-                        Listas de Precios
-                    </h1>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        Crea listas con precios fijos para grupos de clientes.
-                    </p>
-                </div>
-                <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 cursor-pointer">
-                    <Plus className="h-4 w-4 mr-2" /> Nueva Lista
-                </Button>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={Tag}
+                title="Listas de Precios"
+                description="Crea listas con precios fijos para grupos de clientes."
+                actions={
+                    <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
+                        <Plus className="h-4 w-4 mr-2" /> Nueva Lista
+                    </Button>
+                }
+            />
 
             {/* Table */}
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800">
+                    <TableHeader className="bg-muted/60 border-b border-border">
                         <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Nombre</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Descripción</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Nombre</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Descripción</TableHead>
+                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {/* Lista Base hardcodeada */}
                         {!loading && (
-                            <TableRow className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                            <TableRow className="hover:bg-accent/50 transition-colors">
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-neutral-400 shrink-0" />
+                                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
                                         Precio Base (Catálogo General)
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-sm text-neutral-500 dark:text-neutral-400">
+                                <TableCell className="text-sm text-muted-foreground">
                                     Precios por defecto de todos los productos del sistema.
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                         onClick={openEditBase}
                                         title="Editar Precios Base"
                                     >
@@ -396,7 +393,7 @@ export default function PriceListsPage() {
                             </TableRow>
                         )}
                         {loading && Array(3).fill(0).map((_, i) => (
-                            <TableRow key={i} className="border-b border-neutral-100 dark:border-neutral-800">
+                            <TableRow key={i} className="border-b border-border">
                                 <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
                                 <TableCell><Skeleton className="h-4 w-[300px]" /></TableCell>
                                 <TableCell />
@@ -404,27 +401,27 @@ export default function PriceListsPage() {
                         ))}
                         {!loading && priceLists.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={3} className="py-12 text-center text-neutral-400">
+                                <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">
                                     No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.
                                 </TableCell>
                             </TableRow>
                         )}
                         {!loading && priceLists.map(pl => (
-                            <TableRow key={pl.id} className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
+                            <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">
+                                <TableCell className="font-medium text-foreground">
                                     <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-blue-500 shrink-0" />
+                                        <Tag className="h-4 w-4 text-primary shrink-0" />
                                         {pl.name}
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">
-                                    {pl.description || <span className="italic text-neutral-300 dark:text-neutral-600">Sin descripción</span>}
+                                <TableCell className="text-muted-foreground text-sm">
+                                    {pl.description || <span className="italic text-muted-foreground">Sin descripción</span>}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-8 w-8 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
                                             onClick={() => openEdit(pl.id)}
                                             title="Editar"
                                         >
@@ -432,7 +429,7 @@ export default function PriceListsPage() {
                                         </Button>
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-8 w-8 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                                             onClick={() => setDeleteId(pl.id)}
                                             title="Eliminar"
                                         >
@@ -448,12 +445,12 @@ export default function PriceListsPage() {
 
             {/* Create / Edit Modal */}
             <Dialog open={openModal} onOpenChange={setOpenModal}>
-                <DialogContent className="sm:max-w-4xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="sm:max-w-4xl bg-white  border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
                             {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}
                         </DialogTitle>
-                        <DialogDescription className="text-neutral-500">
+                        <DialogDescription className="text-muted-foreground">
                             {editingId === 'base'
                                 ? 'Modifica directamente los precios netos por defecto de tus productos.'
                                 : 'Define el nombre, los productos con precios fijos y los clientes asignados.'}
@@ -465,13 +462,13 @@ export default function PriceListsPage() {
                         {/* Basic fields */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Nombre <span className="text-red-500">*</span></Label>
+                                <Label>Nombre <span className="text-destructive">*</span></Label>
                                 <Input
                                     placeholder="Ej. Clientes Mayoristas"
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -481,13 +478,13 @@ export default function PriceListsPage() {
                                     value={formDescription}
                                     onChange={e => setFormDescription(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
+                        <div className="flex gap-1 border-b border-border">
                             {([
                                 ['products', 'Productos', Package],
                                 ...(editingId === 'base' ? [] : [['customers', 'Clientes', Users]])
@@ -497,17 +494,17 @@ export default function PriceListsPage() {
                                     type="button"
                                     onClick={() => setActiveTab(key as Tab)}
                                     className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key
-                                        ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                                        : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
                                     <Icon className="h-4 w-4" />
                                     {label}
                                     {key === 'products' && draftItems.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{draftItems.length}</Badge>
+                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{draftItems.length}</Badge>
                                     }
                                     {key === 'customers' && selectedCustomerIds.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{selectedCustomerIds.length}</Badge>
+                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{selectedCustomerIds.length}</Badge>
                                     }
                                 </button>
                             ))}
@@ -521,17 +518,17 @@ export default function PriceListsPage() {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                                     {editingId === 'base' && (
                                         <div className="relative flex-1">
-                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 placeholder="Filtrar catálogo por nombre..."
                                                 value={draftSearch}
                                                 onChange={e => setDraftSearch(e.target.value)}
-                                                className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                                className="pl-9 border-border text-sm"
                                             />
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-2 shrink-0 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 ml-auto">
-                                        <Label htmlFor="tax-toggle" className="text-xs font-medium text-neutral-600 dark:text-neutral-300 cursor-pointer">
+                                    <div className="flex items-center gap-2 shrink-0 bg-muted px-3 py-1.5 rounded-lg border border-border ml-auto">
+                                        <Label htmlFor="tax-toggle" className="text-xs font-medium text-muted-foreground cursor-pointer">
                                             {isGrossMode ? 'Bruto (c/ IVA)' : 'Neto (s/ IVA)'}
                                         </Label>
                                         <Switch
@@ -563,31 +560,31 @@ export default function PriceListsPage() {
                                         {/* Columna izquierda: lo que ya está en la lista */}
                                         <div className="space-y-2 min-w-0 flex flex-col">
                                             <div className="flex items-center gap-2 shrink-0">
-                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shrink-0">
+                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary shrink-0">
                                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-tight">
+                                                    <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Esta lista ({draftItems.length})
                                                     </p>
-                                                    <p className="text-[11px] text-neutral-400 leading-tight">
+                                                    <p className="text-[11px] text-muted-foreground leading-tight">
                                                         Precios que se guardarán al confirmar
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                                 <Input
                                                     placeholder="Buscar dentro de esta lista..."
                                                     value={draftSearch}
                                                     onChange={e => setDraftSearch(e.target.value)}
                                                     disabled={draftItems.length === 0}
-                                                    className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                                    className="pl-9 border-border text-sm"
                                                 />
                                             </div>
-                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[336px] overflow-y-auto p-1.5">
+                                            <div className="rounded-lg border border-border bg-white  h-[336px] overflow-y-auto p-1.5">
                                                 {draftItems.length === 0 ? (
-                                                    <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
                                                         <Package className="h-7 w-7 mb-2 opacity-40" />
                                                         Aún no has agregado productos.
                                                         <br />Selecciónalos del catálogo de la derecha →
@@ -597,7 +594,7 @@ export default function PriceListsPage() {
                                                         item.product_name.toLowerCase().includes(draftSearch.toLowerCase())
                                                     )
                                                     return visibleItems.length === 0 ? (
-                                                        <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
                                                             Sin resultados para &quot;{draftSearch}&quot; en esta lista.
                                                         </div>
                                                     ) : (
@@ -620,30 +617,30 @@ export default function PriceListsPage() {
                                         {/* Columna derecha: catálogo disponible para agregar */}
                                         <div className="space-y-2 min-w-0 flex flex-col">
                                             <div className="flex items-center gap-2 shrink-0">
-                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 shrink-0">
+                                                <div className="flex items-center justify-center h-6 w-6 rounded-md bg-muted text-muted-foreground shrink-0">
                                                     <Package className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-tight">
+                                                    <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Catálogo completo
                                                     </p>
-                                                    <p className="text-[11px] text-neutral-400 leading-tight">
+                                                    <p className="text-[11px] text-muted-foreground leading-tight">
                                                         Haz clic en un producto para agregarlo a la lista ←
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                                 <Input
                                                     placeholder="Buscar producto por nombre o código..."
                                                     value={productSearch}
                                                     onChange={e => setProductSearch(e.target.value)}
-                                                    className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                                    className="pl-9 border-border text-sm"
                                                 />
                                             </div>
-                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[336px] overflow-y-auto p-1.5">
+                                            <div className="rounded-lg border border-border bg-white  h-[336px] overflow-y-auto p-1.5">
                                                 {allProducts.length === 0 ? (
-                                                    <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
                                                         <Package className="h-7 w-7 mb-2 opacity-40" />
                                                         No hay productos en el catálogo todavía.
                                                         <br />Agrégalos desde Inventario.
@@ -655,20 +652,20 @@ export default function PriceListsPage() {
                                                                 key={p.id}
                                                                 type="button"
                                                                 onClick={() => addProduct(p)}
-                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-blue-400 hover:bg-blue-50/60 dark:hover:bg-blue-900/20 transition-all text-left group cursor-pointer"
+                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all text-left group cursor-pointer"
                                                             >
                                                                 <div className="min-w-0 flex-1">
-                                                                    <p className="text-xs font-medium text-neutral-800 dark:text-neutral-100 truncate leading-tight">{p.full_name}</p>
-                                                                    <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{p.codigo_interno}</p>
+                                                                    <p className="text-xs font-medium text-foreground truncate leading-tight">{p.full_name}</p>
+                                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{p.codigo_interno}</p>
                                                                 </div>
                                                                 <div className="shrink-0 ml-2 text-right flex items-center gap-1.5">
-                                                                    <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
+                                                                    <p className="text-[11px] font-semibold text-muted-foreground">
                                                                         ${(isGrossMode
                                                                             ? Number(p.precio_bruto)
                                                                             : Number(p.precio_neto)
                                                                         ).toLocaleString('es-CL')}
                                                                     </p>
-                                                                    <Plus className="h-3.5 w-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                    <Plus className="h-3.5 w-3.5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </div>
                                                             </button>
                                                         ))}
@@ -676,9 +673,9 @@ export default function PriceListsPage() {
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-xs px-4">
                                                         {productSearch ? (
-                                                            <span className="text-neutral-400">Sin resultados para &quot;{productSearch}&quot;</span>
+                                                            <span className="text-muted-foreground">Sin resultados para &quot;{productSearch}&quot;</span>
                                                         ) : (
-                                                            <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                                            <span className="flex items-center gap-2 text-primary">
                                                                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                                                                 Todo el catálogo ya está en esta lista.
                                                             </span>
@@ -696,12 +693,12 @@ export default function PriceListsPage() {
                         {activeTab === 'customers' && (
                             <div className="space-y-3">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Buscar cliente por nombre o RUT..."
                                         value={customerSearch}
                                         onChange={e => setCustomerSearch(e.target.value)}
-                                        className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                        className="pl-9 border-border text-sm"
                                     />
                                 </div>
 
@@ -712,7 +709,7 @@ export default function PriceListsPage() {
                                             .map(c => (
                                                 <Badge
                                                     key={c.id}
-                                                    className="flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 cursor-pointer text-xs"
+                                                    className="flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer text-xs"
                                                     onClick={() => toggleCustomer(c.id)}
                                                 >
                                                     {c.razon_social}
@@ -722,9 +719,9 @@ export default function PriceListsPage() {
                                     </div>
                                 )}
 
-                                <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 max-h-64 overflow-y-auto">
+                                <div className="rounded-lg border border-border bg-white  max-h-64 overflow-y-auto">
                                     {filteredCustomers.length === 0
-                                        ? <p className="text-xs text-neutral-400 px-4 py-3 text-center">Sin clientes que coincidan</p>
+                                        ? <p className="text-xs text-muted-foreground px-4 py-3 text-center">Sin clientes que coincidan</p>
                                         : filteredCustomers.map(c => {
                                             const isSelected = selectedCustomerIds.includes(c.id)
                                             return (
@@ -733,32 +730,32 @@ export default function PriceListsPage() {
                                                     type="button"
                                                     onClick={() => toggleCustomer(c.id)}
                                                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors text-left ${isSelected
-                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                                                        : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                                                        ? 'bg-primary/10 text-primary'
+                                                        : 'hover:bg-accent text-foreground'
                                                         }`}
                                                 >
                                                     <span>{c.razon_social}</span>
-                                                    <span className="text-xs text-neutral-400 font-mono">{c.rut}</span>
+                                                    <span className="text-xs text-muted-foreground font-mono">{c.rut}</span>
                                                 </button>
                                             )
                                         })}
                                 </div>
 
-                                <p className="text-xs text-neutral-400">
+                                <p className="text-xs text-muted-foreground">
                                     {selectedCustomerIds.length} cliente(s) seleccionado(s). Al guardar, se aplicará esta lista a todos ellos.
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    <DialogFooter className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-neutral-200 dark:border-neutral-800 cursor-pointer">
+                    <DialogFooter className="border-t border-border pt-4">
+                        <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border cursor-pointer">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                            className="cursor-pointer"
                         >
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Lista')}
@@ -769,25 +766,25 @@ export default function PriceListsPage() {
 
             {/* Delete Confirm */}
             <AlertDialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+                <AlertDialogContent className="bg-white  border-border">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-600">¿Eliminar lista de precios?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-neutral-500">
+                        <AlertDialogTitle className="text-destructive">¿Eliminar lista de precios?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
                             Los clientes asignados quedarán sin lista de precios y se aplicará el precio base. Esta acción no se puede deshacer.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="border-neutral-200 dark:border-neutral-800">Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         >
                             {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </PageContainer>
     )
 }

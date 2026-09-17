@@ -108,12 +108,12 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     <DialogTitle className="flex items-center gap-2">
                         {user ? (
                             <>
-                                <Pencil className="h-5 w-5 text-blue-500" />
+                                <Pencil className="h-5 w-5 text-primary" />
                                 {isOwner ? 'Editar Mi Perfil (Admin)' : 'Editar Personal'}
                             </>
                         ) : (
                             <>
-                                <Plus className="h-5 w-5 text-blue-500" />
+                                <Plus className="h-5 w-5 text-primary" />
                                 Nuevo Personal
                             </>
                         )}
@@ -180,9 +180,9 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     )}
 
                     {!user && !canActivateMore && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                            <div className="text-[10px] text-amber-700 leading-tight">
+                        <div className="p-3 bg-muted border border-border rounded-lg flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="text-[10px] text-muted-foreground leading-tight">
                                 <p className="font-bold">Límite alcanzado</p>
                                 <p>No puedes agregar personal activo. Desactiva a alguien primero.</p>
                             </div>
@@ -193,7 +193,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
                             Cancelar
                         </Button>
-                        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                        <Button type="submit" disabled={loading} className="">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             {user ? 'Guardar Cambios' : 'Crear Personal'}
                         </Button>

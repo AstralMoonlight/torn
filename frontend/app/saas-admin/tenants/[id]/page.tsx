@@ -196,32 +196,32 @@ export default function TenantDetailsPage() {
     }
 
     if (loading) {
-        return <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6 flex flex-col items-center justify-center"><Skeleton className="h-8 w-64 mb-4" /><Skeleton className="h-4 w-32" /></div>
+        return <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-center"><Skeleton className="h-8 w-64 mb-4" /><Skeleton className="h-4 w-32" /></div>
     }
 
     if (!tenant) {
-        return <div className="min-h-screen flex items-center justify-center text-neutral-500 bg-neutral-50 dark:bg-neutral-950">Empresa no encontrada</div>
+        return <div className="min-h-screen flex items-center justify-center text-muted-foreground bg-background">Empresa no encontrada</div>
     }
 
     return (
-        <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6 md:p-12">
+        <div className="min-h-screen bg-background p-6 md:p-12">
             <div className="max-w-5xl mx-auto space-y-6">
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="space-y-1">
-                        <Link href="/saas-admin/tenants" className="inline-flex items-center text-sm font-medium text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <Link href="/saas-admin/tenants" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Volver a Empresas
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white flex items-center gap-3">
-                            <Store className="h-8 w-8 text-blue-600" />
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                            <Store className="h-8 w-8 text-primary" />
                             {tenant.name}
                         </h1>
-                        <div className="flex items-center gap-3 text-sm text-neutral-500">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <span>RUT: {tenant.rut || '-'}</span>
                             &bull;
-                            <span>Esquema: <code className="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800">{tenant.schema_name}</code></span>
+                            <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
                             {tenant.max_users_override && <span>&bull; Máx Usr: {tenant.max_users_override}</span>}
                         </div>
                     </div>
@@ -229,40 +229,40 @@ export default function TenantDetailsPage() {
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                         <Button
                             variant="outline"
-                            className="bg-white hover:bg-neutral-50 border-neutral-200 text-neutral-700 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800 w-full sm:w-auto cursor-pointer"
+                            className="bg-background hover:bg-accent border-border text-foreground w-full sm:w-auto cursor-pointer"
                             onClick={handleImpersonate}
                         >
                             <Store className="mr-2 h-4 w-4" /> Entrar al POS
                         </Button>
                         <Dialog open={openSettings} onOpenChange={setOpenSettings}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" className="border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 cursor-pointer">
+                                <Button variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer">
                                     <Settings className="mr-2 h-4 w-4" /> Límites de Usuarios
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto">
+                            <DialogContent className="sm:max-w-md bg-white  border-border max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
                                     <DialogTitle className="text-xl">Ajustar Cupos</DialogTitle>
-                                    <DialogDescription className="text-neutral-500">
+                                    <DialogDescription className="text-muted-foreground">
                                         Modifica el límite de usuarios permitidos para esta empresa.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleSaveSettings} className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Cupo Máximo de Usuarios (Override)</label>
+                                        <label className="text-sm font-medium text-foreground">Cupo Máximo de Usuarios (Override)</label>
                                         <Input
                                             type="number"
                                             min="1"
                                             placeholder={`Predeterminado del Plan (${tenant.plan_max_users || 3})`}
                                             value={tenantOverride}
                                             onChange={e => setTenantOverride(e.target.value)}
-                                            className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                            className="border-border focus-visible:ring-ring"
                                         />
-                                        <p className="text-xs text-neutral-500">Deja vacío para usar el límite por defecto ({tenant.plan_max_users || 3}) del plan SaaS.</p>
+                                        <p className="text-xs text-muted-foreground">Deja vacío para usar el límite por defecto ({tenant.plan_max_users || 3}) del plan SaaS.</p>
                                     </div>
                                     <div className="pt-2 flex justify-end gap-3">
-                                        <Button type="button" variant="outline" onClick={() => setOpenSettings(false)} className="border-neutral-200 dark:border-neutral-800 cursor-pointer">Cancelar</Button>
-                                        <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white">
+                                        <Button type="button" variant="outline" onClick={() => setOpenSettings(false)} className="border-border cursor-pointer">Cancelar</Button>
+                                        <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
                                             Guardar Cambios
                                         </Button>
                                     </div>
@@ -276,18 +276,18 @@ export default function TenantDetailsPage() {
                     {/* Formulario Asignación ARRIBA */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                                <ShieldPlus className="h-5 w-5 text-blue-600" />
+                            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                                <ShieldPlus className="h-5 w-5 text-primary" />
                                 Vincular Operador
                             </h2>
-                            <div className={`text-sm ${isAtLimit ? 'text-red-500 font-medium' : 'text-neutral-500'}`}>
+                            <div className={`text-sm ${isAtLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                                 Cupos: {users.filter(u => u.is_active).length} / {maxUsersLimit}
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddUser} autoComplete="off" className={`bg-white dark:bg-neutral-900 p-6 rounded-xl border ${isAtLimit ? 'border-red-200 dark:border-red-900/50 opacity-80' : 'border-neutral-200 dark:border-neutral-800'} shadow-sm`}>
+                        <form onSubmit={handleAddUser} autoComplete="off" className={`bg-white  p-6 rounded-xl border ${isAtLimit ? 'border-destructive/30 opacity-80' : 'border-border'} shadow-sm`}>
                             {isAtLimit && (
-                                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg">
+                                <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
                                     Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la Configuración SaaS.
                                 </div>
                             )}
@@ -295,12 +295,12 @@ export default function TenantDetailsPage() {
                             <div className="flex flex-col md:flex-row gap-4">
                                 <div className="flex-1 space-y-2">
                                     <div className="relative">
-                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
+                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             type="email"
                                             required
                                             placeholder="usuario@empresa.cl *"
-                                            className="pl-9 h-10 border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                            className="pl-9 h-10 border-border focus-visible:ring-ring"
                                             value={email}
                                             autoComplete="none"
                                             onChange={e => setEmail(e.target.value)}
@@ -313,7 +313,7 @@ export default function TenantDetailsPage() {
                                     <Input
                                         type="password"
                                         placeholder="Contraseña (si es nueva cuenta)"
-                                        className="h-10 border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                        className="h-10 border-border focus-visible:ring-ring"
                                         value={password}
                                         autoComplete="new-password"
                                         onChange={e => setPassword(e.target.value)}
@@ -325,7 +325,7 @@ export default function TenantDetailsPage() {
                                     <Input
                                         type="text"
                                         placeholder="Nombre (opcional)"
-                                        className="h-10 border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                        className="h-10 border-border focus-visible:ring-ring"
                                         value={fullName}
                                         onChange={e => setFullName(e.target.value)}
                                         disabled={isSubmitting || isAtLimit}
@@ -334,10 +334,10 @@ export default function TenantDetailsPage() {
 
                                 <div className="flex-1 space-y-2">
                                     <Select value={role} onValueChange={setRole} disabled={isSubmitting || isAtLimit}>
-                                        <SelectTrigger className="h-10 border-neutral-200 dark:border-neutral-800 focus:ring-blue-500 cursor-pointer">
+                                        <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
                                             <SelectValue placeholder="Selecciona Rol" />
                                         </SelectTrigger>
-                                        <SelectContent className="border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 cursor-pointer">
+                                        <SelectContent className="border-border bg-white  cursor-pointer">
                                             <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
                                             <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                             <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
@@ -345,7 +345,7 @@ export default function TenantDetailsPage() {
                                     </Select>
                                 </div>
                                 <div className="md:w-32">
-                                    <Button type="submit" className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm shadow-blue-600/20" disabled={isSubmitting || isAtLimit}>
+                                    <Button type="submit" className="w-full h-10  text-white cursor-pointer shadow-sm shadow-primary/20" disabled={isSubmitting || isAtLimit}>
                                         {isSubmitting ? '...' : <><UserPlus className="mr-2 h-4 w-4" /> Asignar</>}
                                     </Button>
                                 </div>
@@ -355,12 +355,12 @@ export default function TenantDetailsPage() {
 
                     {/* Lista de Usuarios */}
                     <div className="space-y-4">
-                        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+                        <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
                             {users.length === 0 ? (
-                                <div className="p-8 text-center text-neutral-500">Sin usuarios operativos registrados.</div>
+                                <div className="p-8 text-center text-muted-foreground">Sin usuarios operativos registrados.</div>
                             ) : (
                                 <Table>
-                                    <TableHeader className="bg-neutral-50/50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
+                                    <TableHeader className="bg-muted/50 border-b border-border">
                                         <TableRow>
                                             <TableHead className="font-medium uppercase">Global ID / Email</TableHead>
                                             <TableHead className="font-medium uppercase">Nombre</TableHead>
@@ -371,22 +371,22 @@ export default function TenantDetailsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {users.map(tu => (
-                                            <TableRow key={tu.user_id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                                <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
+                                            <TableRow key={tu.user_id} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
+                                                <TableCell className="font-medium text-foreground">
                                                     {tu.user.email}
-                                                    {tu.user.is_superuser && <Badge variant="outline" className="ml-2 text-xs border-neutral-200 text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">Superadmin</Badge>}
+                                                    {tu.user.is_superuser && <Badge variant="outline" className="ml-2 text-xs border-border text-muted-foreground  dark:text-muted-foreground">Superadmin</Badge>}
                                                 </TableCell>
-                                                <TableCell className="text-neutral-500 dark:text-neutral-400">
+                                                <TableCell className="text-muted-foreground">
                                                     {tu.user.full_name || '-'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="secondary" className="font-mono text-xs bg-neutral-100 dark:bg-neutral-800">{tu.role_name}</Badge>
+                                                    <Badge variant="secondary" className="font-mono text-xs bg-muted">{tu.role_name}</Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     {tu.is_active ?
-                                                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0">Activo</Badge>
+                                                        <Badge className="bg-primary/10 text-primary border-0">Activo</Badge>
                                                         :
-                                                        <Badge variant="secondary" className="text-neutral-500">Inactivo</Badge>
+                                                        <Badge variant="secondary" className="text-muted-foreground">Inactivo</Badge>
                                                     }
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -395,7 +395,7 @@ export default function TenantDetailsPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             title="Editar Rol"
-                                                            className="h-8 w-8 text-neutral-500 hover:text-blue-600 cursor-pointer"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary cursor-pointer"
                                                             onClick={() => {
                                                                 setEditingUser(tu)
                                                                 setEditRole(tu.role_name)
@@ -405,7 +405,7 @@ export default function TenantDetailsPage() {
                                                         >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30' : 'text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`} onClick={() => handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
+                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-primary hover:text-primary hover:bg-primary/10'}`} onClick={() => handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
                                                             {tu.is_active ? <Trash2 className="h-4 w-4" /> : <ShieldPlus className="h-4 w-4" />}
                                                         </Button>
                                                     </div>
@@ -428,25 +428,25 @@ export default function TenantDetailsPage() {
                         setEditFullName('');
                     }
                 }}>
-                    <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="sm:max-w-md bg-white  border-border max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="text-xl">Editar Operador</DialogTitle>
-                            <DialogDescription className="text-neutral-500">
+                            <DialogDescription className="text-muted-foreground">
                                 Actualiza los permisos o la información del usuario vinculado.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Usuario Global</label>
-                                <Input value={editingUser?.user.email || ''} disabled className="bg-neutral-100 dark:bg-neutral-800" autoComplete="none" name="operator-email-edit" />
+                                <label className="text-sm font-medium text-foreground">Usuario Global</label>
+                                <Input value={editingUser?.user.email || ''} disabled className="bg-muted" autoComplete="none" name="operator-email-edit" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Nuevo Rol Interno</label>
+                                <label className="text-sm font-medium text-foreground">Nuevo Rol Interno</label>
                                 <Select value={editRole} onValueChange={setEditRole} disabled={isSubmitting}>
-                                    <SelectTrigger className="h-10 border-neutral-200 dark:border-neutral-800 focus:ring-blue-500 cursor-pointer">
+                                    <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
                                         <SelectValue placeholder="Selecciona Rol" />
                                     </SelectTrigger>
-                                    <SelectContent className="border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 cursor-pointer">
+                                    <SelectContent className="border-border bg-white  cursor-pointer">
                                         <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
                                         <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                         <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
@@ -454,18 +454,18 @@ export default function TenantDetailsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Nombre del Operador</label>
+                                <label className="text-sm font-medium text-foreground">Nombre del Operador</label>
                                 <Input
                                     value={editFullName}
                                     onChange={e => setEditFullName(e.target.value)}
                                     placeholder="Nombre completo"
-                                    className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                    className="border-border focus-visible:ring-ring"
                                     autoComplete="none"
                                     name="operator-name-edit"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300 pointer-events-none">Cambiar Contraseña (Opcional)</label>
+                                <label className="text-sm font-medium text-foreground pointer-events-none">Cambiar Contraseña (Opcional)</label>
                                 <Input
                                     type="password"
                                     name="operator-password-edit"
@@ -473,13 +473,13 @@ export default function TenantDetailsPage() {
                                     value={editPassword}
                                     autoComplete="new-password"
                                     onChange={e => setEditPassword(e.target.value)}
-                                    className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                    className="border-border focus-visible:ring-ring"
                                 />
-                                <p className="text-[10px] text-neutral-500">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
+                                <p className="text-[10px] text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
                             </div>
                             <div className="pt-2 flex justify-end gap-3">
                                 <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="cursor-pointer">Cancelar</Button>
-                                <Button type="button" onClick={handleSaveUserEdit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white">
+                                <Button type="button" onClick={handleSaveUserEdit} disabled={isSubmitting} className="cursor-pointer">
                                     Guardar Cambios
                                 </Button>
                             </div>

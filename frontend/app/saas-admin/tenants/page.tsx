@@ -215,36 +215,36 @@ export default function TenantsListPage() {
     }
 
     return (
-        <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6 md:p-12">
+        <div className="min-h-screen bg-background p-6 md:p-12">
             <div className="max-w-5xl mx-auto space-y-6">
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="space-y-1">
-                        <Link href="/saas-admin" className="inline-flex items-center text-sm font-medium text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <Link href="/saas-admin" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Volver al Panel
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white flex items-center gap-3">
-                            <Building2 className="h-8 w-8 text-blue-600" />
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                            <Building2 className="h-8 w-8 text-primary" />
                             Gestión de Empresas
                         </h1>
                     </div>
 
                     <Button
                         onClick={openCreateModal}
-                        className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm shadow-blue-600/20"
+                        className="cursor-pointer shadow-sm shadow-primary/20"
                     >
                         <Plus className="mr-2 h-4 w-4" /> Crear nuevo Tenant
                     </Button>
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
-                        <DialogContent className="sm:max-w-2xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="sm:max-w-2xl bg-white  border-border max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-xl">
                                     {editingTenantId ? 'Editar Empresa' : 'Crear nuevo Tenant'}
                                 </DialogTitle>
-                                <DialogDescription className="text-neutral-500">
+                                <DialogDescription className="text-muted-foreground">
                                     {editingTenantId ? 'Actualiza los datos de facturación y configuración de la empresa.' : 'Ingresa los datos para provisionar una nueva instancia separada para tu cliente.'}
                                 </DialogDescription>
                             </DialogHeader>
@@ -258,7 +258,7 @@ export default function TenantsListPage() {
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                             required
                                             autoFocus
-                                            className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -268,11 +268,11 @@ export default function TenantsListPage() {
                                             value={formData.rut}
                                             onChange={handleRutChange}
                                             required
-                                            className={`border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500 font-mono ${!isRutValid ? 'border-red-400 dark:border-red-500 focus-visible:ring-red-500' : ''
+                                            className={`border-border focus-visible:ring-ring font-mono ${!isRutValid ? 'border-destructive focus-visible:ring-destructive' : ''
                                                 }`}
                                         />
                                         {!isRutValid && (
-                                            <p className="text-xs text-red-500 mt-1">RUT inválido. Verifica el dígito verificador.</p>
+                                            <p className="text-xs text-destructive mt-1">RUT inválido. Verifica el dígito verificador.</p>
                                         )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
@@ -281,7 +281,7 @@ export default function TenantsListPage() {
                                             placeholder="Ej. VENTA AL POR MENOR DE PRODUCTOS FARMACEUTICOS..."
                                             value={formData.giro}
                                             onChange={e => setFormData({ ...formData, giro: e.target.value })}
-                                            className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -290,7 +290,7 @@ export default function TenantsListPage() {
                                             placeholder="Ej. Av. Principal 123"
                                             value={formData.address}
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -300,7 +300,7 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.commune}
                                                 onChange={e => setFormData({ ...formData, commune: e.target.value })}
-                                                className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -309,7 +309,7 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.city}
                                                 onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                                className="border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500"
+                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                     </div>
@@ -320,10 +320,10 @@ export default function TenantsListPage() {
                                             value={formData.billing_day.toString()}
                                             onValueChange={v => setFormData({ ...formData, billing_day: parseInt(v) })}
                                         >
-                                            <SelectTrigger className="border-neutral-200 dark:border-neutral-800">
+                                            <SelectTrigger className="border-border">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+                                            <SelectContent className="bg-white  border-border">
                                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                                                     <SelectItem key={day} value={day.toString()} className="cursor-pointer">
                                                         Día {day}
@@ -331,38 +331,38 @@ export default function TenantsListPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[10px] text-neutral-500">Día en que se genera la facturación del servicio SaaS.</p>
+                                        <p className="text-[10px] text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-100 dark:border-neutral-800">
+                                <div className="space-y-3 p-4 bg-muted rounded-lg border border-border">
                                     <div className="flex items-center justify-between">
                                         <Label className="flex items-center gap-2">
                                             Actividades Económicas (ACTECO)
-                                            <Info className="h-3 w-3 text-neutral-400" />
+                                            <Info className="h-3 w-3 text-muted-foreground" />
                                         </Label>
                                         <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
                                     </div>
 
                                     <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-neutral-400" />
+                                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Buscar por código o nombre..."
                                             value={actecoSearch}
                                             onChange={e => setActecoSearch(e.target.value)}
-                                            className="pl-9 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-sm"
+                                            className="pl-9 bg-white  border-border text-sm"
                                         />
                                     </div>
 
-                                    <div className="h-32 rounded border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-y-auto">
+                                    <div className="h-32 rounded border border-border bg-white  overflow-y-auto">
                                         <div className="p-2 space-y-1">
                                             {actecoSearchLoading ? (
-                                                <div className="flex items-center justify-center py-6 text-neutral-500 text-sm">
+                                                <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
                                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                     Buscando...
                                                 </div>
                                             ) : actecoResults.length === 0 ? (
-                                                <div className="py-6 text-center text-neutral-500 text-sm">
+                                                <div className="py-6 text-center text-muted-foreground text-sm">
                                                     {actecoSearch.trim() ? 'Sin resultados. Escribe código o nombre.' : 'Escribe para buscar por código o nombre (ACTECO SII).'}
                                                 </div>
                                             ) : (
@@ -373,15 +373,15 @@ export default function TenantsListPage() {
                                                             key={acteco.code}
                                                             onClick={() => toggleActeco(acteco)}
                                                             className={`flex items-center justify-between p-2 rounded text-xs cursor-pointer transition-colors ${isSelected
-                                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                                : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                                                                ? 'bg-primary/10 text-primary'
+                                                                : 'hover:bg-accent text-muted-foreground dark:text-muted-foreground'
                                                                 }`}
                                                         >
                                                             <div className="flex flex-col">
                                                                 <span className="font-bold">{acteco.code}</span>
                                                                 <span className="truncate max-w-[300px]">{acteco.name}</span>
                                                             </div>
-                                                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                                                         </div>
                                                     )
                                                 })
@@ -391,7 +391,7 @@ export default function TenantsListPage() {
 
                                     <div className="flex flex-wrap gap-2">
                                         {formData.economic_activities.map(acteco => (
-                                            <Badge key={acteco.code} className="bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 flex items-center gap-1">
+                                            <Badge key={acteco.code} className="bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1">
                                                 {acteco.code}
                                                 <CloseIcon className="h-3 w-3 cursor-pointer" onClick={() => toggleActeco(acteco)} />
                                             </Badge>
@@ -400,10 +400,10 @@ export default function TenantsListPage() {
                                 </div>
 
                                 <div className="pt-2 flex justify-end gap-3">
-                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-neutral-200 dark:border-neutral-800">
+                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border">
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" disabled={isCreating || !isRutValid} className="bg-blue-600 hover:bg-blue-700 cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <Button type="submit" disabled={isCreating || !isRutValid} className="cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                                         {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
@@ -416,33 +416,33 @@ export default function TenantsListPage() {
                     </Dialog>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-4 bg-white dark:bg-neutral-900 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
+                <div className="flex flex-col md:flex-row items-center gap-4 bg-white  p-4 rounded-xl border border-border shadow-sm">
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-neutral-400" />
+                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Buscar por nombre, RUT o esquema..."
                             value={tenantSearch}
                             onChange={e => setTenantSearch(e.target.value)}
-                            className="pl-9 border-neutral-200 dark:border-neutral-800 focus-visible:ring-blue-500 h-11"
+                            className="pl-9 border-border focus-visible:ring-ring h-11"
                         />
                         {tenantSearch && (
                             <button
                                 onClick={() => setTenantSearch('')}
-                                className="absolute right-3 top-1/2 -mt-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                                className="absolute right-3 top-1/2 -mt-2 text-muted-foreground hover:text-foreground"
                             >
                                 <CloseIcon className="h-4 w-4" />
                             </button>
                         )}
                     </div>
-                    <div className="text-sm text-neutral-500 font-medium">
+                    <div className="text-sm text-muted-foreground font-medium">
                         {filteredTenants.length} de {tenants.length} empresas
                     </div>
                 </div>
 
                 {/* Table */}
-                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+                <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
+                        <TableHeader className="bg-muted/50 border-b border-border">
                             <TableRow>
                                 <TableHead className="font-medium uppercase">Empresa</TableHead>
                                 <TableHead className="font-medium uppercase">RUT</TableHead>
@@ -454,7 +454,7 @@ export default function TenantsListPage() {
                         <TableBody>
                             {loading && (
                                 Array(3).fill(0).map((_, i) => (
-                                    <TableRow key={i} className="border-b border-neutral-100 dark:border-neutral-800/50 bg-white dark:bg-neutral-900">
+                                    <TableRow key={i} className="border-b border-border/50 bg-white ">
                                         <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
@@ -466,21 +466,21 @@ export default function TenantsListPage() {
 
                             {!loading && filteredTenants.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-12 text-center text-neutral-500">
+                                    <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                                         {tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}
                                     </TableCell>
                                 </TableRow>
                             )}
 
                             {!loading && filteredTenants.map((tenant) => (
-                                <TableRow key={tenant.id} className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
-                                    <TableCell className="font-medium text-neutral-900 dark:text-neutral-100">
+                                <TableRow key={tenant.id} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
+                                    <TableCell className="font-medium text-foreground">
                                         {tenant.name}
                                     </TableCell>
-                                    <TableCell className="text-neutral-500 dark:text-neutral-400 font-mono">
+                                    <TableCell className="text-muted-foreground font-mono">
                                         {tenant.rut || '-'}
                                     </TableCell>
-                                    <TableCell className="text-neutral-500 dark:text-neutral-400 font-mono text-xs">
+                                    <TableCell className="text-muted-foreground font-mono text-xs">
                                         {tenant.schema_name}
                                     </TableCell>
                                     <TableCell>
@@ -491,7 +491,7 @@ export default function TenantsListPage() {
                                             />
                                             <span className={cn(
                                                 "text-[10px] font-bold uppercase tracking-wider",
-                                                tenant.is_active ? "text-emerald-600" : "text-neutral-400"
+                                                tenant.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                             )}>
                                                 {tenant.is_active ? 'Activo' : 'Inactivo'}
                                             </span>
@@ -503,7 +503,7 @@ export default function TenantsListPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => openEditModal(tenant)}
-                                                className="h-8 w-8 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
                                                 title="Editar datos"
                                             >
                                                 <Pencil className="h-4 w-4" />
@@ -513,17 +513,17 @@ export default function TenantsListPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => setTenantToDelete(tenant.id)}
-                                                className="h-8 w-8 text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer"
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                                                 disabled={!tenant.is_active}
                                                 title="Desactivar"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
 
-                                            <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
+                                            <div className="w-px h-4 bg-border mx-1" />
 
                                             <Link href={`/saas-admin/tenants/${tenant.id}`}>
-                                                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
+                                                <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 cursor-pointer">
                                                     Gestionar
                                                 </Button>
                                             </Link>
@@ -537,21 +537,21 @@ export default function TenantsListPage() {
 
                 {/* Confirm Delete Dialog */}
                 <AlertDialog open={!!tenantToDelete} onOpenChange={(open: boolean) => !open && setTenantToDelete(null)}>
-                    <AlertDialogContent className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+                    <AlertDialogContent className="bg-white  border-border">
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
                                 <AlertTriangle className="h-5 w-5" />
                                 ¿Desactivar Empresa?
                             </AlertDialogTitle>
-                            <AlertDialogDescription className="text-neutral-500 dark:text-neutral-400">
+                            <AlertDialogDescription className="text-muted-foreground">
                                 Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel className="border-neutral-200 dark:border-neutral-800">Cancelar</AlertDialogCancel>
+                            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={handleDeleteTenant}
-                                className="bg-red-600 hover:bg-red-700 text-white"
+                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                                 disabled={isDeleting}
                             >
                                 {isDeleting ? 'Desactivando...' : 'Sí, desactivar'}

@@ -50,6 +50,8 @@ import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type 
 import { getApiErrorMessage, fetchBlobUrl } from '@/services/api'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 interface CartItem {
     product: Product
@@ -221,16 +223,12 @@ export default function ComprasPage() {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <ShoppingBag className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white">Ingreso de Mercadería</h1>
-                    <p className="text-muted-foreground">Registre compras y actualice stock de productos.</p>
-                </div>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={ShoppingBag}
+                title="Ingreso de Mercadería"
+                description="Registre compras y actualice stock de productos."
+            />
 
             <Tabs defaultValue="nuevo" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6">
@@ -253,7 +251,7 @@ export default function ComprasPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Proveedor</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Proveedor</Label>
                                     <ProviderSearchCombobox
                                         value={selectedProvider}
                                         onChange={setSelectedProvider}
@@ -262,7 +260,7 @@ export default function ComprasPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Tipo</Label>
+                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Tipo</Label>
                                         <Select value={tipoDoc} onValueChange={setTipoDoc}>
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -275,7 +273,7 @@ export default function ComprasPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Folio</Label>
+                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Folio</Label>
                                         <Input
                                             placeholder="N° Docto."
                                             value={folio}
@@ -285,9 +283,9 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Fecha Compra</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha Compra</Label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
+                                        <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             type="date"
                                             className="pl-9"
@@ -298,9 +296,9 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-neutral-500 font-bold">Observaciones</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Observaciones</Label>
                                     <textarea
-                                        className="w-full min-h-[80px] rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
+                                        className="w-full min-h-[80px] rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                                         placeholder="Notas adicionales..."
                                         value={observacion}
                                         onChange={e => setObservacion(e.target.value)}
@@ -315,7 +313,7 @@ export default function ComprasPage() {
                             <Card className="shadow-sm">
                                 <CardContent className="p-4">
                                     <div className="relative">
-                                        <Search className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+                                        <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                                         <Input
                                             placeholder="Buscar productos a ingresar por nombre o SKU..."
                                             className="pl-11 h-11 text-lg"
@@ -328,10 +326,10 @@ export default function ComprasPage() {
                                         />
 
                                         {isSearching && searchQuery.length > 1 && (
-                                            <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-950 animate-in fade-in zoom-in-95">
+                                            <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-border bg-popover shadow-xl animate-in fade-in zoom-in-95">
                                                 <div className="p-2">
                                                     {filteredSearchResults.length === 0 ? (
-                                                        <div className="p-4 text-center text-neutral-500">
+                                                        <div className="p-4 text-center text-muted-foreground">
                                                             No se encontraron resultados
                                                         </div>
                                                     ) : (
@@ -339,17 +337,17 @@ export default function ComprasPage() {
                                                             <button
                                                                 key={product.id}
                                                                 onClick={() => addItem(product)}
-                                                                className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 group"
+                                                                className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-accent group"
                                                             >
                                                                 <div>
-                                                                    <p className="font-semibold text-neutral-900 dark:text-white group-hover:text-blue-600">{product.full_name || product.nombre}</p>
-                                                                    <p className="text-xs text-neutral-400 font-mono">{product.codigo_interno}</p>
+                                                                    <p className="font-semibold text-foreground group-hover:text-primary">{product.full_name || product.nombre}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">{product.codigo_interno}</p>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <p className="text-sm font-bold text-neutral-600 dark:text-neutral-300">
+                                                                    <p className="text-sm font-bold text-muted-foreground">
                                                                         Costo: {formatCLP(parseFloat(product.costo_unitario) || 0)}
                                                                     </p>
-                                                                    <Plus className="h-4 w-4 ml-auto text-blue-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                    <Plus className="h-4 w-4 ml-auto text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                 </div>
                                                             </button>
                                                         ))
@@ -363,7 +361,7 @@ export default function ComprasPage() {
 
                             {/* Items Table */}
                             <Card className="shadow-sm overflow-hidden">
-                                <CardHeader className="bg-neutral-50 dark:bg-neutral-900/50 flex flex-row items-center justify-between">
+                                <CardHeader className="bg-muted/50 flex flex-row items-center justify-between">
                                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                                         <Package className="h-4 w-4" /> Ítems a Ingresar
                                     </CardTitle>
@@ -374,7 +372,7 @@ export default function ComprasPage() {
                                 <CardContent className="p-0">
                                     <div className="max-h-[400px] overflow-y-auto">
                                         <Table>
-                                            <TableHeader className="bg-neutral-50/80 dark:bg-neutral-900/80 backdrop-blur sticky top-0 z-10">
+                                            <TableHeader className="bg-muted/80 backdrop-blur sticky top-0 z-10">
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
@@ -386,7 +384,7 @@ export default function ComprasPage() {
                                             <TableBody>
                                                 {items.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={5} className="h-40 text-center text-neutral-400">
+                                                        <TableCell colSpan={5} className="h-40 text-center text-muted-foreground">
                                                             <div className="flex flex-col items-center gap-2">
                                                                 <Package className="h-8 w-8 opacity-20" />
                                                                 <p>Busque productos arriba para agregarlos</p>
@@ -399,7 +397,7 @@ export default function ComprasPage() {
                                                             <TableCell>
                                                                 <div>
                                                                     <p className="font-medium text-sm leading-tight">{item.product.full_name || item.product.nombre}</p>
-                                                                    <p className="text-[10px] text-neutral-400 font-mono">{item.product.codigo_interno}</p>
+                                                                    <p className="text-[10px] text-muted-foreground font-mono">{item.product.codigo_interno}</p>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -412,7 +410,7 @@ export default function ComprasPage() {
                                                             </TableCell>
                                                             <TableCell>
                                                                 <div className="relative">
-                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-neutral-400">$</span>
+                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-muted-foreground">$</span>
                                                                     <Input
                                                                         type="number"
                                                                         className="h-8 text-right pl-4 pr-1"
@@ -428,7 +426,7 @@ export default function ComprasPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                                                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                                                                     onClick={() => removeItem(index)}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
@@ -443,22 +441,22 @@ export default function ComprasPage() {
                                 </CardContent>
 
                                 {(items.length > 0) && (
-                                    <CardFooter className="bg-neutral-50 dark:bg-neutral-900/50 p-6 flex flex-col gap-4">
+                                    <CardFooter className="bg-muted/50 p-6 flex flex-col gap-4">
                                         <div className="w-full space-y-2">
-                                            <div className="flex justify-between text-sm text-neutral-500">
+                                            <div className="flex justify-between text-sm text-muted-foreground">
                                                 <span>Subtotal Neto</span>
                                                 <span>{formatCLP(totalNeto)}</span>
                                             </div>
                                             {tipoDoc === 'FACTURA' && (
-                                                <div className="flex justify-between text-sm text-neutral-500">
+                                                <div className="flex justify-between text-sm text-muted-foreground">
                                                     <span>IVA (19%)</span>
                                                     <span>{formatCLP(totalIva)}</span>
                                                 </div>
                                             )}
                                             <Separator className="my-2" />
-                                            <div className="flex justify-between text-xl font-bold text-neutral-900 dark:text-white">
+                                            <div className="flex justify-between text-xl font-bold text-foreground">
                                                 <span>Total</span>
-                                                <span className="text-blue-600 dark:text-blue-400">{formatCLP(totalFinal)}</span>
+                                                <span className="text-primary">{formatCLP(totalFinal)}</span>
                                             </div>
                                         </div>
 
@@ -485,29 +483,29 @@ export default function ComprasPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
-                                    <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
-                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Fecha</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Documento</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Proveedor</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Total</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                                <TableHeader className="bg-muted/60">
+                                    <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
+                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Fecha</TableHead>
+                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Documento</TableHead>
+                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Proveedor</TableHead>
+                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
+                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loadingPurchases ? (
                                         <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
                                     ) : purchases.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-neutral-500">No hay compras registradas</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No hay compras registradas</TableCell></TableRow>
                                     ) : (
                                         purchases.map(p => (
-                                            <TableRow key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                            <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
                                                 <TableCell className="text-xs">
                                                     {new Date(p.fecha_compra).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })}
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     <div className="font-medium">{p.tipo_documento}</div>
-                                                    <div className="text-neutral-400 font-mono">#{p.folio || 'S/N'}</div>
+                                                    <div className="text-muted-foreground font-mono">#{p.folio || 'S/N'}</div>
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     {p.provider?.razon_social}
@@ -520,7 +518,7 @@ export default function ComprasPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                             title="Imprimir Comprobante"
                                                             onClick={() => verPdfCompra(p.id)}
                                                         >
@@ -529,7 +527,7 @@ export default function ComprasPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                             onClick={() => setSelectedPurchase(p)}
                                                             title="Ver Detalle"
                                                         >
@@ -538,7 +536,7 @@ export default function ComprasPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                             onClick={() => setDeleteId(p.id)}
                                                             title="Eliminar"
                                                         >
@@ -570,7 +568,7 @@ export default function ComprasPage() {
                             <button
                                 type="button"
                                 onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}
-                                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 active:scale-95 transition shadow-sm"
+                                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 active:scale-95 transition shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                                 Imprimir
@@ -579,24 +577,24 @@ export default function ComprasPage() {
                     </DialogHeader>
                     {selectedPurchase && (
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm bg-neutral-50 dark:bg-neutral-900/50 p-4 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
                                 <div>
-                                    <p className="text-xs text-neutral-500 uppercase font-bold">Fecha Compra</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha Compra</p>
                                     <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-neutral-500 uppercase font-bold">Monto Total</p>
-                                    <p className="font-bold text-neutral-900 dark:text-white text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto Total</p>
+                                    <p className="font-bold text-foreground text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
                                     <div className="col-span-2">
-                                        <p className="text-xs text-neutral-500 uppercase font-bold">Observación</p>
+                                        <p className="text-xs text-muted-foreground uppercase font-bold">Observación</p>
                                         <p className="italic">&ldquo;{selectedPurchase.observacion}&rdquo;</p>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="rounded-md border border-neutral-200">
+                            <div className="rounded-md border border-border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -611,7 +609,7 @@ export default function ComprasPage() {
                                             <TableRow key={d.id}>
                                                 <TableCell>
                                                     <p className="font-medium text-xs">{d.product?.full_name || d.product?.nombre}</p>
-                                                    <p className="text-[10px] text-neutral-400 font-mono">{d.product?.codigo_interno}</p>
+                                                    <p className="text-[10px] text-muted-foreground font-mono">{d.product?.codigo_interno}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center font-tabular text-xs">
                                                     {parseFloat(String(d.cantidad))}
@@ -644,7 +642,7 @@ export default function ComprasPage() {
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
-                        <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                        <Button onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                             Eliminar definitivamente
                         </Button>
                     </DialogFooter>
@@ -658,6 +656,6 @@ export default function ComprasPage() {
                     onClick={() => setIsSearching(false)}
                 />
             )}
-        </div>
+        </PageContainer>
     )
 }

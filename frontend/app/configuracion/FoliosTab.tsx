@@ -139,7 +139,7 @@ export default function FoliosTab() {
 
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Button className="">
                             <FileText className="mr-2 h-4 w-4" />
                             Solicitar Folios
                         </Button>
@@ -154,7 +154,7 @@ export default function FoliosTab() {
 
                         {isRequesting ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                                <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
+                                <Loader2 className="h-10 w-10 text-primary animate-spin" />
                                 <p className="text-sm font-medium">Conectando con el SII...</p>
                             </div>
                         ) : (
@@ -216,7 +216,7 @@ export default function FoliosTab() {
                         const percentage = stock.total > 0 ? (stock.available / stock.total) * 100 : 0;
 
                         return (
-                            <Card key={stock.dte_type} className={isLow ? "border-red-200 dark:border-red-900/50" : ""}>
+                            <Card key={stock.dte_type} className={isLow ? "border-destructive/30" : ""}>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg">
                                         {DTE_NAMES[stock.dte_type] || `Documento ${stock.dte_type}`}
@@ -226,7 +226,7 @@ export default function FoliosTab() {
                                 <CardContent>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className={`text-4xl font-bold ${isLow ? "text-red-500" : ""}`}>
+                                            <p className={`text-4xl font-bold ${isLow ? "text-destructive" : ""}`}>
                                                 {stock.available}
                                             </p>
                                             <p className="text-sm text-muted-foreground mt-1">
@@ -237,11 +237,11 @@ export default function FoliosTab() {
                                         <div className="relative h-16 w-16">
                                             <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 36 36">
                                                 <circle
-                                                    className="text-slate-200 dark:text-slate-800"
+                                                    className="text-muted"
                                                     cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" strokeWidth="4"
                                                 />
                                                 <circle
-                                                    className={isLow ? "text-red-500" : "text-blue-600"}
+                                                    className={isLow ? "text-destructive" : "text-primary"}
                                                     strokeDasharray={`${percentage}, 100`}
                                                     cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" strokeWidth="4"
                                                 />
@@ -254,7 +254,7 @@ export default function FoliosTab() {
                                                 Rango Actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
                                             </p>
                                             {stock.fecha_vencimiento && (
-                                                <p className="text-xs text-orange-600 dark:text-orange-400">
+                                                <p className="text-xs text-muted-foreground font-medium">
                                                     Vence: {new Date(stock.fecha_vencimiento + 'T00:00:00').toLocaleDateString("es-CL")}
                                                 </p>
                                             )}
@@ -310,9 +310,9 @@ export default function FoliosTab() {
                                         </TableCell>
                                         <TableCell>{log.amount_requested}</TableCell>
                                         <TableCell>
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500' :
-                                                log.status === 'COMPLETED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500' :
-                                                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500'
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'PENDING' ? 'bg-muted text-muted-foreground' :
+                                                log.status === 'COMPLETED' ? 'bg-primary/10 text-primary' :
+                                                    'bg-destructive/10 text-destructive'
                                                 }`}>
                                                 {log.status}
                                             </span>

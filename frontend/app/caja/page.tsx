@@ -24,6 +24,8 @@ import {
     CheckCircle2,
     History,
 } from 'lucide-react'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 
 export default function CajaPage() {
@@ -90,9 +92,9 @@ export default function CajaPage() {
         } catch (err) {
             if (getApiErrorStatus(err) === 409) {
                 toast.custom((t) => (
-                    <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800 max-w-sm">
-                        <h3 className="font-bold text-neutral-900 dark:text-white mb-2">¡Caja ya abierta!</h3>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+                    <div className="bg-white  p-4 rounded-lg shadow-lg border border-border max-w-sm">
+                        <h3 className="font-bold text-foreground mb-2">¡Caja ya abierta!</h3>
+                        <p className="text-sm text-muted-foreground dark:text-muted-foreground mb-4">
                             Ya tienes una caja abierta en otro dispositivo.
                             ¿Deseas cerrarla forzosamente y abrir una nueva aquí?
                         </p>
@@ -165,15 +167,12 @@ export default function CajaPage() {
     }
 
     return (
-        <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-                <Landmark className="h-6 w-6 text-blue-600" />
-                <div>
-                    <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Gestión de Caja</h1>
-                    <p className="text-xs text-neutral-500">Abre y cierra turnos de caja, y audita el historial.</p>
-                </div>
-            </div>
+        <PageContainer className="max-w-4xl">
+            <PageHeader
+                icon={Landmark}
+                title="Gestión de Caja"
+                description="Abre y cierra turnos de caja, y audita el historial."
+            />
 
             <Tabs defaultValue="gestion" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
@@ -187,33 +186,33 @@ export default function CajaPage() {
 
                 <TabsContent value="gestion" className="space-y-4 max-w-2xl">
                     {/* User Info Card */}
-                    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 flex shadow-sm items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-lg">
+                    <div className="rounded-xl border border-border bg-white p-4   flex shadow-sm items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
                             {(user?.full_name || user?.email || '?')[0].toUpperCase()}
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-neutral-900 dark:text-white">
+                            <p className="text-sm font-bold text-foreground">
                                 {user?.full_name || user?.email || 'Usuario'}
                             </p>
-                            <p className="text-[10px] text-neutral-500 font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono">
                                 {user?.email || ''}
                             </p>
                         </div>
                     </div>
 
                     {/* Status Card */}
-                    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+                    <div className="rounded-xl border border-border bg-card p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-neutral-900 dark:text-white">Estado Actual</span>
+                            <span className="text-sm font-medium text-foreground">Estado Actual</span>
                             <Badge
                                 variant={status === 'OPEN' ? 'default' : 'destructive'}
-                                className={status === 'OPEN' ? 'bg-emerald-600' : ''}
+                                className={''}
                             >
                                 {status === 'OPEN' ? '● Abierta' : '○ Cerrada'}
                             </Badge>
                         </div>
                         {status === 'OPEN' && startTime && (
-                            <div className="mt-2 space-y-0.5 text-xs text-neutral-500">
+                            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                                 <p className="flex items-center gap-1.5">
                                     <Clock className="h-3 w-3" />
                                     Apertura: {new Date(startTime).toLocaleString('es-CL')}
@@ -228,12 +227,12 @@ export default function CajaPage() {
 
                     {/* Open / Close Form */}
                     {status !== 'OPEN' ? (
-                        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                             <div className="flex items-center gap-2">
-                                <DoorOpen className="h-5 w-5 text-emerald-600" />
-                                <h2 className="text-base font-bold text-neutral-900 dark:text-white">Abrir Turno</h2>
+                                <DoorOpen className="h-5 w-5 text-primary" />
+                                <h2 className="text-base font-bold text-foreground">Abrir Turno</h2>
                             </div>
-                            <p className="text-xs text-neutral-500">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
+                            <p className="text-xs text-muted-foreground">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
 
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Monto Inicial ($)</Label>
@@ -249,7 +248,7 @@ export default function CajaPage() {
 
                             <Button
                                 size="lg"
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2 text-sm"
+                                className="w-full gap-2 text-sm"
                                 onClick={handleOpen}
                                 disabled={opening}
                             >
@@ -258,12 +257,12 @@ export default function CajaPage() {
                             </Button>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                             <div className="flex items-center gap-2">
-                                <DoorClosed className="h-5 w-5 text-red-500" />
-                                <h2 className="text-base font-bold text-neutral-900 dark:text-white">Cerrar Turno (Arqueo Ciego)</h2>
+                                <DoorClosed className="h-5 w-5 text-destructive" />
+                                <h2 className="text-base font-bold text-foreground">Cerrar Turno (Arqueo Ciego)</h2>
                             </div>
-                            <p className="text-xs text-neutral-500">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
+                            <p className="text-xs text-muted-foreground">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
 
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Efectivo Contado ($)</Label>
@@ -292,31 +291,31 @@ export default function CajaPage() {
 
                     {/* Close Results */}
                     {closeResult && (
-                        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 space-y-3">
-                            <h3 className="text-sm font-bold flex items-center gap-2 text-neutral-900 dark:text-white">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                            <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
                                 Resultado del Arqueo
                             </h3>
                             <Separator />
                             <div className="space-y-1.5 text-sm font-tabular">
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-500">Sistema</span>
-                                    <span className="font-semibold text-neutral-900 dark:text-white">{formatCLP(closeResult.final_cash_system)}</span>
+                                    <span className="text-muted-foreground">Sistema</span>
+                                    <span className="font-semibold text-foreground">{formatCLP(closeResult.final_cash_system)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-500">Declarado</span>
-                                    <span className="font-semibold text-neutral-900 dark:text-white">{formatCLP(closeResult.final_cash_declared)}</span>
+                                    <span className="text-muted-foreground">Declarado</span>
+                                    <span className="font-semibold text-foreground">{formatCLP(closeResult.final_cash_declared)}</span>
                                 </div>
                                 <Separator />
                                 <div className="flex justify-between">
-                                    <span className="font-medium text-neutral-700 dark:text-neutral-300">Diferencia</span>
-                                    <span className={`font-bold text-base ${closeResult.difference === 0 ? 'text-emerald-600' : closeResult.difference > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    <span className="font-medium text-foreground">Diferencia</span>
+                                    <span className={`font-bold text-base ${closeResult.difference === 0 ? 'text-foreground' : closeResult.difference > 0 ? 'text-primary' : 'text-destructive'}`}>
                                         {closeResult.difference > 0 ? '+' : ''}{formatCLP(closeResult.difference)}
                                     </span>
                                 </div>
                             </div>
                             {closeResult.difference !== 0 && (
-                                <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                                     {closeResult.difference > 0 ? 'Sobrante en caja' : 'Faltante en caja'}
                                 </div>
@@ -327,10 +326,10 @@ export default function CajaPage() {
 
                 {/* Historial Tab */}
                 <TabsContent value="historial" className="space-y-4">
-                    <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden shadow-sm">
+                    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-neutral-50 dark:bg-neutral-900/50">
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead>Fecha/Hora Apertura</TableHead>
                                         <TableHead>Cajero</TableHead>
@@ -343,7 +342,7 @@ export default function CajaPage() {
                                 <TableBody>
                                     {loadingHistory ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="h-32 text-center text-neutral-500">
+                                            <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <Loader2 className="h-4 w-4 animate-spin" /> Cargando historial...
                                                 </div>
@@ -351,7 +350,7 @@ export default function CajaPage() {
                                         </TableRow>
                                     ) : historySessions.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="h-32 text-center text-neutral-500">
+                                            <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                                                 No hay turnos registrados
                                             </TableCell>
                                         </TableRow>
@@ -361,16 +360,16 @@ export default function CajaPage() {
                                                 <TableCell className="text-xs">
                                                     {new Date(session.start_time).toLocaleString('es-CL')}
                                                     {session.end_time && (
-                                                        <div className="text-[10px] text-neutral-500 mt-1">
+                                                        <div className="text-[10px] text-muted-foreground mt-1">
                                                             Cierre: {new Date(session.end_time).toLocaleString('es-CL')}
                                                         </div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-xs">
-                                                    <div className="font-medium text-neutral-900 dark:text-white">
+                                                    <div className="font-medium text-foreground">
                                                         {session.user.full_name || session.user.name || session.user.email}
                                                     </div>
-                                                    <div className="text-[10px] text-neutral-500 font-mono">
+                                                    <div className="text-[10px] text-muted-foreground font-mono">
                                                         {session.user.rut || ''}
                                                     </div>
                                                 </TableCell>
@@ -379,16 +378,16 @@ export default function CajaPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right text-xs font-tabular">
                                                     {session.status === 'OPEN' ? (
-                                                        <span className="text-neutral-400 italic">—</span>
+                                                        <span className="text-muted-foreground italic">—</span>
                                                     ) : (
                                                         <span>{formatCLP(parseFloat(session.final_cash_system))}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right text-xs font-tabular">
                                                     {session.status === 'OPEN' ? (
-                                                        <span className="text-neutral-400 italic">—</span>
+                                                        <span className="text-muted-foreground italic">—</span>
                                                     ) : (
-                                                        <span className={`font-semibold ${parseFloat(session.difference) === 0 ? 'text-emerald-600' : parseFloat(session.difference) > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                                                        <span className={`font-semibold ${parseFloat(session.difference) === 0 ? 'text-foreground' : parseFloat(session.difference) > 0 ? 'text-primary' : 'text-destructive'}`}>
                                                             {parseFloat(session.difference) > 0 ? '+' : ''}{formatCLP(parseFloat(session.difference))}
                                                         </span>
                                                     )}
@@ -396,7 +395,7 @@ export default function CajaPage() {
                                                 <TableCell className="text-center">
                                                     <Badge
                                                         variant={session.status === 'OPEN' ? 'default' : 'secondary'}
-                                                        className={session.status === 'OPEN' ? 'bg-emerald-600 text-[10px]' : 'text-[10px]'}
+                                                        className={'text-[10px]'}
                                                     >
                                                         {session.status === 'OPEN' ? 'ABIERTA' : 'CERRADA'}
                                                     </Badge>
@@ -410,7 +409,7 @@ export default function CajaPage() {
                     </div>
                 </TabsContent>
             </Tabs>
-        </div>
+        </PageContainer>
     )
 }
 

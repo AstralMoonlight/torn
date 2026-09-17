@@ -33,9 +33,9 @@ export default function PriceListSelector() {
 
     return (
         <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-neutral-400" />
+            <Tag className="h-4 w-4 text-muted-foreground" />
             <Select value={priceList ? priceList.id.toString() : 'base'} onValueChange={handleValueChange}>
-                <SelectTrigger className="h-8 w-full border-neutral-200 dark:border-neutral-800 text-xs">
+                <SelectTrigger className="h-8 w-full border-border text-xs">
                     <SelectValue placeholder="Precio Base" />
                 </SelectTrigger>
                 <SelectContent>
@@ -43,7 +43,7 @@ export default function PriceListSelector() {
                         Precio Base
                     </SelectItem>
                     {lists.map(list => (
-                        <SelectItem key={list.id} value={list.id.toString()} className="text-blue-600 dark:text-blue-400">
+                        <SelectItem key={list.id} value={list.id.toString()} className="text-primary">
                             {list.name}
                         </SelectItem>
                     ))}

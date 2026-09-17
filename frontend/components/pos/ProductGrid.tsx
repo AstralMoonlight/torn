@@ -57,7 +57,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
 
     if (products.length === 0) {
         return (
-            <div className="flex flex-1 items-center justify-center text-neutral-400">
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
                 <div className="text-center space-y-2">
                     <Package className="h-12 w-12 mx-auto opacity-50" />
                     <p>No se encontraron productos</p>
@@ -93,19 +93,19 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                             key={product.id}
                             onClick={() => handleClick(product)}
                             disabled={outOfStock && !hasVariants}
-                            className="group relative flex flex-col items-start justify-between rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-neutral-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600"
+                            className="group relative flex flex-col items-start justify-between rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/40 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {hasVariants && (
                                 <div className="absolute right-2 top-2">
-                                    <ChevronRight className="h-4 w-4 text-neutral-400" />
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                 </div>
                             )}
 
                             <div className="w-full">
-                                <p className="font-semibold text-sm text-neutral-900 dark:text-white leading-tight line-clamp-2">
+                                <p className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
                                     {product.full_name}
                                 </p>
-                                <p className="text-[11px] text-neutral-400 mt-1 font-mono">
+                                <p className="text-[11px] text-muted-foreground mt-1 font-mono">
                                     {product.codigo_interno}
                                 </p>
                             </div>
@@ -116,7 +116,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                         {product.variants.length} variantes
                                     </Badge>
                                 ) : (
-                                    <span className="text-lg font-bold text-neutral-900 dark:text-white font-tabular">
+                                    <span className="text-lg font-bold text-foreground font-tabular">
                                         {formatCLP(price)}
                                     </span>
                                 )}
@@ -153,13 +153,13 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                             value={variantSearch}
                             onChange={(e) => setVariantSearch(e.target.value)}
                             placeholder={`Buscar entre ${variantsOf?.variants.length} variantes…`}
-                            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                            className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
                         />
                     )}
 
                     <div className="grid gap-2 py-2 max-h-[60vh] overflow-y-auto pr-1">
                         {filteredVariants.length === 0 ? (
-                            <p className="text-center text-sm text-neutral-400 py-4">
+                            <p className="text-center text-sm text-muted-foreground py-4">
                                 Sin resultados para &ldquo;{variantSearch}&rdquo;
                             </p>
                         ) : (
@@ -176,18 +176,18 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                             setVariantsOf(null)
                                             setVariantSearch('')
                                         }}
-                                        className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-neutral-600 transition"
+                                        className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-accent hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed transition"
                                     >
                                         <div className="text-left">
                                             <p className="font-medium text-sm">{variant.full_name}</p>
-                                            <p className="text-xs text-neutral-400 font-mono">{variant.codigo_interno}</p>
+                                            <p className="text-xs text-muted-foreground font-mono">{variant.codigo_interno}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-neutral-900 dark:text-white">
+                                            <p className="font-bold text-foreground">
                                                 {formatCLP(variant.precio_bruto)}
                                             </p>
                                             {variant.controla_stock && (
-                                                <p className="text-[10px] text-neutral-400">
+                                                <p className="text-[10px] text-muted-foreground">
                                                     {outOfStock ? 'Agotado' : `Stock: ${stock}`}
                                                 </p>
                                             )}

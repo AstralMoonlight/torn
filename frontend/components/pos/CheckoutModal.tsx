@@ -381,11 +381,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
                     {success ? (
                         <div className="flex flex-col items-center py-6">
-                            <CheckCircle2 className="h-16 w-16 text-emerald-500 animate-in zoom-in-50" />
+                            <CheckCircle2 className="h-16 w-16 text-primary animate-in zoom-in-50" />
                             {change > 0 && (
                                 <div className="mt-6 text-center animate-in slide-in-from-bottom-2 fade-in">
-                                    <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest">Su Vuelto</p>
-                                    <p className="text-4xl font-black text-neutral-900 dark:text-white">
+                                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Su Vuelto</p>
+                                    <p className="text-4xl font-black text-foreground">
                                         {formatCLP(change)}
                                     </p>
                                 </div>
@@ -395,7 +395,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <Button
                                     onClick={handlePrint}
                                     size="lg"
-                                    className="w-full gap-2 text-md font-bold h-12 shadow-md shadow-neutral-900/10"
+                                    className="w-full gap-2 text-md font-bold h-12 shadow-md shadow-foreground/10"
                                     autoFocus
                                 >
                                     <Printer className="h-5 w-5" />
@@ -404,7 +404,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <Button
                                     variant="outline"
                                     onClick={handleFinish}
-                                    className="w-full h-10 border-neutral-300"
+                                    className="w-full h-10 border-border"
                                 >
                                     Finalizar (Nueva Venta)
                                 </Button>
@@ -452,12 +452,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             <DropdownMenuContent align="end" className="w-40 text-xs">
                                                 {availableDtes.find(d => d.dte_type === 34) && (
                                                     <DropdownMenuItem onClick={() => setDteType(34)} className="text-xs flex gap-2">
-                                                        <FileText className="h-3.5 w-3.5 text-neutral-500" /> Factura Exenta (34)
+                                                        <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Factura Exenta (34)
                                                     </DropdownMenuItem>
                                                 )}
                                                 {availableDtes.find(d => d.dte_type === 41) && (
                                                     <DropdownMenuItem onClick={() => setDteType(41)} className="text-xs flex gap-2">
-                                                        <Receipt className="h-3.5 w-3.5 text-neutral-500" /> Boleta Exenta (41)
+                                                        <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
                                                     </DropdownMenuItem>
                                                 )}
                                             </DropdownMenuContent>
@@ -465,7 +465,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                     </TabsList>
                                 </Tabs>
                             ) : (
-                                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-md text-center font-medium border border-red-200">
+                                <div className="p-3 bg-destructive/10 text-destructive text-xs rounded-md text-center font-medium border border-destructive/30">
                                     No hay folios de venta disponibles. Solicite folios al SII.
                                 </div>
                             )}
@@ -475,7 +475,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 <div className="flex justify-between items-center">
                                     <Label className="text-xs">Cliente {isBoleta ? '(Opcional)' : '(Requerido)'}</Label>
                                     {isBoleta && !customer && (
-                                        <span className="text-[10px] text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
+                                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                                             Por defecto: Cliente Genérico
                                         </span>
                                     )}
@@ -505,14 +505,14 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
                             {/* Referencias (solo Factura) */}
                             {!isBoleta && (
-                                <div className="space-y-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 overflow-hidden">
+                                <div className="space-y-1.5 rounded-lg border border-border bg-muted/50 overflow-hidden">
                                     <button
                                         type="button"
                                         onClick={() => setRefsSectionOpen((o) => !o)}
-                                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 transition-colors"
+                                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-accent transition-colors"
                                     >
                                         <span className="flex items-center gap-2">
-                                            <FileStack className="h-3.5 w-3.5 text-neutral-500" />
+                                            <FileStack className="h-3.5 w-3.5 text-muted-foreground" />
                                             Referencias (OC, Guía, etc.)
                                             {referencias.length > 0 && (
                                                 <Badge variant="secondary" className="text-[10px]">{referencias.length}</Badge>
@@ -521,12 +521,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                         {refsSectionOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                                     </button>
                                     {refsSectionOpen && (
-                                        <div className="px-3 pb-3 pt-0 space-y-2 border-t border-neutral-200 dark:border-neutral-700">
-                                            <p className="text-[10px] text-neutral-500 pt-2">Opcional. Documentos previos que respaldan la factura.</p>
+                                        <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border">
+                                            <p className="text-[10px] text-muted-foreground pt-2">Opcional. Documentos previos que respaldan la factura.</p>
                                             {referencias.map((ref, idx) => (
                                                 <div key={idx} className="grid grid-cols-[1fr 1fr auto] gap-1.5 items-end">
                                                     <div className="space-y-0.5">
-                                                        <Label className="text-[10px] text-neutral-500">Tipo</Label>
+                                                        <Label className="text-[10px] text-muted-foreground">Tipo</Label>
                                                         <select
                                                             value={ref.tipo_documento}
                                                             onChange={(e) => updateReferencia(idx, 'tipo_documento', e.target.value)}
@@ -538,7 +538,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                         </select>
                                                     </div>
                                                     <div className="space-y-0.5">
-                                                        <Label className="text-[10px] text-neutral-500">Folio</Label>
+                                                        <Label className="text-[10px] text-muted-foreground">Folio</Label>
                                                         <Input
                                                             value={ref.folio}
                                                             onChange={(e) => updateReferencia(idx, 'folio', e.target.value)}
@@ -548,7 +548,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                     </div>
                                                     <div className="flex items-center gap-0.5">
                                                         <div className="space-y-0.5">
-                                                            <Label className="text-[10px] text-neutral-500">Fecha</Label>
+                                                            <Label className="text-[10px] text-muted-foreground">Fecha</Label>
                                                             <Input
                                                                 type="date"
                                                                 value={ref.fecha}
@@ -556,7 +556,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                                 className="h-8 w-[110px] text-xs"
                                                             />
                                                         </div>
-                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 shrink-0" onClick={() => removeReferencia(idx)}>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive shrink-0" onClick={() => removeReferencia(idx)}>
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -600,7 +600,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             min={0}
                                         />
                                         {payments.length > 1 && (
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-600 shrink-0" onClick={() => removePaymentLine(index)}>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive/70 hover:text-destructive shrink-0" onClick={() => removePaymentLine(index)}>
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
@@ -611,7 +611,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {/* Smart Cash Suggestions */}
                             {hasCashPayment && (
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] text-neutral-400 uppercase tracking-wider flex items-center gap-1">
+                                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                         <Banknote className="h-3 w-3" /> Billetes sugeridos
                                     </Label>
                                     <div className="flex flex-wrap gap-1.5">
@@ -619,7 +619,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                             <button
                                                 key={bill}
                                                 onClick={() => applySmartCash(bill)}
-                                                className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold font-tabular text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50 hover:text-neutral-900 active:scale-95 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:hover:text-white"
+                                                className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold font-tabular text-foreground transition-colors hover:border-primary/40 hover:bg-accent active:scale-95"
                                             >
                                                 {formatCLP(bill)}
                                             </button>
@@ -633,35 +633,35 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             {/* Summary */}
                             <div className="space-y-1 font-tabular text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-500">Total</span>
+                                    <span className="text-muted-foreground">Total</span>
                                     <span className="font-semibold">{formatCLP(totalFinal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-500">Pagado</span>
-                                    <span className={totalPaid >= totalFinal ? 'text-emerald-600' : 'text-amber-600'}>
+                                    <span className="text-muted-foreground">Pagado</span>
+                                    <span className={totalPaid >= totalFinal ? 'text-foreground' : 'text-destructive'}>
                                         {formatCLP(totalPaid)}
                                     </span>
                                 </div>
                                 {roundingAdjustment !== 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-neutral-500">Redondeo</span>
-                                        <span className="text-neutral-700 dark:text-neutral-300">{formatCLP(roundingAdjustment)}</span>
+                                        <span className="text-muted-foreground">Redondeo</span>
+                                        <span className="text-foreground">{formatCLP(roundingAdjustment)}</span>
                                     </div>
                                 )}
                                 {remaining > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-red-500">Faltante</span>
+                                        <span className="text-destructive">Faltante</span>
                                         <Badge variant="destructive" className="text-xs">{formatCLP(remaining)}</Badge>
                                     </div>
                                 )}
                                 {change > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-neutral-900 dark:text-white font-medium">Vuelto</span>
+                                        <span className="text-foreground font-medium">Vuelto</span>
                                         <Badge variant={changeExceedsCash ? 'destructive' : 'secondary'} className="text-xs">{formatCLP(change)}</Badge>
                                     </div>
                                 )}
                                 {changeExceedsCash && (
-                                    <p className="text-xs text-red-500 pt-1">
+                                    <p className="text-xs text-destructive pt-1">
                                         El vuelto supera el efectivo recibido ({formatCLP(cashDeclared)}); los demás
                                         medios de pago no dan cambio. Ajusta los montos antes de emitir.
                                     </p>
@@ -678,7 +678,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             <Button
                                 onClick={handleSubmit}
                                 disabled={submitting || !canSubmit}
-                                className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-xs"
+                                className="gap-2 text-xs"
                             >
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                 {`Emitir ${dteType === 33 ? 'Factura' : dteType === 34 ? 'Exenta' : dteType === 41 ? 'Boleta Exenta' : 'Boleta'}`}

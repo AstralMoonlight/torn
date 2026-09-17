@@ -204,7 +204,7 @@ export default function ProductWizard({ open, onClose }: Props) {
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg">
-                        <Package className="h-5 w-5 text-blue-600" />
+                        <Package className="h-5 w-5 text-primary" />
                         Nuevo Producto
                     </DialogTitle>
                     <DialogDescription>
@@ -218,7 +218,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                     {[1, 2].map((s) => (
                         <div
                             key={s}
-                            className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-neutral-700'
+                            className={`h-1 flex-1 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-muted'
                                 }`}
                         />
                     ))}
@@ -238,7 +238,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">SKU <span className="text-neutral-400">(opcional)</span></Label>
+                                <Label className="text-xs">SKU <span className="text-muted-foreground">(opcional)</span></Label>
                                 <Input
                                     placeholder="Se genera automáticamente"
                                     value={baseSku}
@@ -250,9 +250,9 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs">Código de Barras <span className="text-neutral-400">(opcional)</span></Label>
+                                <Label className="text-xs">Código de Barras <span className="text-muted-foreground">(opcional)</span></Label>
                                 <div className="relative">
-                                    <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                                    <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         placeholder="Se genera automáticamente"
                                         value={baseBarcode}
@@ -290,7 +290,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                             size="sm"
                                             onClick={handleCreateBrand}
                                             disabled={!newBrandName.trim()}
-                                            className="h-9 w-9 px-0 shrink-0 bg-blue-600 hover:bg-blue-700"
+                                            className="h-9 w-9 px-0 shrink-0 "
                                         >
                                             <Plus className="h-4 w-4 text-white" />
                                         </Button>
@@ -350,7 +350,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs">Descripción <span className="text-neutral-400">(opcional)</span></Label>
+                                <Label className="text-xs">Descripción <span className="text-muted-foreground">(opcional)</span></Label>
                                 <Input
                                     placeholder="Zapatilla deportiva para correr..."
                                     value={baseDescription}
@@ -364,7 +364,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                         type="checkbox"
                                         checked={controlStock}
                                         onChange={(e) => setControlStock(e.target.checked)}
-                                        className="rounded border-neutral-300"
+                                        className="rounded border-border"
                                     />
                                     Controlar stock
                                 </label>
@@ -372,7 +372,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                         </div>
 
                         {/* Hint for optional fields */}
-                        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900/50 px-3 py-2 text-[11px] text-neutral-500">
+                        <div className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
                             <Barcode className="inline h-3 w-3 mr-1" />
                             Los campos SKU y Código de Barras se generan automáticamente si no los ingresas.
                         </div>
@@ -382,13 +382,13 @@ export default function ProductWizard({ open, onClose }: Props) {
                 {/* ── Step 2: Simplified Variants ─────────── */}
                 {step === 2 && (
                     <div className="space-y-3">
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-muted-foreground">
                             Agrega las variantes del producto. Cada variante tiene su propio nombre, precio, y opcionalmente SKU y código de barras.
                             El control de stock e impuestos se <strong>heredan del producto padre</strong>.
                         </p>
 
                         {variants.length === 0 ? (
-                            <div className="text-center py-8 text-neutral-400 text-sm">
+                            <div className="text-center py-8 text-muted-foreground text-sm">
                                 <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
                                 No hay variantes aún. Agrega la primera.
                             </div>
@@ -396,16 +396,16 @@ export default function ProductWizard({ open, onClose }: Props) {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                     <thead>
-                                        <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                                            <th className="text-left pb-1.5 font-medium text-neutral-400 text-[10px]">Nombre *</th>
-                                            <th className="text-left pb-1.5 font-medium text-neutral-400 text-[10px]">SKU</th>
-                                            <th className="text-left pb-1.5 font-medium text-neutral-400 text-[10px]">Cód. Barras</th>
-                                            <th className="text-left pb-1.5 font-medium text-neutral-400 text-[10px]">Precio *</th>
-                                            <th className="text-left pb-1.5 font-medium text-neutral-400 text-[10px]">Descripción</th>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Nombre *</th>
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">SKU</th>
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Cód. Barras</th>
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Precio *</th>
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Descripción</th>
                                             <th className="w-8"></th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                                    <tbody className="divide-y divide-border">
                                         {variants.map((v, i) => (
                                             <tr key={i}>
                                                 <td className="py-1.5 pr-1">
@@ -450,7 +450,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                                     />
                                                 </td>
                                                 <td className="py-1.5">
-                                                    <button onClick={() => removeVariant(i)} className="text-red-400 hover:text-red-600">
+                                                    <button onClick={() => removeVariant(i)} className="text-destructive/70 hover:text-destructive">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                 </td>
@@ -504,7 +504,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                         <Button
                             onClick={handleCreateWithVariants}
                             disabled={creating || variants.length === 0}
-                            className="text-xs gap-1 bg-emerald-600 hover:bg-emerald-700"
+                            className="text-xs gap-1"
                         >
                             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                             Crear {variants.length} Variante{variants.length !== 1 ? 's' : ''}

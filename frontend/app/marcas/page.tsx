@@ -22,7 +22,9 @@ import { Label } from '@/components/ui/label'
 import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/services/brands'
 import { getApiErrorMessage } from '@/services/api'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Plus, Search, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, Plus, Search, Loader2, Tags } from 'lucide-react'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 export default function BrandsPage() {
     const [brands, setBrands] = useState<Brand[]>([])
@@ -107,19 +109,20 @@ export default function BrandsPage() {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Marcas</h1>
-                    <p className="text-muted-foreground">Gestiona las marcas de tus productos.</p>
-                </div>
-                <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" /> Nueva Marca
-                </Button>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={Tags}
+                title="Marcas"
+                description="Gestiona las marcas de tus productos."
+                actions={
+                    <Button onClick={handleOpenCreate}>
+                        <Plus className="mr-2 h-4 w-4" /> Nueva Marca
+                    </Button>
+                }
+            />
 
             <div className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-neutral-500" />
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar marca..."
                     value={filter}
@@ -128,20 +131,20 @@ export default function BrandsPage() {
                 />
             </div>
 
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="bg-white  rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
-                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="w-[100px] text-xs uppercase tracking-wider text-neutral-400 font-medium">ID</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Nombre</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                    <TableHeader className="bg-muted/60">
+                        <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
+                            <TableHead className="w-[100px] text-xs uppercase tracking-wider text-muted-foreground font-medium">ID</TableHead>
+                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Nombre</TableHead>
+                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-neutral-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                 </TableCell>
                             </TableRow>
                         ) : filteredBrands.length === 0 ? (
@@ -152,7 +155,7 @@ export default function BrandsPage() {
                             </TableRow>
                         ) : (
                             filteredBrands.map((brand) => (
-                                <TableRow key={brand.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                <TableRow key={brand.id} className="hover:bg-accent/50 transition-colors">
                                     <TableCell className="font-mono text-xs">{brand.id}</TableCell>
                                     <TableCell className="font-medium">{brand.name}</TableCell>
                                     <TableCell className="text-right">
@@ -161,7 +164,7 @@ export default function BrandsPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleOpenEdit(brand)}
-                                                className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                 title="Editar"
                                             >
                                                 <Pencil className="h-4 w-4" />
@@ -170,7 +173,7 @@ export default function BrandsPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleDelete(brand)}
-                                                className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Eliminar"
                                             >
                                                 <Trash2 className="h-4 w-4" />
@@ -203,13 +206,13 @@ export default function BrandsPage() {
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleSave} disabled={!name.trim() || saving} className="bg-blue-600 hover:bg-blue-700">
+                        <Button onClick={handleSave} disabled={!name.trim() || saving} className="">
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Guardar
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainer>
     )
 }
