@@ -434,12 +434,6 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                         {formatCLP(totalPaid)}
                                     </span>
                                 </div>
-                                {roundingAdjustment !== 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Redondeo</span>
-                                        <span className="text-foreground">{formatCLP(roundingAdjustment)}</span>
-                                    </div>
-                                )}
                                 {remaining > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-destructive">Faltante</span>
