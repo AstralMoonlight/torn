@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 import type { Product } from '@/services/products'
 import type { Customer } from '@/services/customers'
 import { resolvePrice, type PriceListRead } from '@/services/price_lists'
+import { productTaxRate } from '@/lib/taxes'
 import { toast } from 'sonner'
 
 export interface CartItem {
@@ -51,7 +52,13 @@ export function isExemptDte(tipoDte: number): boolean {
 
 function recalcTotals(items: CartItem[], tipoDte: number) {
     const totalNeto = items.reduce((acc, i) => acc + i.subtotal, 0)
-    const totalIva = isExemptDte(tipoDte) ? 0 : Math.round(totalNeto * 0.19)
+    // Por línea, con la tasa del producto (0% si está exento) — igual que
+    // resolve_tax_rate en app/utils/taxes.py. Un 19% plano sobre totalNeto
+    // sobrecobraba IVA a los productos exentos del carrito en cuanto
+    // convivían con productos afectos.
+    const totalIva = isExemptDte(tipoDte)
+        ? 0
+        : Math.round(items.reduce((acc, i) => acc + i.subtotal * productTaxRate(i.product), 0))
     const totalFinal = totalNeto + totalIva
     return { totalNeto, totalIva, totalFinal }
 }
@@ -132,7 +139,7 @@ export const useCartStore = create<CartState>()(
                     }
 
                     const precioNeto = resolved_price
-                    const precioBruto = Math.round(precioNeto * 1.19)
+                    const precioBruto = Math.round(precioNeto * (1 + productTaxRate(product)))
 
                     newItems = [
                         ...items,
@@ -210,7 +217,7 @@ async function recalculatePrices(
                 source = 'price_list'
             }
 
-            const pBruto = Math.round(pNeto * 1.19)
+            const pBruto = Math.round(pNeto * (1 + productTaxRate(i.product)))
             return {
                 ...i,
                 precio_neto: pNeto,
