@@ -22,6 +22,7 @@ from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services.xml_generator import render_factura_xml
 from app.utils.formatters import format_clp, format_number
 from app.utils.folios import siguiente_folio
+from app.utils.pricing import resolve_unit_price
 from app.utils.taxes import quantize_money, resolve_tax_rate
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
@@ -187,7 +188,7 @@ def create_sale(
             # No hacemos db.add(movement) aquí, lo vinculamos a la venta
             stock_movements.append(movement)
 
-        precio_unitario = product.precio_neto
+        precio_unitario = resolve_unit_price(db, product, customer)
         cantidad = item.cantidad
         subtotal_linea = precio_unitario * cantidad
         total_neto += subtotal_linea

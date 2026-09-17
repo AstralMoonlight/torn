@@ -15,6 +15,7 @@ from app.dependencies.tenant import get_tenant_db
 from app.models.price_list import PriceList, PriceListProduct
 from app.models.customer import Customer
 from app.models.product import Product
+from app.utils.pricing import find_fixed_price
 
 router = APIRouter(prefix="/price-lists", tags=["price-lists"])
 
@@ -268,17 +269,14 @@ def resolve_price(
         )
 
     # 4. Look up the fixed price in the pivot table
-    assoc = db.query(PriceListProduct).filter(
-        PriceListProduct.price_list_id == customer.price_list_id,
-        PriceListProduct.product_id == product_id,
-    ).first()
+    fixed_price = find_fixed_price(db, customer.price_list_id, product_id)
 
-    if assoc:
+    if fixed_price is not None:
         return ResolvedPriceResponse(
             product_id=product_id,
             customer_id=customer_id,
             price_list_id=customer.price_list_id,
-            resolved_price=assoc.fixed_price,
+            resolved_price=fixed_price,
             source="price_list",
         )
 
