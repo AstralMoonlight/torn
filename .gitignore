@@ -29,7 +29,7 @@ MANIFEST
 node_modules/
 *.log
 backend.pid
-data/
+database/actecos_sii.json
 
 # Artefactos de test y volcados locales
 test.db

@@ -6,6 +6,7 @@ Alembic (Tenant-Aware).
 """
 
 import logging
+import os
 import re
 
 from sqlalchemy import text
@@ -16,6 +17,12 @@ from alembic.config import Config
 
 from app.models.saas import Tenant, TenantUser
 from app.database import engine, Base
+
+# Ruta absoluta a backend/alembic.ini, para no depender del cwd del proceso
+# que importe este módulo (uvicorn, pytest, un script en scripts/, etc.).
+_ALEMBIC_INI = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+)
 # Importar todos los modelos para que estén registrados en Base.metadata
 import app.models.user
 import app.models.brand
@@ -172,7 +179,7 @@ def provision_new_tenant(
         # Sin él, el stamp no apuntaría al esquema del inquilino y éste
         # quedaría sin tabla `alembic_version`: las migraciones futuras no
         # tendrían dónde partir.
-        alembic_cfg = Config("alembic.ini")
+        alembic_cfg = Config(_ALEMBIC_INI)
         alembic_cfg.attributes['connection'] = connection
         command.stamp(alembic_cfg, "head")
         connection.commit()

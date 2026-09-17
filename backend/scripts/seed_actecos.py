@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """
-Pobla la tabla public.actecos desde data/actecos_sii.json.
-Ejecutar desde la raíz del proyecto: python scripts/seed_actecos.py
+Pobla la tabla public.actecos desde database/actecos_sii.json.
+Ejecutar desde backend/: python scripts/seed_actecos.py
 """
 import json
 import os
 import sys
 
-# Raíz del proyecto
+# Raíz de backend/ (para importar app) y raíz del repo (para database/)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+REPO_ROOT = os.path.dirname(ROOT)
 sys.path.insert(0, ROOT)
 
 from app.database import SessionLocal, engine
 from app.models.acteco import Acteco
 from app.database import Base
 
-DATA_PATH = os.path.join(ROOT, "data", "actecos_sii.json")
+DATA_PATH = os.path.join(REPO_ROOT, "database", "actecos_sii.json")
 
 
 def main():
