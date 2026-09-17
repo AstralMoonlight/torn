@@ -14,11 +14,11 @@ migrar antes a un driver asíncrono.
 from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.engine import Connection
 
-from app.database import engine, SessionLocal
+from app.database import SessionLocal, engine
 from app.models.saas import SaaSUser, Tenant, TenantUser
 from app.models.user import User
+from app.utils.schemas import safe_schema_name
 from jose import JWTError, jwt
 
 # Importamos variables de seguridad (asumiendo que están en su utils original o auth.py)
@@ -30,12 +30,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 def get_global_db():
-    """Retorna una sesión global sin mapeo de esquema (apunta a public)."""
-    db = SessionLocal()
+    """Retorna una sesión global sin mapeo de esquema (apunta a public).
+
+    Ligada explícitamente a una `Connection` (no al `Engine`) para que
+    `get_tenant_db` pueda reusarla como su única conexión (issue #38): una
+    sesión ligada al Engine devuelve la conexión al pool en cada `commit()`
+    y la próxima consulta toma otra de cero, sin el `schema_translate_map`
+    que `get_tenant_db` le haya aplicado. Ligada a una Connection propia, la
+    sesión se queda con la misma conexión durante toda la petición pase lo
+    que pase con los commits; nosotros la cerramos al final.
+    """
+    connection = engine.connect()
+    db = SessionLocal(bind=connection)
     try:
         yield db
     finally:
         db.close()
+        connection.close()
 
 
 def get_current_global_user(
@@ -96,31 +107,50 @@ def get_tenant_db(
     tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],
     global_db: Session = Depends(get_global_db)
 ) -> Session:
-    """Retorna una sesión DB mapeada al esquema del Tenant."""
-    
-    # 2. Obtener la metadata del tenant (el schema_name real)
+    """Retorna una sesión DB mapeada al esquema del Tenant.
+
+    Reusa la conexión de `global_db` en vez de abrir una segunda (issue #38):
+    cada petición con inquilino pasaba de una conexión a dos —la de
+    `get_global_db` y una propia aquí para el `schema_translate_map`—, lo que
+    reducía a la mitad el techo de peticiones concurrentes que el pool podía
+    atender.
+
+    Esto es seguro porque cada modelo declara su esquema explícitamente:
+    `SaaSUser`, `Tenant`, `TenantUser` y `SaaSPlan` fijan
+    `__table_args__ = {'schema': 'public'}` (igual que `Acteco`); el resto de
+    los modelos no declara esquema (`None`). `schema_translate_map` sólo
+    traduce las tablas cuyo esquema coincide con una clave del mapa — aquí
+    sólo `None` está mapeado — así que las tablas 'public' explícitas siguen
+    resolviendo a 'public' sin que importe en qué orden una misma conexión
+    alterne entre consultas de una y otra (como hace `app/routers/users.py`,
+    que consulta `SaaSUser`/`TenantUser` y `User`/`Role` dentro del mismo
+    request). Verificado con tests/test_tenant_dependencies.py contra
+    PostgreSQL real (SQLite no soporta esquemas).
+    """
+
+    # Obtener la metadata del tenant (el schema_name real)
     tenant = tenant_user.tenant if hasattr(tenant_user, "tenant") and tenant_user.tenant is not None else global_db.query(Tenant).filter(Tenant.id == x_tenant_id).first()
-    
+
     if not tenant or not tenant.is_active:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Inquilino no encontrado o inactivo."
         )
 
-    # 3. Configurar SQLAlchemy para apuntar la sesión a ese esquema
-    connection = engine.connect()
-    connection.execution_options(schema_translate_map={None: tenant.schema_name})
-    
-    tenant_session = SessionLocal(bind=connection)
-    try:
-        yield tenant_session
-    finally:
-        # `connection.close()` en su propio finally: si `tenant_session.close()`
-        # lanzara, la conexión igual vuelve al pool en vez de quedar fugada.
-        try:
-            tenant_session.close()
-        finally:
-            connection.close()
+    # Mapear la conexión ya abierta por `global_db` al esquema del tenant, en
+    # vez de abrir (`engine.connect()`) y cerrar una conexión aparte.
+    # `execution_options` en un `Connection` muta y devuelve el mismo objeto
+    # (no una copia), así que esto también afecta a las consultas que el
+    # propio `global_db` haga después dentro de esta misma petición — lo cual
+    # es correcto, por el punto anterior sobre el esquema 'public' explícito.
+    connection = global_db.connection()
+    connection.execution_options(
+        schema_translate_map={None: safe_schema_name(tenant.schema_name)}
+    )
+
+    # No hay conexión propia que cerrar: el ciclo de vida de `connection` lo
+    # controla `get_global_db`, que la libera al pool en su propio `finally`.
+    yield global_db
 
 def get_current_local_user(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],

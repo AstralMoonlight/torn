@@ -27,26 +27,24 @@ DATABASE_URL = (
 
 # ── Pool de conexiones ───────────────────────────────────────────────
 # Los valores por defecto de SQLAlchemy (pool_size=5, max_overflow=10) dan 15
-# conexiones. Cada petición con inquilino consume DOS —la sesión global de
-# `get_global_db` y la conexión propia de `get_tenant_db` para el
-# schema_translate_map—, así que el techo real eran ~7 peticiones concurrentes:
-# a partir de ahí el POS devolvía 500 con "QueuePool limit ... reached".
+# conexiones. Originalmente cada petición con inquilino consumía DOS —la
+# sesión global de `get_global_db` y una conexión propia de `get_tenant_db`
+# para el schema_translate_map—, así que el techo real eran ~7 peticiones
+# concurrentes: a partir de ahí el POS devolvía 500 con "QueuePool limit ...
+# reached". `get_tenant_db` ahora reusa la conexión de `get_global_db` en vez
+# de abrir una segunda (ver app/dependencies/tenant.py), así que cada
+# petición con inquilino vuelve a costar UNA sola conexión, igual que
+# cualquier otra.
 #
-# Al subirlos, hay que cuadrarlos con el `max_connections` de PostgreSQL
-# (100 por defecto) y multiplicar por el número de instancias del backend.
-# Medido contra el stack Docker en /products/ (issue #38): con pool_size=30 +
-# max_overflow=40 (70 conexiones, una sola instancia), 60 peticiones
-# concurrentes responden 200 y el techo queda entre 60 y 80; antes de esto
-# 60 ya devolvía 500 con pool_size=20+max_overflow=30 (50 conexiones).
-#
-# Eliminar la segunda conexión por petición (que `get_tenant_db` reuse la de
-# `get_global_db`) subiría el techo mucho más, pero exigiría que ninguna
-# sesión necesite las dos conexiones abiertas a la vez con schema_translate_map
-# distinto — no es el caso hoy (ver `app/routers/users.py`, que intercala
-# consultas al esquema público y al del tenant en el mismo request) y esta
-# ruta de aislamiento por esquema no tiene cobertura de tests todavía. Se
-# dejó fuera de este cambio para no arriesgar una fuga de datos entre
-# tenants sin esa red de seguridad.
+# Al subir estos valores hay que cuadrarlos con el `max_connections` de
+# PostgreSQL (100 por defecto) y multiplicar por el número de instancias del
+# backend. Medido contra el stack Docker en /products/ (issue #38): con
+# pool_size=30 + max_overflow=40 (70 conexiones, una sola instancia) y una
+# conexión por petición, 100 peticiones concurrentes responden 200 y el
+# techo queda entre 100 y 130 (antes de reusar la conexión, con las mismas
+# 70 conexiones disponibles pero dos por petición, el techo estaba entre 60
+# y 80; con el pool original de 50 conexiones y dos por petición, 60 ya
+# devolvía 500).
 DB_POOL_SIZE = int(os.getenv("TORN_DB_POOL_SIZE", "30"))
 DB_MAX_OVERFLOW = int(os.getenv("TORN_DB_MAX_OVERFLOW", "40"))
 DB_POOL_TIMEOUT = int(os.getenv("TORN_DB_POOL_TIMEOUT", "30"))

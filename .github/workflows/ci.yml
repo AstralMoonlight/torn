@@ -9,6 +9,27 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    # La suite corre sobre SQLite en memoria y no necesita esta base para la
+    # mayoría de los tests; tests/test_tenant_dependencies.py es la excepción
+    # (issue #38): ejercita el enrutamiento real de esquema de
+    # app/dependencies/tenant.py, que sólo existe frente a PostgreSQL de
+    # verdad (SQLite no tiene esquemas). Sin este servicio, esos tests se
+    # saltan solos (ver _postgres_available en ese archivo) en vez de fallar,
+    # así que agregarlo es lo que los pone a correr en CI.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: torn
+          POSTGRES_PASSWORD: torn
+          POSTGRES_DB: torn_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U torn"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -23,10 +44,14 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Ejecutar tests
-        # La suite corre sobre SQLite en memoria; no necesita PostgreSQL.
         env:
           TORN_AUTO_CREATE_TABLES: "0"
           SECRET_KEY: ci-secret-key
+          TORN_DB_USER: torn
+          TORN_DB_PASSWORD: torn
+          TORN_DB_HOST: localhost
+          TORN_DB_PORT: "5432"
+          TORN_DB_NAME: torn_db
         run: pytest -q
 
   frontend:
