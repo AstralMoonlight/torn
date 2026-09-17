@@ -30,6 +30,8 @@ import app.models.cash
 import app.models.dte
 import app.models.issuer
 import app.models.payment
+import app.models.price_list
+import app.models.settings
 from app.utils.schemas import safe_schema_name
 
 logger = logging.getLogger(__name__)
@@ -93,62 +95,23 @@ def provision_new_tenant(
         connection.execute(text(f'CREATE SCHEMA "{safe_schema_name(schema_name)}"'))
         connection.commit()
         esquema_creado = True
-        
-        # B. Generar Tablas Operativas usando el Script Base Puro vía psql
-        import subprocess
-        import tempfile
-        import os
-        
-        try:
-            with open("modelo_base_datos.sql", "r", encoding="utf-8") as f:
-                sql_script = f.read()
-            
-            clean_lines = []
-            for line in sql_script.split('\n'):
-                if "set_config('search_path'" in line: continue
-                if "OWNER TO" in line: continue
-                clean_lines.append(line)
-            
-            sql_script = '\n'.join(clean_lines).replace("public.", "")
-            final_sql = f'SET search_path TO "{safe_schema_name(schema_name)}";\n' + sql_script
-            
-            fd, temp_path = tempfile.mkstemp(suffix=".sql")
-            with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
-                tmp.write(final_sql)
 
-            # Las credenciales salen del mismo entorno que usa app/database.py.
-            # Estaban fijas a torn@localhost:5433, lo que rompía el
-            # aprovisionamiento en cualquier despliegue (Docker incluido).
-            env = os.environ.copy()
-            env["PGPASSWORD"] = os.getenv("TORN_DB_PASSWORD", "torn")
+        # B. Generar Tablas Operativas desde los modelos ORM (Base.metadata),
+        # no desde un volcado SQL mantenido a mano. Antes se ejecutaba
+        # modelo_base_datos.sql vía `subprocess.run(["psql", ...])`, filtrando
+        # líneas y haciendo `.replace("public.", "")` sobre todo el script: el
+        # esquema del inquilino quedaba desacoplado de los modelos, y si
+        # divergían nadie se enteraba hasta que alguien usaba la columna
+        # faltante (pasó con `referencias` y con las listas de precios).
+        #
+        # `schema_translate_map` hace que cada `CREATE TABLE` (definido sin
+        # esquema explícito en los modelos, o en 'public' para las tablas
+        # SaaS) se traduzca al esquema del inquilino; se filtran las tablas
+        # 'public' para no intentar recrear saas_plans/saas_users/tenants/etc.
+        connection.execution_options(schema_translate_map={None: safe_schema_name(schema_name)})
+        tenant_tables = [t for t in Base.metadata.sorted_tables if t.schema != "public"]
+        Base.metadata.create_all(bind=connection, tables=tenant_tables)
 
-            try:
-                result = subprocess.run(
-                    [
-                        "psql",
-                        "-U", os.getenv("TORN_DB_USER", "torn"),
-                        "-h", os.getenv("TORN_DB_HOST", "localhost"),
-                        "-p", os.getenv("TORN_DB_PORT", "5432"),
-                        "-d", os.getenv("TORN_DB_NAME", "torn_db"),
-                        "-v", "ON_ERROR_STOP=1",
-                        "-f", temp_path,
-                    ],
-                    env=env, capture_output=True, text=True
-                )
-            except FileNotFoundError:
-                raise Exception(
-                    "No se encontró el binario 'psql'. Es necesario para aprovisionar "
-                    "el esquema del inquilino; instala postgresql-client en la imagen."
-                )
-            finally:
-                os.remove(temp_path)
-
-            if result.returncode != 0:
-                raise Exception(f"psql error: {result.stderr}")
-
-        except FileNotFoundError:
-            raise Exception("No se encontró modelo_base_datos.sql para aprovisionar las tablas")
-        
         # C. Inicializar Datos del Emisor (Issuer) en el nuevo esquema
         primary_acteco = ""
         if economic_activities and len(economic_activities) > 0:
@@ -202,15 +165,13 @@ def provision_new_tenant(
         
         connection.commit()
 
-        # D. Registrar el esquema en Alembic como actualizado ("stamp head").
+        # E. Registrar el esquema en Alembic como actualizado ("stamp head").
         #
         # `alembic/env.py` deduce el `version_table_schema` del
-        # schema_translate_map de la conexión. Sin configurarlo, el stamp no
-        # apuntaba al esquema del inquilino y éste quedaba sin tabla
-        # `alembic_version`: las migraciones futuras no tenían dónde partir.
-        connection.execution_options(
-            schema_translate_map={None: safe_schema_name(schema_name)}
-        )
+        # schema_translate_map de la conexión, ya configurado arriba en (B).
+        # Sin él, el stamp no apuntaría al esquema del inquilino y éste
+        # quedaría sin tabla `alembic_version`: las migraciones futuras no
+        # tendrían dónde partir.
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.attributes['connection'] = connection
         command.stamp(alembic_cfg, "head")
