@@ -1,6 +1,6 @@
 # Torn – Facturador electrónico (SII Chile)
 
-Monorepo: backend (FastAPI) + frontend (Next.js). El frontend es un proyecto **independiente** (sus deps van en `frontend/node_modules`).
+Monorepo: `backend/` (FastAPI) + `frontend/` (Next.js), hermanos en la raíz. El frontend es un proyecto **independiente** (sus deps van en `frontend/node_modules`).
 
 ## Instalación
 
@@ -18,7 +18,8 @@ Abre http://localhost:3000. No hace falta instalar nada desde la raíz para el f
 
 ### Backend
 
-En la raíz del repo, usa un **entorno virtual** (en Ubuntu no instales uvicorn con `apt`; usa el del proyecto):
+El venv vive en la raíz del repo, pero el código y los comandos se ejecutan
+parado en `backend/` (en Ubuntu no instales uvicorn con `apt`; usa el del proyecto):
 
 ```bash
 cd /ruta/a/torn
@@ -26,6 +27,8 @@ cd /ruta/a/torn
 # Crear y activar el venv (solo la primera vez)
 python3 -m venv .venv
 source .venv/bin/activate   # en Windows: .venv\Scripts\activate
+
+cd backend
 
 # Instalar dependencias (solo la primera vez)
 pip install -r requirements.txt
@@ -36,7 +39,7 @@ uvicorn app.main:app --reload --port 8000
 
 El backend quedará en http://localhost:8000. Déjalo corriendo en una terminal y usa el frontend en otra.
 
-**Catálogo ACTECO (opcional):** Para que el formulario de Tenants pueda buscar actividades económicas SII, carga el catálogo una vez:
+**Catálogo ACTECO (opcional):** Para que el formulario de Tenants pueda buscar actividades económicas SII, carga el catálogo una vez (parado en `backend/`, el archivo fuente vive en `database/actecos_sii.json`):
 
 ```bash
 python scripts/seed_actecos.py

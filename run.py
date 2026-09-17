@@ -63,7 +63,8 @@ def ejecutar_servicios():
     
     # Proceso Backend: Ejecuta uvicorn usando el ejecutable de Python del entorno virtual.
     backend_proc = subprocess.Popen(
-        [".venv/bin/python", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+        ["../.venv/bin/python", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+        cwd="backend",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, # Redirige errores a la salida estándar para capturar todo.
         text=True,                 # Los datos se reciben como string, no como bytes.

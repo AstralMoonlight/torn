@@ -9,6 +9,9 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     # La suite corre sobre SQLite en memoria y no necesita esta base para la
     # mayoría de los tests; tests/test_tenant_dependencies.py es la excepción
     # (issue #38): ejercita el enrutamiento real de esquema de
