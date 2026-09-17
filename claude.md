@@ -197,7 +197,7 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
-- Suite Pytest de integración: el último registro guardado (`pytest_output_final.txt`) marca **8 passed**.
+- Suite Pytest de integración: **70 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-17).
 - Contenerización completa (backend + frontend + PostgreSQL) vía Docker Compose.
 
 ### Pendiente / lo que parece faltar
