@@ -3,17 +3,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+/** Usuario global del SaaS, tal como lo devuelven /auth/login y /auth/validate
+ * (equivale a SaaSUserOut en el backend: sin rut, name ni role propios —
+ * esos campos son del usuario operativo local, no del usuario SaaS). */
 interface User {
     id: number
-    rut: string
-    name: string
+    email: string
     full_name?: string
     is_superuser: boolean
-    email?: string
-    role: string
-    role_obj?: {
-        permissions: Record<string, boolean>
-    }
 }
 
 export interface AvailableTenant {

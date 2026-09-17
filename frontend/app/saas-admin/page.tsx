@@ -39,7 +39,7 @@ export default function SaaSAdminPage() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Panel Superadministrador</h1>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Bienvenido, {user.full_name || user.name || user.email}</p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Bienvenido, {user.full_name || user.email}</p>
                         </div>
                     </div>
 

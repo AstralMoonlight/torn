@@ -1,14 +1,5 @@
 import api from './api'
 
-export interface User {
-    id: number
-    rut: string
-    name: string
-    full_name?: string
-    is_superuser: boolean
-    role: string
-}
-
 export interface AvailableTenant {
     id: number
     name: string
@@ -18,18 +9,14 @@ export interface AvailableTenant {
     max_users: number
 }
 
-/** Usuario global del SaaS, tal como lo devuelven /auth/login y /auth/validate. */
+/** Usuario global del SaaS, tal como lo devuelven /auth/login y /auth/validate
+ * (equivale a SaaSUserOut en el backend). No tiene rut, name ni role: esos
+ * son atributos del usuario operativo local de cada tenant (services/users.ts). */
 export interface SessionUser {
     id: number
-    rut: string
     email: string
-    name: string
     full_name?: string
     is_superuser: boolean
-    role: string
-    role_obj?: {
-        permissions: Record<string, boolean>
-    }
 }
 
 export interface LoginResponse {

@@ -78,9 +78,11 @@ export default function Sidebar() {
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
 
     const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
-    const roleForCurrentTenant = currentTenant?.role_name || userPayload?.role || ''
+    // El rol y los permisos son del vínculo tenant-usuario (AvailableTenant),
+    // no del usuario SaaS global: éste no tiene rut/role/permissions propios.
+    const roleForCurrentTenant = currentTenant?.role_name || ''
 
-    const permissions = currentTenant?.permissions || userPayload?.role_obj?.permissions || {}
+    const permissions = currentTenant?.permissions || {}
     const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR'
     const isSuperadmin = userPayload?.is_superuser === true
 
@@ -169,7 +171,7 @@ export default function Sidebar() {
                 {!collapsed && (
                     <div className="px-3 pt-3 flex flex-col">
                         <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 truncate">
-                            {userPayload?.full_name || userPayload?.name || 'Usuario'}
+                            {userPayload?.full_name || userPayload?.email || 'Usuario'}
                         </span>
                         <span className="text-[10px] text-neutral-500 truncate lowercase italic">
                             {roleForCurrentTenant.replace('_', ' ')}

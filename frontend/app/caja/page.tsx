@@ -189,14 +189,14 @@ export default function CajaPage() {
                     {/* User Info Card */}
                     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 flex shadow-sm items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-lg">
-                            {(user?.full_name || user?.name || user?.email || '?')[0].toUpperCase()}
+                            {(user?.full_name || user?.email || '?')[0].toUpperCase()}
                         </div>
                         <div>
                             <p className="text-sm font-bold text-neutral-900 dark:text-white">
-                                {user?.full_name || user?.name || user?.email || 'Usuario'}
+                                {user?.full_name || user?.email || 'Usuario'}
                             </p>
                             <p className="text-[10px] text-neutral-500 font-mono">
-                                {user?.rut || user?.email || ''}
+                                {user?.email || ''}
                             </p>
                         </div>
                     </div>

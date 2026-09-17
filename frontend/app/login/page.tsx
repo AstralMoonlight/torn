@@ -31,7 +31,7 @@ export default function LoginPage() {
             const data = await login(email, password)
             setAuth(data.access_token, data.user, data.available_tenants)
 
-            toast.success(`Bienvenido, ${data.user.name}`)
+            toast.success(`Bienvenido, ${data.user.full_name || data.user.email}`)
 
             // Si es superadmin, siempre al panel de administración
             if (data.user.is_superuser) {

@@ -83,9 +83,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (token && pathname !== '/login' && pathname !== '/select-tenant' && !pathname.startsWith('/saas-admin') && pathname !== '/pos' && pathname !== '/caja') {
             const user = userPayload
             const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
-            const roleForCurrentTenant = currentTenant?.role_name || user?.role || ''
+            // El rol y los permisos son del vínculo tenant-usuario (AvailableTenant),
+            // no del usuario SaaS global: éste no tiene rut/role/permissions propios.
+            const roleForCurrentTenant = currentTenant?.role_name || ''
 
-            const permissions = currentTenant?.permissions || user?.role_obj?.permissions || {}
+            const permissions = currentTenant?.permissions || {}
             const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR' || user?.is_superuser === true
 
             if (!isAdmin) {
