@@ -184,6 +184,14 @@ def provision_new_tenant(
         """)).first()
         admin_role_id = role_id_res[0] if role_id_res else 1
 
+        # 'INVALID_HASH' es intencional, no un placeholder olvidado: este
+        # registro es un marcador de atribución (`is_system_user`) en la
+        # tabla `users` del tenant, no una credencial. El login sólo verifica
+        # contraseña contra `saas_users.hashed_password` en el esquema
+        # public (app/routers/auth.py); `users.password_hash` nunca se lee
+        # para autenticar. Aun si algo cambiara eso, passlib no reconoce
+        # 'INVALID_HASH' como hash bcrypt y `verify_password` lanzaría
+        # `UnknownHashError` en vez de aceptar cualquier contraseña.
         insert_system_user_sql = text(f"""
             INSERT INTO "{safe_schema_name(schema_name)}".users
             (rut, razon_social, email, full_name, is_system_user, is_active, role_id, role, password_hash)

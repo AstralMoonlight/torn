@@ -4,15 +4,21 @@ services:
     container_name: torn_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: torn_db
+      # Se leen del .env, que no se versiona. Son las mismas TORN_DB_* que usa
+      # el backend, así que no pueden desincronizarse.
+      #
+      # Ojo: PostgreSQL sólo aplica estos valores al inicializar el volumen. Si
+      # cambias la contraseña sobre un volumen ya creado, la base conserva la
+      # anterior y el backend deja de conectar.
+      POSTGRES_USER: ${TORN_DB_USER:?define TORN_DB_USER en tu .env}
+      POSTGRES_PASSWORD: ${TORN_DB_PASSWORD:?define TORN_DB_PASSWORD en tu .env}
+      POSTGRES_DB: ${TORN_DB_NAME:?define TORN_DB_NAME en tu .env}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
