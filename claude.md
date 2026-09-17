@@ -189,8 +189,11 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 - **`bcrypt` pineado fuera de `requirements.txt`**: `Dockerfile.backend` instala `bcrypt==4.0.1` aparte, lo que
   duplica la gestión de dependencias.
 - **Frontend en modo dev dentro de Docker**: `Dockerfile.frontend` ejecuta `npm run dev`, no `build` + `start`.
-- **Credenciales por defecto en el repo**: `docker-compose.yml` trae `POSTGRES_PASSWORD: password123` y
-  `scripts/create_admin.py` crea `admin@torn.cl / admin123`. Aceptable en local, no en despliegue.
+- **Credenciales por defecto en el repo**: `docker-compose.yml` trae `POSTGRES_PASSWORD: password123`. Aceptable
+  en local, no en despliegue.
+- **Credenciales de admin de desarrollo**: `TORN_ADMIN_EMAIL`/`TORN_ADMIN_PASSWORD` están fijadas en el `.env`
+  local (no versionado) para que `scripts/create_admin.py` no pida la contraseña de forma interactiva. Son
+  **solo para desarrollo local**; deben eliminarse del `.env` antes de cualquier despliegue a producción.
 - **Deuda menor**: uso de `Query.get()` legacy de SQLAlchemy 1.x en `app/routers/sales.py` (warnings en pytest)
   y `create_all()` conviviendo con Alembic.
 - **Precio de venta**: `create_sale` cobra `product.precio_neto` e ignora la lista de precios que el POS sí
