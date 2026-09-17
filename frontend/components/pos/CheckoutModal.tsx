@@ -1,7 +1,7 @@
 'use client'
 
 import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import {
@@ -129,7 +129,21 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const [refsSectionOpen, setRefsSectionOpen] = useState(false)
     const [referencias, setReferencias] = useState<DocumentReference[]>([])
 
-    // Load payment methods on open
+    // totalFinal puede cambiar mientras el modal ya está abierto (recálculo
+    // async de precio de lista, IVA según el tipo de DTE, etc.). El efecto de
+    // apertura sólo debe sembrar el pago inicial UNA vez al abrir, con el
+    // total que exista en ese momento — leído de esta ref, no como
+    // dependencia del efecto. Si totalFinal fuera dependencia, cada cambio
+    // reseteaba TODO el formulario de pago (volvía a Efectivo con el monto
+    // redondeado), pisando en silencio un medio de pago ya elegido por el
+    // cajero: así se armaba un monto que ya no correspondía al total vigente,
+    // y el backend terminaba rechazando la venta por "vuelto sin efectivo".
+    const totalFinalRef = useRef(totalFinal)
+    useEffect(() => {
+        totalFinalRef.current = totalFinal
+    }, [totalFinal])
+
+    // Load payment methods on open (sólo al abrir, no en cada cambio de total)
     useEffect(() => {
         if (open) {
             Promise.all([
@@ -139,7 +153,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                 .then(([m, f]) => {
                     setMethods(m)
                     const cash = m.find((pm) => pm.code === 'EFECTIVO')
-                    if (cash) setPayments([{ method: cash, amount: roundCash(totalFinal) }])
+                    if (cash) setPayments([{ method: cash, amount: roundCash(totalFinalRef.current) }])
 
                     const validDtes = f.filter(d => d.available > 0)
                     setAvailableDtes(validDtes)
@@ -156,7 +170,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setReferencias([])
             setRefsSectionOpen(false)
         }
-    }, [open, totalFinal])
+    }, [open])
 
     const handleFinish = () => {
         clear()
@@ -279,6 +293,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
     // Remaining shows true debt against the rounding-adjusted total
     const remaining = Math.max(0, adjustedTotal - totalPaid)
     const change = totalPaid > adjustedTotal ? totalPaid - adjustedTotal : 0
+    // Tarjeta/transferencia no dan vuelto: si el excedente supera el efectivo
+    // recibido, el backend lo rechaza (app/routers/sales.py). Se valida acá
+    // también para no depender únicamente de que el monto llegue bien
+    // armado: si algo lo desincroniza, el cajero ve el problema en el modal
+    // en vez de un 400 crudo tras enviar.
+    const changeExceedsCash = change > 0 && cashDeclared < change
 
     // Show smart cash only when there's a cash payment line
     const hasCashPayment = payments.some((p) => p.method.code === 'EFECTIVO')
@@ -289,7 +309,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const effectiveRut = customer?.rut || (isBoleta ? GENERIC_RUT : '')
 
     // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
-    const canSubmit = (isBoleta || !!customer) && remaining <= 0 && availableDtes.length > 0
+    const canSubmit = (isBoleta || !!customer) && remaining <= 0 && !changeExceedsCash && availableDtes.length > 0
 
     const handleSubmit = async () => {
         setSubmitting(true)
@@ -638,8 +658,14 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 {change > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-neutral-900 dark:text-white font-medium">Vuelto</span>
-                                        <Badge variant="secondary" className="text-xs">{formatCLP(change)}</Badge>
+                                        <Badge variant={changeExceedsCash ? 'destructive' : 'secondary'} className="text-xs">{formatCLP(change)}</Badge>
                                     </div>
+                                )}
+                                {changeExceedsCash && (
+                                    <p className="text-xs text-red-500 pt-1">
+                                        El vuelto supera el efectivo recibido ({formatCLP(cashDeclared)}); los demás
+                                        medios de pago no dan cambio. Ajusta los montos antes de emitir.
+                                    </p>
                                 )}
                             </div>
                         </div>
