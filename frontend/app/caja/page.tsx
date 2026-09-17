@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { openSession, closeSession, getSessionStatus, getAllSessions, type CashSessionWithUser } from '@/services/cash'
 import { getSellers, User } from '@/services/users'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,8 +89,8 @@ export default function CajaPage() {
             setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
             toast.success('¡Caja abierta correctamente!')
-        } catch (err: any) {
-            if (err.response?.status === 409) {
+        } catch (err) {
+            if (getApiErrorStatus(err) === 409) {
                 toast.custom((t) => (
                     <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800 max-w-sm">
                         <h3 className="font-bold text-neutral-900 dark:text-white mb-2">¡Caja ya abierta!</h3>
@@ -120,8 +120,7 @@ export default function CajaPage() {
                     </div>
                 ), { duration: Infinity })
             } else {
-                const detail = err.response?.data?.detail
-                toast.error(detail || 'Error al abrir caja')
+                toast.error(getApiErrorDetail(err, 'Error al abrir caja'))
             }
         } finally {
             setOpening(false)
@@ -160,7 +159,7 @@ export default function CajaPage() {
             setEfectivoContado('')
             toast.success('Caja cerrada correctamente')
         } catch (err: unknown) {
-            const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+            const detail = getApiErrorDetail(err, '')
             toast.error(detail || 'Error al cerrar caja')
         } finally {
             setClosing(false)

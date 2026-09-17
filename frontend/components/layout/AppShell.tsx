@@ -53,7 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         if (token && pathname === '/login') {
             if (!selectedTenantId) {
-                if ((userPayload as any)?.is_superuser) {
+                if (userPayload?.is_superuser) {
                     router.push('/saas-admin')
                 } else {
                     router.push('/select-tenant')
@@ -65,7 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
 
         if (token && selectedTenantId && pathname !== '/select-tenant' && !pathname.startsWith('/saas-admin')) {
-            const currentTenant = (availableTenants as any[]).find(t => t.id === selectedTenantId)
+            const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
             if (currentTenant && !currentTenant.is_active) {
                 console.warn('[RouteGuard] Selected tenant is inactive. Redirecting to /select-tenant')
                 router.push('/select-tenant')
@@ -74,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
 
         if (token && !selectedTenantId && pathname !== '/select-tenant' && !pathname.startsWith('/saas-admin')) {
-            if ((userPayload as any)?.is_superuser) {
+            if (userPayload?.is_superuser) {
                 router.push('/saas-admin')
             } else {
                 router.push('/select-tenant')
@@ -84,8 +84,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         // Dynamic Route Guard
         if (token && pathname !== '/login' && pathname !== '/select-tenant' && !pathname.startsWith('/saas-admin') && pathname !== '/pos' && pathname !== '/caja') {
-            const user = (userPayload as any)
-            const currentTenant = (availableTenants as any[]).find(t => t.id === selectedTenantId)
+            const user = userPayload
+            const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
             const roleForCurrentTenant = currentTenant?.role_name || user?.role || ''
 
             const permissions = currentTenant?.permissions || user?.role_obj?.permissions || {}

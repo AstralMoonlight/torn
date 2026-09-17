@@ -30,6 +30,47 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
     return fallback
 }
 
+/**
+ * Código HTTP de un error de la API, si lo tiene.
+ *
+ * Evita repetir `(err as { response?: { status?: number } })?.response?.status`
+ * o, peor, tipar el `catch` como `any`.
+ */
+export function getApiErrorStatus(error: unknown): number | undefined {
+    if (error && typeof error === 'object' && 'response' in error) {
+        const err = error as AxiosError
+        return err.response?.status
+    }
+    return undefined
+}
+
+/**
+ * Mensaje `detail` que devuelve FastAPI en los errores.
+ *
+ * A diferencia de `getApiErrorMessage`, que da un texto genérico según el
+ * código, esto entrega la explicación concreta del backend ("Stock insuficiente
+ * para ...", "No hay folios disponibles ..."), que suele ser lo que el usuario
+ * necesita leer.
+ *
+ * @param error Error capturado.
+ * @param fallback Texto si el error no trae `detail`.
+ */
+export function getApiErrorDetail(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object' && 'response' in error) {
+        const err = error as AxiosError<{ detail?: unknown }>
+        const detail = err.response?.data?.detail
+        if (typeof detail === 'string' && detail.trim()) return detail
+        // FastAPI devuelve una lista de errores en las respuestas 422.
+        if (Array.isArray(detail) && detail.length > 0) {
+            const primero = detail[0]
+            if (primero && typeof primero === 'object' && 'msg' in primero) {
+                return String((primero as { msg: unknown }).msg)
+            }
+        }
+    }
+    return fallback
+}
+
 // Response interceptor for error handling
 api.interceptors.response.use(
     (response) => response,

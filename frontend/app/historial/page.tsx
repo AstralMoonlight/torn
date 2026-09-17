@@ -1,5 +1,6 @@
 'use client'
 
+import { getApiErrorDetail } from '@/services/api'
 import { useEffect, useState, Fragment } from 'react'
 import { getSales, getPaymentMethods, createReturn, getFoliosStatus, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
@@ -135,7 +136,7 @@ export default function HistorialPage() {
             const freshSales = await getSales()
             setSales(freshSales)
         } catch (err: unknown) {
-            const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+            const detail = getApiErrorDetail(err, '')
             toast.error(detail || 'Error al crear NC')
         } finally {
             setSubmittingReturn(false)

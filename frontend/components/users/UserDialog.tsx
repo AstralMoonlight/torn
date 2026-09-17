@@ -17,6 +17,7 @@ import { type Role } from '@/services/roles'
 import { formatRut, validateRut } from '@/lib/rut'
 import { toast } from 'sonner'
 import { Loader2, Plus, Pencil, AlertTriangle } from 'lucide-react'
+import { getApiErrorDetail } from '@/services/api'
 import {
     Select,
     SelectContent,
@@ -94,8 +95,8 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
             }
             onSuccess()
             onClose()
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || 'Error al guardar usuario')
+        } catch (error) {
+            toast.error(getApiErrorDetail(error, 'Error al guardar usuario'))
         } finally {
             setLoading(false)
         }

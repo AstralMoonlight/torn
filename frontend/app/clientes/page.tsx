@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Search, Loader2 } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
@@ -168,9 +168,9 @@ export default function CustomersPage() {
                 toast.success('Cliente creado')
             }
             setOpen(false)
-        } catch (error: any) {
+        } catch (error) {
             console.error(error)
-            const msg = error.response?.data?.detail || 'Error al guardar cliente'
+            const msg = getApiErrorDetail(error, 'Error al guardar cliente')
             toast.error(msg)
         } finally {
             setSaving(false)
@@ -314,9 +314,9 @@ export default function CustomersPage() {
                                     toast.success('Cliente creado')
                                 }
                                 setOpen(false)
-                            } catch (error: any) {
+                            } catch (error) {
                                 console.error(error)
-                                const msg = error.response?.data?.detail || 'Error al guardar cliente'
+                                const msg = getApiErrorDetail(error, 'Error al guardar cliente')
                                 toast.error(msg)
                             }
                         }}

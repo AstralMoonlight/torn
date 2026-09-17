@@ -45,7 +45,7 @@ export default function LoginPage() {
                 }
             }
 
-        } catch (err: any) {
+        } catch (err) {
             toast.error(getApiErrorMessage(err, 'Credenciales incorrectas'))
         } finally {
             setLoading(false)

@@ -1,5 +1,6 @@
 'use client'
 
+import { getApiErrorDetail } from '@/services/api'
 import { useState, useEffect } from 'react'
 import {
     Dialog,
@@ -118,7 +119,7 @@ export default function ProductWizard({ open, onClose }: Props) {
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+            const detail = getApiErrorDetail(err, '')
             toast.error(detail || 'Error al crear producto')
         } finally {
             setCreating(false)
@@ -156,7 +157,7 @@ export default function ProductWizard({ open, onClose }: Props) {
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+            const detail = getApiErrorDetail(err, '')
             toast.error(detail || 'Error al crear producto')
         } finally {
             setCreating(false)
