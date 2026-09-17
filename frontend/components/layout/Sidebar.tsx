@@ -89,22 +89,22 @@ export default function Sidebar() {
     return (
         <aside
             className={cn(
-                'hidden md:flex h-screen flex-col border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 transition-all duration-300 print:hidden',
+                'hidden md:flex h-screen flex-col border-r border-border bg-card transition-all duration-300 print:hidden',
                 collapsed ? 'w-[68px]' : 'w-60'
             )}
         >
             {/* Logo */}
             <div className={cn(
-                'flex h-14 items-center border-b border-neutral-200 dark:border-neutral-800 shrink-0',
+                'flex h-14 items-center border-b border-border shrink-0',
                 collapsed ? 'justify-center px-2' : 'gap-2.5 px-4'
             )}>
-                <Activity className="h-6 w-6 text-blue-600 shrink-0" />
+                <Activity className="h-6 w-6 text-primary shrink-0" />
                 {!collapsed && (
                     <div className="overflow-hidden">
-                        <h1 className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white leading-tight truncate max-w-[160px]" title={currentTenant?.name || 'Torn'}>
+                        <h1 className="text-sm font-bold tracking-tight text-foreground leading-tight truncate max-w-[160px]" title={currentTenant?.name || 'Torn'}>
                             {currentTenant?.name || 'Torn'}
                         </h1>
-                        <p className="text-[9px] uppercase tracking-widest text-neutral-400 leading-none">
+                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground leading-none">
                             punto de venta
                         </p>
                     </div>
@@ -126,7 +126,7 @@ export default function Sidebar() {
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
                             {!collapsed && (
-                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                     {group.label}
                                 </h2>
                             )}
@@ -147,13 +147,13 @@ export default function Sidebar() {
                                                 'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all group',
                                                 collapsed && 'justify-center px-0',
                                                 isActive
-                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                                                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white'
+                                                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                                             )}
                                         >
                                             <item.icon className={cn(
                                                 "h-[18px] w-[18px] shrink-0",
-                                                isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+                                                isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-accent-foreground"
                                             )} />
                                             {!collapsed && <span className="truncate">{item.label}</span>}
                                         </Link>
@@ -166,14 +166,14 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 shrink-0">
+            <div className="border-t border-border shrink-0">
                 {/* User Info */}
                 {!collapsed && (
                     <div className="px-3 pt-3 flex flex-col">
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 truncate">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
                             {userPayload?.full_name || userPayload?.email || 'Usuario'}
                         </span>
-                        <span className="text-[10px] text-neutral-500 truncate lowercase italic">
+                        <span className="text-[10px] text-muted-foreground truncate lowercase italic">
                             {roleForCurrentTenant.replace('_', ' ')}
                         </span>
                     </div>
@@ -185,7 +185,7 @@ export default function Sidebar() {
                     collapsed ? 'justify-center' : 'justify-between'
                 )}>
                     {!collapsed && (
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                             Caja
                         </span>
                     )}
@@ -193,7 +193,6 @@ export default function Sidebar() {
                         variant={status === 'OPEN' ? 'default' : 'destructive'}
                         className={cn(
                             'text-[9px] px-1.5 py-0',
-                            status === 'OPEN' && 'bg-emerald-600 hover:bg-emerald-700'
                         )}
                     >
                         {collapsed
@@ -204,14 +203,14 @@ export default function Sidebar() {
 
                 {/* Theme + Logout + Collapse */}
                 <div className={cn(
-                    'flex items-center border-t border-neutral-200 dark:border-neutral-800 px-2 py-1.5',
+                    'flex items-center border-t border-border px-2 py-1.5',
                     collapsed ? 'flex-col justify-center gap-2' : 'flex-row justify-between'
                 )}>
                     <ThemeToggle />
 
                     <LogoutConfirmModal>
                         <button
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
                             title="Cerrar Sesión"
                         >
                             <LogOut className="h-4 w-4" />
@@ -220,7 +219,7 @@ export default function Sidebar() {
 
                     <button
                         onClick={toggle}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-white"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                         title={collapsed ? 'Expandir' : 'Colapsar'}
                     >
                         {collapsed ? (

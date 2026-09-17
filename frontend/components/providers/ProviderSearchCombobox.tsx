@@ -40,7 +40,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     return (
         <>
             {before}
-            <span className="font-bold text-blue-600 dark:text-blue-400">{match}</span>
+            <span className="font-bold text-primary">{match}</span>
             {after}
         </>
     )
@@ -185,20 +185,20 @@ export default function ProviderSearchCombobox({
     // ── RENDER: Selected state (chip) ────────────────────────────
     if (value) {
         return (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/40">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+                <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 truncate">
+                    <p className="text-sm font-medium text-primary truncate">
                         {value.razon_social}
                     </p>
-                    <p className="text-[11px] font-mono text-emerald-600/80 dark:text-emerald-400/70">
+                    <p className="text-[11px] font-mono text-primary/80">
                         {value.rut}
                     </p>
                 </div>
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-emerald-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0 transition-colors"
+                    className="h-6 w-6 text-primary hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
                     onClick={clearProvider}
                     type="button"
                 >
@@ -213,7 +213,7 @@ export default function ProviderSearchCombobox({
         <>
             <div ref={containerRef} className="relative">
                 <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                     <Input
                         ref={inputRef}
                         placeholder={placeholder}
@@ -227,18 +227,18 @@ export default function ProviderSearchCombobox({
                         autoComplete="off"
                     />
                     {loading && (
-                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-neutral-400" />
+                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
                     )}
                 </div>
 
                 {isOpen && (
                     <div
                         ref={listRef}
-                        className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+                        className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
                     >
                         <div className="max-h-[200px] overflow-y-auto">
                             {results.length === 0 && !loading && (
-                                <div className="px-3 py-4 text-center text-xs text-neutral-400">
+                                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                                     <Truck className="h-5 w-5 mx-auto mb-1 opacity-40" />
                                     No se encontraron proveedores para &ldquo;{query}&rdquo;
                                 </div>
@@ -253,20 +253,20 @@ export default function ProviderSearchCombobox({
                                     className={`
                                         flex w-full items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer
                                         ${idx === highlightedIndex
-                                            ? 'bg-blue-50 dark:bg-blue-950/40'
-                                            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                                            ? 'bg-primary/10'
+                                            : 'hover:bg-accent/50'
                                         }
-                                        ${idx > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}
+                                        ${idx > 0 ? 'border-t border-border' : ''}
                                     `}
                                 >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 shrink-0">
-                                        <Truck className="h-3.5 w-3.5 text-neutral-500" />
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
+                                        <Truck className="h-3.5 w-3.5 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate text-neutral-800 dark:text-neutral-200">
+                                        <p className="text-sm truncate text-foreground">
                                             <HighlightedText text={provider.razon_social} query={query} />
                                         </p>
-                                        <p className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">
+                                        <p className="text-[11px] font-mono text-muted-foreground dark:text-muted-foreground">
                                             <HighlightedText text={provider.rut} query={query} />
                                         </p>
                                     </div>
@@ -282,17 +282,17 @@ export default function ProviderSearchCombobox({
                             }}
                             onMouseEnter={() => setHighlightedIndex(results.length)}
                             className={`
-                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-neutral-200 dark:border-neutral-700 transition-colors cursor-pointer
+                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-border transition-colors cursor-pointer
                                 ${highlightedIndex === results.length
-                                    ? 'bg-blue-50 dark:bg-blue-950/40'
-                                    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                                    ? 'bg-primary/10'
+                                    : 'hover:bg-accent/50'
                                 }
                             `}
                         >
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 shrink-0">
-                                <Plus className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                                <Plus className="h-3 w-3 text-primary" />
                             </div>
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            <span className="text-xs font-medium text-primary">
                                 Crear nuevo proveedor
                             </span>
                         </button>

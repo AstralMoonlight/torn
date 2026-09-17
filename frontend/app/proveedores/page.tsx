@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Truck } from 'lucide-react'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -73,18 +75,17 @@ export default function ProvidersPage() {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Proveedores</h1>
-                    <p className="text-muted-foreground pt-1">
-                        Gestión de empresas y entidades suministradoras.
-                    </p>
-                </div>
-                <Button onClick={() => { setEditingProvider(null); setIsDialogOpen(true) }} className="gap-2">
-                    <Plus className="h-4 w-4" /> Nuevo Proveedor
-                </Button>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={Truck}
+                title="Proveedores"
+                description="Gestión de empresas y entidades suministradoras."
+                actions={
+                    <Button onClick={() => { setEditingProvider(null); setIsDialogOpen(true) }} className="gap-2">
+                        <Plus className="h-4 w-4" /> Nuevo Proveedor
+                    </Button>
+                }
+            />
 
             <Card>
                 <CardHeader className="pb-3">
@@ -102,15 +103,15 @@ export default function ProvidersPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+                    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-neutral-50 dark:bg-neutral-900/60">
-                                <TableRow className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-transparent dark:hover:bg-transparent">
-                                    <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">RUT</TableHead>
-                                    <TableHead className="text-xs uppercase tracking-wider text-neutral-400 font-medium">Razón Social</TableHead>
-                                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Giro</TableHead>
-                                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-neutral-400 font-medium">Email</TableHead>
-                                    <TableHead className="text-right text-xs uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                            <TableHeader className="bg-muted/60">
+                                <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
+                                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">RUT</TableHead>
+                                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Razón Social</TableHead>
+                                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Giro</TableHead>
+                                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Email</TableHead>
+                                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -132,13 +133,13 @@ export default function ProvidersPage() {
                                     </TableRow>
                                 ) : (
                                     filtered.map((provider) => (
-                                        <TableRow key={provider.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                                        <TableRow key={provider.id} className="hover:bg-accent/50 transition-colors">
                                             <TableCell className="font-mono text-xs">{formatRut(provider.rut)}</TableCell>
                                             <TableCell className="font-medium">{provider.razon_social}</TableCell>
-                                            <TableCell className="hidden md:table-cell text-sm text-neutral-500 dark:text-neutral-400">
+                                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                                                 {provider.giro}
                                             </TableCell>
-                                            <TableCell className="hidden lg:table-cell text-sm text-neutral-500 dark:text-neutral-400">
+                                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                                                 {provider.email}
                                             </TableCell>
                                             <TableCell className="text-right">
@@ -147,7 +148,7 @@ export default function ProvidersPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleEdit(provider)}
-                                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                         title="Editar"
                                                     >
                                                         <Edit2 className="h-4 w-4" />
@@ -156,7 +157,7 @@ export default function ProvidersPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleDelete(provider.id)}
-                                                        className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                         title="Desactivar"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -178,6 +179,6 @@ export default function ProvidersPage() {
                 provider={editingProvider}
                 onSuccess={loadProviders}
             />
-        </div>
+        </PageContainer>
     )
 }

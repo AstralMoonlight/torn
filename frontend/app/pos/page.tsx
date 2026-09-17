@@ -108,13 +108,13 @@ export default function POSPage() {
         return (
             <div className="flex h-full items-center justify-center p-6">
                 <div className="text-center space-y-4 max-w-md mx-auto">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                        <AlertTriangle className="h-10 w-10 text-amber-600" />
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
                     </div>
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Caja Cerrada</h2>
-                    <p className="text-neutral-500 dark:text-neutral-400">Debes abrir un turno de caja antes de poder vender.</p>
+                    <h2 className="text-2xl font-bold text-foreground">Caja Cerrada</h2>
+                    <p className="text-muted-foreground">Debes abrir un turno de caja antes de poder vender.</p>
                     <Link href="/caja">
-                        <Button size="lg" className="gap-2 bg-blue-600 hover:bg-blue-700">
+                        <Button size="lg" className="gap-2 ">
                             <Landmark className="h-5 w-5" /> Ir a Abrir Caja
                         </Button>
                     </Link>
@@ -134,18 +134,18 @@ export default function POSPage() {
             {/* Mobile: Cart Toggle FAB */}
             <button
                 onClick={() => setShowMobileCart(true)}
-                className="lg:hidden fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+                className="lg:hidden fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
             >
                 <ShoppingBag className="h-6 w-6" />
                 {cartCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-red-500 text-[10px] px-1">
+                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-destructive text-[10px] px-1">
                         {cartCount}
                     </Badge>
                 )}
             </button>
 
             {/* Desktop: Cart Panel */}
-            <div className="hidden lg:block w-[380px] xl:w-[420px] border-l border-neutral-200 dark:border-neutral-800">
+            <div className="hidden lg:block w-[380px] xl:w-[420px] border-l border-border">
                 <CartPanel />
             </div>
 
@@ -153,9 +153,9 @@ export default function POSPage() {
             {showMobileCart && (
                 <div className="lg:hidden fixed inset-0 z-50">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileCart(false)} />
-                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-white dark:bg-neutral-950 shadow-xl animate-in slide-in-from-bottom">
+                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-card shadow-xl animate-in slide-in-from-bottom">
                         <div className="flex justify-center py-2">
-                            <div className="h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+                            <div className="h-1 w-10 rounded-full bg-border" />
                         </div>
                         <CartPanel onClose={() => setShowMobileCart(false)} />
                     </div>

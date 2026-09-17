@@ -17,6 +17,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import {
     History,
     Search,
@@ -38,17 +40,17 @@ import { formatCLP } from '@/lib/format'
 
 function DteBadge({ tipo }: { tipo: number }) {
     const map: Record<number, { label: string; color: string }> = {
-        33: { label: 'Factura', color: 'bg-blue-600' },
-        34: { label: 'Factura Exenta', color: 'bg-blue-500' },
-        39: { label: 'Boleta', color: 'bg-emerald-600' },
-        41: { label: 'Boleta Exenta', color: 'bg-emerald-500' },
-        56: { label: 'N. Débito', color: 'bg-orange-500' },
-        61: { label: 'N. Crédito', color: 'bg-red-500' },
+        33: { label: 'Factura', color: 'bg-primary' },
+        34: { label: 'Factura Exenta', color: 'bg-muted-foreground' },
+        39: { label: 'Boleta', color: 'bg-primary' },
+        41: { label: 'Boleta Exenta', color: 'bg-muted-foreground' },
+        56: { label: 'N. Débito', color: 'bg-muted-foreground' },
+        61: { label: 'N. Crédito', color: 'bg-destructive' },
         110: { label: 'Factura Export.', color: 'bg-indigo-600' },
         111: { label: 'ND Export.', color: 'bg-indigo-500' },
         112: { label: 'NC Export.', color: 'bg-pink-500' },
     }
-    const info = map[tipo] || { label: `DTE ${tipo}`, color: 'bg-neutral-500' }
+    const info = map[tipo] || { label: `DTE ${tipo}`, color: 'bg-muted-foreground' }
     return <Badge className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
 }
 
@@ -153,19 +155,16 @@ export default function HistorialPage() {
     }
 
     return (
-        <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-                <History className="h-6 w-6 text-blue-600" />
-                <div>
-                    <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Historial de Ventas</h1>
-                    <p className="text-xs text-neutral-500">{sales.length} documentos</p>
-                </div>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={History}
+                title="Historial de Ventas"
+                description={`${sales.length} documentos`}
+            />
 
             {/* Search */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar por folio o RUT..."
                     value={search}
@@ -175,46 +174,46 @@ export default function HistorialPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900">
-                        <TableRow className="border-b border-neutral-200 dark:border-neutral-800">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Folio</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Tipo</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden sm:table-cell text-center">Hora</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium hidden lg:table-cell">Cliente</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Total</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-neutral-400 font-medium">Acciones</TableHead>
+                    <TableHeader className="bg-muted">
+                        <TableRow className="border-b border-border">
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Folio</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tipo</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell text-center">Hora</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Cliente</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
+                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-neutral-400">Cargando...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Cargando...</TableCell></TableRow>
                         ) : filtered.length === 0 ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-neutral-400">Sin resultados</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell></TableRow>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>
-                                    <TableRow className="bg-neutral-100/50 dark:bg-neutral-800/60 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/60">
-                                        <TableCell colSpan={6} className="text-[10px] font-bold uppercase tracking-[0.1em] text-neutral-500 dark:text-neutral-400 border-y border-neutral-100 dark:border-neutral-800">
+                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                        <TableCell colSpan={6} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
                                             {date}
                                         </TableCell>
                                     </TableRow>
                                     {daySales.map((sale) => (
                                         <TableRow key={sale.id} className="group">
-                                            <TableCell className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">
+                                            <TableCell className="font-mono text-xs font-semibold text-foreground">
                                                 #{sale.folio}
                                             </TableCell>
                                             <TableCell>
                                                 <DteBadge tipo={sale.tipo_dte} />
                                             </TableCell>
-                                            <TableCell className="text-xs text-neutral-500 hidden sm:table-cell text-center font-tabular">
+                                            <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
                                             </TableCell>
-                                            <TableCell className="text-xs text-neutral-600 dark:text-neutral-400 hidden lg:table-cell truncate max-w-[200px]">
+                                            <TableCell className="text-xs text-muted-foreground dark:text-muted-foreground hidden lg:table-cell truncate max-w-[200px]">
                                                 {sale.customer?.razon_social || '—'}
                                             </TableCell>
-                                            <TableCell className="text-right font-tabular text-xs font-semibold text-neutral-900 dark:text-white">
+                                            <TableCell className="text-right font-tabular text-xs font-semibold text-foreground">
                                                 {formatCLP(parseFloat(String(sale.monto_total)))}
                                             </TableCell>
                                             <TableCell className="text-right">
@@ -222,7 +221,7 @@ export default function HistorialPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                         title="Ver PDF"
                                                         onClick={() => verPdf(sale.id)}
                                                     >
@@ -233,7 +232,7 @@ export default function HistorialPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => setReturnDialog(sale)}
-                                                            className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                             title="Generar Nota (Ajuste)"
                                                         >
                                                             <RotateCcw className="h-4 w-4" />
@@ -255,7 +254,7 @@ export default function HistorialPage() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
-                            <RotateCcw className="h-4 w-4 text-red-500" />
+                            <RotateCcw className="h-4 w-4 text-destructive" />
                             Generar Nota de Ajuste
                         </DialogTitle>
                         <DialogDescription>
@@ -320,11 +319,11 @@ export default function HistorialPage() {
                             <>
                                 <Separator />
                                 <div className="space-y-1 text-xs">
-                                    <p className="text-neutral-400 font-medium">Ítems a devolver:</p>
+                                    <p className="text-muted-foreground font-medium">Ítems a devolver:</p>
                                     {returnDialog.details.map((d) => (
                                         <div key={d.product_id} className="flex justify-between">
-                                            <span className="text-neutral-600 dark:text-neutral-400 truncate flex-1">{d.product?.nombre || `ID #${d.product_id}`}</span>
-                                            <span className="font-tabular text-neutral-500 ml-2">×{Number(d.cantidad)}</span>
+                                            <span className="text-muted-foreground dark:text-muted-foreground truncate flex-1">{d.product?.nombre || `ID #${d.product_id}`}</span>
+                                            <span className="font-tabular text-muted-foreground ml-2">×{Number(d.cantidad)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -348,6 +347,6 @@ export default function HistorialPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainer>
     )
 }

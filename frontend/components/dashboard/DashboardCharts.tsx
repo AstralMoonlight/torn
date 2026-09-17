@@ -37,14 +37,14 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sales by Hour */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">Ventas por Hora</h3>
+            <div className="rounded-xl border border-border bg-card p-4 ">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por Hora</h3>
                 {salesData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={salesData}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-700" />
-                                <XAxis dataKey="hora" tick={{ fontSize: 10 }} className="text-neutral-500" />
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                                <XAxis dataKey="hora" tick={{ fontSize: 10 }} className="text-muted-foreground" />
                                 <YAxis
                                     tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
                                     tick={{ fontSize: 10 }}
@@ -63,15 +63,15 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                         </ResponsiveContainer>
                     </div>
                 ) : (
-                    <div className="h-64 flex items-center justify-center text-neutral-400 text-sm">
+                    <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
                         Sin datos de ventas hoy
                     </div>
                 )}
             </div>
 
             {/* Payment Methods Pie */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">Medios de Pago</h3>
+            <div className="rounded-xl border border-border bg-card p-4 ">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de Pago</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -101,7 +101,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                         </ResponsiveContainer>
                     </div>
                 ) : (
-                    <div className="h-64 flex items-center justify-center text-neutral-400 text-sm">
+                    <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
                         Sin datos de pagos hoy
                     </div>
                 )}

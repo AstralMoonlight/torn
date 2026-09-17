@@ -16,6 +16,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 export default function DailyReportPage() {
     // Default to today
@@ -79,51 +81,44 @@ export default function DailyReportPage() {
     const itemCount = report?.items.length || 0
 
     return (
-        <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <PageContainer className="max-w-4xl space-y-8 animate-in fade-in duration-500">
             {/* Control Bar (Hidden on Print) */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden border-b pb-6 border-neutral-100 dark:border-neutral-800">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-neutral-900 text-white rounded-lg dark:bg-neutral-100 dark:text-neutral-900">
-                        <BarChart2 className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">
-                            Reportes
-                        </h1>
-                        <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-                            Histórico de Ventas
-                        </p>
-                    </div>
-                </div>
+            <div className="print:hidden border-b pb-6 border-border">
+                <PageHeader
+                    icon={BarChart2}
+                    title="Reportes"
+                    description="Histórico de Ventas"
+                    actions={
+                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                            {/* Period Selector */}
+                            <Select value={period} onValueChange={setPeriod}>
+                                <SelectTrigger className="w-full sm:w-[140px] border-border">
+                                    <SelectValue placeholder="Periodo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="day">Diario</SelectItem>
+                                    <SelectItem value="week">Semanal</SelectItem>
+                                    <SelectItem value="month">Mensual</SelectItem>
+                                </SelectContent>
+                            </Select>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                    {/* Period Selector */}
-                    <Select value={period} onValueChange={setPeriod}>
-                        <SelectTrigger className="w-full sm:w-[140px] border-neutral-200">
-                            <SelectValue placeholder="Periodo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="day">Diario</SelectItem>
-                            <SelectItem value="week">Semanal</SelectItem>
-                            <SelectItem value="month">Mensual</SelectItem>
-                        </SelectContent>
-                    </Select>
+                            {/* Date Picker (Native) */}
+                            <div className="relative w-full sm:w-auto">
+                                <input
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 uppercase"
+                                />
+                            </div>
 
-                    {/* Date Picker (Native) */}
-                    <div className="relative w-full sm:w-auto">
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-neutral-200 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 uppercase"
-                        />
-                    </div>
-
-                    <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto gap-2 border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900">
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                    </Button>
-                </div>
+                            <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto gap-2 border-border hover:bg-accent">
+                                <Printer className="h-4 w-4" />
+                                Imprimir
+                            </Button>
+                        </div>
+                    }
+                />
             </div>
 
             {/* Print Only Header */}
@@ -139,22 +134,22 @@ export default function DailyReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
                 {/* Financial Summary */}
                 <div className="space-y-6">
-                    <h2 className="text-sm font-bold uppercase text-neutral-400 tracking-widest print:text-black">Resumen Financiero</h2>
+                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Resumen Financiero</h2>
                     <div className="space-y-3">
                         <div className="flex justify-between items-center group">
-                            <span className="text-sm text-neutral-600 dark:text-neutral-400">Total Ingresos (Bruto)</span>
+                            <span className="text-sm text-muted-foreground dark:text-muted-foreground">Total Ingresos (Bruto)</span>
                             <span className="font-mono font-medium">{formatCLP(totalVentasBrutas)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-neutral-400 text-xs italic">
+                        <div className="flex justify-between items-center text-muted-foreground text-xs italic">
                             <span>Impuesto (IVA 19%)</span>
                             <span>{formatCLP(totalIva)}</span>
                         </div>
-                        <Separator className="dark:bg-neutral-800" />
+                        <Separator />
                         <div className="flex justify-between items-center font-semibold">
-                            <span className="text-sm text-neutral-900 dark:text-white underline decoration-neutral-200 decoration-2 underline-offset-4">Venta Neta</span>
+                            <span className="text-sm text-foreground underline decoration-border decoration-2 underline-offset-4">Venta Neta</span>
                             <span className="text-lg">{formatCLP(totalVentasNetas)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-neutral-500 text-xs">
+                        <div className="flex justify-between items-center text-muted-foreground text-xs">
                             <span>Costo de Existencias</span>
                             <span>{formatCLP(totalCostos)}</span>
                         </div>
@@ -162,16 +157,16 @@ export default function DailyReportPage() {
                 </div>
 
                 {/* Main Utility Box */}
-                <Card className="bg-neutral-50/50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 print:bg-transparent print:border-black shrink-0 shadow-sm print:shadow-none">
+                <Card className="bg-muted/50 border-border print:bg-transparent print:border-black shrink-0 shadow-sm print:shadow-none">
                     <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-2">
-                        <div className="p-2 bg-emerald-500/10 rounded-full print:hidden">
-                            <Wallet className="h-5 w-5 text-emerald-600" />
+                        <div className="p-2 bg-primary/10 rounded-full print:hidden">
+                            <Wallet className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 print:text-black">Utilidad (Después de impuestos)</span>
-                        <div className="text-4xl font-black text-neutral-900 dark:text-white print:text-black">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary print:text-black">Utilidad (Después de impuestos)</span>
+                        <div className="text-4xl font-black text-foreground print:text-black">
                             {formatCLP(totalUtilidadReal)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
                             <Info className="h-3 w-3" />
                             <span>Calculado sobre Venta Neta - Costo</span>
                         </div>
@@ -182,17 +177,17 @@ export default function DailyReportPage() {
             {/* Compact Table */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold uppercase text-neutral-400 tracking-widest print:text-black">Detalle por Artículo</h2>
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase">{itemCount} Items</span>
+                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Detalle por Artículo</h2>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase">{itemCount} Items</span>
                 </div>
-                <div className="border border-neutral-100 dark:border-neutral-800 rounded-lg overflow-hidden print:border-black">
+                <div className="border border-border rounded-lg overflow-hidden print:border-black">
                     <Table>
-                        <TableHeader className="bg-neutral-50/50 dark:bg-neutral-900/50 print:bg-transparent">
-                            <TableRow className="border-b-neutral-100 dark:border-b-neutral-800 print:border-black">
-                                <TableHead className="text-[11px] font-bold text-neutral-500 uppercase py-3 print:text-black">Descripción Producto</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-neutral-500 uppercase print:text-black">Cant.</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-neutral-500 uppercase print:text-black">Venta (Neta)</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-neutral-500 uppercase print:text-black">Utilidad</TableHead>
+                        <TableHeader className="bg-muted/50 print:bg-transparent">
+                            <TableRow className="border-b-border print:border-black">
+                                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase py-3 print:text-black">Descripción Producto</TableHead>
+                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Cant.</TableHead>
+                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Venta (Neta)</TableHead>
+                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Utilidad</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -208,20 +203,20 @@ export default function DailyReportPage() {
                                 ))
                             ) : itemCount === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-xs text-neutral-400 italic">
+                                    <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground italic">
                                         No se registran ventas para este periodo.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 report?.items.map((item) => (
-                                    <TableRow key={item.product_id} className="border-b-neutral-50 dark:border-b-neutral-900 print:border-black">
+                                    <TableRow key={item.product_id} className="border-b-border print:border-black">
                                         <TableCell className="py-3">
-                                            <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 print:text-black">{item.full_name}</div>
-                                            <div className="text-[9px] font-mono text-neutral-400 print:text-neutral-500 italic">SKU: {item.product_id}</div>
+                                            <div className="text-xs font-semibold text-foreground print:text-black">{item.full_name}</div>
+                                            <div className="text-[9px] font-mono text-muted-foreground print:text-muted-foreground italic">SKU: {item.product_id}</div>
                                         </TableCell>
                                         <TableCell className="text-right text-xs font-mono">{item.cantidad}</TableCell>
                                         <TableCell className="text-right text-xs">{formatCLP(item.monto_total)}</TableCell>
-                                        <TableCell className="text-right text-xs font-bold text-emerald-600 dark:text-emerald-400 print:text-black">
+                                        <TableCell className="text-right text-xs font-bold text-primary print:text-black">
                                             {formatCLP(item.utilidad)}
                                         </TableCell>
                                     </TableRow>
@@ -233,7 +228,7 @@ export default function DailyReportPage() {
             </div>
 
             {/* Disclaimer & Tech Info */}
-            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-[9px] text-neutral-400 border-t border-neutral-100 dark:border-neutral-800 print:border-black print:text-black">
+            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-[9px] text-muted-foreground border-t border-border print:border-black print:text-black">
                 <div className="max-w-xs italic text-left">
                     * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
                 </div>
@@ -252,6 +247,6 @@ export default function DailyReportPage() {
                     .print-hidden { display: none !important; }
                 }
             `}</style>
-        </div>
+        </PageContainer>
     )
 }

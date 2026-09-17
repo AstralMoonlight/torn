@@ -22,6 +22,8 @@ import { toast } from 'sonner'
 import { Loader2, Save, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText } from 'lucide-react'
 import { useUIStore } from '@/lib/store/uiStore'
 import FoliosTab from './FoliosTab'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 export default function ConfigurationPage() {
     const [settings, setSettings] = useState<SystemSettings | null>(null)
@@ -101,17 +103,18 @@ export default function ConfigurationPage() {
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
     }
 
     return (
-        <div className="container mx-auto py-8 max-w-4xl space-y-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold tracking-tight">Configuración</h1>
-                <p className="text-neutral-500">Administra las preferencias generales y parámetros del sistema.</p>
-            </div>
+        <PageContainer className="max-w-4xl">
+            <PageHeader
+                icon={Settings}
+                title="Configuración"
+                description="Administra las preferencias generales y parámetros del sistema."
+            />
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 mb-4">
@@ -138,7 +141,7 @@ export default function ConfigurationPage() {
                             <div className="space-y-3">
                                 <div>
                                     <Label>Formato de Impresión por Tipo de Documento</Label>
-                                    <p className="text-xs text-neutral-500 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Cada documento que puedes emitir imprime con su propio formato.
                                     </p>
                                 </div>
@@ -148,15 +151,15 @@ export default function ConfigurationPage() {
                                         return (
                                             <div
                                                 key={key}
-                                                className="flex items-center justify-between gap-4 rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800"
+                                                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-4 py-3"
                                             >
                                                 <span className="text-sm font-medium">{label}</span>
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => setDocPrintFormat(key, '80mm')}
                                                         className={`flex items-center gap-2 rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === '80mm'
-                                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                                            : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-900'
+                                                            ? 'border-primary bg-primary text-primary-foreground'
+                                                            : 'border-border bg-background text-muted-foreground hover:border-primary/40'
                                                             }`}
                                                     >
                                                         <Printer className="h-3.5 w-3.5" /> Térmico 80mm
@@ -164,8 +167,8 @@ export default function ConfigurationPage() {
                                                     <button
                                                         onClick={() => setDocPrintFormat(key, 'carta')}
                                                         className={`rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === 'carta'
-                                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                                            : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-900'
+                                                            ? 'border-primary bg-primary text-primary-foreground'
+                                                            : 'border-border bg-background text-muted-foreground hover:border-primary/40'
                                                             }`}
                                                     >
                                                         Carta / A4
@@ -181,7 +184,7 @@ export default function ConfigurationPage() {
                             <div className="space-y-3 border-t pt-5">
                                 <div>
                                     <Label>Vista del Terminal POS — Variantes</Label>
-                                    <p className="text-xs text-neutral-500 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Cómo se muestran los productos con variantes en el punto de venta.
                                     </p>
                                 </div>
@@ -189,8 +192,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('grouped')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'grouped'
-                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            ? 'border-primary bg-primary text-primary-foreground'
+                                            : 'border-border bg-muted text-muted-foreground hover:border-primary/40'
                                             }`}
                                     >
                                         <Layers className="h-8 w-8" />
@@ -203,8 +206,8 @@ export default function ConfigurationPage() {
                                     <button
                                         onClick={() => setPosVariantDisplay('flat')}
                                         className={`flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all text-left ${posVariantDisplay === 'flat'
-                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500'
-                                            : 'border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800'
+                                            ? 'border-primary bg-primary text-primary-foreground'
+                                            : 'border-border bg-muted text-muted-foreground hover:border-primary/40'
                                             }`}
                                     >
                                         <LayoutGrid className="h-8 w-8" />
@@ -214,7 +217,7 @@ export default function ConfigurationPage() {
                                         </div>
                                     </button>
                                 </div>
-                                <p className="text-[11px] text-neutral-400">
+                                <p className="text-[11px] text-muted-foreground">
                                     Esta preferencia se guarda localmente y aplica de inmediato al POS.
                                 </p>
                             </div>
@@ -239,7 +242,7 @@ export default function ConfigurationPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* New Tax Form */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-neutral-50 dark:bg-neutral-900 p-4 rounded-lg border border-neutral-100 dark:border-neutral-800">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-muted p-4 rounded-lg border border-border">
                                 <div className="space-y-2">
                                     <Label className="text-xs">Nombre del Impuesto</Label>
                                     <Input
@@ -275,7 +278,7 @@ export default function ConfigurationPage() {
                                     <TableBody>
                                         {taxes.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center text-neutral-500">
+                                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                                     No hay impuestos configurados.
                                                 </TableCell>
                                             </TableRow>
@@ -292,7 +295,7 @@ export default function ConfigurationPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        {tax.is_default && <Badge variant="outline" className="text-neutral-700 border-neutral-300 bg-neutral-50 dark:text-neutral-200 dark:border-neutral-700 dark:bg-neutral-800">Default</Badge>}
+                                                        {tax.is_default && <Badge variant="outline" className="text-foreground border-border bg-muted">Default</Badge>}
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -312,6 +315,6 @@ export default function ConfigurationPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </PageContainer>
     )
 }

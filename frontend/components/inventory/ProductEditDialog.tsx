@@ -125,7 +125,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-blue-600" />
+                        <Package className="h-5 w-5 text-primary" />
                         Editar Producto: {product?.full_name || baseName}
                     </DialogTitle>
                     <DialogDescription>
@@ -210,7 +210,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         </div>
 
                         <div className="flex justify-end pt-4">
-                            <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                            <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Guardar Cambios
                             </Button>
@@ -221,17 +221,17 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                     <TabsContent value="variants" className="space-y-4 py-4">
                         {isParent ? (
                             <>
-                                <div className="rounded-md border border-neutral-200 overflow-hidden">
+                                <div className="rounded-md border border-border overflow-hidden">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-neutral-50">
+                                        <thead className="bg-muted">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Variante / SKU</th>
-                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Precio Neto</th>
-                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Stock</th>
-                                                <th className="px-3 py-2 text-left font-medium text-neutral-500 text-xs uppercase">Código Barras</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Variante / SKU</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Precio Neto</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Stock</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Código Barras</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-neutral-100">
+                                        <tbody className="divide-y divide-border">
                                             {variants.map((v, i) => (
                                                 <tr key={v.id}>
                                                     <td className="px-3 py-2">
@@ -296,7 +296,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     </table>
                                 </div>
                                 <div className="flex justify-end pt-4">
-                                    <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                    <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
                                         Guardar Todas las Variantes
@@ -304,8 +304,8 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                 </div>
                             </>
                         ) : (
-                            <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
-                                <h3 className="text-sm font-medium mb-4 text-neutral-700">Configuración de Inventario (Producto Simple)</h3>
+                            <div className="bg-muted p-6 rounded-lg border border-border">
+                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de Inventario (Producto Simple)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
                                         <Label>Precio Neto</Label>
@@ -336,7 +336,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     </div>
                                 </div>
                                 <div className="flex justify-end pt-6">
-                                    <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                    <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
                                         Guardar Todo

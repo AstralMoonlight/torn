@@ -135,7 +135,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!isMounted) return null // Prevent hydration mismatch
 
     if (pathname === '/login' || pathname === '/select-tenant' || pathname.startsWith('/saas-admin')) {
-        return <main className="min-h-screen bg-neutral-50 dark:bg-neutral-900">{children}</main>
+        return <main className="min-h-screen bg-background">{children}</main>
     }
 
     if (!token || !selectedTenantId) return null // Wait for redirect
@@ -143,7 +143,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-[100dvh] overflow-hidden">
             <Sidebar />
-            <main className="flex-1 overflow-auto bg-neutral-50 dark:bg-neutral-900 pb-16 md:pb-0">
+            <main className="flex-1 overflow-auto bg-background pb-16 md:pb-0">
                 {children}
             </main>
             <MobileNav />

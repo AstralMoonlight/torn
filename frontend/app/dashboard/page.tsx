@@ -21,11 +21,13 @@ import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 
 // Dynamic import with SSR disabled to prevent Recharts hydration issues
 const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCharts'), {
     ssr: false,
-    loading: () => <div className="h-64 w-full bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-xl" />
+    loading: () => <div className="h-64 w-full bg-muted animate-pulse rounded-xl" />
 })
 
 
@@ -45,16 +47,16 @@ function KPICard({
     trend?: { value: string, positive: boolean }
 }) {
     const colorMap: Record<string, string> = {
-        blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-        green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
-        amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
-        red: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
+        blue: 'bg-primary/10 text-primary',
+        green: 'bg-muted text-foreground',
+        amber: 'bg-muted text-foreground',
+        red: 'bg-destructive/10 text-destructive',
         indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
         purple: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
     }
 
     return (
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-card shadow-sm transition-all hover:shadow-md">
+        <div className="rounded-xl border border-border bg-card p-4 dark:bg-card shadow-sm transition-all hover:shadow-md">
             <div className="flex items-start justify-between">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[color]}`}>
                     <Icon className="h-5 w-5" />
@@ -62,7 +64,7 @@ function KPICard({
                 {trend && (
                     <div className={cn(
                         "flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                        trend.positive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        trend.positive ? "bg-muted text-foreground" : "bg-destructive/10 text-destructive"
                     )}>
                         {trend.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                         {trend.value}
@@ -70,9 +72,9 @@ function KPICard({
                 )}
             </div>
             <div className="mt-3">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate font-medium uppercase tracking-wider">{title}</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-white font-tabular mt-0.5 tracking-tight">{value}</p>
-                {subtitle && <p className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">{subtitle}</p>}
+                <p className="text-xs text-muted-foreground truncate font-medium uppercase tracking-wider">{title}</p>
+                <p className="text-2xl font-bold text-foreground font-tabular mt-0.5 tracking-tight">{value}</p>
+                {subtitle && <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">{subtitle}</p>}
             </div>
         </div>
     )
@@ -117,8 +119,8 @@ export default function DashboardPage() {
         return (
             <div className="flex h-full items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <BarChart3 className="h-10 w-10 text-blue-600 animate-bounce" />
-                    <div className="text-neutral-400 font-medium">Analizando datos...</div>
+                    <BarChart3 className="h-10 w-10 text-primary animate-bounce" />
+                    <div className="text-muted-foreground font-medium">Analizando datos...</div>
                 </div>
             </div>
         )
@@ -129,27 +131,21 @@ export default function DashboardPage() {
     const currentStats = summary[selectedPeriod]
 
     return (
-        <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                        <BarChart3 className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Panel de Control</h1>
-                        <p className="text-sm text-neutral-500">Resumen operativo y financiero</p>
-                    </div>
-                </div>
-
-                <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
-                    <TabsList className="bg-neutral-100 dark:bg-neutral-800 p-1">
-                        <TabsTrigger value="daily" className="text-xs">Diario</TabsTrigger>
-                        <TabsTrigger value="weekly" className="text-xs">Semanal</TabsTrigger>
-                        <TabsTrigger value="monthly" className="text-xs">Mensual</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
+        <PageContainer>
+            <PageHeader
+                icon={BarChart3}
+                title="Panel de Control"
+                description="Resumen operativo y financiero"
+                actions={
+                    <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
+                        <TabsList className="bg-muted p-1">
+                            <TabsTrigger value="daily" className="text-xs">Diario</TabsTrigger>
+                            <TabsTrigger value="weekly" className="text-xs">Semanal</TabsTrigger>
+                            <TabsTrigger value="monthly" className="text-xs">Mensual</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                }
+            />
 
             {/* main KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -192,7 +188,7 @@ export default function DashboardPage() {
                     <CardHeader className="pb-3 border-b">
                         <CardTitle className="text-sm font-bold flex items-center justify-between">
                             <span className="flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4 text-blue-600" />
+                                <ShoppingCart className="h-4 w-4 text-primary" />
                                 Más Vendidos (Cantidad)
                             </span>
                             <Badge variant="outline" className="text-[10px] uppercase">Últimos 30 días</Badge>
@@ -201,15 +197,15 @@ export default function DashboardPage() {
                     <CardContent className="pt-4">
                         {topRanking?.by_quantity.map((p, i) => (
                             <div key={p.product_id} className="flex items-center mb-4 last:mb-0 gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-500">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
                                     {i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-neutral-400 font-tabular">{p.total_qty} unidades vendidas</p>
+                                    <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
+                                    <p className="text-[10px] text-muted-foreground font-tabular">{p.total_qty} unidades vendidas</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-bold text-neutral-900 dark:text-white">{formatCLP(p.total_sales)}</p>
+                                    <p className="text-xs font-bold text-foreground">{formatCLP(p.total_sales)}</p>
                                     <Progress value={Math.min(100, (p.total_qty / (topRanking.by_quantity[0]?.total_qty || 1)) * 100)} className="h-1 mt-1" />
                                 </div>
                             </div>
@@ -218,11 +214,11 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Top by Margin */}
-                <Card className="shadow-sm border-emerald-100 dark:border-emerald-900/30">
-                    <CardHeader className="pb-3 border-b bg-emerald-50/50 dark:bg-emerald-950/20">
+                <Card className="shadow-sm border-primary/20">
+                    <CardHeader className="pb-3 border-b bg-primary/5">
                         <CardTitle className="text-sm font-bold flex items-center justify-between">
                             <span className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                <TrendingUp className="h-4 w-4 text-primary" />
                                 Más Rentables (Ranking Utilidad)
                             </span>
                         </CardTitle>
@@ -230,22 +226,22 @@ export default function DashboardPage() {
                     <CardContent className="pt-4">
                         {topRanking?.by_margin.map((p, i) => (
                             <div key={p.product_id} className="flex items-center mb-4 last:mb-0 gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-xs font-bold text-emerald-600">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                                     {i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-neutral-500 font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
+                                    <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
+                                    <p className="text-[10px] text-muted-foreground font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-bold text-emerald-600">{formatCLP(p.total_margin)}</p>
-                                    <p className="text-[9px] text-neutral-400">Utilidad Total</p>
+                                    <p className="text-xs font-bold text-primary">{formatCLP(p.total_margin)}</p>
+                                    <p className="text-[9px] text-muted-foreground">Utilidad Total</p>
                                 </div>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </PageContainer>
     )
 }
