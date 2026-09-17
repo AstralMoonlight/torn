@@ -82,12 +82,21 @@ function KPICard({
 }
 
 
+type Period = 'daily' | 'weekly' | 'monthly'
+
+const PERIODS: readonly Period[] = ['daily', 'weekly', 'monthly'] as const
+
+/** Tabs entrega un string; sólo se acepta si es un periodo conocido. */
+function isPeriod(value: string): value is Period {
+    return (PERIODS as readonly string[]).includes(value)
+}
+
 export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null)
     const [summary, setSummary] = useState<DashboardSummary | null>(null)
     const [topRanking, setTopRanking] = useState<TopProductsResponse | null>(null)
     const [loading, setLoading] = useState(true)
-    const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+    const [selectedPeriod, setSelectedPeriod] = useState<Period>('daily')
 
     useEffect(() => {
         setLoading(true)
@@ -134,7 +143,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                <Tabs value={selectedPeriod} onValueChange={(v) => setSelectedPeriod(v as any)} className="w-full sm:w-auto">
+                <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
                     <TabsList className="bg-neutral-100 dark:bg-neutral-800 p-1">
                         <TabsTrigger value="daily" className="text-xs">Diario</TabsTrigger>
                         <TabsTrigger value="weekly" className="text-xs">Semanal</TabsTrigger>

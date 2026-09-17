@@ -443,7 +443,7 @@ export default function PriceListsPage() {
                             {([
                                 ['products', 'Productos', Package],
                                 ...(editingId === 'base' ? [] : [['customers', 'Clientes', Users]])
-                            ] as const).map(([key, label, Icon]: any) => (
+                            ] as [Tab, string, typeof Package][]).map(([key, label, Icon]) => (
                                 <button
                                     key={key}
                                     type="button"

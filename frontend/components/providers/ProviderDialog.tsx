@@ -93,10 +93,10 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
             }
 
             if (provider) {
-                await updateProvider(provider.id, payload as any)
+                await updateProvider(provider.id, payload)
                 toast.success('Proveedor actualizado')
             } else {
-                await createProvider(payload as any)
+                await createProvider(payload)
                 toast.success('Proveedor creado')
             }
             onSuccess()

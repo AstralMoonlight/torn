@@ -9,7 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { searchCustomers, createCustomer, Customer } from '@/services/customers'
+import { searchCustomers, createCustomer, Customer, type CustomerCreate } from '@/services/customers'
 import CustomerForm from '@/components/customers/CustomerForm'
 import { toast } from 'sonner'
 import {
@@ -187,7 +187,7 @@ export default function CustomerSearchCombobox({
     }
 
     // ── Customer creation handler ────────────────────────────────
-    const handleCreateSuccess = async (data: any) => {
+    const handleCreateSuccess = async (data: CustomerCreate) => {
         try {
             const newCustomer = await createCustomer(data)
             selectCustomer(newCustomer)

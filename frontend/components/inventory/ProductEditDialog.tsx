@@ -72,7 +72,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
         setLoading(true)
         try {
             // 1. Save main product info (General)
-            const mainPayload: any = {
+            const mainPayload: Partial<Product> = {
                 nombre: baseName,
                 codigo_interno: baseSku,
                 descripcion: baseDescription || null,
@@ -96,8 +96,8 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                     await updateProduct(v.id, {
                         nombre: v.nombre,
                         codigo_interno: v.codigo_interno,
-                        precio_neto: v.precio_neto as any,
-                        stock_actual: v.stock_actual as any,
+                        precio_neto: v.precio_neto,
+                        stock_actual: v.stock_actual,
                         codigo_barras: v.codigo_barras || null,
                         controla_stock: controlStock,
                         tax_id: selectedTax ? parseInt(selectedTax) : null,

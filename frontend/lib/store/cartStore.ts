@@ -1,6 +1,6 @@
 'use client'
 
-import { create } from 'zustand'
+import { create, type StoreApi } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Product } from '@/services/products'
 import type { Customer } from '@/services/customers'
@@ -180,7 +180,10 @@ export const useCartStore = create<CartState>()(
     )
 )
 
-async function recalculatePrices(set: any, get: any) {
+async function recalculatePrices(
+    set: StoreApi<CartState>['setState'],
+    get: StoreApi<CartState>['getState'],
+) {
     const state = get()
     if (state.items.length === 0) return
 

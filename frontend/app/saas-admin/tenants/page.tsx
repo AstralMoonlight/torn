@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem } from '@/services/saas'
+import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem, type EconomicActivity } from '@/services/saas'
 import { getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
 import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
@@ -56,7 +56,7 @@ export default function TenantsListPage() {
         city: '',
         giro: '',
         billing_day: 1,
-        economic_activities: [] as any[]
+        economic_activities: [] as EconomicActivity[]
     })
     const [actecoSearch, setActecoSearch] = useState('')
     const [actecoResults, setActecoResults] = useState<ActecoItem[]>([])
@@ -68,7 +68,7 @@ export default function TenantsListPage() {
         t.schema_name.toLowerCase().includes(tenantSearch.toLowerCase())
     )
 
-    const toggleActeco = (acteco: ActecoItem) => {
+    const toggleActeco = (acteco: EconomicActivity) => {
         const exists = formData.economic_activities.find(a => a.code === acteco.code)
         if (exists) {
             setFormData({
@@ -369,7 +369,7 @@ export default function TenantsListPage() {
                                                 </div>
                                             ) : (
                                                 actecoResults.map(acteco => {
-                                                    const isSelected = formData.economic_activities.some((a: ActecoItem) => a.code === acteco.code)
+                                                    const isSelected = formData.economic_activities.some((a) => a.code === acteco.code)
                                                     return (
                                                         <div
                                                             key={acteco.code}
