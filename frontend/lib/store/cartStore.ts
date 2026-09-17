@@ -4,6 +4,7 @@ import { create, type StoreApi } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Product } from '@/services/products'
 import type { Customer } from '@/services/customers'
+import type { DocumentReference } from '@/services/sales'
 import { resolvePrice, type PriceListRead } from '@/services/price_lists'
 import { productTaxRate } from '@/lib/taxes'
 import { toast } from 'sonner'
@@ -24,10 +25,13 @@ interface CartState {
     isRecalculating: boolean
     /** Tipo de DTE en curso; define si el carro lleva IVA o no. */
     tipoDte: number
+    /** Referencias a documentos previos (OC, Guía, etc.), sólo aplica a Factura. */
+    referencias: DocumentReference[]
 
     setCustomer: (customer: Customer | null, autoSwitchList?: PriceListRead | null) => void
     setTipoDte: (tipoDte: number) => void
     setPriceList: (list: PriceListRead | null) => void
+    setReferencias: (referencias: DocumentReference[]) => void
     addItem: (product: Product, qty?: number) => Promise<void>
     removeItem: (productId: number) => void
     updateQuantity: (productId: number, qty: number) => void
@@ -71,6 +75,7 @@ export const useCartStore = create<CartState>()(
             priceList: null,
             isRecalculating: false,
             tipoDte: 39,
+            referencias: [],
             totalNeto: 0,
             totalIva: 0,
             totalFinal: 0,
@@ -84,6 +89,8 @@ export const useCartStore = create<CartState>()(
 
             setTipoDte: (tipoDte) =>
                 set((state) => ({ tipoDte, ...recalcTotals(state.items, tipoDte) })),
+
+            setReferencias: (referencias) => set({ referencias }),
 
             setPriceList: async (list) => {
                 set({ priceList: list })
@@ -178,7 +185,7 @@ export const useCartStore = create<CartState>()(
                 }),
 
             clear: () =>
-                set({ items: [], customer: null, priceList: null, totalNeto: 0, totalIva: 0, totalFinal: 0 }),
+                set({ items: [], customer: null, priceList: null, referencias: [], totalNeto: 0, totalIva: 0, totalFinal: 0 }),
         }),
         {
             name: 'torn-cart',
