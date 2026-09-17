@@ -34,8 +34,21 @@ DATABASE_URL = (
 #
 # Al subirlos, hay que cuadrarlos con el `max_connections` de PostgreSQL
 # (100 por defecto) y multiplicar por el número de instancias del backend.
-DB_POOL_SIZE = int(os.getenv("TORN_DB_POOL_SIZE", "20"))
-DB_MAX_OVERFLOW = int(os.getenv("TORN_DB_MAX_OVERFLOW", "30"))
+# Medido contra el stack Docker en /products/ (issue #38): con pool_size=30 +
+# max_overflow=40 (70 conexiones, una sola instancia), 60 peticiones
+# concurrentes responden 200 y el techo queda entre 60 y 80; antes de esto
+# 60 ya devolvía 500 con pool_size=20+max_overflow=30 (50 conexiones).
+#
+# Eliminar la segunda conexión por petición (que `get_tenant_db` reuse la de
+# `get_global_db`) subiría el techo mucho más, pero exigiría que ninguna
+# sesión necesite las dos conexiones abiertas a la vez con schema_translate_map
+# distinto — no es el caso hoy (ver `app/routers/users.py`, que intercala
+# consultas al esquema público y al del tenant en el mismo request) y esta
+# ruta de aislamiento por esquema no tiene cobertura de tests todavía. Se
+# dejó fuera de este cambio para no arriesgar una fuga de datos entre
+# tenants sin esa red de seguridad.
+DB_POOL_SIZE = int(os.getenv("TORN_DB_POOL_SIZE", "30"))
+DB_MAX_OVERFLOW = int(os.getenv("TORN_DB_MAX_OVERFLOW", "40"))
 DB_POOL_TIMEOUT = int(os.getenv("TORN_DB_POOL_TIMEOUT", "30"))
 
 # ── SQLAlchemy engine & session ──────────────────────────────────────

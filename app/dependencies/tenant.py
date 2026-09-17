@@ -13,7 +13,7 @@ migrar antes a un driver asíncrono.
 
 from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, Header, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.engine import Connection
 
 from app.database import engine, SessionLocal
@@ -69,7 +69,9 @@ def get_current_tenant_user(
     global_db: Session = Depends(get_global_db)
 ) -> TenantUser:
     """Valida y retorna la membresía (TenantUser) del usuario global en el Inquilino solicitado."""
-    tenant_user = global_db.query(TenantUser).filter(
+    # joinedload evita que `get_tenant_db` dispare una segunda consulta (lazy
+    # load de `.tenant`) sobre esta misma conexión sólo para leer schema_name.
+    tenant_user = global_db.query(TenantUser).options(joinedload(TenantUser.tenant)).filter(
         TenantUser.user_id == current_user.id,
         TenantUser.tenant_id == x_tenant_id,
         TenantUser.is_active == True
@@ -113,9 +115,12 @@ def get_tenant_db(
     try:
         yield tenant_session
     finally:
-        tenant_session.close()
-        connection.execution_options(schema_translate_map=None)
-        connection.close()
+        # `connection.close()` en su propio finally: si `tenant_session.close()`
+        # lanzara, la conexión igual vuelve al pool en vez de quedar fugada.
+        try:
+            tenant_session.close()
+        finally:
+            connection.close()
 
 def get_current_local_user(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],
