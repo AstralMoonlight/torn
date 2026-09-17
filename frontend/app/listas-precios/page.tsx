@@ -42,6 +42,54 @@ interface DraftItem extends PriceItem {
 // ── Tax rate normalizer ───────────────────────────────────────────────────
 // Normalize to always be in decimal form.
 
+// ── Item Row (usado tanto en la lista base como en listas personalizadas) ──
+
+function PriceListItemRow({
+    item, isGrossMode, onPriceChange, onRemove,
+}: {
+    item: DraftItem
+    isGrossMode: boolean
+    onPriceChange: (productId: number, rawValue: string) => void
+    onRemove?: (productId: number) => void
+}) {
+    return (
+        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group">
+            <span className="flex-1 min-w-0 text-sm truncate text-neutral-800 dark:text-neutral-200">
+                {item.product_name}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+                <Label className="text-xs text-neutral-400 mr-1 hidden sm:inline">
+                    {isGrossMode ? 'Bruto:' : 'Neto:'}
+                </Label>
+                <span className="text-xs text-neutral-400">$</span>
+                <Input
+                    type="number"
+                    min="0"
+                    value={
+                        String(item.fixed_price) === ''
+                            ? ''
+                            : isGrossMode
+                                ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate))
+                                : Number(item.fixed_price)
+                    }
+                    onChange={e => onPriceChange(item.product_id, e.target.value)}
+                    className="w-24 h-7 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
+                />
+            </div>
+            {onRemove && (
+                <button
+                    type="button"
+                    onClick={() => onRemove(item.product_id)}
+                    className="text-neutral-300 hover:text-red-500 transition-colors shrink-0"
+                    title="Quitar de la lista"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            )}
+        </div>
+    )
+}
+
 // ── Main Page Component ────────────────────────────────────────────────────
 
 export default function PriceListsPage() {
@@ -400,7 +448,7 @@ export default function PriceListsPage() {
 
             {/* Create / Edit Modal */}
             <Dialog open={openModal} onOpenChange={setOpenModal}>
-                <DialogContent className="sm:max-w-2xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="sm:max-w-4xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
                             {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}
@@ -469,18 +517,20 @@ export default function PriceListsPage() {
                         {activeTab === 'products' && (
                             <div className="space-y-4 flex flex-col">
 
-                                {/* Search + Toggle */}
+                                {/* Toggle (search bars live inside each panel for custom lists; base mode keeps a single global one) */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-                                    <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                                        <Input
-                                            placeholder={editingId === 'base' ? 'Filtrar catálogo por nombre...' : 'Buscar producto por nombre o código...'}
-                                            value={editingId === 'base' ? draftSearch : productSearch}
-                                            onChange={e => editingId === 'base' ? setDraftSearch(e.target.value) : setProductSearch(e.target.value)}
-                                            className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                    {editingId === 'base' && (
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                            <Input
+                                                placeholder="Filtrar catálogo por nombre..."
+                                                value={draftSearch}
+                                                onChange={e => setDraftSearch(e.target.value)}
+                                                className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 shrink-0 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 ml-auto">
                                         <Label htmlFor="tax-toggle" className="text-xs font-medium text-neutral-600 dark:text-neutral-300 cursor-pointer">
                                             {isGrossMode ? 'Bruto (c/ IVA)' : 'Neto (s/ IVA)'}
                                         </Label>
@@ -492,114 +542,109 @@ export default function PriceListsPage() {
                                     </div>
                                 </div>
 
-                                {/* ── Catalog browser: shown only for custom lists (not base mode) ── */}
-                                {editingId !== 'base' && (
-                                    <div className="shrink-0 space-y-2">
-                                        {catalogProducts.length > 0 ? (
-                                            <>
-                                                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">
-                                                    {productSearch
-                                                        ? `${catalogProducts.length} resultado${catalogProducts.length !== 1 ? 's' : ''} — haz clic para agregar`
-                                                        : `Catálogo disponible (${catalogProducts.length}) — haz clic en un producto para agregarlo`}
-                                                </p>
-                                                <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
-                                                    {catalogProducts.map(p => (
-                                                        <button
-                                                            key={p.id}
-                                                            type="button"
-                                                            onClick={() => addProduct(p)}
-                                                            className="flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-blue-400 hover:bg-blue-50/60 dark:hover:bg-blue-900/20 transition-all text-left group cursor-pointer"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="text-xs font-medium text-neutral-800 dark:text-neutral-100 truncate leading-tight">{p.full_name}</p>
-                                                                <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{p.codigo_interno}</p>
-                                                            </div>
-                                                            <div className="shrink-0 ml-2 text-right">
-                                                                <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
-                                                                    ${(isGrossMode
-                                                                        ? Number(p.precio_bruto)
-                                                                        : Number(p.precio_neto)
-                                                                    ).toLocaleString('es-CL')}
-                                                                </p>
-                                                                <Plus className="h-3 w-3 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
-                                                            </div>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </>
-                                        ) : productSearch ? (
-                                            <p className="text-xs text-neutral-400 px-1">Sin resultados para &quot;{productSearch}&quot;</p>
-                                        ) : allProducts.length > 0 ? (
-                                            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 py-1">
-                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                                Todos los productos del catálogo ya están incluidos en esta lista.
-                                            </div>
-                                        ) : null}
+                                {editingId === 'base' ? (
+                                    /* ── Lista base: un solo panel, todo el catálogo ya está "en la lista" ── */
+                                    <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-0.5">
+                                        {draftItems
+                                            .filter(item => item.product_name.toLowerCase().includes(draftSearch.toLowerCase()))
+                                            .map(item => (
+                                                <PriceListItemRow
+                                                    key={item.product_id}
+                                                    item={item}
+                                                    isGrossMode={isGrossMode}
+                                                    onPriceChange={updateFixedPrice}
+                                                />
+                                            ))}
                                     </div>
-                                )}
-
-                                {/* ── Selected products with price inputs ── */}
-                                {draftItems.length > 0 && (
-                                    <div className="shrink-0 space-y-2">
-                                        {editingId !== 'base' && (
+                                ) : (
+                                    /* ── Lista personalizada: seleccionados y catálogo lado a lado, para que
+                                       lo que ya está en la lista no quede tapado ni empujado hacia abajo. ── */
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
+                                        {/* Columna izquierda: lo que ya está en la lista */}
+                                        <div className="space-y-2 min-w-0">
                                             <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">
                                                 En esta lista ({draftItems.length})
                                             </p>
-                                        )}
-                                        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
-                                            {draftItems
-                                                .filter(item =>
-                                                    editingId !== 'base' ||
-                                                    item.product_name.toLowerCase().includes(draftSearch.toLowerCase())
-                                                )
-                                                .map(item => (
-                                                    <div
-                                                        key={item.product_id}
-                                                        className="flex items-center gap-3 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-800 group"
-                                                    >
-                                                        <span className="flex-1 text-sm truncate text-neutral-800 dark:text-neutral-200">
-                                                            {item.product_name}
-                                                        </span>
-                                                        <div className="flex items-center gap-1 shrink-0">
-                                                            <Label className="text-xs text-neutral-400 mr-1">
-                                                                {isGrossMode ? 'Bruto:' : 'Neto:'}
-                                                            </Label>
-                                                            <span className="text-xs text-neutral-400">$</span>
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                value={
-                                                                    String(item.fixed_price) === ''
-                                                                        ? ''
-                                                                        : isGrossMode
-                                                                            ? Math.round(Number(item.fixed_price) * (1 + item.tax_rate))
-                                                                            : Number(item.fixed_price)
-                                                                }
-                                                                onChange={e => updateFixedPrice(item.product_id, e.target.value)}
-                                                                className="w-28 h-7 text-sm text-right border-neutral-300 dark:border-neutral-700 focus-visible:ring-blue-500"
+                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[380px] overflow-y-auto p-1.5">
+                                                {draftItems.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                        <Package className="h-7 w-7 mb-2 opacity-40" />
+                                                        Aún no has agregado productos.
+                                                        <br />Selecciónalos del catálogo a la derecha.
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-1.5">
+                                                        {draftItems.map(item => (
+                                                            <PriceListItemRow
+                                                                key={item.product_id}
+                                                                item={item}
+                                                                isGrossMode={isGrossMode}
+                                                                onPriceChange={updateFixedPrice}
+                                                                onRemove={removeProduct}
                                                             />
-                                                        </div>
-                                                        {editingId !== 'base' && (
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Columna derecha: catálogo disponible para agregar */}
+                                        <div className="space-y-2 min-w-0">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                                                <Input
+                                                    placeholder="Buscar producto por nombre o código..."
+                                                    value={productSearch}
+                                                    onChange={e => setProductSearch(e.target.value)}
+                                                    className="pl-9 border-neutral-200 dark:border-neutral-800 text-sm"
+                                                />
+                                            </div>
+                                            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 h-[336px] overflow-y-auto p-1.5">
+                                                {allProducts.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center h-full text-center text-neutral-400 text-xs px-4">
+                                                        <Package className="h-7 w-7 mb-2 opacity-40" />
+                                                        No hay productos en el catálogo todavía.
+                                                        <br />Agrégalos desde Inventario.
+                                                    </div>
+                                                ) : catalogProducts.length > 0 ? (
+                                                    <div className="space-y-1.5">
+                                                        {catalogProducts.map(p => (
                                                             <button
+                                                                key={p.id}
                                                                 type="button"
-                                                                onClick={() => removeProduct(item.product_id)}
-                                                                className="text-neutral-300 hover:text-red-500 transition-colors"
-                                                                title="Quitar de la lista"
+                                                                onClick={() => addProduct(p)}
+                                                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-blue-400 hover:bg-blue-50/60 dark:hover:bg-blue-900/20 transition-all text-left group cursor-pointer"
                                                             >
-                                                                <X className="h-4 w-4" />
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-xs font-medium text-neutral-800 dark:text-neutral-100 truncate leading-tight">{p.full_name}</p>
+                                                                    <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{p.codigo_interno}</p>
+                                                                </div>
+                                                                <div className="shrink-0 ml-2 text-right flex items-center gap-1.5">
+                                                                    <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
+                                                                        ${(isGrossMode
+                                                                            ? Number(p.precio_bruto)
+                                                                            : Number(p.precio_neto)
+                                                                        ).toLocaleString('es-CL')}
+                                                                    </p>
+                                                                    <Plus className="h-3.5 w-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                </div>
                                                             </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center h-full text-center text-xs px-4">
+                                                        {productSearch ? (
+                                                            <span className="text-neutral-400">Sin resultados para &quot;{productSearch}&quot;</span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                                                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                                                Todo el catálogo ya está en esta lista.
+                                                            </span>
                                                         )}
                                                     </div>
-                                                ))}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-
-                                {/* True empty state: no products in the catalog at all */}
-                                {editingId !== 'base' && allProducts.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-10 text-neutral-400 text-sm rounded-lg border border-dashed border-neutral-200 dark:border-neutral-800">
-                                        <Package className="h-8 w-8 mb-2 opacity-40" />
-                                        No hay productos en el catálogo todavía. Agrégalos desde Inventario.
                                     </div>
                                 )}
                             </div>
