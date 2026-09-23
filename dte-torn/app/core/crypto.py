@@ -179,10 +179,11 @@ class LlaveMaestraCambiadaError(Exception):
 
     def __init__(self, key_version: int) -> None:
         super().__init__(
-            f"DTE_MASTER_KEY no corresponde a los datos ya cifrados con la versión "
-            f"{key_version}. NO se debe operar así: los certificados y los CAF "
-            "existentes quedarían ilegibles y lo nuevo se cifraría con otra llave. "
-            "Revisar la variable de entorno antes de volver a levantar el servicio."
+            f"No hay llave que abra los datos cifrados con la versión {key_version}. "
+            "NO se debe operar así: esos certificados y CAF quedarían ilegibles. "
+            "Revisar DTE_MASTER_KEY (si es la versión vigente) o "
+            "DTE_MASTER_KEYS_ANTERIORES (si es una versión previa que quedó fuera "
+            "tras una rotación) antes de volver a levantar el servicio."
         )
         self.key_version = key_version
 
@@ -225,20 +226,24 @@ async def verificar_llave_maestra(session: AsyncSession) -> str:
         )
     ).scalar_one_or_none()
 
-    if sembrado is not None:
-        return "sembrado"
+    # Cada fila del canario es una versión de llave que alguna vez cifró datos.
+    # Se comprueban todas, no solo la vigente: rotar y olvidar la llave anterior
+    # en `DTE_MASTER_KEYS_ANTERIORES` deja ilegible lo viejo, y sin esto el
+    # servicio arrancaría igual para fallar recién en la primera firma.
+    filas = (await session.execute(select(CryptoCanary))).scalars().all()
 
-    fila = (
-        await session.execute(
-            select(CryptoCanary).where(CryptoCanary.key_version == version)
-        )
-    ).scalar_one()
+    for fila in filas:
+        try:
+            abierto = abrir(
+                _CANARY_TENANT,
+                fila.nonce,
+                fila.cifrado,
+                _canary_aad(fila.key_version),
+                fila.key_version,
+            )
+        except (DescifradoError, LlaveDesconocidaError) as exc:
+            raise LlaveMaestraCambiadaError(fila.key_version) from exc
+        if abierto != _CANARY_CLARO:
+            raise LlaveMaestraCambiadaError(fila.key_version)
 
-    try:
-        abierto = abrir(_CANARY_TENANT, fila.nonce, fila.cifrado, datos, version)
-    except DescifradoError as exc:
-        raise LlaveMaestraCambiadaError(version) from exc
-
-    if abierto != _CANARY_CLARO:
-        raise LlaveMaestraCambiadaError(version)
-    return "ok"
+    return "sembrado" if sembrado is not None else "ok"

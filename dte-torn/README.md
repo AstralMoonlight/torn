@@ -78,16 +78,28 @@ Todas llevan prefijo `DTE_`. La plantilla completa está en `.env.example`.
 
 ## La llave maestra
 
-`DTE_MASTER_KEY` cifra, indirectamente, todo lo que este servicio guarda como
-secreto: los certificados digitales de cada empresa y los CAF. **No existe
-recuperación.** Si la llave desaparece, cada cliente tiene que volver a subir su
-.pfx —molesto pero resoluble— y los CAF quedan ilegibles, que es lo grave: los
-folios ya emitidos no se pueden volver a timbrar.
+`DTE_MASTER_KEY` cifra, indirectamente, los dos secretos que guarda este
+servicio: los certificados digitales de cada empresa y los CAF. **No existe
+recuperación**: si la llave desaparece, no hay forma de volver a abrirlos.
+
+El alcance exacto de esa pérdida, que conviene tener claro para no
+sobredimensionarlo ni subestimarlo:
+
+| Qué | Qué pasa si se pierde la llave |
+|---|---|
+| Documentos ya emitidos y firmados | **Intactos.** El XML firmado vive en S3 sin cifrar con esta llave; es un registro tributario, no un secreto |
+| Certificados `.pfx` | Cada empresa vuelve a subir el suyo. Fricción, no pérdida |
+| CAF | Se pierden los folios **no usados** de cada rango. Hay que pedir CAF nuevos y declarar al SII los del rango viejo como no utilizados |
+
+Es decir: un mal día con trámite tributario, no una catástrofe. Suficiente para
+justificar respaldo serio, no suficiente para justificar un HSM.
 
 Por eso:
 
-- La llave va en un gestor de secretos con respaldo (no en un `.env` suelto en
-  un servidor, que es lo que se termina haciendo si nadie lo escribe antes).
+- Tres copias de la llave, una de ellas fuera de línea, en el mismo lugar donde
+  se guarda la clave del certificado del SII.
+- No en un `.env` suelto en un servidor, que es lo que termina pasando si nadie
+  lo escribe antes.
 - Quien pueda restaurarla no puede ser una sola persona.
 
 ### El canario
@@ -111,7 +123,12 @@ con la llave equivocada se nota cuando ya es tarde.
 3. Desplegar. Lo nuevo se cifra con la llave nueva; lo viejo se sigue leyendo
    con la anterior, porque cada fila guarda su `key_version`.
 4. La llave vieja se puede sacar recién cuando no quede ninguna fila con esa
-   versión (`certificates` y `cafs`).
+   versión en `certificates` ni `cafs`, y entonces se borra también su fila de
+   `crypto_canary`.
+
+`crypto_canary` tiene una fila por versión que alguna vez se usó, y el arranque
+las comprueba **todas**. Si se rota y la llave anterior se cae del entorno, el
+servicio no parte, en vez de arrancar y fallar recién en la primera firma.
 
 No hay comando de re-cifrado masivo todavía: mientras la llave anterior siga
 cargada no hace falta, y escribirlo antes de necesitarlo es escribirlo sin saber
