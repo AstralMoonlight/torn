@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     folio_umbral_alerta: int = 100
     #: Máximo de envíos simultáneos al SII por RUT emisor.
     sii_concurrencia_por_rut: int = 2
+    #: Segundos que se reusa un token del SII. Conservador a propósito: si el
+    #: SII lo invalida antes, el cliente pide otro y reintenta una vez.
+    sii_token_ttl_segundos: int = 1800
+    sii_timeout_segundos: float = 30.0
 
     @field_validator("master_key")
     @classmethod

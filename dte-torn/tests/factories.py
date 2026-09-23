@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+from pathlib import Path
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -132,3 +133,26 @@ def pfx(
             password.encode("utf-8")
         ),
     )
+
+
+XSD = Path(__file__).resolve().parent.parent / "app" / "dte" / "xsd"
+
+
+def xsd_boleta_parcheado(carpeta: Path) -> Path:
+    """Copia el esquema oficial de boletas corrigiendo su defecto, y devuelve la ruta.
+
+    `DescuentoPct` y `RecargoPct` restringen `PctType` con mínimo 0.00, pero
+    `PctType` ya tiene mínimo 0.01. Una restricción no puede ampliar el rango de
+    su tipo base, así que libxml2 (correctamente) se niega a compilarlo. Se
+    corrige en una copia: el archivo del SII queda intacto en el repositorio.
+    """
+    original = (XSD / "boleta" / "EnvioBOLETA_v11.xsd").read_bytes()
+    assert original.count(b'<xs:minInclusive value="0.00"/>') == 2, (
+        "El SII cambió el esquema de boletas; revisar si el defecto sigue ahí"
+    )
+    destino = carpeta / "EnvioBOLETA_v11.xsd"
+    destino.write_bytes(
+        original.replace(b'<xs:minInclusive value="0.00"/>', b'<xs:minInclusive value="0.01"/>')
+    )
+    (carpeta / "xmldsignature_v10.xsd").write_bytes((XSD / "boleta" / "xmldsignature_v10.xsd").read_bytes())
+    return destino

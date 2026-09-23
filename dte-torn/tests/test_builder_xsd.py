@@ -30,7 +30,7 @@ from app.dte.builder import (
 from app.core.certificados import parsear_pfx
 from app.dte.caf import parsear_caf
 from app.dte.signer import firmar_dte
-from tests.factories import CLAVE_PFX, caf_xml, pfx
+from tests.factories import CLAVE_PFX, caf_xml, pfx, xsd_boleta_parcheado
 
 XSD = Path(__file__).resolve().parent.parent / "app" / "dte" / "xsd"
 N = {"s": NS}
@@ -68,28 +68,14 @@ def esquema_boleta(tmp_path_factory: pytest.TempPathFactory) -> etree.XMLSchema:
     """El XSD de boletas solo declara `EnvioBOLETA` como elemento global.
 
     Para validar una boleta suelta se envuelve el tipo `BOLETADefType` en un
-    elemento `DTE` global, incluyendo el esquema oficial sin tocarlo.
+    elemento `DTE` global. Se incluye la copia corregida del esquema oficial
+    (ver `factories.xsd_boleta_parcheado`).
     """
     carpeta = tmp_path_factory.mktemp("xsd")
-
-    # Defecto del esquema oficial: `DescuentoPct` y `RecargoPct` restringen
-    # `PctType` con mínimo 0.00, pero `PctType` ya tiene mínimo 0.01. Una
-    # restricción no puede ampliar el rango de su tipo base, así que libxml2
-    # (correctamente) se niega a compilar el esquema. Se corrige en una copia:
-    # el archivo del SII queda intacto en el repositorio.
-    original = (XSD / "boleta" / "EnvioBOLETA_v11.xsd").read_bytes()
-    assert original.count(b'<xs:minInclusive value="0.00"/>') == 2, (
-        "El SII cambió el esquema de boletas; revisar si el defecto sigue ahí"
-    )
-    (carpeta / "EnvioBOLETA_v11.xsd").write_bytes(
-        original.replace(b'<xs:minInclusive value="0.00"/>', b'<xs:minInclusive value="0.01"/>')
-    )
-    (carpeta / "xmldsignature_v10.xsd").write_bytes(
-        (XSD / "boleta" / "xmldsignature_v10.xsd").read_bytes()
-    )
+    parcheado = xsd_boleta_parcheado(carpeta)
 
     envoltorio = carpeta / "boleta_suelta.xsd"
-    oficial = (carpeta / "EnvioBOLETA_v11.xsd").as_uri()
+    oficial = parcheado.as_uri()
     envoltorio.write_text(
         f"""<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema targetNamespace="{NS}" xmlns:SiiDte="{NS}"
