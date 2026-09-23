@@ -25,7 +25,7 @@ from cryptography.x509.oid import NameOID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import KEY_VERSION_ACTUAL, aad, abrir, sellar
+from app.core.crypto import aad, abrir, sellar, version_actual
 from app.models import AuditLog, Certificate
 
 #: OID bajo el que el SII pone el RUT del titular en el subjectAltName.
@@ -189,7 +189,7 @@ async def guardar_certificado(
         nonce_pfx=nonce_pfx,
         password_cifrada=pwd_cifrada,
         nonce_password=nonce_pwd,
-        key_version=KEY_VERSION_ACTUAL,
+        key_version=version_actual(),
         subject_rut=material.rut,
         fingerprint_sha256=material.fingerprint_sha256,
         not_before=material.not_before,

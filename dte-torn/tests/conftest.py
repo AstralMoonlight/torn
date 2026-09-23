@@ -70,7 +70,8 @@ async def limpiar() -> AsyncIterator[None]:
         await conn.execute(
             text(
                 "TRUNCATE dead_letters, audit_log, folio_requests, documents, "
-                "envios, cafs, certificates, tenants RESTART IDENTITY CASCADE"
+                "envios, cafs, certificates, tenants, crypto_canary "
+                "RESTART IDENTITY CASCADE"
             )
         )
     await owner.dispose()

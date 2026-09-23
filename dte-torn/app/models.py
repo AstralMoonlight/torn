@@ -429,6 +429,24 @@ class DeadLetter(TenantMixin, Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class CryptoCanary(Base):
+    """Texto conocido cifrado con la llave maestra vigente.
+
+    Sin RLS y sin `tenant_id`: no es dato de nadie, es la prueba de que la llave
+    configurada es la misma que cifró todo lo demás. Ver
+    `core/crypto.verificar_llave_maestra`.
+    """
+
+    __tablename__ = "crypto_canary"
+
+    key_version: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    nonce: Mapped[bytes] = mapped_column(LargeBinary(12), nullable=False)
+    cifrado: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 #: Tablas con RLS. La migración inicial recorre esta lista para crear las
 #: políticas, así que agregar una tabla de tenant no se puede olvidar acá.
 TABLAS_RLS: tuple[str, ...] = tuple(
