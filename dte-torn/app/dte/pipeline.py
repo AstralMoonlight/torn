@@ -486,7 +486,15 @@ async def consultar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
                     operacion="CONSULTA",
                     resultado="OK",
                     actor="worker-estado",
-                    detalle={"track_id": envio.track_id, "estado_sii": estado.estado, "resultado": estado.resultado.value},
+                    detalle={
+                        "track_id": envio.track_id,
+                        "estado_sii": estado.estado,
+                        "resultado": estado.resultado.value,
+                        # Cuánto tardó el SII en dar el resultado final, medido
+                        # hasta esta consulta: la precisión es el intervalo entre
+                        # consultas.
+                        "segundos_desde_envio": int((ahora - envio.sent_at).total_seconds()),
+                    },
                 )
             )
             return final_doc

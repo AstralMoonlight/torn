@@ -131,6 +131,11 @@ async def test_flujo_completo(emisor, redis_limpio, almacen) -> None:
     assert ("CONSULTA", "OK") in operaciones
     assert operaciones.count(("ACCESO_CERT", "OK")) == 3  # firma, envío, consulta
 
+    async with tenant_session(emisor) as s:
+        consulta = (await s.execute(select(AuditLog).where(AuditLog.operacion == "CONSULTA"))).scalar_one()
+    # Cuánto tardó el SII queda registrado para revisarlo después.
+    assert consulta.detalle["segundos_desde_envio"] >= 0
+
 
 async def test_firmar_dos_veces_no_vuelve_a_firmar(emisor, redis_limpio, almacen) -> None:
     """El XML firmado nunca se regenera."""

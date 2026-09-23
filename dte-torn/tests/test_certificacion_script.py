@@ -42,7 +42,9 @@ def entorno(tmp_path, monkeypatch, redis_limpio, almacen, limpiar):
         "crear_http",
         lambda timeout: httpx.AsyncClient(transport=httpx.MockTransport(sii)),
     )
-    monkeypatch.setattr(certificacion, "_ENTRE_CONSULTAS_SEGUNDOS", 1)
+    monkeypatch.setattr(certificacion, "_CONSULTA_RAPIDA_SEGUNDOS", 1)
+    monkeypatch.setattr(certificacion, "_CONSULTA_LENTA_SEGUNDOS", 1)
+    monkeypatch.setattr(certificacion, "_TRAMO_RAPIDO_SEGUNDOS", 2)
     monkeypatch.setattr(certificacion, "_ESPERA_TOTAL_SEGUNDOS", 3)
     return sii
 
@@ -55,6 +57,8 @@ async def test_enviar_de_punta_a_punta(entorno, capsys) -> None:
     assert "2. Envío: ENVIADO" in salida
     assert "Track ID: 0123456789" in salida
     assert "Resultado: ACEPTADO" in salida
+    assert "Subida al SII:" in salida and "hora de Chile" in salida
+    assert "El SII dio el resultado final entre +0:00 y +0:0" in salida
     assert entorno.llamadas.count("upload") == 1
 
     async with control_session() as s:

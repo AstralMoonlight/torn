@@ -52,6 +52,7 @@ from app.dte import pipeline
 from app.dte.builder import BOLETAS, DatosDocumento, Item, Receptor, calcular_totales
 from app.dte.caf import guardar_caf, parsear_caf
 from app.dte.folios import DatosEmision, emitir_documento
+from app.dte.signer import ZONA_CHILE
 from app.dte.sii_client import Canal, ClienteSii, SiiError, crear_http
 from app.models import CAF, Certificate, Document, Envio, Tenant
 
@@ -71,7 +72,16 @@ _RECEPTOR_PRUEBA = Receptor(
 
 #: Cuánto esperar el resultado del SII antes de devolver el control.
 _ESPERA_TOTAL_SEGUNDOS = 600
-_ENTRE_CONSULTAS_SEGUNDOS = 15
+#: Consultas seguidas al principio, para medir con precisión cuánto tarda el SII
+#: en responder; después, más espaciadas.
+_CONSULTA_RAPIDA_SEGUNDOS = 5
+_TRAMO_RAPIDO_SEGUNDOS = 120
+_CONSULTA_LENTA_SEGUNDOS = 15
+
+
+def _transcurrido(desde: datetime) -> str:
+    segundos = int((datetime.now(ZONA_CHILE) - desde).total_seconds())
+    return f"+{segundos // 60}:{segundos % 60:02d}"
 
 
 def _certificado():
@@ -237,9 +247,15 @@ async def modo_enviar() -> int:
             print(f"   {(await _mostrar(tenant_id, doc_id)).last_error}")
             return 1
 
+        inicio_subida = datetime.now(ZONA_CHILE)
         estado = await pipeline.enviar(ctx, tenant_id, doc_id)
+        subido = datetime.now(ZONA_CHILE)
         doc = await _mostrar(tenant_id, doc_id)
         print(f"2. Envío: {estado}")
+        print(
+            f"   Subida al SII: {subido:%H:%M:%S} hora de Chile "
+            f"(la subida tardó {(subido - inicio_subida).total_seconds():.1f} s)"
+        )
         if estado != "ENVIADO":
             print(f"   {doc.last_error}")
             return 1
@@ -249,13 +265,20 @@ async def modo_enviar() -> int:
         print(f"   Sobre guardado en S3: {envio.xml_key}")
 
         print(f"3. Esperando resultado del SII (hasta {_ESPERA_TOTAL_SEGUNDOS // 60} min)...")
-        for _ in range(_ESPERA_TOTAL_SEGUNDOS // _ENTRE_CONSULTAS_SEGUNDOS):
-            await asyncio.sleep(_ENTRE_CONSULTAS_SEGUNDOS)
+        anterior = "+0:00"
+        while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
+            rapido = (datetime.now(ZONA_CHILE) - subido).total_seconds() < _TRAMO_RAPIDO_SEGUNDOS
+            await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS if rapido else _CONSULTA_LENTA_SEGUNDOS)
             estado = await pipeline.consultar(ctx, tenant_id, doc_id)
             doc = await _mostrar(tenant_id, doc_id)
-            print(f"   {datetime.now():%H:%M:%S}  estado SII: {doc.estado_sii or '-'}  ->  {estado}")
+            ahora = _transcurrido(subido)
+            print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({ahora})  estado SII: {doc.estado_sii or '-'}  ->  {estado}")
             if estado != "ENVIADO":
+                # Solo se sabe que respondió entre una consulta y la siguiente:
+                # esa es la precisión de la medición.
+                print(f"   El SII dio el resultado final entre {anterior} y {ahora} después de la subida")
                 break
+            anterior = ahora
 
     await redis.aclose()
     await get_engine().dispose()
