@@ -369,17 +369,20 @@ async def enviar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
         )
     except SiiNoDisponibleError as exc:
         if exc.ambiguo:
-            return await _fallar(
-                tenant_id,
-                doc_id,
-                E.FIRMADO,
-                "envio",
-                RuntimeError(
-                    f"Subida ambigua: el sobre pudo llegar al SII ({exc}). Verificar en el "
-                    "SII antes de reenviar, para no duplicar el envío."
-                ),
-                permanente=True,
-            )
+            # El SII pudo haber recibido el sobre: no se reenvía. Queda en
+            # VERIFICAR, y el paso `verificar` le pregunta al SII por el folio.
+            async with tenant_session(tenant_id) as s:
+                await s.execute(
+                    update(Document)
+                    .where(Document.id == doc_id)
+                    .values(
+                        estado=E.VERIFICAR,
+                        intentos=0,
+                        last_error=f"Subida ambigua: el sobre pudo llegar al SII ({exc})"[:2000],
+                        next_action_at=_ahora() + _espera(ESPERA_REINTENTO, 0),
+                    )
+                )
+            return E.VERIFICAR
         return await _fallar(tenant_id, doc_id, E.FIRMADO, "envio", exc)
     except Exception as exc:
         return await _fallar(tenant_id, doc_id, E.FIRMADO, "envio", exc)
@@ -422,6 +425,92 @@ async def enviar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
             )
         )
     return E.ENVIADO
+
+
+# ---------------------------------------------------------------- verificar --
+
+
+async def verificar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
+    """VERIFICAR → FIRMADO | ENVIADO | ERROR, preguntándole al SII por el folio.
+
+    Resuelve una subida ambigua sin arriesgar un envío duplicado:
+
+    - El SII **no tiene** el documento: vuelve a FIRMADO y se reenvía.
+    - El SII **lo tiene** con los mismos datos: pasa a ENVIADO con el track ID
+      que informa el SII, y la consulta de estado sigue desde ahí.
+    - El SII tiene **otro** documento con ese folio: ERROR. Nunca se reenvía.
+    - La respuesta no permite concluir, o el SII no responde: sigue en
+      VERIFICAR con espera, y tras `MAX_INTENTOS` va a revisión manual.
+    """
+    async with tenant_session(tenant_id) as s:
+        doc, tenant = await _cargar(s, tenant_id, doc_id)
+        if doc.estado != E.VERIFICAR:
+            return doc.estado
+        if doc.tipo_dte in BOLETAS:
+            raise NotImplementedError("La verificación por folio de boletas usa otra API del SII")
+        cert = await cargar_certificado(
+            s, tenant_id, motivo=f"verificación {doc.tipo_dte}-{doc.folio}", document_id=doc_id
+        )
+        await s.execute(update(Document).where(Document.id == doc_id).values(intentos=Document.intentos + 1))
+
+    try:
+        # El receptor sale del payload, que es la fuente de verdad del documento.
+        receptor = DatosDocumento.model_validate(doc.payload).receptor
+        respuesta = await ctx.sii(tenant.ambiente).consultar_documento(
+            tenant_id, cert, tenant.rut_emisor, receptor.rut, doc.tipo_dte,
+            doc.folio, doc.fecha_emision, doc.monto_total,
+        )
+    except SiiError as exc:
+        respuesta, error = None, exc
+    else:
+        error = None
+
+    ahora = _ahora()
+    async with tenant_session(tenant_id) as s:
+        def auditar(resultado: str, detalle: dict) -> None:
+            s.add(AuditLog(tenant_id=tenant_id, document_id=doc_id, operacion="VERIFICACION",
+                           resultado=resultado, actor="worker-envio", detalle=detalle))
+
+        if respuesta is not None and respuesta.recibido is False:
+            await s.execute(update(Document).where(Document.id == doc_id, Document.estado == E.VERIFICAR)
+                            .values(estado=E.FIRMADO, intentos=0, last_error=None, next_action_at=ahora))
+            auditar("OK", {"estado_sii": respuesta.estado, "decision": "reenviar"})
+            return E.FIRMADO
+
+        if respuesta is not None and respuesta.recibido and respuesta.datos_coinciden and respuesta.track_id:
+            envio_id = uuid.uuid4()
+            s.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio=canal_de(doc.tipo_dte).value,
+                        track_id=respuesta.track_id, estado=EstadoEnvio.ENVIADO, next_poll_at=ahora,
+                        respuesta_raw=respuesta.crudo))
+            await s.flush()
+            await s.execute(update(Document).where(Document.id == doc_id, Document.estado == E.VERIFICAR)
+                            .values(estado=E.ENVIADO, envio_id=envio_id, intentos=0, last_error=None,
+                                    next_action_at=ahora))
+            auditar("OK", {"estado_sii": respuesta.estado, "decision": "ya recibido", "track_id": respuesta.track_id})
+            return E.ENVIADO
+
+        if respuesta is not None and respuesta.recibido and not respuesta.datos_coinciden:
+            motivo = (f"El SII tiene un documento con este folio pero con otros datos ({respuesta.estado}: "
+                      f"{respuesta.glosa}). No se reenvía: revisar a mano.")
+            s.add(DeadLetter(tenant_id=tenant_id, document_id=doc_id, cola="verificacion", error=motivo,
+                             intentos=doc.intentos + 1))
+            await s.execute(update(Document).where(Document.id == doc_id)
+                            .values(estado=E.ERROR, last_error=motivo, next_action_at=None))
+            auditar("ERROR", {"estado_sii": respuesta.estado, "decision": "datos distintos"})
+            return E.ERROR
+
+        # No concluyente: el SII no respondió o respondió algo que no se entiende.
+        motivo = str(error) if error else f"Respuesta no concluyente del SII: {respuesta.estado} ({respuesta.glosa})"
+        if doc.intentos + 1 >= MAX_INTENTOS:
+            s.add(DeadLetter(tenant_id=tenant_id, document_id=doc_id, cola="verificacion",
+                             error=f"No se pudo verificar la subida ambigua: {motivo}"[:4000], intentos=doc.intentos + 1))
+            await s.execute(update(Document).where(Document.id == doc_id)
+                            .values(estado=E.ERROR, last_error=motivo[:2000], next_action_at=None))
+            return E.ERROR
+        await s.execute(update(Document).where(Document.id == doc_id)
+                        .values(last_error=motivo[:2000],
+                                next_action_at=ahora + _espera(ESPERA_REINTENTO, doc.intentos)))
+        return E.VERIFICAR
 
 
 # ---------------------------------------------------------------- consulta --

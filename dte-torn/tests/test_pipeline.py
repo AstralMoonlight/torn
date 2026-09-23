@@ -183,27 +183,91 @@ async def test_s3_detecta_contenido_alterado(emisor, redis_limpio, almacen) -> N
 # ----------------------------------------------------------------- fallos ---
 
 
-async def test_subida_ambigua_va_a_revision_y_no_se_reintenta(emisor, redis_limpio, almacen) -> None:
-    """El pedido salió y no hubo respuesta: el SII pudo recibirlo. No reenviar."""
-    sii = SiiFalso()
+def _con_timeout_en_subida(sii: SiiFalso):
+    """Si no quedan respuestas de subida programadas, el SII no responde: ambigua."""
 
-    def con_timeout(pedido: httpx.Request) -> httpx.Response:
-        if str(pedido.url).endswith("DTEUpload"):
+    def manejador(pedido: httpx.Request) -> httpx.Response:
+        if str(pedido.url).endswith("DTEUpload") and not sii.uploads:
             sii.llamadas.append("upload")
             raise httpx.ReadTimeout("sin respuesta", request=pedido)
         return sii(pedido)
 
-    ctx = _ctx(con_timeout, redis_limpio, almacen)
+    return manejador
+
+
+async def _documento_ambiguo(emisor, redis_limpio, almacen, sii: SiiFalso, manejador=None):
+    """Firma y hace una subida ambigua. Devuelve el contexto y el documento."""
+    sii.uploads = []
+    ctx = _ctx(manejador or _con_timeout_en_subida(sii), redis_limpio, almacen)
     doc_id = await _documento(emisor)
     await pipeline.firmar(ctx, emisor, doc_id)
+    assert await pipeline.enviar(ctx, emisor, doc_id) == E.VERIFICAR
+    return ctx, doc_id
 
-    assert await pipeline.enviar(ctx, emisor, doc_id) == E.ERROR
-    assert await pipeline.enviar(ctx, emisor, doc_id) == E.ERROR  # no se reintenta
+
+async def test_subida_ambigua_queda_por_verificar_y_no_se_reintenta(emisor, redis_limpio, almacen) -> None:
+    """El pedido salió y no hubo respuesta: el SII pudo recibirlo. No reenviar."""
+    sii = SiiFalso()
+    ctx, doc_id = await _documento_ambiguo(emisor, redis_limpio, almacen, sii)
+
+    assert await pipeline.enviar(ctx, emisor, doc_id) == E.VERIFICAR  # enviar no lo toca
+    assert sii.llamadas.count("upload") == 1
+    async with tenant_session(emisor) as s:
+        assert (await s.execute(select(DeadLetter))).scalars().all() == []
+
+
+async def test_verificar_si_el_sii_no_lo_tiene_se_reenvia(emisor, redis_limpio, almacen) -> None:
+    from tests.test_sii_client import _documento_sii
+
+    sii = SiiFalso()
+    ctx, doc_id = await _documento_ambiguo(emisor, redis_limpio, almacen, sii)
+
+    sii.documentos = [_documento_sii("FAU", "Documento No Recibido por el SII")]
+    assert await pipeline.verificar(ctx, emisor, doc_id) == E.FIRMADO
+
+    sii.uploads = [(200, _upload("0"))]
+    assert await pipeline.enviar(ctx, emisor, doc_id) == E.ENVIADO
+    assert sii.llamadas.count("upload") == 2  # el reenvío, recién después de verificar
+
+
+async def test_verificar_si_el_sii_lo_tiene_sigue_con_su_track(emisor, redis_limpio, almacen) -> None:
+    """Ya estaba en el SII: no se reenvía, se retoma con el track que informa."""
+    sii = SiiFalso()
+    ctx, doc_id = await _documento_ambiguo(emisor, redis_limpio, almacen, sii)
+
+    assert await pipeline.verificar(ctx, emisor, doc_id) == E.ENVIADO
+    async with tenant_session(emisor) as s:
+        envio = (await s.execute(select(Envio))).scalar_one()
+    assert envio.track_id == "260003916"
+    assert await pipeline.consultar(ctx, emisor, doc_id) == E.ACEPTADO
     assert sii.llamadas.count("upload") == 1
 
-    async with tenant_session(emisor) as s:
-        dl = (await s.execute(select(DeadLetter))).scalar_one()
-    assert "Verificar en el SII" in dl.error
+
+async def test_verificar_con_datos_distintos_va_a_revision(emisor, redis_limpio, almacen) -> None:
+    from tests.test_sii_client import _documento_sii
+
+    sii = SiiFalso()
+    ctx, doc_id = await _documento_ambiguo(emisor, redis_limpio, almacen, sii)
+
+    sii.documentos = [_documento_sii("DNK", "Datos No Coinciden")]
+    assert await pipeline.verificar(ctx, emisor, doc_id) == E.ERROR
+    assert "otros datos" in (await _doc(emisor, doc_id)).last_error
+
+
+async def test_verificar_con_el_sii_caido_espera(emisor, redis_limpio, almacen) -> None:
+    """Como pasó en certificación: la consulta devuelve 503. Se espera y se reintenta."""
+    sii = SiiFalso()
+    base = _con_timeout_en_subida(sii)
+
+    def caido_en_consulta(pedido: httpx.Request) -> httpx.Response:
+        if str(pedido.url).endswith("QueryEstDte.jws"):
+            return httpx.Response(503, text="Service Unavailable")
+        return base(pedido)
+
+    ctx, doc_id = await _documento_ambiguo(emisor, redis_limpio, almacen, sii, caido_en_consulta)
+
+    assert await pipeline.verificar(ctx, emisor, doc_id) == E.VERIFICAR
+    assert (await _doc(emisor, doc_id)).next_action_at > datetime.now(timezone.utc)
 
 
 async def test_envio_rechazado_va_a_revision(emisor, redis_limpio, almacen) -> None:

@@ -89,6 +89,28 @@ ESTADO_ACEPTADO_REAL = (
     b"    </SII:RESP_HDR>\n</SII:RESPUESTA>"
 )
 
+#: `getEstDte` real (2026-09-23) de una factura aceptada: el SII la tiene, los datos
+#: coinciden y NUM_ATENCION es el track ID de su envío (0260003916).
+DOCUMENTO_RECIBIDO_REAL = b"""<?xml version="1.0" encoding="UTF-8"?>
+<SII:RESPUESTA xmlns:SII="http://www.sii.cl/XMLSchema">
+    <SII:RESP_HDR>
+        <ESTADO>DOK</ESTADO>
+        <GLOSA_ESTADO>DTE Recibido</GLOSA_ESTADO>
+        <ERR_CODE>0</ERR_CODE>
+        <GLOSA_ERR>Documento Recibido por el SII. Datos Coinciden con los Registrados</GLOSA_ERR>
+        <NUM_ATENCION>260003916</NUM_ATENCION>
+    </SII:RESP_HDR>
+</SII:RESPUESTA>"""
+
+
+def _documento_sii(estado: str, glosa: str) -> bytes:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?><SII:RESPUESTA xmlns:SII="http://www.sii.cl/XMLSchema">'
+        f"<SII:RESP_HDR><ESTADO>{estado}</ESTADO><GLOSA_ESTADO>{glosa}</GLOSA_ESTADO>"
+        f"<ERR_CODE>0</ERR_CODE><GLOSA_ERR>{glosa}</GLOSA_ERR></SII:RESP_HDR></SII:RESPUESTA>"
+    ).encode()
+
+
 # ------------------------------------------------------------ DOCUMENTADAS --
 
 
@@ -215,6 +237,37 @@ def test_estado_dte_procesado() -> None:
     assert "EPR" in estado.crudo  # la respuesta cruda se guarda para diagnóstico
 
 
+def test_documento_recibido_real() -> None:
+    """El SII tiene el documento: no se reenvía, y se sabe en qué envío llegó."""
+    from app.dte.sii_client import leer_estado_documento
+
+    d = leer_estado_documento(DOCUMENTO_RECIBIDO_REAL)
+    assert (d.estado, d.recibido, d.datos_coinciden) == ("DOK", True, True)
+    assert d.track_id == "260003916"
+
+
+def test_documento_no_recibido() -> None:
+    """FAU: el SII no lo tiene, así que reenviar no duplica nada."""
+    from app.dte.sii_client import leer_estado_documento
+
+    d = leer_estado_documento(_documento_sii("FAU", "Documento No Recibido por el SII"))
+    assert (d.recibido, d.track_id) == (False, None)
+
+
+def test_documento_con_otros_datos() -> None:
+    """DNK: hay un documento con ese folio, pero distinto. Nunca reenviar."""
+    from app.dte.sii_client import leer_estado_documento
+
+    d = leer_estado_documento(_documento_sii("DNK", "Datos No Coinciden"))
+    assert (d.recibido, d.datos_coinciden) == (True, False)
+
+
+def test_documento_estado_desconocido_no_concluye() -> None:
+    from app.dte.sii_client import leer_estado_documento
+
+    assert leer_estado_documento(_documento_sii("XYZ", "?")).recibido is None
+
+
 def test_estado_boleta_suma_la_estadistica() -> None:
     cuerpo = json.dumps(
         {
@@ -242,6 +295,7 @@ class SiiFalso:
         self.token = TOKEN_OK
         self.estados: list[bytes] = [_estado("EPR", aceptados=1)]
         self.uploads: list[tuple[int, bytes]] = [(200, _upload("0"))]
+        self.documentos: list[bytes] = [DOCUMENTO_RECIBIDO_REAL]
         self.pedidos: list[httpx.Request] = []
 
     def __call__(self, pedido: httpx.Request) -> httpx.Response:
@@ -257,6 +311,9 @@ class SiiFalso:
         if url.endswith("QueryEstUp.jws"):
             self.llamadas.append("estado")
             return httpx.Response(200, content=_soap("getEstUp", self.estados.pop(0)))
+        if url.endswith("QueryEstDte.jws"):
+            self.llamadas.append("documento")
+            return httpx.Response(200, content=_soap("getEstDte", self.documentos.pop(0)))
         if url.endswith("DTEUpload"):
             self.llamadas.append("upload")
             status, contenido = self.uploads.pop(0)

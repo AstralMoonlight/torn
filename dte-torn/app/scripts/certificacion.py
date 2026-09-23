@@ -4,6 +4,8 @@ Dos modos:
 
 - `token` (por defecto): pide semilla y token con el certificado real, por los
   dos canales. No emite nada ni toca la base de datos.
+- `verificar`: resuelve los documentos cuya subida fue ambigua preguntándole al
+  SII por el folio; los reenvía solo si el SII no los tiene.
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -77,6 +79,26 @@ _ESPERA_TOTAL_SEGUNDOS = 600
 _CONSULTA_RAPIDA_SEGUNDOS = 5
 _TRAMO_RAPIDO_SEGUNDOS = 120
 _CONSULTA_LENTA_SEGUNDOS = 15
+
+
+async def _esperar_resultado(ctx, tenant_id: uuid.UUID, doc_id: uuid.UUID, subido: datetime) -> str:
+    """Consulta el estado hasta que el SII dé un resultado final o se acabe el plazo."""
+    estado = "ENVIADO"
+    anterior = "+0:00"
+    while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
+        rapido = (datetime.now(ZONA_CHILE) - subido).total_seconds() < _TRAMO_RAPIDO_SEGUNDOS
+        await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS if rapido else _CONSULTA_LENTA_SEGUNDOS)
+        estado = await pipeline.consultar(ctx, tenant_id, doc_id)
+        doc = await _mostrar(tenant_id, doc_id)
+        ahora = _transcurrido(subido)
+        print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({ahora})  estado SII: {doc.estado_sii or '-'}  ->  {estado}")
+        if estado != "ENVIADO":
+            # Solo se sabe que respondió entre una consulta y la siguiente:
+            # esa es la precisión de la medición.
+            print(f"   El SII dio el resultado final entre {anterior} y {ahora} después de la subida")
+            break
+        anterior = ahora
+    return estado
 
 
 def _transcurrido(desde: datetime) -> str:
@@ -265,20 +287,7 @@ async def modo_enviar() -> int:
         print(f"   Sobre guardado en S3: {envio.xml_key}")
 
         print(f"3. Esperando resultado del SII (hasta {_ESPERA_TOTAL_SEGUNDOS // 60} min)...")
-        anterior = "+0:00"
-        while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
-            rapido = (datetime.now(ZONA_CHILE) - subido).total_seconds() < _TRAMO_RAPIDO_SEGUNDOS
-            await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS if rapido else _CONSULTA_LENTA_SEGUNDOS)
-            estado = await pipeline.consultar(ctx, tenant_id, doc_id)
-            doc = await _mostrar(tenant_id, doc_id)
-            ahora = _transcurrido(subido)
-            print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({ahora})  estado SII: {doc.estado_sii or '-'}  ->  {estado}")
-            if estado != "ENVIADO":
-                # Solo se sabe que respondió entre una consulta y la siguiente:
-                # esa es la precisión de la medición.
-                print(f"   El SII dio el resultado final entre {anterior} y {ahora} después de la subida")
-                break
-            anterior = ahora
+        await _esperar_resultado(ctx, tenant_id, doc_id, subido)
 
     await redis.aclose()
     await get_engine().dispose()
@@ -290,6 +299,62 @@ async def modo_enviar() -> int:
     if doc.estado == "ENVIADO":
         print("El SII todavía no termina de procesarlo. El track ID sirve para consultarlo después.")
     return 0 if doc.estado in ("ACEPTADO", "REPAROS", "ENVIADO") else 1
+
+
+# ---------------------------------------------------------------- verificar --
+
+
+async def modo_verificar() -> int:
+    """Resuelve los documentos cuya subida fue ambigua (estado VERIFICAR).
+
+    Le pregunta al SII por cada folio: si no lo tiene, lo reenvía; si lo tiene,
+    retoma la consulta con el track ID que informa el SII.
+    """
+    s = get_settings()
+    async with control_session() as sesion:
+        tenants = (await sesion.execute(select(Tenant.id, Tenant.rut_emisor))).all()
+    pendientes = []
+    for tenant_id, rut in tenants:
+        async with tenant_session(tenant_id) as sesion:
+            docs = (
+                await sesion.execute(
+                    select(Document.id, Document.tipo_dte, Document.folio).where(Document.estado == "VERIFICAR")
+                )
+            ).all()
+        pendientes += [(tenant_id, rut, *d) for d in docs]
+
+    if not pendientes:
+        print("No hay documentos por verificar.")
+        return 0
+
+    redis = Redis.from_url(s.redis_url)
+    fallos = 0
+    async with crear_http(s.sii_timeout_segundos) as http:
+        ctx = pipeline.Contexto(http=http, redis=redis, almacen=Almacen(s), ttl_token=s.sii_token_ttl_segundos)
+        for tenant_id, rut, doc_id, tipo, folio in pendientes:
+            print(f"Emisor {rut}, tipo {tipo}, folio {folio}:")
+            estado = await pipeline.verificar(ctx, tenant_id, doc_id)
+            doc = await _mostrar(tenant_id, doc_id)
+            if estado == "FIRMADO":
+                print("   El SII NO lo tiene: se reenvía (no hay riesgo de duplicado).")
+                subido = datetime.now(ZONA_CHILE)
+                estado = await pipeline.enviar(ctx, tenant_id, doc_id)
+                if estado == "ENVIADO":
+                    estado = await _esperar_resultado(ctx, tenant_id, doc_id, subido)
+            elif estado == "ENVIADO":
+                async with tenant_session(tenant_id) as sesion:
+                    envio = (await sesion.execute(select(Envio).where(Envio.id == doc.envio_id))).scalar_one()
+                print(f"   El SII YA lo tiene (llegó en el envío {envio.track_id}): no se reenvía.")
+                estado = await _esperar_resultado(ctx, tenant_id, doc_id, datetime.now(ZONA_CHILE))
+            else:
+                print(f"   {estado}: {doc.last_error}")
+            doc = await _mostrar(tenant_id, doc_id)
+            print(f"   Resultado: {doc.estado}" + (f" ({doc.glosa_sii})" if doc.glosa_sii else ""))
+            if doc.estado not in ("ACEPTADO", "REPAROS"):
+                fallos += 1
+    await redis.aclose()
+    await get_engine().dispose()
+    return 1 if fallos else 0
 
 
 # -------------------------------------------------------------- revisar-set --
@@ -339,6 +404,7 @@ if __name__ == "__main__":
     modo = sys.argv[1] if len(sys.argv) > 1 else "token"
     if modo == "revisar-set":
         sys.exit(modo_revisar_set())
-    if modo not in ("token", "enviar"):
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar' o 'revisar-set'.")
-    sys.exit(asyncio.run(modo_token() if modo == "token" else modo_enviar()))
+    modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar}
+    if modo not in modos:
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar' o 'revisar-set'.")
+    sys.exit(asyncio.run(modos[modo]()))
