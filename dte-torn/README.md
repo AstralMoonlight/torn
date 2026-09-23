@@ -33,6 +33,9 @@ Construido y verificado (152 tests en verde dentro del contenedor):
   (SOAP) y boletas (REST). Endpoints y formatos de respuesta verificados contra
   el SII real; los sobres validan contra `EnvioDTE_v10.xsd` y
   `EnvioBOLETA_v11.xsd`.
+- **Verificado contra el SII de certificación (2026-09-23):** con un certificado
+  real, maullin y apicert aceptaron la firma y entregaron token por los dos
+  canales (`app/scripts/certificacion.py`).
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 

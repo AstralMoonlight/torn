@@ -96,6 +96,9 @@ def _soap(metodo: str, interno: bytes) -> bytes:
     ).encode()
 
 
+#: Formato confirmado el 2026-09-23: `leer_token` leyó sin problemas las respuestas
+#: reales de maullin y apicert al pedir token con un certificado real. La
+#: respuesta real no se guarda como fixture porque trae un token vivo.
 TOKEN_OK = _respuesta_sii("<TOKEN>TOKENVALIDO123</TOKEN>")
 
 
