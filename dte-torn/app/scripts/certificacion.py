@@ -4,6 +4,8 @@ Dos modos:
 
 - `token` (por defecto): pide semilla y token con el certificado real, por los
   dos canales. No emite nada ni toca la base de datos.
+- `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
+  va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
   espera su resultado. Recorre el mismo pipeline que los workers (folio,
   firma, S3, sobre, subida, consulta), así que lo que se prueba es lo que
@@ -267,8 +269,53 @@ async def modo_enviar() -> int:
     return 0 if doc.estado in ("ACEPTADO", "REPAROS", "ENVIADO") else 1
 
 
+# -------------------------------------------------------------- revisar-set --
+
+
+def _pesos(n: int) -> str:
+    """Separador de miles con punto, como lo pide el SII en las representaciones."""
+    return f"${n:,}".replace(",", ".")
+
+
+def modo_revisar_set() -> int:
+    from app.dte.builder import calcular_totales, descuento_linea, monto_linea
+    from app.dte.set_pruebas import armar_documento, folios_necesarios, parsear_set, resolver_lineas
+
+    ruta = _requerida("DTE_SET")
+    with open(ruta, "rb") as f:
+        set_ = parsear_set(f.read().decode("latin-1"))
+    resueltos = resolver_lineas(set_)
+    nombres = {33: "Factura", 34: "Factura exenta", 56: "Nota de débito", 61: "Nota de crédito"}
+    codigos = {1: "anula", 2: "corrige texto", 3: "corrige montos"}
+
+    print(f"Set número de atención {set_.numero_atencion}: {len(set_.casos)} casos\n")
+    folios: dict[str, tuple[int, int]] = {}
+    for caso in set_.casos:
+        lineas, global_pct = resueltos[caso.id]
+        datos = armar_documento(set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios)
+        folios[caso.id] = (caso.tipo_dte, 0)
+        print(f"CASO {caso.id} - {nombres[caso.tipo_dte]}")
+        if caso.referencia:
+            print(f"  referencia: caso {caso.referencia}, {codigos[caso.codigo_referencia]} ({caso.razon})")
+        for item in datos.items:
+            desc = f" - {item.descuento_pct}% ({_pesos(descuento_linea(item))})" if item.descuento_pct else ""
+            exe = " [exento]" if item.exento else ""
+            print(f"  {item.nombre:28} {item.cantidad:>5} x {_pesos(int(item.precio)):>9}{desc} = {_pesos(monto_linea(item))}{exe}")
+        for d in datos.descuentos_globales:
+            print(f"  descuento global {d.valor}% sobre afectos")
+        t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
+        partes = [f"neto {_pesos(t.neto)}"] + ([f"exento {_pesos(t.exento)}"] if t.exento else []) + [f"IVA {_pesos(t.iva)}", f"TOTAL {_pesos(t.total)}"]
+        print("  " + " | ".join(partes) + "\n")
+
+    pedir = folios_necesarios(set_)
+    print("Folios necesarios: " + ", ".join(f"{n} de {nombres[t].lower()} (tipo {t})" for t, n in sorted(pedir.items())))
+    return 0
+
+
 if __name__ == "__main__":
     modo = sys.argv[1] if len(sys.argv) > 1 else "token"
+    if modo == "revisar-set":
+        sys.exit(modo_revisar_set())
     if modo not in ("token", "enviar"):
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token' o 'enviar'.")
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar' o 'revisar-set'.")
     sys.exit(asyncio.run(modo_token() if modo == "token" else modo_enviar()))

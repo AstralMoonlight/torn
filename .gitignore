@@ -35,3 +35,6 @@ database/actecos_sii.json
 test.db
 pytest_output*.txt
 .pytest_cache/
+
+# Set de pruebas del SII de una empresa real (el nombre del archivo trae su RUT).
+/setDePruebas/

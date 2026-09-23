@@ -90,7 +90,31 @@ class Item(BaseModel):
     unidad: str | None = None
     descripcion: str | None = None
     codigo: str | None = None
+    #: Descuento de la línea en pesos.
     descuento: int = Field(default=0, ge=0)
+    #: Descuento de la línea en porcentaje. Se informa `DescuentoPct` y el monto
+    #: que resulta, que es lo que el SII usa para cuadrar `MontoItem`.
+    descuento_pct: Decimal | None = Field(default=None, gt=0, le=100)
+    exento: bool = False
+
+    @model_validator(mode="after")
+    def _un_solo_descuento(self) -> Item:
+        if self.descuento and self.descuento_pct:
+            raise ValueError(f"{self.nombre!r}: descuento en pesos o en porcentaje, no ambos")
+        return self
+
+
+class DescuentoGlobal(BaseModel):
+    """Descuento sobre el total del documento (`DscRcgGlobal`).
+
+    Se aplica sobre la suma de las líneas afectas o, con `exento=True`, sobre la
+    de las exentas. Nunca sobre las dos a la vez: el SII las lleva por separado.
+    """
+
+    valor: Decimal = Field(gt=0)
+    #: True: `valor` es un porcentaje. False: es un monto en pesos.
+    porcentaje: bool = True
+    glosa: str | None = None
     exento: bool = False
 
 
@@ -138,6 +162,7 @@ class DatosDocumento(BaseModel):
     receptor: Receptor | None = None
     items: list[Item] = Field(min_length=1)
     referencias: list[Referencia] = Field(default_factory=list)
+    descuentos_globales: list[DescuentoGlobal] = Field(default_factory=list, max_length=20)
     #: 1 = contado, 2 = crédito, 3 = sin costo. Solo facturas.
     forma_pago: int | None = Field(default=None, ge=1, le=3)
     fecha_vencimiento: date | None = None
@@ -219,24 +244,57 @@ def _peso(valor: Decimal) -> int:
     return int(valor.quantize(_PESO, rounding=ROUND_HALF_UP))
 
 
+def descuento_linea(item: Item) -> int:
+    """`DescuentoMonto` de la línea, en pesos enteros.
+
+    Con porcentaje, se calcula sobre cantidad por precio y se redondea al peso.
+    """
+    if item.descuento_pct:
+        return _peso(_peso(item.cantidad * item.precio) * item.descuento_pct / 100)
+    return item.descuento
+
+
 def monto_linea(item: Item) -> int:
     """`MontoItem`: cantidad por precio, redondeado al peso, menos descuento."""
-    monto = _peso(item.cantidad * item.precio) - item.descuento
+    monto = _peso(item.cantidad * item.precio) - descuento_linea(item)
     if monto < 0:
         raise ValueError(f"El descuento de {item.nombre!r} supera el monto de la línea")
     return monto
 
 
-def calcular_totales(tipo_dte: int, items: list[Item]) -> Totales:
+def monto_descuento_global(descuento: DescuentoGlobal, base: int) -> int:
+    """Pesos que descuenta un descuento global sobre su base."""
+    if descuento.porcentaje:
+        return _peso(Decimal(base) * descuento.valor / 100)
+    return _peso(descuento.valor)
+
+
+def calcular_totales(
+    tipo_dte: int,
+    items: list[Item],
+    descuentos_globales: list[DescuentoGlobal] = (),
+) -> Totales:
     """Calcula los totales según las reglas del SII para cada tipo.
 
     Es la única fuente de los montos: la usa el builder para el XML y la API para
     llenar las columnas de `documents`. Si se calcularan en dos lados, tarde o
     temprano diferirían en un peso.
+
+    Los descuentos globales se restan de la base que corresponde (afecta o
+    exenta) **antes** de calcular el IVA: el impuesto va sobre lo que de verdad
+    se cobra.
     """
     documento_exento = tipo_dte in DTE_EXENTOS
     afecto = sum(monto_linea(i) for i in items if not (i.exento or documento_exento))
     exento = sum(monto_linea(i) for i in items if i.exento or documento_exento)
+
+    for descuento in descuentos_globales:
+        if descuento.exento or documento_exento:
+            exento -= monto_descuento_global(descuento, exento)
+        else:
+            afecto -= monto_descuento_global(descuento, afecto)
+    if afecto < 0 or exento < 0:
+        raise ValueError("Los descuentos globales superan el monto del documento")
 
     if tipo_dte in BOLETAS:
         # En boletas el precio ya trae IVA: el neto se despeja del bruto y el
@@ -413,10 +471,31 @@ def _detalle(documento: etree._Element, datos: DatosDocumento) -> None:
         _sub(nodo, "DscItem", texto_sii(item.descripcion, 1000))
         _sub(nodo, "QtyItem", _decimal(item.cantidad))
         _sub(nodo, "UnmdItem", texto_sii(item.unidad, 4))
-        _sub(nodo, "PrcItem", _decimal(item.precio))
-        if item.descuento:
-            _sub(nodo, "DescuentoMonto", item.descuento)
+        # El esquema exige PrcItem > 0: una línea sin precio (un regalo, o la
+        # línea de una nota que solo corrige texto) lo omite, que es válido.
+        if item.precio > 0:
+            _sub(nodo, "PrcItem", _decimal(item.precio))
+        if item.descuento_pct:
+            _sub(nodo, "DescuentoPct", _decimal(item.descuento_pct))
+        if item.descuento or item.descuento_pct:
+            _sub(nodo, "DescuentoMonto", descuento_linea(item))
         _sub(nodo, "MontoItem", monto_linea(item))
+
+
+def _descuentos_globales(documento: etree._Element, datos: DatosDocumento) -> None:
+    """`DscRcgGlobal`: va después del último `Detalle` y antes de `Referencia`."""
+    documento_exento = datos.tipo_dte in DTE_EXENTOS
+    for numero, descuento in enumerate(datos.descuentos_globales, start=1):
+        nodo = _nodo(documento, "DscRcgGlobal")
+        _sub(nodo, "NroLinDR", numero)
+        _sub(nodo, "TpoMov", "D")
+        _sub(nodo, "GlosaDR", texto_sii(descuento.glosa, 45))
+        _sub(nodo, "TpoValor", "%" if descuento.porcentaje else "$")
+        _sub(nodo, "ValorDR", _decimal(descuento.valor))
+        # IndExeDR = 1: el descuento es sobre lo exento. En un documento exento
+        # todo lo es, y marcarlo sobra.
+        if descuento.exento and not documento_exento:
+            _sub(nodo, "IndExeDR", 1)
 
 
 def _referencias(documento: etree._Element, referencias: list[Referencia]) -> None:
@@ -446,9 +525,10 @@ def construir_dte(emisor: Emisor, datos: DatosDocumento, folio: int) -> etree._E
     _id_doc(encabezado, datos, folio)
     _emisor(encabezado, emisor, datos.tipo_dte)
     _receptor(encabezado, datos.receptor, datos.tipo_dte)
-    _totales(encabezado, calcular_totales(datos.tipo_dte, datos.items))
+    _totales(encabezado, calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales))
 
     _detalle(documento, datos)
+    _descuentos_globales(documento, datos)
     _referencias(documento, datos.referencias)
     return dte
 
