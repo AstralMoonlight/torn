@@ -33,6 +33,7 @@ aprovisionamiento por Alembic que ya dio problemas.
 | razon_social, giro, acteco, direccion, comuna, ciudad | text | van en `<Emisor>` |
 | ambiente | enum CERT / PROD | endpoints y RUT distintos |
 | resolucion_numero, resolucion_fecha | int / date | van en el CAF y en la carátula del envío |
+| oficina_sii | text NULL | unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`); migración `0003` |
 | activo | bool | |
 | created_at, updated_at | timestamptz | |
 
@@ -305,6 +306,22 @@ Otros jobs del scheduler: stock de folios por tenant/tipo (alerta + cola
 infraestructura compartida, no por tenant. Abierto → las tareas de `envio`
 reprograman `next_action_at` en vez de golpear.
 
+**Cómo quedó implementado (2026-09-23)** — `app/tasks/colas.py` y
+`app/tasks/scheduler.py`:
+
+- Tres colas con worker propio: `firma`, `envio` (que también resuelve
+  `VERIFICAR`) y `estado`. `folios` y `notifica` no existen todavía porque no
+  tienen trabajo: la solicitud automática espera a `caf_request.py` (hoy el
+  scheduler alerta por métrica y log) y no hay proveedor de correo definido.
+- La API firma **en línea** al emitir, para devolver el timbre en la respuesta
+  (§8.6); la cola `firma` queda para reintentos.
+- La reconciliación recorre los tenants uno por uno con su propia sesión RLS,
+  en vez de una consulta que cruce tenants: no hace falta ninguna función con
+  `BYPASSRLS`. Al encolar deja un *lease* de 5 min en `next_action_at`, así un
+  documento no se encola en cada ciclo mientras su tarea espera en la cola.
+- Un `ENVIANDO` colgado va a `VERIFICAR` (la subida pudo llegar), nunca de
+  vuelta a `FIRMADO`. Un `FIRMANDO` colgado vuelve a `PENDIENTE`.
+
 ---
 
 ## 6. Detalles SII que condicionan el diseño
@@ -452,6 +469,6 @@ borrarlas antes sería apostar a que esto funciona.
 
 - **Vigencia del certificado en el dashboard** (pedido del usuario, 2026-09-23):
   `GET /certificates/actual` con titular, `not_before`, `not_after` y días
-  restantes, sin material sensible. El backend lo consulta y lo muestra en el
+  restantes, sin material sensible. **Hecho**; falta consumirlo desde el backend. El backend lo consulta y lo muestra en el
   dashboard de la app. Los datos ya están en `certificates`; la alerta de
   vencimiento del scheduler usa los mismos.

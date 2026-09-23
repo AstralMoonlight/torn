@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     sii_token_ttl_segundos: int = 1800
     sii_timeout_segundos: float = 30.0
 
+    # --- Workers -----------------------------------------------------------
+    #: Procesos del pool de firma en el worker de la cola `firma`.
+    procesos_firma: int = 2
+    #: Puerto de métricas Prometheus de un worker o del scheduler. Sin valor,
+    #: no se exponen (la API las sirve en `/metrics`).
+    metricas_puerto: int | None = None
+
     @field_validator("master_key")
     @classmethod
     def _master_key_de_32_bytes(cls, v: str) -> str:

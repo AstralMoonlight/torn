@@ -8,6 +8,8 @@ Dos modos:
   SII por el folio; los reenvía solo si el SII no los tiene.
 - `set`: emite el set de pruebas completo en un solo envío (lo que exige la
   declaración de avance) y muestra el N° de envío para declararlo.
+- `muestras`: genera los PDF de los documentos del set (y la copia cedible de
+  las facturas) para la etapa de muestras impresas. No toca el SII.
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -27,6 +29,7 @@ Variables (en `.env`; la clave nunca en el comando ni en un chat):
     DTE_EMISOR_DIRECCION      dirección de casa matriz
     DTE_EMISOR_COMUNA         comuna
     DTE_EMISOR_CIUDAD         ciudad (opcional)
+    DTE_EMISOR_OFICINA_SII    unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`)
 
 Uso:
 
@@ -46,7 +49,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.almacen import Almacen
 from app.core.certificados import CertificadoInvalidoError, guardar_certificado, parsear_pfx
@@ -605,6 +608,65 @@ async def modo_set() -> int:
     return 0 if limpio else 1
 
 
+# ----------------------------------------------------------------- muestras --
+
+
+async def modo_muestras() -> int:
+    """PDF de los documentos del set, para la etapa de muestras impresas.
+
+    Uno por documento, y además la copia cedible de cada factura. Se generan del
+    XML firmado que está en S3, igual que `GET /documents/{id}/pdf`: lo impreso
+    es lo que recibió el SII. No toca el SII.
+    """
+    from pathlib import Path
+
+    from app.dte.pdf import CEDIBLES, DatosImpresion, generar_pdf
+    from app.dte.set_pruebas import parsear_set
+
+    with open(_requerida("DTE_SET"), "rb") as f:
+        set_ = parsear_set(f.read().decode("latin-1"))
+    oficina = _requerida("DTE_EMISOR_OFICINA_SII")
+    carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    prefijo = f"set-{set_.numero_atencion}-"
+
+    almacen = Almacen(get_settings())
+    async with control_session() as sesion:
+        tenants = (await sesion.execute(select(Tenant))).scalars().all()
+    escritos = 0
+    for tenant in tenants:
+        async with tenant_session(tenant.id) as sesion:
+            docs = (
+                await sesion.execute(
+                    select(Document)
+                    .where(Document.external_id.like(prefijo + "%"))
+                    .order_by(Document.tipo_dte, Document.folio)
+                )
+            ).scalars().all()
+        if not docs:
+            continue
+        # Queda guardada para que la API también la imprima.
+        async with control_session() as sesion:
+            await sesion.execute(update(Tenant).where(Tenant.id == tenant.id).values(oficina_sii=oficina))
+        for doc in docs:
+            if doc.estado != "ACEPTADO":
+                print(f"   tipo {doc.tipo_dte} folio {doc.folio}: está {doc.estado}, se omite")
+                continue
+            xml = await almacen.leer(doc.xml_key, doc.xml_sha256)
+            for cedible in (False, True) if doc.tipo_dte in CEDIBLES else (False,):
+                pdf = generar_pdf(xml, DatosImpresion(tenant.resolucion_numero, tenant.resolucion_fecha, oficina, cedible))
+                nombre = f"{doc.external_id.removeprefix(prefijo)}_DTE{doc.tipo_dte}_F{doc.folio}{'_cedible' if cedible else ''}.pdf"
+                (carpeta / nombre).write_bytes(pdf)
+                print(f"   {nombre}")
+                escritos += 1
+    await get_engine().dispose()
+    if not escritos:
+        print(f"No hay documentos del set {set_.numero_atencion}: primero corre el modo 'set'.")
+        return 1
+    print(f"{escritos} PDF en {carpeta}")
+    return 0
+
+
 # ---------------------------------------------------------------- verificar --
 
 
@@ -712,7 +774,8 @@ if __name__ == "__main__":
     modo = sys.argv[1] if len(sys.argv) > 1 else "token"
     if modo == "revisar-set":
         sys.exit(modo_revisar_set())
-    modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar, "set": modo_set}
+    modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar, "set": modo_set,
+             "muestras": modo_muestras}
     if modo not in modos:
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set' o 'revisar-set'.")
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set', 'muestras' o 'revisar-set'.")
     sys.exit(asyncio.run(modos[modo]()))

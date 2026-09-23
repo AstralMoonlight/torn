@@ -155,6 +155,10 @@ class Tenant(Base):
     ambiente: Mapped[str] = mapped_column(String(4), nullable=False, default=Ambiente.CERT)
     resolucion_numero: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     resolucion_fecha: Mapped[date | None] = mapped_column(Date)
+    #: Unidad del SII que va bajo el recuadro de la representación impresa
+    #: (`S.I.I. - CONCEPCION`). No se deduce de la comuna: varias comunas de
+    #: Santiago dependen de unidades con otro nombre.
+    oficina_sii: Mapped[str | None] = mapped_column(String(60))
 
     activo: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(

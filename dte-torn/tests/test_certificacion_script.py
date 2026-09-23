@@ -239,3 +239,25 @@ async def test_verificar_no_toca_los_casos_del_set(entorno_set, monkeypatch) -> 
     assert await certificacion.modo_verificar() == 0
     assert entorno_set.llamadas.count("documento") == 0
     assert await _estados_del_set() == {"VERIFICAR"}
+
+
+async def test_muestras_impresas_del_set(entorno_set, tmp_path, monkeypatch, capsys) -> None:
+    """Un PDF por documento del set, más la copia cedible de cada factura."""
+    await certificacion.modo_set()
+    carpeta = tmp_path / "muestras"
+    monkeypatch.setenv("DTE_MUESTRAS", str(carpeta))
+    monkeypatch.setenv("DTE_EMISOR_OFICINA_SII", "S.I.I. - Santiago Centro")
+
+    assert await certificacion.modo_muestras() == 0
+    pdfs = sorted(p.name for p in carpeta.iterdir())
+    assert len(pdfs) == 8 + 4
+    assert sum("_cedible" in n for n in pdfs) == 4
+    assert all((carpeta / n).read_bytes().startswith(b"%PDF") for n in pdfs)
+    async with control_session() as s:
+        assert (await s.execute(select(Tenant.oficina_sii))).scalar_one() == "S.I.I. - Santiago Centro"
+
+
+async def test_muestras_sin_set_emitido(entorno_set, tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path))
+    monkeypatch.setenv("DTE_EMISOR_OFICINA_SII", "S.I.I. - Santiago Centro")
+    assert await certificacion.modo_muestras() == 1

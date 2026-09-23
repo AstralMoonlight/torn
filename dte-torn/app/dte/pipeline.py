@@ -447,7 +447,16 @@ async def verificar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
         if doc.estado != E.VERIFICAR:
             return doc.estado
         if doc.tipo_dte in BOLETAS:
-            raise NotImplementedError("La verificación por folio de boletas usa otra API del SII")
+            # ponytail: la consulta por folio de boletas es otra API del SII (REST
+            # de boletas); hasta implementarla, una subida ambigua de boleta va a
+            # revisión manual en vez de reintentarse a ciegas.
+            motivo = ("Subida ambigua de una boleta: la verificación por folio de boletas no está "
+                      "implementada. Revisar en el SII si llegó antes de reenviar.")
+            s.add(DeadLetter(tenant_id=tenant_id, document_id=doc_id, cola="verificacion", error=motivo,
+                             intentos=doc.intentos))
+            await s.execute(update(Document).where(Document.id == doc_id)
+                            .values(estado=E.ERROR, last_error=motivo, next_action_at=None))
+            return E.ERROR
         cert = await cargar_certificado(
             s, tenant_id, motivo=f"verificación {doc.tipo_dte}-{doc.folio}", document_id=doc_id
         )

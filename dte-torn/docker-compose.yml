@@ -1,5 +1,29 @@
 name: dte-torn
 
+# Lo común a la API, los workers y el scheduler: misma imagen, mismo entorno.
+x-app: &app
+  build: .
+  image: dte-torn-app
+  env_file: .env
+  environment: &app-env
+    DTE_DATABASE_URL: postgresql+asyncpg://dte_app:${DTE_APP_DB_PASSWORD:-dte_app}@db:5432/dte
+    DTE_DATABASE_OWNER_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dte
+    DTE_REDIS_URL: redis://redis:6379/0
+    DTE_S3_ENDPOINT_URL: http://minio:9000
+
+# Workers y scheduler parten cuando la API ya aplicó las migraciones.
+x-worker: &worker
+  <<: *app
+  environment:
+    <<: *app-env
+    DTE_METRICAS_PUERTO: "9000"
+  expose:
+    - "9000"
+  depends_on:
+    api:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
   db:
     image: postgres:18-alpine
@@ -52,13 +76,7 @@ services:
       retries: 10
 
   api:
-    build: .
-    env_file: .env
-    environment:
-      DTE_DATABASE_URL: postgresql+asyncpg://dte_app:${DTE_APP_DB_PASSWORD:-dte_app}@db:5432/dte
-      DTE_DATABASE_OWNER_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dte
-      DTE_REDIS_URL: redis://redis:6379/0
-      DTE_S3_ENDPOINT_URL: http://minio:9000
+    <<: *app
     # El rol de aplicación y las políticas RLS los crea la migración, así que
     # el arranque las aplica antes de servir.
     command: >
@@ -82,6 +100,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # Una cola por worker (ver app/tasks/colas.py). Firma es CPU: su pool de
+  # procesos lo fija DTE_PROCESOS_FIRMA.
+  worker-firma:
+    <<: *worker
+    command: ["taskiq", "worker", "app.tasks.colas:firma", "--workers", "1"]
+
+  worker-envio:
+    <<: *worker
+    command: ["taskiq", "worker", "app.tasks.colas:envio", "--workers", "1"]
+
+  worker-estado:
+    <<: *worker
+    command: ["taskiq", "worker", "app.tasks.colas:estado", "--workers", "1"]
+
+  # Reconciliación contra Postgres + alertas de folios y certificados. Uno solo.
+  scheduler:
+    <<: *worker
+    command: ["python", "-m", "app.tasks.scheduler"]
 
   # docker compose run --rm tests
   tests:

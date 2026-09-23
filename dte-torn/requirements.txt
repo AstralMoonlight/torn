@@ -38,6 +38,11 @@ tenacity==9.1.4
 # Almacenamiento de objetos
 aioboto3==15.5.0
 
+# Representación impresa (PDF con el timbre en PDF417)
+reportlab==5.0.1
+pdf417gen==0.8.1
+pillow==12.3.0
+
 # Observabilidad
 prometheus-client==0.26.0
 sentry-sdk[fastapi]==2.70.0

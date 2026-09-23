@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (167 tests en verde dentro del contenedor):
+Construido y verificado (250 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -43,12 +43,25 @@ Construido y verificado (167 tests en verde dentro del contenedor):
   consultar como pasos idempotentes, con reintentos y revisión manual basados en
   Postgres, XML y sobres write-once en S3, y la fila de `audit_log` por cada
   firma. Es lo que ejecutarán los workers.
+- **Set de pruebas básico aceptado por el SII de certificación (2026-09-23):**
+  los 8 casos en un solo envío (`certificacion set`), track 0260023678, `EPR`
+  con 8 aceptados y sin reparos. Avance declarado; en revisión del SII.
+- API HTTP (`app/api.py`): emisor, certificado (#15), CAF (#22), emisión de
+  documentos y boletas, consulta, XML y PDF. Ver [API](#api).
+- Capa de colas (`app/tasks/`): workers Taskiq de firma, envío y estado, con
+  circuit breaker hacia el SII y semáforo por RUT, y un scheduler que reconcilia
+  contra Postgres y vigila folios, CAF vencidos y certificados. Ver
+  [Workers](#workers-y-scheduler).
+- Representación impresa (`app/dte/pdf.py`): PDF carta generado del XML
+  firmado, con el timbre en PDF417 (verificado leyéndolo de vuelta con un lector
+  real) y copia cedible de facturas.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
-Pendiente: `caf_request.py`, la capa `tasks/` con sus colas, la API y el PDF. Los issues
-#15 y #22 tienen su núcleo hecho pero siguen abiertos: les falta el endpoint
-HTTP, que llega con la capa de API.
+Pendiente: `caf_request.py` (pedir folios al SII sin intervención; hoy el
+scheduler solo alerta cuando quedan pocos), el RCOF diario de boletas, la
+verificación por folio de boletas tras una subida ambigua (hoy va a revisión
+manual), el formato 80 mm para impresora térmica y el envío del PDF por correo.
 
 ## Puesta en marcha
 
@@ -80,7 +93,14 @@ docker compose --profile test run --rm tests
 ```
 
 El servicio `tests` no monta el código: después de editar hay que reconstruirlo
-(`docker compose --profile test build tests`).
+(`docker compose --profile test build tests`), o montarlo para iterar:
+
+```bash
+docker compose --profile test run --rm -v ./app:/srv/app -v ./tests:/srv/tests tests pytest -q
+```
+
+(En Git Bash de Windows, anteponer `MSYS_NO_PATHCONV=1` o las rutas del
+contenedor se convierten a rutas de Windows.)
 
 ## Variables de entorno
 
@@ -99,8 +119,52 @@ Todas llevan prefijo `DTE_`. La plantilla completa está en `.env.example`.
 | `DTE_S3_ENDPOINT_URL` / `_ACCESS_KEY` / `_SECRET_KEY` / `_BUCKET` | sí | MinIO o cualquier S3: ahí viven los XML firmados y los PDF. |
 | `DTE_ENV` | no (`dev`) | `dev` / `staging` / `prod`. |
 | `DTE_SENTRY_DSN` | no | Si está, se inicializa Sentry. |
-| `DTE_FOLIO_UMBRAL_ALERTA` | no (`100`) | Folios restantes bajo los cuales se pide un CAF nuevo. |
+| `DTE_FOLIO_UMBRAL_ALERTA` | no (`100`) | Folios restantes bajo los cuales el scheduler alerta. |
 | `DTE_SII_CONCURRENCIA_POR_RUT` | no (`2`) | Envíos simultáneos al SII por RUT emisor. |
+| `DTE_PROCESOS_FIRMA` | no (`2`) | Procesos del pool de firma del worker de firma. |
+| `DTE_METRICAS_PUERTO` | no | Puerto de métricas Prometheus de un worker o del scheduler (el compose usa `9000`). La API las sirve en `/metrics`. |
+
+## API
+
+Solo la consume el backend Torn. Todo pide `X-Internal-Api-Key`; lo que es de
+una empresa pide además `X-Tenant-Id`, que fija el RLS: un documento de otra
+empresa responde 404. `X-Actor` (opcional) es el usuario del backend que hizo
+la acción, para la auditoría.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `PUT /tenants/{id}` | Alta o actualización del emisor, copia del `Issuer` del backend (idempotente). Incluye `resolucion_numero`/`_fecha` y `oficina_sii`. |
+| `POST /certificates` | Sube el `.pfx` (multipart `archivo` + `password`); queda cifrado y activo. |
+| `GET /certificates/actual` | Titular y vigencia del certificado, sin material sensible (para el dashboard). |
+| `POST /cafs` | Carga manual de un CAF (multipart `archivo`). |
+| `GET /folios` | Folios disponibles por tipo de documento. |
+| `POST /documents` | Emite factura, exenta o nota. Idempotente por `external_id`: el mismo pedido devuelve el mismo folio (200); otro contenido con el mismo `external_id` es 409. Firma en línea: la respuesta trae el folio y el `ted` para imprimir. |
+| `POST /boletas` | Igual, para boletas 39/41. |
+| `GET /documents` | Listado (`estado`, `tipo_dte`, `limit`, `offset`). |
+| `GET /documents/{external_id}` | Estado del documento, track ID y respuesta del SII. |
+| `GET /documents/{external_id}/xml` | El XML firmado, tal como se envió. |
+| `GET /documents/{external_id}/pdf` | Representación impresa; `?cedible=true` para la copia cedible de facturas. |
+
+Todo lo que puede rechazar un documento se valida **antes** de asignar el folio:
+un 422 nunca quema uno. Sin folios disponibles: 409.
+
+## Workers y scheduler
+
+`docker compose up -d` levanta, además de la API, un worker por cola y el
+scheduler (ver `app/tasks/colas.py` y `app/tasks/scheduler.py`):
+
+| Servicio | Qué hace |
+|---|---|
+| `worker-firma` | Firma lo que quedó `PENDIENTE` (si la firma en línea de la API falló). |
+| `worker-envio` | Sube al SII y resuelve subidas ambiguas. Semáforo por RUT y circuit breaker por ambiente y canal: si el SII deja de responder, pausa las subidas en vez de insistir. |
+| `worker-estado` | Consulta el resultado del SII. |
+| `scheduler` | Cada 15 s encola lo que tiene un paso vencido (con un lease de 5 min) y rescata pasos colgados; un `ENVIANDO` huérfano va a `VERIFICAR`, nunca a reenviarse. Cada 10 min: folios, CAF vencidos, vigencia del certificado y documentos en error. |
+
+Redis es desechable: si se borra, el scheduler vuelve a encolar todo lo
+pendiente desde Postgres. Métricas de cada uno en el puerto 9000 de la red
+interna (`dte_tareas_total`, `dte_folios_disponibles`,
+`dte_certificado_dias_restantes`, `dte_documentos_en_error`); las alertas se
+arman sobre esas métricas.
 
 ## La llave maestra
 
@@ -192,6 +256,20 @@ Necesita, además de lo anterior, completar en `.env` `DTE_FCH_RESOL` y los
 ```bash
 docker compose run --rm -v "./certificado.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=/tmp/cert.pfx -v "./caf.xml:/tmp/caf.xml:ro" -e DTE_CAF=/tmp/caf.xml api python -m app.scripts.certificacion enviar
 ```
+
+### Set de pruebas y muestras impresas
+
+`set` emite los casos del set de pruebas en **un solo envío**, como exige la
+declaración de avance, y muestra el N° de envío a declarar. `muestras` genera
+los PDF de esos documentos (y la copia cedible de las facturas) para la etapa
+de muestras impresas, sin tocar el SII:
+
+```bash
+docker compose run --rm -v "../setDePruebas/SIISetDePruebas<N>.txt:/tmp/set.txt:ro" -e DTE_SET=/tmp/set.txt -v "../setDePruebas/muestras:/tmp/muestras" api python -m app.scripts.certificacion muestras
+```
+
+Necesita `DTE_EMISOR_OFICINA_SII` en `.env` (la unidad del SII que va bajo el
+recuadro rojo).
 
 ## Tres cosas que no hay que tocar sin leer primero
 

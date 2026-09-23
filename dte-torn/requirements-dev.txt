@@ -4,3 +4,6 @@
 # desde wheels, que es exactamente lo que el Dockerfile evita.
 pytest==9.1.1
 pytest-asyncio==1.4.0
+# Lee de vuelta el PDF417 del timbre en los tests: prueba que el código de
+# barras impreso contiene exactamente el TED firmado.
+zxing-cpp==3.1.1
