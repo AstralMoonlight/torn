@@ -40,8 +40,8 @@ from app.dte.caf import CafParseado
 ZONA_CHILE = ZoneInfo("America/Santiago")
 
 #: `<RSR>` es obligatorio y de al menos un carácter, pero una boleta a
-#: consumidor final no tiene razón social de receptor.
-#: ponytail: valor a confirmar en las pruebas de certificación del SII.
+#: consumidor final no tiene razón social de receptor. Es texto libre: una boleta
+#: real de producción (2026-09-23) de otro proveedor usa "sin cliente".
 RSR_SIN_RECEPTOR = "CONSUMIDOR FINAL"
 
 _ENTRE_TAGS = re.compile(rb">\s+<")
@@ -81,6 +81,9 @@ def aplanar(xml: bytes) -> bytes:
     El SII define la firma del timbre sobre el `<DD>` "aplanado". El CAF viene
     del SII con saltos de línea entre sus nodos; al aplanarlo, lo que se firma y
     lo que queda escrito en el documento son exactamente los mismos bytes.
+
+    Confirmado con una boleta real de producción (2026-09-23): su `<DD>` está
+    aplanado con el CAF incluido, y su timbre verifica sobre esos bytes tal cual.
     """
     return _ENTRE_TAGS.sub(b"><", xml.strip())
 

@@ -310,9 +310,13 @@ reprograman `next_action_at` en vez de golpear.
   espacio entre etiquetas, CAF incluido), y esos mismos bytes son los que se
   firman y los que quedan escritos en el documento. `firmar_dte` relee el XML
   final y comprueba que el timbre esté tal cual se firmó. Aplanar también el
-  CAF es la lectura más segura de la especificación: cumple tanto si el SII
-  verifica los bytes literales como si los aplana antes. **A confirmar en la
-  certificación.**
+  CAF es la lectura más segura de la especificación. **Confirmado** con una
+  boleta real de producción de otro proveedor (2026-09-23): su `<DD>` está
+  aplanado con el CAF incluido y el timbre verifica sobre esos bytes.
+- Documentos **recibidos** (para #12): en esa misma boleta real, la firma del
+  sobre verifica pero la del DTE no, en ningún contexto de namespaces. No hay
+  que exigir la firma del DTE de terceros como condición dura al recibir, o se
+  rechazarían documentos que el SII acepta. La emisión propia sigue estricta.
 - Algoritmos fijados por el esquema de firma del SII (`xmldsignature_v10.xsd`):
   C14N **inclusivo**, `rsa-sha1` y digest `sha1`. No se eligen.
 - El `<DTE>` declara `xmlns:xsi` aunque no lo use. El C14N inclusivo arrastra
