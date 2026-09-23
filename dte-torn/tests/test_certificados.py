@@ -292,3 +292,35 @@ async def test_certificado_de_otro_tenant_no_se_abre(tenant: uuid.UUID) -> None:
 
     with pytest.raises(DescifradoError):
         abrir(otro, nonce, cifrado, construir_aad(otro, "certificates", cert_id), version)
+
+
+async def test_certificado_de_persona_en_empresa_con_otro_rut(limpiar: None) -> None:
+    """El caso normal en Chile: la empresa tiene un RUT y el certificado es del
+    representante legal, con su RUT de persona natural.
+
+    El certificado se guarda sin compararlo contra el RUT de la empresa. Si
+    alguien agrega esa validación "por seguridad", este test la frena: rompería
+    a casi todas las empresas reales.
+    """
+    from app.db import control_session
+    from app.models import Tenant
+
+    empresa = uuid.uuid4()
+    async with control_session() as s:
+        s.add(
+            Tenant(
+                id=empresa,
+                rut_emisor="76543210-3",
+                razon_social="Empresa Familiar SpA",
+                giro="Comercio",
+                acteco="471100",
+            )
+        )
+
+    async with tenant_session(empresa) as s:
+        fila = await guardar_certificado(s, empresa, _pfx(rut="11111111-1"), CLAVE)
+        assert fila.subject_rut == "11111111-1"
+
+    async with tenant_session(empresa) as s:
+        cargado = await cargar_certificado(s, empresa, motivo="firma")
+        assert cargado.rut == "11111111-1"

@@ -16,7 +16,6 @@ cortando los bytes originales en vez de volver a serializar el árbol.
 from __future__ import annotations
 
 import base64
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import date
@@ -28,6 +27,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import aad, abrir, sellar, version_actual
+from app.dte.rut import normalizar_rut
 from app.models import CAF, AuditLog, EstadoCAF, Tenant
 
 OPERACION_CARGA = "CARGA_CAF"
@@ -35,7 +35,6 @@ OPERACION_CARGA = "CARGA_CAF"
 #: Tipos de DTE que este servicio sabe emitir.
 TIPOS_DTE_VALIDOS = frozenset({33, 34, 39, 41, 43, 46, 52, 56, 61, 110, 111, 112})
 
-_RUT_NO_VALIDO = re.compile(r"[^0-9kK-]")
 
 
 class CafInvalidoError(Exception):
@@ -58,12 +57,6 @@ class RangoSolapadoError(CafInvalidoError):
     veces o el archivo equivocado. Aceptarlo permitiría emitir dos documentos
     con el mismo folio.
     """
-
-
-def normalizar_rut(rut: str) -> str:
-    """Deja el RUT como `76123456-7`, sin puntos y con el DV en mayúscula."""
-    limpio = _RUT_NO_VALIDO.sub("", (rut or "").strip())
-    return limpio.upper()
 
 
 @dataclass(slots=True)
