@@ -1,0 +1,105 @@
+name: dte-torn
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: dte
+    volumes:
+      # postgres:18+ guarda los datos en un subdirectorio por versión mayor
+      # (/var/lib/postgresql/18/docker). El volumen va en el padre, no en
+      # .../data como en las imágenes anteriores, o el contenedor no arranca.
+      - dte_pgdata:/var/lib/postgresql
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    ports:
+      # Solo loopback: para correr los tests desde el host.
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dte"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    # quay.io y no Docker Hub: `minio/minio` en Hub ya no publica `latest` y el
+    # pull falla con "pull access denied", que confunde porque parece un
+    # problema de credenciales.
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - dte_minio:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DTE_DATABASE_URL: postgresql+asyncpg://dte_app:${DTE_APP_DB_PASSWORD:-dte_app}@db:5432/dte
+      DTE_DATABASE_OWNER_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dte
+      DTE_REDIS_URL: redis://redis:6379/0
+      DTE_S3_ENDPOINT_URL: http://minio:9000
+    # El rol de aplicación y las políticas RLS los crea la migración, así que
+    # el arranque las aplica antes de servir.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      # Loopback a propósito: este servicio no se expone a la red. Quien lo
+      # consume es el backend, por la red interna de Docker. En despliegue,
+      # borrar este bloque entero.
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # docker compose run --rm tests
+  tests:
+    build:
+      context: .
+      target: dev
+    profiles: ["test"]
+    environment:
+      DTE_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DTE_INTERNAL_API_KEY: test
+      DTE_APP_DB_PASSWORD: ${DTE_APP_DB_PASSWORD:-dte_app}
+      DTE_DATABASE_URL: postgresql+asyncpg://dte_app:${DTE_APP_DB_PASSWORD:-dte_app}@db:5432/dte_test
+      DTE_DATABASE_OWNER_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dte_test
+      DTE_REDIS_URL: redis://redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dte_pgdata:
+  dte_minio:
