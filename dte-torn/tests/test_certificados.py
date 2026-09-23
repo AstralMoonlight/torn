@@ -12,19 +12,12 @@ Lo que se prueba acá no es que el cifrado "funcione" —eso lo garantiza
 
 from __future__ import annotations
 
-import datetime as dt
 import uuid
 
 import pytest
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization import pkcs12
-from cryptography.x509.oid import NameOID
 from sqlalchemy import select
 
 from app.core.certificados import (
-    OID_RUT_SII,
     CertificadoInvalidoError,
     CertificadoVencidoError,
     SinCertificadoError,
@@ -35,49 +28,10 @@ from app.core.certificados import (
 from app.core.crypto import DescifradoError, aad, abrir, derivar_llave, sellar
 from app.db import tenant_session
 from app.models import AuditLog, Certificate
+from tests.factories import CLAVE_PFX
+from tests.factories import pfx as _pfx
 
-CLAVE = "clave-de-prueba"
-
-
-def _pfx(
-    rut: str | None = "76543210-9",
-    dias_validez: int = 365,
-    desde_dias: int = -1,
-    password: str = CLAVE,
-) -> bytes:
-    """Arma un .pfx de juguete, con el RUT donde lo pone el SII."""
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    nombre = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Titular de Prueba")])
-    ahora = dt.datetime.now(dt.timezone.utc)
-
-    builder = (
-        x509.CertificateBuilder()
-        .subject_name(nombre)
-        .issuer_name(nombre)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(ahora + dt.timedelta(days=desde_dias))
-        .not_valid_after(ahora + dt.timedelta(days=dias_validez))
-    )
-    if rut is not None:
-        # El RUT va envuelto en DER como IA5String (tag 0x16) dentro del
-        # otherName, que es como lo emite el SII.
-        der = b"\x16" + bytes([len(rut)]) + rut.encode("ascii")
-        builder = builder.add_extension(
-            x509.SubjectAlternativeName([x509.OtherName(OID_RUT_SII, der)]),
-            critical=False,
-        )
-
-    cert = builder.sign(key, hashes.SHA256())
-    return pkcs12.serialize_key_and_certificates(
-        name=b"prueba",
-        key=key,
-        cert=cert,
-        cas=None,
-        encryption_algorithm=serialization.BestAvailableEncryption(
-            password.encode("utf-8")
-        ),
-    )
+CLAVE = CLAVE_PFX
 
 
 # ------------------------------------------------------------------ crypto --

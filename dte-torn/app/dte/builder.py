@@ -39,6 +39,14 @@ if TYPE_CHECKING:
     from app.models import Tenant
 
 NS = "http://www.sii.cl/SiiDte"
+XSI = "http://www.w3.org/2001/XMLSchema-instance"
+
+#: Namespaces del `<DTE>`. `xsi` no se usa en el DTE, pero se declara igual: la
+#: firma usa C14N inclusivo, que arrastra los namespaces de los ancestros, y
+#: el `<EnvioDTE>` que envuelve al documento declara `xsi`. Si el DTE no lo
+#: declarara, su forma canónica cambiaría al meterlo en el sobre y la firma
+#: dejaría de verificar. Ver `tests/test_signer.py`.
+NSMAP_DTE = {None: NS, "xsi": XSI}
 
 #: Declaración con comillas dobles. `lxml` las emite simples y no tiene opción
 #: para cambiarlo; ver `tests/test_xmlsec_compat.py`.
@@ -429,7 +437,7 @@ def construir_dte(emisor: Emisor, datos: DatosDocumento, folio: int) -> etree._E
         El elemento raíz `<DTE>`. `signer.py` agrega `<TED>` y `<TmstFirma>` al
         final del `<Documento>` y después firma.
     """
-    dte = etree.Element(_q("DTE"), nsmap={None: NS}, version="1.0")
+    dte = etree.Element(_q("DTE"), nsmap=NSMAP_DTE, version="1.0")
     documento = etree.SubElement(
         dte, _q("Documento"), ID=_id_documento(datos.tipo_dte, folio)
     )

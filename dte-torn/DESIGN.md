@@ -75,8 +75,8 @@ desde el día uno porque rotar sin esa columna es una migración bajo fuego.
 | estado | enum ACTIVO / AGOTADO / VENCIDO | |
 
 El CAF se cifra entero porque contiene la llave RSA privada que firma el TED.
-Se guarda byte a byte: el nodo `<CAF>` se inserta **literal** dentro del `<TED>`;
-reserializarlo invalida la firma.
+Se guarda byte a byte y el nodo `<CAF>` se recupera cortando los bytes
+originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 
 ### `documents` — el agregado central
 
@@ -306,8 +306,23 @@ reprograman `next_action_at` en vez de golpear.
   Un round-trip por `str` es la forma más fácil de invalidar una firma.
 - **Dos firmas distintas**: el `<TED>` se firma con la llave RSA que viene dentro
   del CAF; el `<Documento>` y el `<EnvioDTE>` con el certificado de la empresa.
-- El `<DD>` del timbre se firma **sobre su serialización literal**, sin
-  reformatear, sin pretty-print y sin re-canonicalizar.
+- El `<DD>` del timbre se arma una sola vez como bytes, **aplanado** (sin
+  espacio entre etiquetas, CAF incluido), y esos mismos bytes son los que se
+  firman y los que quedan escritos en el documento. `firmar_dte` relee el XML
+  final y comprueba que el timbre esté tal cual se firmó. Aplanar también el
+  CAF es la lectura más segura de la especificación: cumple tanto si el SII
+  verifica los bytes literales como si los aplana antes. **A confirmar en la
+  certificación.**
+- Algoritmos fijados por el esquema de firma del SII (`xmldsignature_v10.xsd`):
+  C14N **inclusivo**, `rsa-sha1` y digest `sha1`. No se eligen.
+- El `<DTE>` declara `xmlns:xsi` aunque no lo use. El C14N inclusivo arrastra
+  los namespaces de los ancestros, y el `<EnvioDTE>` declara `xsi`: sin esa
+  declaración, la forma canónica del `<Documento>` cambia al entrar al sobre y
+  la firma deja de verificar. `tests/test_signer.py` tiene el control negativo
+  que lo demuestra.
+- El `<CAF>` del timbre se pega como texto dentro del `<DTE>` y así hereda el
+  namespace del SII. Reconstruido nodo por nodo quedaría con `xmlns=""` y el
+  esquema lo rechazaría.
 - Orden de elementos y canonicalización según esquema; los XSD del SII se
   versionan en el repo y los tests validan contra ellos.
 - Token: semilla → firma de la semilla → token. Cache en Redis por empresa con
