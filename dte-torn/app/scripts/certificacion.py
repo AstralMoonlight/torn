@@ -385,6 +385,10 @@ async def _folios_libres(tenant_id: uuid.UUID) -> dict[int, int]:
     return libres
 
 
+#: Rondas de consulta por folio al retomar un set con subida ambigua.
+_INTENTOS_VERIFICACION_SET = 5
+
+
 async def modo_set() -> int:
     """Emite el set de pruebas completo en UN solo envío, como exige el SII.
 
@@ -468,16 +472,37 @@ async def modo_set() -> int:
             estado = await pipeline.firmar(ctx, tenant_id, doc.id)
             doc = await _mostrar(tenant_id, doc.id)
             print(f"   CASO {caso.id}: tipo {doc.tipo_dte} folio {doc.folio} total ${doc.monto_total} -> {estado}")
-            if estado not in ("FIRMADO", "ENVIADO", "ACEPTADO"):
+            if estado not in ("FIRMADO", "ENVIADO", "ACEPTADO", "VERIFICAR"):
                 print(f"   {doc.last_error}")
                 print("No se envió nada: un caso no se pudo firmar.")
                 return 1
 
+        # Una subida anterior fue ambigua: antes de reenviar, preguntarle al SII
+        # por cada folio. Si no tiene ninguno, se reenvía el set completo; si los
+        # tiene, se sigue con el track que informa. maullin responde 503 a ratos.
+        for intento in range(_INTENTOS_VERIFICACION_SET):
+            pendientes = [i for i in ids.values() if (await _mostrar(tenant_id, i)).estado == "VERIFICAR"]
+            if not pendientes:
+                break
+            if intento:
+                await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
+            for doc_id in pendientes:
+                estado = await pipeline.verificar(ctx, tenant_id, doc_id)
+                doc = await _mostrar(tenant_id, doc_id)
+                print(f"   Verificación tipo {doc.tipo_dte} folio {doc.folio} -> {estado}")
+
         docs = [await _mostrar(tenant_id, ids[c.id]) for c in set_.casos]
         estados = {d.estado for d in docs}
         if estados != {"FIRMADO"}:
-            envios = {d.envio_id for d in docs}
-            if estados <= {"ENVIADO", "ACEPTADO"} and len(envios) == 1:
+            # Tras una verificación cada documento tiene su propia fila Envio,
+            # pero todas con el track del único envío que recibió el SII.
+            async with tenant_session(tenant_id) as sesion:
+                tracks = set(
+                    (await sesion.execute(
+                        select(Envio.track_id).where(Envio.id.in_([d.envio_id for d in docs if d.envio_id]))
+                    )).scalars()
+                )
+            if estados <= {"ENVIADO", "ACEPTADO"} and len(tracks) == 1:
                 print("El set ya se había enviado en un solo envío: solo se consulta su estado.")
             else:
                 print(f"Los casos están en estados mezclados {sorted(estados)}: no se reenvía. Revisar a mano.")
@@ -521,7 +546,8 @@ async def modo_set() -> int:
                             .where(Document.id.in_(list(ids.values())))
                             .values(estado="VERIFICAR", last_error=f"Subida ambigua del set: {exc}"[:2000])
                         )
-                    print("Subida ambigua: los casos quedan en VERIFICAR. Usa el modo 'verificar' antes de reintentar.")
+                    print("Subida ambigua: los casos quedan en VERIFICAR. Vuelve a correr 'set': "
+                          "le pregunta al SII por cada folio antes de reenviar.")
                 return 1
             async with tenant_session(tenant_id) as sesion:
                 sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio="DTE", track_id=track,
@@ -596,7 +622,11 @@ async def modo_verificar() -> int:
         async with tenant_session(tenant_id) as sesion:
             docs = (
                 await sesion.execute(
-                    select(Document.id, Document.tipo_dte, Document.folio).where(Document.estado == "VERIFICAR")
+                    select(Document.id, Document.tipo_dte, Document.folio).where(
+                        Document.estado == "VERIFICAR",
+                        # Reenvía de a uno: el set tiene que ir entero en un solo envío.
+                        Document.external_id.not_like("set-%"),
+                    )
                 )
             ).all()
         pendientes += [(tenant_id, rut, *d) for d in docs]

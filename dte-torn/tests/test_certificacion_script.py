@@ -165,3 +165,77 @@ async def test_sin_folios_suficientes_no_emite_nada(entorno_set, tmp_path, monke
         tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
     async with tenant_session(tenant_id) as s:
         assert (await s.execute(select(Document))).scalars().all() == []
+
+
+def _primera_subida_sin_respuesta(entorno, monkeypatch) -> None:
+    """Como pasó en certificación: maullin corta la conexión en la primera subida."""
+    cortada = []
+
+    def manejador(pedido: httpx.Request) -> httpx.Response:
+        if str(pedido.url).endswith("DTEUpload") and not cortada:
+            cortada.append(1)
+            entorno.llamadas.append("upload")
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.", request=pedido)
+        return entorno(pedido)
+
+    monkeypatch.setattr(
+        certificacion, "crear_http", lambda timeout: httpx.AsyncClient(transport=httpx.MockTransport(manejador))
+    )
+
+
+async def _estados_del_set() -> set[str]:
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        return set((await s.execute(select(Document.estado))).scalars())
+
+
+async def test_set_ambiguo_que_el_sii_no_tiene_se_reenvia_entero(entorno_set, monkeypatch, capsys) -> None:
+    from tests.test_sii_client import _documento_sii
+
+    _primera_subida_sin_respuesta(entorno_set, monkeypatch)
+    assert await certificacion.modo_set() == 1
+    assert await _estados_del_set() == {"VERIFICAR"}
+
+    entorno_set.documentos = [_documento_sii("FAU", "Documento No Recibido por el SII")] * 8
+    assert await certificacion.modo_set() == 0
+    assert entorno_set.llamadas.count("upload") == 2  # el reenvío, con los 8 juntos
+    assert entorno_set.llamadas.count("documento") == 8
+    assert await _estados_del_set() == {"ACEPTADO"}
+
+
+async def test_set_ambiguo_que_el_sii_si_tiene_no_se_reenvia(entorno_set, monkeypatch, capsys) -> None:
+    from tests.test_sii_client import DOCUMENTO_RECIBIDO_REAL
+
+    _primera_subida_sin_respuesta(entorno_set, monkeypatch)
+    await certificacion.modo_set()
+
+    entorno_set.documentos = [DOCUMENTO_RECIBIDO_REAL] * 8
+    assert await certificacion.modo_set() == 0
+    assert entorno_set.llamadas.count("upload") == 1
+    salida = capsys.readouterr().out
+    assert "ya se había enviado" in salida
+    assert "N° de envío: 260003916" in salida
+
+
+async def test_set_ambiguo_a_medias_no_se_reenvia(entorno_set, monkeypatch, capsys) -> None:
+    """Si el SII tiene algunos y otros no, algo raro pasó: no tocar nada."""
+    from tests.test_sii_client import DOCUMENTO_RECIBIDO_REAL, _documento_sii
+
+    _primera_subida_sin_respuesta(entorno_set, monkeypatch)
+    await certificacion.modo_set()
+
+    entorno_set.documentos = [DOCUMENTO_RECIBIDO_REAL] + [_documento_sii("FAU", "No Recibido")] * 7
+    assert await certificacion.modo_set() == 1
+    assert entorno_set.llamadas.count("upload") == 1
+    assert "estados mezclados" in capsys.readouterr().out
+
+
+async def test_verificar_no_toca_los_casos_del_set(entorno_set, monkeypatch) -> None:
+    """El modo `verificar` reenvía de a uno: rompería el envío único del set."""
+    _primera_subida_sin_respuesta(entorno_set, monkeypatch)
+    await certificacion.modo_set()
+
+    assert await certificacion.modo_verificar() == 0
+    assert entorno_set.llamadas.count("documento") == 0
+    assert await _estados_del_set() == {"VERIFICAR"}
