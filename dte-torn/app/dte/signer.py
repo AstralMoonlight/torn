@@ -26,13 +26,15 @@ from datetime import datetime
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
-import xmlsec
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from lxml import etree
 
+# Después de lxml, nunca antes: ver `app/__init__.py`.
+import xmlsec  # noqa: E402
+
 from app.core.certificados import CertificadoCargado
-from app.dte.builder import DECLARACION, NS, serializar
+from app.dte.builder import DECLARACION, NS, XSI, serializar
 from app.dte.caf import CafParseado
 
 ZONA_CHILE = ZoneInfo("America/Santiago")
@@ -151,19 +153,34 @@ def timbrar(documento: etree._Element, caf: CafParseado, momento: datetime) -> b
     return ted
 
 
-def _firmar_documento(dte: etree._Element, documento: etree._Element, cert: CertificadoCargado) -> None:
-    """XMLDSig del `<Documento>`, con los algoritmos que fija el esquema del SII."""
-    firma = xmlsec.template.create(dte, xmlsec.Transform.C14N, xmlsec.Transform.RSA_SHA1)
-    dte.append(firma)
-    # Sin Transforms: la firma queda fuera del `<Documento>`, así que no hace
-    # falta el enveloped-signature, y el C14N por defecto es el inclusivo.
-    xmlsec.template.add_reference(firma, xmlsec.Transform.SHA1, uri=f"#{documento.get('ID')}")
+def _firmar(
+    padre: etree._Element,
+    cert: CertificadoCargado,
+    uri: str,
+    nodo_id: etree._Element | None = None,
+    envuelta: bool = False,
+) -> None:
+    """XMLDSig con los algoritmos que fija el esquema del SII.
+
+    Args:
+        padre: Donde se agrega el `<Signature>`.
+        uri: Referencia firmada: `#ID` de un nodo, o `""` para todo el documento.
+        nodo_id: Nodo cuyo atributo `ID` hay que registrar para resolver la URI.
+        envuelta: True si la firma queda dentro de lo firmado (necesita el
+            transform enveloped-signature). En el DTE y el sobre queda afuera.
+    """
+    firma = xmlsec.template.create(padre, xmlsec.Transform.C14N, xmlsec.Transform.RSA_SHA1)
+    padre.append(firma)
+    ref = xmlsec.template.add_reference(firma, xmlsec.Transform.SHA1, uri=uri)
+    if envuelta:
+        xmlsec.template.add_transform(ref, xmlsec.Transform.ENVELOPED)
     info = xmlsec.template.ensure_key_info(firma)
     xmlsec.template.add_key_value(info)
     xmlsec.template.x509_data_add_certificate(xmlsec.template.add_x509_data(info))
 
     ctx = xmlsec.SignatureContext()
-    ctx.register_id(documento, "ID")
+    if nodo_id is not None:
+        ctx.register_id(nodo_id, "ID")
     llave = xmlsec.Key.from_memory(cert.llave_pem, xmlsec.KeyFormat.PEM)
     llave.load_cert_from_memory(cert.cert_pem, xmlsec.KeyFormat.PEM)
     ctx.key = llave
@@ -184,13 +201,7 @@ def verificar_firma_dte(dte: etree._Element, cert_pem: bytes) -> None:
     if documento is None or firma is None:
         raise FirmaInvalidaError("El DTE no tiene <Documento> o <Signature>")
 
-    ctx = xmlsec.SignatureContext()
-    ctx.register_id(documento, "ID")
-    ctx.key = xmlsec.Key.from_memory(cert_pem, xmlsec.KeyFormat.CERT_PEM)
-    try:
-        ctx.verify(firma)
-    except xmlsec.Error as exc:
-        raise FirmaInvalidaError(f"La firma del DTE no verifica: {exc}") from exc
+    _verificar(firma, documento, cert_pem, "del DTE")
 
 
 def firmar_dte(
@@ -229,7 +240,9 @@ def firmar_dte(
     tmst = etree.SubElement(documento, f"{{{NS}}}TmstFirma")
     tmst.text = hora_sii(momento)
 
-    _firmar_documento(dte, documento, cert)
+    # Sin Transforms: la firma queda fuera del `<Documento>`, así que no hace
+    # falta el enveloped-signature, y el C14N por defecto es el inclusivo.
+    _firmar(dte, cert, f"#{documento.get('ID')}", nodo_id=documento)
     xml = serializar(dte)
 
     # Verificación sobre los bytes finales, no sobre el árbol en memoria.
@@ -247,3 +260,131 @@ def firmar_dte(
         tipo_dte=tipo_dte,
         folio=folio,
     )
+
+
+# ------------------------------------------------------------------ semilla --
+
+
+def firmar_semilla(semilla: str, cert: CertificadoCargado) -> bytes:
+    """Arma y firma el `<getToken>` con el que se pide el token al SII.
+
+    A diferencia del DTE, acá la firma va **dentro** de lo firmado (URI vacía,
+    todo el documento), así que lleva el transform enveloped-signature.
+    """
+    raiz = etree.Element("getToken")
+    item = etree.SubElement(raiz, "item")
+    etree.SubElement(item, "Semilla").text = semilla
+    _firmar(raiz, cert, "", envuelta=True)
+    return etree.tostring(raiz, encoding="UTF-8", xml_declaration=True)
+
+
+# -------------------------------------------------------------------- sobre --
+
+#: RUT del SII: es el receptor de todo envío.
+RUT_SII = "60803000-K"
+
+_SOBRES = {
+    "DTE": ("EnvioDTE", "EnvioDTE_v10.xsd"),
+    "BOLETA": ("EnvioBOLETA", "EnvioBOLETA_v11.xsd"),
+}
+
+
+def firmar_sobre(
+    documentos: list[DocumentoFirmado],
+    *,
+    canal: str,
+    rut_emisor: str,
+    rut_envia: str,
+    fecha_resolucion: str,
+    numero_resolucion: int,
+    cert: CertificadoCargado,
+    momento: datetime | None = None,
+) -> bytes:
+    """Mete DTE ya firmados en un `<EnvioDTE>` o `<EnvioBOLETA>` y firma el sobre.
+
+    Los DTE entran **como bytes**, tal como salieron de `firmar_dte`: no se
+    vuelven a construir ni a serializar por su cuenta. Antes de devolver se
+    verifica la firma del sobre y la de cada DTE ya dentro de él, que es donde
+    las verifica el SII.
+
+    Args:
+        canal: "DTE" o "BOLETA".
+        rut_emisor: RUT de la empresa.
+        rut_envia: RUT de quien firma el envío: el titular del certificado, que
+            en general es una persona natural distinta de la empresa.
+        fecha_resolucion: Fecha de la resolución del SII (AAAA-MM-DD).
+        numero_resolucion: Número de resolución; 0 en certificación.
+
+    Raises:
+        FirmaInvalidaError: El sobre firmado no verifica.
+    """
+    if canal not in _SOBRES:
+        raise ValueError(f"Canal desconocido: {canal!r}")
+    if not documentos:
+        raise ValueError("Un sobre necesita al menos un documento")
+
+    raiz, xsd = _SOBRES[canal]
+    momento = momento or datetime.now(ZONA_CHILE)
+
+    conteo: dict[int, int] = {}
+    for doc in documentos:
+        conteo[doc.tipo_dte] = conteo.get(doc.tipo_dte, 0) + 1
+    subtotales = b"".join(
+        f"<SubTotDTE><TpoDTE>{tipo}</TpoDTE><NroDTE>{n}</NroDTE></SubTotDTE>".encode()
+        for tipo, n in sorted(conteo.items())
+    )
+    caratula = (
+        b'<Caratula version="1.0">'
+        + f"<RutEmisor>{rut_emisor}</RutEmisor>"
+        f"<RutEnvia>{rut_envia}</RutEnvia>"
+        f"<RutReceptor>{RUT_SII}</RutReceptor>"
+        f"<FchResol>{fecha_resolucion}</FchResol>"
+        f"<NroResol>{numero_resolucion}</NroResol>"
+        f"<TmstFirmaEnv>{hora_sii(momento)}</TmstFirmaEnv>".encode()
+        + subtotales
+        + b"</Caratula>"
+    )
+    cuerpos = b"".join(doc.xml.split(b"?>", 1)[1].strip() for doc in documentos)
+    sobre = (
+        DECLARACION
+        + f'<{raiz} xmlns="{NS}" xmlns:xsi="{XSI}" '
+        f'xsi:schemaLocation="{NS} {xsd}" version="1.0">'.encode()
+        + b'<SetDTE ID="SetDoc">'
+        + caratula
+        + cuerpos
+        + b"</SetDTE>"
+        + f"</{raiz}>".encode()
+    )
+
+    arbol = etree.fromstring(sobre)
+    set_dte = arbol.find(f"{{{NS}}}SetDTE")
+    _firmar(arbol, cert, "#SetDoc", nodo_id=set_dte)
+    xml = serializar(arbol)
+
+    verificar_sobre(etree.fromstring(xml), cert.cert_pem)
+    return xml
+
+
+def _verificar(firma: etree._Element, nodo_id: etree._Element, cert_pem: bytes, que: str) -> None:
+    ctx = xmlsec.SignatureContext()
+    ctx.register_id(nodo_id, "ID")
+    ctx.key = xmlsec.Key.from_memory(cert_pem, xmlsec.KeyFormat.CERT_PEM)
+    try:
+        ctx.verify(firma)
+    except xmlsec.Error as exc:
+        raise FirmaInvalidaError(f"La firma {que} no verifica: {exc}") from exc
+
+
+def verificar_sobre(sobre: etree._Element, cert_pem: bytes) -> None:
+    """Verifica la firma del sobre y la de cada DTE, en el contexto del sobre.
+
+    Raises:
+        FirmaInvalidaError: Alguna de las firmas no corresponde.
+    """
+    set_dte = sobre.find(f"{{{NS}}}SetDTE")
+    firma = sobre.find(f"{{{xmlsec.constants.DSigNs}}}Signature")
+    if set_dte is None or firma is None:
+        raise FirmaInvalidaError("El sobre no tiene <SetDTE> o <Signature>")
+    _verificar(firma, set_dte, cert_pem, "del sobre")
+    for dte in set_dte.findall(f"{{{NS}}}DTE"):
+        verificar_firma_dte(dte, cert_pem)

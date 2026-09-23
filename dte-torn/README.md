@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (108 tests en verde dentro del contenedor):
+Construido y verificado (152 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -28,11 +28,15 @@ Construido y verificado (108 tests en verde dentro del contenedor):
 - Timbre (TED) y firma XMLDSig del DTE (`app/dte/signer.py`) — issue #20: con
   los algoritmos que fija el SII, verificado dentro del sobre `<EnvioDTE>` y
   validado contra el XSD con timbre y firma reales.
+- Cliente del SII (`app/dte/sii_client.py`) y sobre firmado (`firmar_sobre`) —
+  issue #21: semilla, token cacheado en Redis, envío y consulta, para facturas
+  (SOAP) y boletas (REST). Endpoints y formatos de respuesta verificados contra
+  el SII real; los sobres validan contra `EnvioDTE_v10.xsd` y
+  `EnvioBOLETA_v11.xsd`.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
-Pendiente: `sii_client.py` (#21),
-`caf_request.py`, la capa `tasks/` con sus colas, la API y el PDF. Los issues
+Pendiente: `caf_request.py`, la capa `tasks/` con sus colas, la API y el PDF. Los issues
 #15 y #22 tienen su núcleo hecho pero siguen abiertos: les falta el endpoint
 HTTP, que llega con la capa de API.
 
@@ -146,7 +150,26 @@ No hay comando de re-cifrado masivo todavía: mientras la llave anterior siga
 cargada no hace falta, y escribirlo antes de necesitarlo es escribirlo sin saber
 qué necesita.
 
-## Dos cosas que no hay que tocar sin leer primero
+## Diagnóstico contra el SII de certificación
+
+Antes de emitir nada, conviene confirmar que el SII acepta nuestra firma con el
+certificado real. El script pide semilla y token por los dos canales; si el SII
+entrega el token, la firma XMLDSig funciona contra el SII de verdad. No emite
+documentos ni toca la base de datos.
+
+1. Poner la clave del .pfx en `.env` como `DTE_CERT_PASSWORD` (nunca en el
+   comando, nunca en un chat).
+2. Correr, cambiando el nombre del archivo:
+
+```bash
+docker compose run --rm -v "./certificado.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=/tmp/cert.pfx api python -m app.scripts.certificacion
+```
+
+Si falla con `SiiAutenticacionError`, casi siempre es que el titular del
+certificado no está autorizado en el SII para operar la facturación electrónica
+de la empresa; eso se configura en el portal del SII.
+
+## Tres cosas que no hay que tocar sin leer primero
 
 **`SET LOCAL` en `app/db.py`.** El aislamiento entre tenants depende de que
 `app.tenant_id` muera con la transacción. Un `SET` sin `LOCAL` sobrevive en la
@@ -156,3 +179,8 @@ anterior. Por eso no existe forma de obtener una sesión sin declarar el tenant.
 **`--no-binary lxml,xmlsec` en el Dockerfile.** Los wheels de ambos traen su
 propia copia estática de libxml2; con las dos cargadas en el mismo proceso,
 firmar un árbol de lxml con xmlsec termina en segfault, no en excepción.
+
+**`import lxml.etree` en `app/__init__.py`.** Si `xmlsec` se importa antes que
+`lxml`, después del primer parseo libxml2 deja de poder abrir archivos por ruta
+(`etree.parse("x.xsd")` falla sin detalle; parsear bytes sigue funcionando).
+Ese import garantiza el orden para toda la aplicación.

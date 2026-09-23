@@ -243,3 +243,126 @@ def test_folio_fuera_del_rango_del_caf(cert, caf33) -> None:
 def test_caf_de_otro_tipo_de_documento(cert, caf39) -> None:
     with pytest.raises(FirmaInvalidaError, match="no pertenece al CAF"):
         firmar_dte(_factura(folio=10), caf39, cert, MOMENTO)
+
+
+# --------------------------------------------------------------- semilla -----
+
+
+def test_la_semilla_firmada_verifica(cert) -> None:
+    """El `<getToken>` lleva firma envuelta (URI vacía, todo el documento)."""
+    import xmlsec
+
+    from app.dte.signer import firmar_semilla
+
+    firmado = firmar_semilla("168441616904", cert)
+    raiz = etree.fromstring(firmado)
+
+    assert raiz.tag == "getToken"
+    assert raiz.findtext("item/Semilla") == "168441616904"
+    assert b"xmldsig#enveloped-signature" in firmado
+
+    ctx = xmlsec.SignatureContext()
+    ctx.key = xmlsec.Key.from_memory(cert.cert_pem, xmlsec.KeyFormat.CERT_PEM)
+    ctx.verify(raiz.find(f"{{{xmlsec.constants.DSigNs}}}Signature"))
+
+
+# ------------------------------------------------------------------ sobre ----
+
+
+def _firmados(cert, caf33, n: int = 2):
+    return [firmar_dte(_factura(folio=1000 + i), caf33, cert, MOMENTO) for i in range(n)]
+
+
+def _sobre_dte(cert, caf33, n: int = 2) -> bytes:
+    from app.dte.signer import firmar_sobre
+
+    return firmar_sobre(
+        _firmados(cert, caf33, n),
+        canal="DTE",
+        rut_emisor="76543210-3",
+        rut_envia=cert.rut,
+        fecha_resolucion="2026-09-01",
+        numero_resolucion=0,
+        cert=cert,
+        momento=MOMENTO,
+    )
+
+
+def test_el_sobre_cumple_el_esquema_del_sii(cert, caf33) -> None:
+    """El `<EnvioDTE>` completo, con dos facturas firmadas, contra el XSD oficial."""
+    from pathlib import Path
+
+    xsd = Path(builder.__file__).parent / "xsd" / "dte" / "EnvioDTE_v10.xsd"
+    esquema = etree.XMLSchema(etree.parse(str(xsd)))
+    sobre = etree.fromstring(_sobre_dte(cert, caf33))
+
+    assert esquema.validate(sobre), "\n".join(str(e) for e in esquema.error_log)
+
+
+def test_el_sobre_de_boletas_cumple_su_esquema(cert, caf39, tmp_path) -> None:
+    from app.dte.signer import firmar_sobre
+    from tests.factories import xsd_boleta_parcheado
+
+    datos = DatosDocumento(
+        tipo_dte=39, fecha_emision=date(2026, 9, 23), items=[Item(nombre="Pan", precio=Decimal("1190"))]
+    )
+    boleta = firmar_dte(construir_dte(EMISOR, datos, 1), caf39, cert, MOMENTO)
+    sobre = firmar_sobre(
+        [boleta],
+        canal="BOLETA",
+        rut_emisor="76543210-3",
+        rut_envia=cert.rut,
+        fecha_resolucion="2026-09-01",
+        numero_resolucion=0,
+        cert=cert,
+        momento=MOMENTO,
+    )
+    esquema = etree.XMLSchema(etree.parse(str(xsd_boleta_parcheado(tmp_path))))
+    arbol = etree.fromstring(sobre)
+
+    assert arbol.tag == f"{{{NS}}}EnvioBOLETA"
+    assert esquema.validate(arbol), "\n".join(str(e) for e in esquema.error_log)
+
+
+def test_todas_las_firmas_verifican_dentro_del_sobre(cert, caf33) -> None:
+    """La del sobre y la de cada DTE, en el contexto donde las verifica el SII."""
+    from app.dte.signer import verificar_sobre
+
+    verificar_sobre(etree.fromstring(_sobre_dte(cert, caf33, n=3)), cert.cert_pem)
+
+
+def test_los_dte_entran_al_sobre_byte_a_byte(cert, caf33) -> None:
+    """Un DTE firmado no se vuelve a serializar por su cuenta: se inserta tal cual."""
+    from app.dte.signer import firmar_sobre
+
+    firmados = _firmados(cert, caf33, 2)
+    sobre = firmar_sobre(
+        firmados, canal="DTE", rut_emisor="76543210-3", rut_envia=cert.rut,
+        fecha_resolucion="2026-09-01", numero_resolucion=0, cert=cert, momento=MOMENTO,
+    )
+    for doc in firmados:
+        assert doc.xml.split(b"?>", 1)[1].strip() in sobre
+
+
+def test_la_caratula(cert, caf33) -> None:
+    """RutEnvia es el titular del certificado; RutEmisor, la empresa."""
+    sobre = etree.fromstring(_sobre_dte(cert, caf33, n=2))
+    caratula = sobre.find(".//s:Caratula", N)
+
+    assert caratula.findtext("s:RutEmisor", namespaces=N) == "76543210-3"
+    assert caratula.findtext("s:RutEnvia", namespaces=N) == "11111111-1"
+    assert caratula.findtext("s:RutReceptor", namespaces=N) == "60803000-K"
+    assert caratula.findtext("s:NroResol", namespaces=N) == "0"
+    assert caratula.findtext("s:TmstFirmaEnv", namespaces=N) == "2026-09-23T10:30:00"
+    assert caratula.findtext("s:SubTotDTE/s:TpoDTE", namespaces=N) == "33"
+    assert caratula.findtext("s:SubTotDTE/s:NroDTE", namespaces=N) == "2"
+
+
+def test_alterar_el_sobre_rompe_su_firma(cert, caf33) -> None:
+    from app.dte.signer import verificar_sobre
+
+    sobre = _sobre_dte(cert, caf33)
+    alterado = sobre.replace(b"<NroResol>0</NroResol>", b"<NroResol>1</NroResol>")
+
+    with pytest.raises(FirmaInvalidaError, match="del sobre"):
+        verificar_sobre(etree.fromstring(alterado), cert.cert_pem)

@@ -126,3 +126,17 @@ async def caf_factory(tenant: uuid.UUID):
         return caf_id
 
     return crear
+
+
+@pytest_asyncio.fixture
+async def redis_limpio() -> AsyncIterator["Redis"]:
+    """Redis del compose, base 1, vacía para cada test."""
+    from redis.asyncio import Redis
+
+    from app.core.config import get_settings
+
+    cliente = Redis.from_url(get_settings().redis_url)
+    await cliente.flushdb()
+    yield cliente
+    await cliente.flushdb()
+    await cliente.aclose()
