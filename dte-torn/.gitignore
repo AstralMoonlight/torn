@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 *.pfx
 *.p12
+
+# XML sueltos en la raíz: CAF (traen la llave privada del timbre) y documentos
+# reales de la empresa. Los esquemas del SII viven en app/dte/xsd/ y no caen acá.
+/*.xml
