@@ -1,0 +1,6 @@
+# Solo lo de desarrollo. NO incluye requirements.txt a propósito: la etapa
+# `dev` del Dockerfile se monta sobre el venv que ya tiene lxml y xmlsec
+# compilados desde fuente, y un `-r requirements.txt` acá los reinstalaría
+# desde wheels, que es exactamente lo que el Dockerfile evita.
+pytest==9.1.1
+pytest-asyncio==1.4.0
