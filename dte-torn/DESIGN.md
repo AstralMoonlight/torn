@@ -385,3 +385,34 @@ La cola `folios` dispara la solicitud sola cuando el stock baja del umbral;
    importa cuando alguien mira el documento: `GET /documents/{external_id}` en
    ese momento. Un webhook agrega reintentos, firma de payload y un endpoint
    público en el backend para no ganar nada.
+
+---
+
+## 9. Qué pasa con las tablas de DTE del monolito
+
+El backend Torn todavía tiene `backend/app/models/dte.py` con `DTE`, `CAF` y
+`FolioRequestLog`, más un `dte_signer.py` vacío. Cuando este servicio esté en
+producción, eso queda duplicado. La decisión:
+
+**El monolito deja de ser dueño de los datos tributarios.** Se borran `DTE`,
+`CAF` y `FolioRequestLog`, y el router de folios pasa a ser un proxy hacia acá.
+
+El motivo no es el orden, es la corrección. Dos tablas `cafs` con dos punteros
+`ultimo_folio_usado` son dos fuentes de verdad para el mismo correlativo, que es
+exactamente la clase de error que este servicio existe para evitar. Lo mismo con
+el XML: si vive en dos partes, tarde o temprano una de las dos copia la que no
+se firmó.
+
+**Con una excepción deliberada:** `Sale` guarda `tipo_dte` y `folio` como copia
+de solo lectura, escrita una vez cuando se emite. No es una fuente de verdad, es
+una caché de impresión: la boleta se imprime en el mostrador y no puede depender
+de que este servicio responda. Todo lo demás —estado del SII, XML, PDF, track
+id— se consulta acá, que es donde está el dato y los índices.
+
+Para `#12` (Centro de Facturación) eso significa que la pantalla lee de
+`GET /documents`, no de una tabla local. El backend es un proxy autenticado, no
+un espejo.
+
+Esto se ejecuta **después** de que el servicio emita de verdad contra
+certificación. Hasta entonces las tablas del monolito se quedan donde están:
+borrarlas antes sería apostar a que esto funciona.

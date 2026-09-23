@@ -9,16 +9,18 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (13 tests en verde dentro del contenedor):
+Construido y verificado (29 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
 - Asignación atómica de folios e idempotencia de emisión (`app/dte/folios.py`).
+- Cifrado de secretos por tenant (`app/core/crypto.py`) y carga del certificado
+  digital con auditoría de cada acceso (`app/core/certificados.py`) — issue #15.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
-Pendiente: `builder.py`, `signer.py`, `sii_client.py`, `caf_request.py`, la capa
-`tasks/` con sus colas, la API y el PDF.
+Pendiente: carga de CAF (#22), `builder.py` (#14), `signer.py` (#20),
+`sii_client.py` (#21), la capa `tasks/` con sus colas, la API y el PDF.
 
 ## Puesta en marcha
 
