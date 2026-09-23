@@ -140,3 +140,13 @@ async def redis_limpio() -> AsyncIterator["Redis"]:
     yield cliente
     await cliente.flushdb()
     await cliente.aclose()
+
+
+@pytest_asyncio.fixture
+async def almacen():
+    """MinIO del compose, con el bucket de tests creado."""
+    from app.core.almacen import Almacen
+
+    a = Almacen()
+    await a.asegurar_bucket()
+    return a

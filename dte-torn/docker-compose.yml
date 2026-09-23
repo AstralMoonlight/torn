@@ -96,10 +96,16 @@ services:
       DTE_DATABASE_URL: postgresql+asyncpg://dte_app:${DTE_APP_DB_PASSWORD:-dte_app}@db:5432/dte_test
       DTE_DATABASE_OWNER_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/dte_test
       DTE_REDIS_URL: redis://redis:6379/1
+      DTE_S3_ENDPOINT_URL: http://minio:9000
+      DTE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      DTE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      DTE_S3_BUCKET: dte-test
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
 volumes:
