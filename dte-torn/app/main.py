@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -11,7 +12,8 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 
 from app.core.config import get_settings
-from app.db import get_engine
+from app.core.crypto import verificar_llave_maestra
+from app.db import control_session, get_engine
 
 settings = get_settings()
 
@@ -21,8 +23,17 @@ if settings.sentry_dsn:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Abre y cierra el pool de conexiones."""
+    """Abre el pool y comprueba la llave maestra antes de servir.
+
+    Si la llave configurada no es la que cifró los datos existentes, el proceso
+    no parte. Es deliberado: arrancar igual significaría cifrar lo nuevo con una
+    llave y dejar lo viejo ilegible, sin que nadie lo note hasta la primera
+    venta. Un contenedor que no levanta se ve en el despliegue.
+    """
     get_engine()
+    async with control_session() as session:
+        resultado = await verificar_llave_maestra(session)
+    logging.getLogger(__name__).info("llave maestra: %s", resultado)
     yield
     await get_engine().dispose()
 

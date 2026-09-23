@@ -9,13 +9,15 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (29 tests en verde dentro del contenedor):
+Construido y verificado (35 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
 - Asignación atómica de folios e idempotencia de emisión (`app/dte/folios.py`).
 - Cifrado de secretos por tenant (`app/core/crypto.py`) y carga del certificado
   digital con auditoría de cada acceso (`app/core/certificados.py`) — issue #15.
+- Canario de la llave maestra: el servicio no arranca si la llave configurada
+  no es la que cifró los datos existentes.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
@@ -60,7 +62,9 @@ Todas llevan prefijo `DTE_`. La plantilla completa está en `.env.example`.
 
 | Variable | Obligatoria | Qué es |
 |---|---|---|
-| `DTE_MASTER_KEY` | sí | 32 bytes en base64. De acá se derivan por HKDF las llaves que cifran cada certificado y cada CAF. **Si se pierde, todo lo cifrado con ella es irrecuperable.** Nunca en la base de datos ni en el repositorio. |
+| `DTE_MASTER_KEY` | sí | 32 bytes en base64. De acá se derivan por HKDF las llaves que cifran cada certificado y cada CAF. **Si se pierde, todo lo cifrado con ella es irrecuperable.** Nunca en la base de datos ni en el repositorio. Ver la sección siguiente. |
+| `DTE_MASTER_KEY_VERSION` | no (`1`) | Versión con la que se cifra lo nuevo. Sube al rotar. |
+| `DTE_MASTER_KEYS_ANTERIORES` | no (`{}`) | JSON `{"1": "<base64>"}` con las llaves previas, para seguir leyendo lo cifrado antes de una rotación. |
 | `DTE_INTERNAL_API_KEY` | sí | Clave compartida con el backend que consume el servicio. |
 | `DTE_DATABASE_URL` | sí | Conexión del rol de aplicación (`dte_app`), **sin** `BYPASSRLS`. |
 | `DTE_DATABASE_OWNER_URL` | sí | Conexión del rol dueño. Solo la usa Alembic. |
@@ -71,6 +75,47 @@ Todas llevan prefijo `DTE_`. La plantilla completa está en `.env.example`.
 | `DTE_SENTRY_DSN` | no | Si está, se inicializa Sentry. |
 | `DTE_FOLIO_UMBRAL_ALERTA` | no (`100`) | Folios restantes bajo los cuales se pide un CAF nuevo. |
 | `DTE_SII_CONCURRENCIA_POR_RUT` | no (`2`) | Envíos simultáneos al SII por RUT emisor. |
+
+## La llave maestra
+
+`DTE_MASTER_KEY` cifra, indirectamente, todo lo que este servicio guarda como
+secreto: los certificados digitales de cada empresa y los CAF. **No existe
+recuperación.** Si la llave desaparece, cada cliente tiene que volver a subir su
+.pfx —molesto pero resoluble— y los CAF quedan ilegibles, que es lo grave: los
+folios ya emitidos no se pueden volver a timbrar.
+
+Por eso:
+
+- La llave va en un gestor de secretos con respaldo (no en un `.env` suelto en
+  un servidor, que es lo que se termina haciendo si nadie lo escribe antes).
+- Quien pueda restaurarla no puede ser una sola persona.
+
+### El canario
+
+El accidente probable no es que roben la llave: es un despliegue con la
+variable vacía, renombrada o apuntando a otro secreto. Sin protección el
+servicio arrancaría, cifraría lo nuevo con la llave equivocada y dejaría
+ilegible lo anterior, y el síntoma aparecería recién en la primera venta que
+necesita firmar.
+
+La tabla `crypto_canary` guarda un texto conocido cifrado con la llave vigente,
+y el arranque lo vuelve a abrir. Si no calza, **el proceso no parte**. Es
+deliberado: un contenedor que no levanta se nota en el despliegue; uno cifrando
+con la llave equivocada se nota cuando ya es tarde.
+
+### Rotar la llave
+
+1. Generar la llave nueva y dejar la vieja en `DTE_MASTER_KEYS_ANTERIORES`
+   bajo su número de versión.
+2. Subir `DTE_MASTER_KEY_VERSION`.
+3. Desplegar. Lo nuevo se cifra con la llave nueva; lo viejo se sigue leyendo
+   con la anterior, porque cada fila guarda su `key_version`.
+4. La llave vieja se puede sacar recién cuando no quede ninguna fila con esa
+   versión (`certificates` y `cafs`).
+
+No hay comando de re-cifrado masivo todavía: mientras la llave anterior siga
+cargada no hace falta, y escribirlo antes de necesitarlo es escribirlo sin saber
+qué necesita.
 
 ## Dos cosas que no hay que tocar sin leer primero
 

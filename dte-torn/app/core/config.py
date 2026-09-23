@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     #: 32 bytes en base64. De acá se derivan las llaves por tenant (HKDF).
     #: Fuera de la base de datos, siempre.
     master_key: str
+    #: Versión con la que se cifra lo nuevo. Sube al rotar la llave maestra.
+    master_key_version: int = 1
+    #: Llaves anteriores, para poder leer lo que se cifró antes de una rotación:
+    #: `DTE_MASTER_KEYS_ANTERIORES={"1": "<base64>"}`. Sin esto, rotar la llave
+    #: dejaría ilegible todo lo ya guardado.
+    master_keys_anteriores: dict[str, str] = Field(default_factory=dict)
     #: Compartida con el backend que consume este servicio.
     internal_api_key: str
 
@@ -69,20 +75,39 @@ class Settings(BaseSettings):
     @classmethod
     def _master_key_de_32_bytes(cls, v: str) -> str:
         """Valida que la llave maestra sean 32 bytes reales en base64."""
-        try:
-            raw = base64.b64decode(v, validate=True)
-        except Exception as exc:  # noqa: BLE001 - mensaje de arranque
-            raise ValueError("DTE_MASTER_KEY debe ser base64 válido") from exc
-        if len(raw) != 32:
-            raise ValueError(
-                f"DTE_MASTER_KEY debe decodificar a 32 bytes, son {len(raw)}"
-            )
+        _decodificar_llave(v, "DTE_MASTER_KEY")
+        return v
+
+    @field_validator("master_keys_anteriores")
+    @classmethod
+    def _anteriores_validas(cls, v: dict[str, str]) -> dict[str, str]:
+        """Valida cada llave anterior igual que la actual."""
+        for version, llave in v.items():
+            _decodificar_llave(llave, f"DTE_MASTER_KEYS_ANTERIORES[{version}]")
         return v
 
     @property
     def master_key_bytes(self) -> bytes:
-        """La llave maestra ya decodificada."""
+        """La llave maestra vigente, ya decodificada."""
         return base64.b64decode(self.master_key)
+
+    def llave_maestra_de(self, version: int) -> bytes | None:
+        """Retorna la llave maestra de una versión, o None si no está cargada."""
+        if version == self.master_key_version:
+            return self.master_key_bytes
+        anterior = self.master_keys_anteriores.get(str(version))
+        return base64.b64decode(anterior) if anterior else None
+
+
+def _decodificar_llave(valor: str, nombre: str) -> bytes:
+    """Decodifica y valida una llave maestra en base64."""
+    try:
+        raw = base64.b64decode(valor, validate=True)
+    except Exception as exc:  # noqa: BLE001 - mensaje de arranque
+        raise ValueError(f"{nombre} debe ser base64 válido") from exc
+    if len(raw) != 32:
+        raise ValueError(f"{nombre} debe decodificar a 32 bytes, son {len(raw)}")
+    return raw
 
 
 @lru_cache

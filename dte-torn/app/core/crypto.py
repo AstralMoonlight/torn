@@ -26,25 +26,29 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 
-#: Versión de llave con la que se cifra hoy. Se persiste en cada fila
-#: (`key_version`) para que rotar la llave maestra sea leer las filas viejas con
-#: la llave vieja, no una migración de datos a ciegas.
-KEY_VERSION_ACTUAL = 1
+#: Plaintext del canario. Ver `verificar_llave_maestra`.
+_CANARY_CLARO = b"dte-torn/canary"
+
+#: UUID fijo que hace de "tenant" del canario. No existe en `tenants`; solo se
+#: usa como salt de la derivación para no depender de que haya empresas creadas.
+_CANARY_TENANT = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 #: GCM con nonce de 96 bits, que es el tamaño para el que está especificado.
 _NONCE_BYTES = 12
 
 
 class LlaveDesconocidaError(Exception):
-    """El registro fue cifrado con una versión de llave que ya no está cargada."""
+    """El registro fue cifrado con una versión de llave que no está cargada."""
 
     def __init__(self, key_version: int) -> None:
         super().__init__(
-            f"key_version {key_version} desconocida; la actual es {KEY_VERSION_ACTUAL}. "
-            "Si se rotó la llave maestra, hay que cargar también la anterior."
+            f"key_version {key_version} desconocida; la actual es {version_actual()}. "
+            "Si se rotó la llave maestra, la anterior tiene que seguir cargada en "
+            "DTE_MASTER_KEYS_ANTERIORES para poder leer lo que se cifró con ella."
         )
         self.key_version = key_version
 
@@ -58,13 +62,23 @@ class DescifradoError(Exception):
     """
 
 
+def version_actual() -> int:
+    """Versión de llave con la que se cifra lo nuevo.
+
+    Se persiste en cada fila (`key_version`) para que rotar la llave maestra sea
+    leer lo viejo con la llave vieja, no re-cifrar la base a ciegas.
+    """
+    return get_settings().master_key_version
+
+
 def _llave_maestra(key_version: int) -> bytes:
-    if key_version != KEY_VERSION_ACTUAL:
+    llave = get_settings().llave_maestra_de(key_version)
+    if llave is None:
         raise LlaveDesconocidaError(key_version)
-    return get_settings().master_key_bytes
+    return llave
 
 
-def derivar_llave(tenant_id: uuid.UUID, key_version: int = KEY_VERSION_ACTUAL) -> bytes:
+def derivar_llave(tenant_id: uuid.UUID, key_version: int | None = None) -> bytes:
     """Deriva la llave de 32 bytes de un tenant.
 
     Args:
@@ -74,6 +88,7 @@ def derivar_llave(tenant_id: uuid.UUID, key_version: int = KEY_VERSION_ACTUAL) -
     Returns:
         32 bytes de llave, determinísticos para ese tenant y esa versión.
     """
+    key_version = version_actual() if key_version is None else key_version
     hkdf = HKDF(
         algorithm=hashes.SHA256(),
         length=32,
@@ -96,7 +111,7 @@ def sellar(
     tenant_id: uuid.UUID,
     claro: bytes,
     datos_autenticados: bytes,
-    key_version: int = KEY_VERSION_ACTUAL,
+    key_version: int | None = None,
 ) -> tuple[bytes, bytes]:
     """Cifra `claro` con la llave del tenant.
 
@@ -123,7 +138,7 @@ def abrir(
     nonce: bytes,
     cifrado: bytes,
     datos_autenticados: bytes,
-    key_version: int = KEY_VERSION_ACTUAL,
+    key_version: int | None = None,
 ) -> bytes:
     """Descifra lo que produjo `sellar`.
 
@@ -139,3 +154,91 @@ def abrir(
         raise DescifradoError(
             "No se pudo descifrar: llave, AAD o contenido no corresponden"
         ) from exc
+
+
+# ---------------------------------------------------------------- canario ---
+#
+# El incidente probable con la llave maestra no es que alguien la robe: es un
+# redeploy con la variable vacía, renombrada o apuntando a otro secreto. El
+# servicio arrancaría sin quejarse, cifraría lo nuevo con una llave distinta y
+# dejaría ilegible todo lo anterior. Nadie se entera hasta la primera venta.
+#
+# El canario cierra eso: una fila con un texto conocido, cifrado con la llave
+# vigente. Al arrancar se vuelve a abrir. Si no abre, la llave cambió y el
+# proceso no parte. Un servicio caído se nota en un minuto; uno cifrando con la
+# llave equivocada se nota cuando ya es tarde.
+
+
+class LlaveMaestraCambiadaError(Exception):
+    """La llave maestra configurada no es la que cifró los datos existentes.
+
+    Casi siempre significa `DTE_MASTER_KEY` mal puesta en el despliegue. Es
+    recuperable: poner la llave correcta. Lo que no es recuperable es haber
+    seguido operando con la equivocada.
+    """
+
+    def __init__(self, key_version: int) -> None:
+        super().__init__(
+            f"DTE_MASTER_KEY no corresponde a los datos ya cifrados con la versión "
+            f"{key_version}. NO se debe operar así: los certificados y los CAF "
+            "existentes quedarían ilegibles y lo nuevo se cifraría con otra llave. "
+            "Revisar la variable de entorno antes de volver a levantar el servicio."
+        )
+        self.key_version = key_version
+
+
+def _canary_aad(key_version: int) -> bytes:
+    return f"canary|v{key_version}".encode()
+
+
+async def verificar_llave_maestra(session: AsyncSession) -> str:
+    """Comprueba que la llave configurada es la que cifró lo que ya está guardado.
+
+    La primera vez no hay nada con qué comparar y se siembra el canario.
+
+    Args:
+        session: Sesión con transacción abierta (`control_session`).
+
+    Returns:
+        `"sembrado"` la primera vez para esa versión, `"ok"` después.
+
+    Raises:
+        LlaveMaestraCambiadaError: La llave no corresponde.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from app.models import CryptoCanary
+
+    version = version_actual()
+    datos = _canary_aad(version)
+    nonce, cifrado = sellar(_CANARY_TENANT, _CANARY_CLARO, datos, version)
+
+    # ON CONFLICT: si dos workers arrancan a la vez, siembra uno y el otro
+    # verifica contra lo sembrado.
+    sembrado = (
+        await session.execute(
+            pg_insert(CryptoCanary)
+            .values(key_version=version, nonce=nonce, cifrado=cifrado)
+            .on_conflict_do_nothing(index_elements=["key_version"])
+            .returning(CryptoCanary.key_version)
+        )
+    ).scalar_one_or_none()
+
+    if sembrado is not None:
+        return "sembrado"
+
+    fila = (
+        await session.execute(
+            select(CryptoCanary).where(CryptoCanary.key_version == version)
+        )
+    ).scalar_one()
+
+    try:
+        abierto = abrir(_CANARY_TENANT, fila.nonce, fila.cifrado, datos, version)
+    except DescifradoError as exc:
+        raise LlaveMaestraCambiadaError(version) from exc
+
+    if abierto != _CANARY_CLARO:
+        raise LlaveMaestraCambiadaError(version)
+    return "ok"
