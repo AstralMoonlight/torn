@@ -145,3 +145,28 @@ def test_rotar_sin_conservar_la_anterior_falla_con_mensaje_claro() -> None:
             abrir(tenant, nonce, cifrado, datos, key_version=1)
 
     assert "DTE_MASTER_KEYS_ANTERIORES" in str(exc.value)
+
+
+async def test_olvidar_la_llave_anterior_impide_arrancar(limpiar: None) -> None:
+    """Rotar sin conservar la llave vieja deja datos ilegibles: hay que frenar.
+
+    Antes de esta comprobación el servicio arrancaba igual y reventaba recién en
+    la primera firma, cuando ya había un folio comprometido.
+    """
+    with _configurada(LLAVE_A, version=1):
+        async with control_session() as s:
+            await verificar_llave_maestra(s)
+
+    # Rotación bien hecha: la anterior sigue cargada.
+    with _configurada(LLAVE_B, version=2, anteriores={"1": LLAVE_A}):
+        async with control_session() as s:
+            await verificar_llave_maestra(s)
+
+    # Rotación mal hecha: se cayó la anterior del entorno.
+    with _configurada(LLAVE_B, version=2):
+        with pytest.raises(LlaveMaestraCambiadaError) as exc:
+            async with control_session() as s:
+                await verificar_llave_maestra(s)
+
+    assert exc.value.key_version == 1
+    assert "DTE_MASTER_KEYS_ANTERIORES" in str(exc.value)
