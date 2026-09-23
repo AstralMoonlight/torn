@@ -101,3 +101,31 @@ def test_serializacion_iso_8859_1() -> None:
     assert salida.startswith(b'<?xml version="1.0" encoding="ISO-8859-1"?>')
     # La eñe viaja como un solo byte 0xF1, no como los dos de UTF-8.
     assert b"\xf1" in salida and "Niño".encode("utf-8") not in salida
+
+
+def test_orden_de_importacion() -> None:
+    """Importar xmlsec antes que lxml rompe la carga de archivos por ruta.
+
+    El orden de importación es global al proceso, así que se prueba en
+    subprocesos limpios: el control demuestra el problema, y el caso real
+    demuestra que `import app` lo evita aunque después se importe xmlsec primero.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent
+    xsd = raiz / "app" / "dte" / "xsd" / "dte" / "DTE_v10.xsd"
+    prueba = (
+        "from lxml import etree\n"
+        "etree.fromstring(b'<a/>')\n"
+        f"etree.parse({str(xsd)!r})\n"
+    )
+
+    def correr(prefijo: str) -> int:
+        return subprocess.run(
+            [sys.executable, "-c", prefijo + prueba], cwd=raiz, capture_output=True
+        ).returncode
+
+    assert correr("import xmlsec\n") != 0, "el problema desapareció: revisar si esto sigue haciendo falta"
+    assert correr("import app\nimport xmlsec\n") == 0
