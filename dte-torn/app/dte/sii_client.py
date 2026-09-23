@@ -328,7 +328,13 @@ def leer_estado_dte(contenido: bytes) -> EstadoEnvio:
         raise SiiNoDisponibleError(f"getEstUp: {glosa} (estado {estado})", estado, crudo)
 
     def numero(tag: str) -> int:
-        return int(_texto(raiz, tag) or 0)
+        # Un envío con varios tipos de documento trae un bloque de conteos por
+        # tipo: se suman todos, no solo el primero.
+        return sum(
+            int(n.text.strip())
+            for n in raiz.iter()
+            if isinstance(n.tag, str) and etree.QName(n).localname == tag and n.text and n.text.strip().isdigit()
+        )
 
     aceptados, rechazados, reparos = numero("ACEPTADOS"), numero("RECHAZADOS"), numero("REPAROS")
     return EstadoEnvio(

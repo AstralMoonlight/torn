@@ -112,3 +112,56 @@ async def test_sin_factura_que_anular_no_parte(entorno, tmp_path, monkeypatch) -
     monkeypatch.setenv("DTE_CAF", str(caf_nc))
     with pytest.raises(SystemExit, match="Primero emite"):
         await certificacion.modo_enviar()
+
+
+@pytest.fixture
+def entorno_set(entorno, tmp_path, monkeypatch):
+    """El set básico de prueba, con CAF de sobra para facturas y notas."""
+    from tests.test_set_pruebas import SET_BASICO
+
+    ruta_set = tmp_path / "set.txt"
+    ruta_set.write_bytes(SET_BASICO.encode("latin-1"))
+    rutas = []
+    for tipo, desde in ((33, 1), (61, 1), (56, 1)):
+        ruta = tmp_path / f"caf_{tipo}.xml"
+        ruta.write_bytes(caf_xml(rut="76543210-3", tipo_dte=tipo, desde=desde, hasta=desde + 9))
+        rutas.append(str(ruta))
+    monkeypatch.setenv("DTE_SET", str(ruta_set))
+    monkeypatch.setenv("DTE_CAFS", ",".join(rutas))
+    monkeypatch.setenv("DTE_CAF", rutas[0])
+    entorno.estados = [_estado("EPR", aceptados=8)] * 5
+    return entorno
+
+
+async def test_el_set_va_en_un_solo_envio(entorno_set, capsys) -> None:
+    assert await certificacion.modo_set() == 0
+
+    salida = capsys.readouterr().out
+    assert entorno_set.llamadas.count("upload") == 1
+    assert "N° de envío: 0123456789" in salida
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        docs = (await s.execute(select(Document))).scalars().all()
+    assert len(docs) == 8
+    assert {d.estado for d in docs} == {"ACEPTADO"}
+    assert len({d.envio_id for d in docs}) == 1  # todos en el mismo envío
+
+
+async def test_correr_el_set_otra_vez_no_reenvia(entorno_set, capsys) -> None:
+    await certificacion.modo_set()
+    await certificacion.modo_set()
+    assert entorno_set.llamadas.count("upload") == 1
+    assert "ya se había enviado" in capsys.readouterr().out
+
+
+async def test_sin_folios_suficientes_no_emite_nada(entorno_set, tmp_path, monkeypatch) -> None:
+    """Si falta un CAF, no se gasta ningún folio."""
+    monkeypatch.setenv("DTE_CAFS", str(tmp_path / "caf_33.xml"))
+    assert await certificacion.modo_set() == 1
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        assert (await s.execute(select(Document))).scalars().all() == []

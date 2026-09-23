@@ -6,6 +6,8 @@ Dos modos:
   dos canales. No emite nada ni toca la base de datos.
 - `verificar`: resuelve los documentos cuya subida fue ambigua preguntándole al
   SII por el folio; los reenvía solo si el SII no los tiene.
+- `set`: emite el set de pruebas completo en un solo envío (lo que exige la
+  declaración de avance) y muestra el N° de envío para declararlo.
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -195,6 +197,15 @@ async def _preparar_emisor(caf_bytes: bytes, pfx: bytes, clave: str, huella: str
         async with tenant_session(tenant_id) as s:
             await guardar_certificado(s, tenant_id, pfx, clave, subido_por="diagnostico-certificacion")
 
+    await _cargar_caf_si_falta(tenant_id, caf_bytes)
+    print(f"Emisor: {caf.rut_emisor} ({datos['razon_social']}), CAF tipo {caf.tipo_dte} "
+          f"folios {caf.folio_desde}-{caf.folio_hasta}")
+    return tenant_id, caf.tipo_dte
+
+
+async def _cargar_caf_si_falta(tenant_id: uuid.UUID, caf_bytes: bytes) -> None:
+    """Carga el CAF salvo que ese mismo rango ya esté cargado."""
+    caf = parsear_caf(caf_bytes)
     async with tenant_session(tenant_id) as s:
         cargado = (
             await s.execute(
@@ -208,10 +219,6 @@ async def _preparar_emisor(caf_bytes: bytes, pfx: bytes, clave: str, huella: str
     if cargado is None:
         async with tenant_session(tenant_id) as s:
             await guardar_caf(s, tenant_id, caf_bytes, subido_por="diagnostico-certificacion")
-
-    print(f"Emisor: {caf.rut_emisor} ({datos['razon_social']}), CAF tipo {caf.tipo_dte} "
-          f"folios {caf.folio_desde}-{caf.folio_hasta}")
-    return tenant_id, caf.tipo_dte
 
 
 #: Qué anula cada tipo de nota de prueba: la nota de crédito anula una factura,
@@ -362,6 +369,216 @@ async def modo_enviar() -> int:
     return 0 if doc.estado in ("ACEPTADO", "REPAROS", "ENVIADO") else 1
 
 
+# --------------------------------------------------------------------- set --
+
+
+async def _folios_libres(tenant_id: uuid.UUID) -> dict[int, int]:
+    """Folios sin usar en los CAF activos y vigentes, por tipo de documento."""
+    from app.dte.folios import folios_disponibles
+
+    async with tenant_session(tenant_id) as s:
+        cafs = (await s.execute(select(CAF).where(CAF.estado == "ACTIVO"))).scalars().all()
+    libres: dict[int, int] = {}
+    for c in cafs:
+        if c.fecha_vencimiento is None or c.fecha_vencimiento >= date.today():
+            libres[c.tipo_dte] = libres.get(c.tipo_dte, 0) + folios_disponibles(c)
+    return libres
+
+
+async def modo_set() -> int:
+    """Emite el set de pruebas completo en UN solo envío, como exige el SII.
+
+    El formulario "Declarar avance" pide un único número de envío para el set,
+    que debe contener solo documentos del set y ninguno con reparos o rechazos.
+
+    Es idempotente: cada caso usa `set-<atención>-<caso>` como clave, así que
+    volver a correrlo no emite ni reenvía nada que ya exista. Antes de emitir el
+    primer caso comprueba que hay folios para todos: no se gasta ninguno si no
+    alcanzan.
+    """
+    from app.core.almacen import clave_envio
+    from app.dte.set_pruebas import armar_documento, folios_necesarios, parsear_set, resolver_lineas
+    from app.dte.signer import DocumentoFirmado, firmar_sobre
+    from app.models import AuditLog, EstadoEnvio
+
+    pfx, clave, cert = _certificado()
+    with open(_requerida("DTE_SET"), "rb") as f:
+        set_ = parsear_set(f.read().decode("latin-1"))
+    rutas = [r.strip() for r in _requerida("DTE_CAFS").split(",") if r.strip()]
+    cafs = [open(r, "rb").read() for r in rutas]
+
+    s = get_settings()
+    almacen = Almacen(s)
+    await almacen.asegurar_bucket()
+    tenant_id, _ = await _preparar_emisor(cafs[0], pfx, clave, cert.fingerprint_sha256)
+    for caf_bytes in cafs[1:]:
+        await _cargar_caf_si_falta(tenant_id, caf_bytes)
+
+    claves = {c.id: f"set-{set_.numero_atencion}-{c.id}" for c in set_.casos}
+    async with tenant_session(tenant_id) as sesion:
+        existentes = {
+            d.external_id: d
+            for d in (
+                await sesion.execute(select(Document).where(Document.external_id.in_(claves.values())))
+            ).scalars().all()
+        }
+
+    # Folios: solo cuentan los casos que todavía no se emitieron.
+    faltan: dict[int, int] = {}
+    for caso in set_.casos:
+        if claves[caso.id] not in existentes:
+            faltan[caso.tipo_dte] = faltan.get(caso.tipo_dte, 0) + 1
+    libres = await _folios_libres(tenant_id)
+    cortos = {t: (n, libres.get(t, 0)) for t, n in faltan.items() if libres.get(t, 0) < n}
+    print(f"Set {set_.numero_atencion}: {len(set_.casos)} casos; necesita {folios_necesarios(set_)}")
+    if cortos:
+        for t, (n, hay) in sorted(cortos.items()):
+            print(f"   Faltan folios del tipo {t}: necesita {n}, hay {hay} libres")
+        print("No se emitió nada: carga los CAF que faltan y vuelve a correrlo.")
+        return 1
+
+    # 1. Emitir y firmar cada caso, en orden (las notas necesitan el folio de su referencia).
+    redis = Redis.from_url(s.redis_url)
+    resueltos = resolver_lineas(set_)
+    folios: dict[str, tuple[int, int]] = {}
+    ids: dict[str, uuid.UUID] = {}
+    async with crear_http(s.sii_timeout_segundos) as http:
+        ctx = pipeline.Contexto(http=http, redis=redis, almacen=almacen, ttl_token=s.sii_token_ttl_segundos)
+        for caso in set_.casos:
+            doc = existentes.get(claves[caso.id])
+            if doc is None:
+                lineas, global_pct = resueltos[caso.id]
+                datos = armar_documento(set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios)
+                t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
+                async with tenant_session(tenant_id) as sesion:
+                    doc, _ = await emitir_documento(
+                        sesion,
+                        tenant_id,
+                        DatosEmision(
+                            external_id=claves[caso.id],
+                            tipo_dte=datos.tipo_dte,
+                            fecha_emision=datos.fecha_emision,
+                            payload=datos.model_dump(mode="json"),
+                            receptor_rut=datos.receptor.rut,
+                            monto_neto=t.neto, monto_exento=t.exento, monto_iva=t.iva, monto_total=t.total,
+                        ),
+                    )
+            folios[caso.id] = (doc.tipo_dte, doc.folio)
+            ids[caso.id] = doc.id
+            estado = await pipeline.firmar(ctx, tenant_id, doc.id)
+            doc = await _mostrar(tenant_id, doc.id)
+            print(f"   CASO {caso.id}: tipo {doc.tipo_dte} folio {doc.folio} total ${doc.monto_total} -> {estado}")
+            if estado not in ("FIRMADO", "ENVIADO", "ACEPTADO"):
+                print(f"   {doc.last_error}")
+                print("No se envió nada: un caso no se pudo firmar.")
+                return 1
+
+        docs = [await _mostrar(tenant_id, ids[c.id]) for c in set_.casos]
+        estados = {d.estado for d in docs}
+        if estados != {"FIRMADO"}:
+            envios = {d.envio_id for d in docs}
+            if estados <= {"ENVIADO", "ACEPTADO"} and len(envios) == 1:
+                print("El set ya se había enviado en un solo envío: solo se consulta su estado.")
+            else:
+                print(f"Los casos están en estados mezclados {sorted(estados)}: no se reenvía. Revisar a mano.")
+                return 1
+
+        async with control_session() as sesion:
+            tenant = (await sesion.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one()
+
+        if estados == {"FIRMADO"}:
+            # 2. Un solo sobre con los 8 documentos, exactamente como quedaron firmados.
+            firmados = [
+                DocumentoFirmado(
+                    xml=await almacen.leer(d.xml_key, d.xml_sha256),
+                    ted=(d.ted_barcode or "").encode("latin-1"),
+                    sha256=d.xml_sha256, tipo_dte=d.tipo_dte, folio=d.folio,
+                )
+                for d in docs
+            ]
+            sobre = firmar_sobre(
+                firmados, canal="DTE", rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
+                fecha_resolucion=tenant.resolucion_fecha.isoformat(),
+                numero_resolucion=tenant.resolucion_numero, cert=cert,
+            )
+            envio_id = uuid.uuid4()
+            import hashlib
+            sha = hashlib.sha256(sobre).hexdigest()
+            clave_s3 = clave_envio(tenant_id, envio_id, sha)
+            await almacen.guardar(clave_s3, sobre)
+
+            subido = datetime.now(ZONA_CHILE)
+            try:
+                track = await ctx.sii("CERT").enviar(
+                    Canal.DTE, tenant_id, cert, tenant.rut_emisor, sobre, f"set-{set_.numero_atencion}.xml"
+                )
+            except SiiError as exc:
+                print(f"La subida del set falló ({type(exc).__name__}): {exc}")
+                if getattr(exc, "ambiguo", False):
+                    async with tenant_session(tenant_id) as sesion:
+                        await sesion.execute(
+                            Document.__table__.update()
+                            .where(Document.id.in_(list(ids.values())))
+                            .values(estado="VERIFICAR", last_error=f"Subida ambigua del set: {exc}"[:2000])
+                        )
+                    print("Subida ambigua: los casos quedan en VERIFICAR. Usa el modo 'verificar' antes de reintentar.")
+                return 1
+            async with tenant_session(tenant_id) as sesion:
+                sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio="DTE", track_id=track,
+                                 xml_key=clave_s3, xml_sha256=sha, estado=EstadoEnvio.ENVIADO))
+                await sesion.flush()
+                await sesion.execute(
+                    Document.__table__.update()
+                    .where(Document.id.in_(list(ids.values())))
+                    .values(estado="ENVIADO", envio_id=envio_id)
+                )
+                sesion.add(AuditLog(tenant_id=tenant_id, operacion="ENVIO", resultado="OK",
+                                    cert_fingerprint=cert.fingerprint_sha256, actor="diagnostico-set",
+                                    detalle={"track_id": track, "set": set_.numero_atencion, "documentos": len(docs)}))
+            print(f"Envío del set: track {track}, subido {subido:%H:%M:%S} hora de Chile")
+        else:
+            async with tenant_session(tenant_id) as sesion:
+                envio = (await sesion.execute(select(Envio).where(Envio.id == docs[0].envio_id))).scalar_one()
+            track, subido = envio.track_id, envio.sent_at.astimezone(ZONA_CHILE)
+
+        # 3. Esperar el resultado del envío completo.
+        resultado = None
+        while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
+            await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
+            try:
+                resultado = await ctx.sii("CERT").consultar(Canal.DTE, tenant_id, cert, tenant.rut_emisor, track)
+            except SiiError as exc:
+                print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({_transcurrido(subido)})  consulta falló: {exc}")
+                continue
+            print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({_transcurrido(subido)})  {resultado.estado}: "
+                  f"{resultado.aceptados} aceptados, {resultado.reparos} con reparos, {resultado.rechazados} rechazados")
+            if resultado.estado not in ("REC", "SOK", "CRT", "FOK", "PDR", "PRD", "-"):
+                break
+    await redis.aclose()
+
+    limpio = (
+        resultado is not None
+        and resultado.estado == "EPR"
+        and resultado.aceptados == len(set_.casos)
+        and not resultado.reparos
+        and not resultado.rechazados
+    )
+    if limpio:
+        async with tenant_session(tenant_id) as sesion:
+            await sesion.execute(
+                Document.__table__.update().where(Document.id.in_(list(ids.values()))).values(estado="ACEPTADO")
+            )
+        print(f"El set completo fue aceptado sin reparos. Para declarar el avance en el SII:")
+        print(f"   N° de envío: {track}")
+        print(f"   Fecha de envío: {subido:%d-%m-%Y}")
+    else:
+        print("El set NO quedó limpio: no declarar el avance con este envío. Detalle del SII:")
+        if resultado is not None:
+            print(resultado.crudo)
+    await get_engine().dispose()
+    return 0 if limpio else 1
+
+
 # ---------------------------------------------------------------- verificar --
 
 
@@ -465,7 +682,7 @@ if __name__ == "__main__":
     modo = sys.argv[1] if len(sys.argv) > 1 else "token"
     if modo == "revisar-set":
         sys.exit(modo_revisar_set())
-    modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar}
+    modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar, "set": modo_set}
     if modo not in modos:
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar' o 'revisar-set'.")
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set' o 'revisar-set'.")
     sys.exit(asyncio.run(modos[modo]()))

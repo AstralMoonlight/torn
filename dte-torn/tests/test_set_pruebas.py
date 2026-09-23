@@ -341,3 +341,29 @@ def test_descuento_global_sobre_exentos() -> None:
         [DescuentoGlobal(valor=Decimal(10), exento=True)],
     )
     assert (t.neto, t.exento, t.iva) == (1000, 900, 190)
+
+
+def test_el_sobre_del_set_cumple_el_esquema_de_envio() -> None:
+    """Los 8 casos (facturas, notas de crédito y débito) en un solo EnvioDTE."""
+    from app.dte.signer import firmar_sobre, verificar_sobre
+
+    _, docs, folios = _documentos()
+    momento = datetime(2026, 9, 23, 13, tzinfo=timezone.utc)
+    firmados = [
+        firmar_dte(construir_dte(EMISOR, d, folios[caso][1]), _caf(d.tipo_dte), _cert(), momento)
+        for caso, d in docs.items()
+    ]
+    sobre = firmar_sobre(
+        firmados, canal="DTE", rut_emisor="76543210-3", rut_envia="11111111-1",
+        fecha_resolucion="2020-11-30", numero_resolucion=0, cert=_cert(), momento=momento,
+    )
+    arbol = etree.fromstring(sobre)
+    esquema = etree.XMLSchema(etree.parse(str(XSD.parent / "EnvioDTE_v10.xsd")))
+    assert esquema.validate(arbol), "\n".join(str(e) for e in esquema.error_log)
+    verificar_sobre(arbol, _cert().cert_pem)
+
+    subtotales = {
+        int(s.findtext(f"{{{NS}}}TpoDTE")): int(s.findtext(f"{{{NS}}}NroDTE"))
+        for s in arbol.iter(f"{{{NS}}}SubTotDTE")
+    }
+    assert subtotales == {33: 4, 56: 1, 61: 3}

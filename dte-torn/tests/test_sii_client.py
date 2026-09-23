@@ -268,6 +268,18 @@ def test_documento_estado_desconocido_no_concluye() -> None:
     assert leer_estado_documento(_documento_sii("XYZ", "?")).recibido is None
 
 
+def test_estado_de_envio_con_varios_tipos_suma_los_conteos() -> None:
+    """El set va en un envío con facturas y notas: un bloque de conteos por tipo."""
+    cuerpo = "".join(
+        f"<TIPO_DOCTO>{t}</TIPO_DOCTO><INFORMADOS>{n}</INFORMADOS><ACEPTADOS>{n}</ACEPTADOS>"
+        "<RECHAZADOS>0</RECHAZADOS><REPAROS>0</REPAROS>"
+        for t, n in ((33, 4), (61, 3), (56, 1))
+    )
+    estado = leer_estado_dte(_respuesta_sii(cuerpo, "EPR", "Envio Procesado"))
+    assert (estado.informados, estado.aceptados) == (8, 8)
+    assert estado.resultado is Resultado.ACEPTADO
+
+
 def test_estado_boleta_suma_la_estadistica() -> None:
     cuerpo = json.dumps(
         {
