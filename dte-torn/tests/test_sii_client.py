@@ -2,8 +2,9 @@
 
 Sin red: las respuestas marcadas REAL son copias exactas de lo que devolvió el
 SII el 2026-09-23 (semillas, errores de token y de consulta, la página HTML de
-`DTEUpload` sin sesión). Las marcadas DOCUMENTADA siguen el formato del manual
-del SII y quedan por confirmar con el primer envío real en certificación.
+`DTEUpload` sin sesión, y el estado de la primera factura real aceptada). Las
+marcadas DOCUMENTADA siguen el formato del manual; el primer envío real
+(track 0260003916) las leyó sin problemas, así que el formato está confirmado.
 
 El cliente se prueba con `httpx.MockTransport` y el Redis del compose, así que
 el caché del token es real.
@@ -73,6 +74,19 @@ ESTADO_TOKEN_NO_EXISTE = (
 UPLOAD_HTML = (
     b'<HTML> <HEAD> <TITLE>Error 501</TITLE> </HEAD> <BODY> <div align="center"><center> '
     b'<table border="0" cellpadding="0" cellspacing="0" width="630"> <tr> <td colspan="2"></tr>'
+)
+
+#: `getEstUp` del primer envío real aceptado por el SII de certificación
+#: (2026-09-23, una factura emitida por este servicio). Confirma el formato que
+#: estaba escrito según el manual.
+ESTADO_ACEPTADO_REAL = (
+    b'<?xml version="1.0" encoding="UTF-8"?>\n<SII:RESPUESTA xmlns:SII="http://www.sii.cl/XMLSchema">\n'
+    b"    <SII:RESP_BODY>\n        <TIPO_DOCTO>33</TIPO_DOCTO>\n        <INFORMADOS>1</INFORMADOS>\n"
+    b"        <ACEPTADOS>1</ACEPTADOS>\n        <RECHAZADOS>0</RECHAZADOS>\n        <REPAROS>0</REPAROS>\n"
+    b"    </SII:RESP_BODY>\n    <SII:RESP_HDR>\n        <TRACKID>0260003916</TRACKID>\n"
+    b"        <ESTADO>EPR</ESTADO>\n        <GLOSA>Envio Procesado</GLOSA>\n"
+    b"        <NUM_ATENCION>34909   ( 2026/09/23 16:29:53)</NUM_ATENCION>\n"
+    b"    </SII:RESP_HDR>\n</SII:RESPUESTA>"
 )
 
 # ------------------------------------------------------------ DOCUMENTADAS --
@@ -184,6 +198,14 @@ def test_codigos_de_upload(status: str, error: type) -> None:
 )
 def test_clasificacion_de_estados(estado, a, r, p, esperado) -> None:
     assert clasificar(estado, a, r, p) is esperado
+
+
+def test_estado_aceptado_real() -> None:
+    """La respuesta del SII al primer documento real que emitió este servicio."""
+    estado = leer_estado_dte(ESTADO_ACEPTADO_REAL)
+    assert estado.resultado is Resultado.ACEPTADO
+    assert (estado.estado, estado.glosa) == ("EPR", "Envio Procesado")
+    assert (estado.informados, estado.aceptados, estado.rechazados, estado.reparos) == (1, 1, 0, 0)
 
 
 def test_estado_dte_procesado() -> None:

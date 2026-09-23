@@ -36,6 +36,9 @@ Construido y verificado (167 tests en verde dentro del contenedor):
 - **Verificado contra el SII de certificación (2026-09-23):** con un certificado
   real, maullin y apicert aceptaron la firma y entregaron token por los dos
   canales (`app/scripts/certificacion.py`).
+- **Primer documento real aceptado por el SII de certificación (2026-09-23):**
+  una factura emitida de punta a punta por este servicio (`certificacion
+  enviar`), track ID 0260003916, estado `EPR` con 1 aceptado.
 - Pipeline de vida del documento (`app/dte/pipeline.py`): firmar, enviar y
   consultar como pasos idempotentes, con reintentos y revisión manual basados en
   Postgres, XML y sobres write-once en S3, y la fila de `audit_log` por cada
