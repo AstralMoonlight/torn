@@ -47,6 +47,9 @@ class EstadoDocumento(StrEnum):
     FIRMANDO = "FIRMANDO"            # transitorio
     FIRMADO = "FIRMADO"              # XML en S3, inmutable
     ENVIANDO = "ENVIANDO"            # transitorio
+    #: La subida fue ambigua: el pedido salió y no hubo respuesta. Antes de
+    #: reenviar hay que preguntarle al SII si recibió el folio.
+    VERIFICAR = "VERIFICAR"
     ENVIADO = "ENVIADO"              # con track_id, esperando resultado
     ACEPTADO = "ACEPTADO"
     REPAROS = "REPAROS"              # aceptado con observaciones: es válido

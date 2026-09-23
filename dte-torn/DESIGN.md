@@ -201,6 +201,14 @@ servicio + header `X-Tenant-Id`, igual que el backend Torn. (A confirmar.)
 ```
 
 Terminales: `ACEPTADO`, `REPAROS`, `RECHAZADO`, `ANULADO`, `ERROR_VALIDACION`.
+
+**`VERIFICAR`** (agregado tras un caso real en certificación): la subida salió y
+el SII no respondió, así que pudo haber recibido el sobre. No se reenvía: el paso
+`verificar` le pregunta al SII por el folio (`getEstDte`). Si no lo tiene, vuelve
+a `FIRMADO` y se reenvía; si lo tiene, pasa a `ENVIADO` con el track ID que
+informa el SII (`NUM_ATENCION`); si lo tiene con otros datos, `ERROR`. Si no se
+puede concluir, sigue en `VERIFICAR` con espera y, tras varios intentos, va a
+revisión manual.
 `ERROR` **no** es terminal: es reintentable.
 
 Reglas:

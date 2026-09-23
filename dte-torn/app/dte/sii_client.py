@@ -32,6 +32,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import TypeVar
 
@@ -89,6 +90,13 @@ ENDPOINTS: dict[tuple[str, Canal], Endpoints] = {
         envio="https://rahue.sii.cl/recursos/v1/boleta.electronica.envio",
         estado="https://api.sii.cl/recursos/v1/boleta.electronica.envio",
     ),
+}
+
+
+#: Consulta de un documento por su folio (`getEstDte`). Solo canal DTE.
+CONSULTA_DOCUMENTO: dict[str, str] = {
+    "CERT": "https://maullin.sii.cl/DTEWS/QueryEstDte.jws",
+    "PROD": "https://palena.sii.cl/DTEWS/QueryEstDte.jws",
 }
 
 
@@ -335,6 +343,56 @@ def leer_estado_dte(contenido: bytes) -> EstadoEnvio:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class EstadoDocumentoSii:
+    """Qué sabe el SII de un documento puntual (`getEstDte`).
+
+    `recibido` es None cuando la respuesta no permite concluir nada: en ese caso
+    no se debe reenviar ni dar el documento por recibido.
+    """
+
+    estado: str
+    glosa: str | None
+    recibido: bool | None
+    datos_coinciden: bool | None
+    #: `NUM_ATENCION`: el track ID del envío en que llegó el documento.
+    track_id: str | None
+    crudo: str
+
+
+#: Estados de `getEstDte`. DOK verificado contra el SII real (2026-09-23);
+#: DNK y FAU según el manual del SII.
+_DOC_RECIBIDO_OK = "DOK"          # recibido, datos coinciden
+_DOC_RECIBIDO_DISTINTO = "DNK"    # recibido, pero con otros datos
+_DOC_NO_RECIBIDO = "FAU"          # el SII no tiene el documento
+
+
+def leer_estado_documento(contenido: bytes) -> EstadoDocumentoSii:
+    """Estado de un documento desde `getEstDte` (ya desenvuelto).
+
+    Raises:
+        SiiTokenInvalidoError: `ESTADO 001`, igual que en `getEstUp`.
+        SiiNoDisponibleError: Otros códigos numéricos: error de la consulta.
+    """
+    raiz, estado, _ = _respuesta_sii(contenido, "estado del documento")
+    crudo = contenido.decode("utf-8", "replace")
+    glosa = _texto(raiz, "GLOSA_ERR") or _texto(raiz, "GLOSA_ESTADO")
+    if estado == "001":
+        raise SiiTokenInvalidoError(f"getEstDte: {glosa}", estado, crudo)
+    if not estado or estado.lstrip("-").isdigit():
+        raise SiiNoDisponibleError(f"getEstDte: {glosa} (estado {estado})", estado, crudo)
+
+    recibido = {_DOC_RECIBIDO_OK: True, _DOC_RECIBIDO_DISTINTO: True, _DOC_NO_RECIBIDO: False}.get(estado)
+    return EstadoDocumentoSii(
+        estado=estado,
+        glosa=glosa,
+        recibido=recibido,
+        datos_coinciden={_DOC_RECIBIDO_OK: True, _DOC_RECIBIDO_DISTINTO: False}.get(estado),
+        track_id=_texto(raiz, "NUM_ATENCION") if recibido else None,
+        crudo=crudo,
+    )
+
+
 def leer_upload_boleta(contenido: bytes) -> str:
     """Track ID de la respuesta JSON del envío de boletas."""
     try:
@@ -572,6 +630,61 @@ class ClienteSii:
             return leer_estado_boleta(respuesta.content)
 
         return await self._con_token(canal, tenant_id, cert, preguntar)
+
+    async def consultar_documento(
+        self,
+        tenant_id: uuid.UUID,
+        cert: CertificadoCargado,
+        rut_emisor: str,
+        rut_receptor: str,
+        tipo_dte: int,
+        folio: int,
+        fecha_emision: date,
+        monto_total: int,
+    ) -> EstadoDocumentoSii:
+        """Pregunta al SII si tiene un documento, por su folio.
+
+        Es lo que resuelve una subida ambigua: si el SII no lo tiene, se puede
+        reenviar sin duplicar; si lo tiene, `track_id` dice en qué envío llegó.
+        Solo canal DTE (facturas y notas).
+        """
+        return await _consultar_documento(
+            self, tenant_id, cert, rut_emisor, rut_receptor, tipo_dte, folio, fecha_emision, monto_total
+        )
+
+
+async def _consultar_documento(
+    cliente: ClienteSii,
+    tenant_id: uuid.UUID,
+    cert: CertificadoCargado,
+    rut_emisor: str,
+    rut_receptor: str,
+    tipo_dte: int,
+    folio: int,
+    fecha_emision: date,
+    monto_total: int,
+) -> EstadoDocumentoSii:
+    rut_c, dv_c = _separar_rut(rut_emisor)
+    rut_r, dv_r = _separar_rut(rut_receptor)
+    if not cert.rut:
+        raise SiiAutenticacionError("El certificado no trae el RUT de su titular (RutConsultante)")
+    rut_q, dv_q = _separar_rut(cert.rut)
+
+    async def preguntar(token: str) -> EstadoDocumentoSii:
+        return leer_estado_documento(
+            await cliente._pedir_soap(
+                CONSULTA_DOCUMENTO[cliente.ambiente],
+                "getEstDte",
+                f"<RutConsultante>{rut_q}</RutConsultante><DvConsultante>{dv_q}</DvConsultante>"
+                f"<RutCompania>{rut_c}</RutCompania><DvCompania>{dv_c}</DvCompania>"
+                f"<RutReceptor>{rut_r}</RutReceptor><DvReceptor>{dv_r}</DvReceptor>"
+                f"<TipoDte>{tipo_dte}</TipoDte><FolioDte>{folio}</FolioDte>"
+                f"<FechaEmisionDte>{fecha_emision:%d%m%Y}</FechaEmisionDte>"
+                f"<MontoDte>{monto_total}</MontoDte><Token>{token}</Token>",
+            )
+        )
+
+    return await cliente._con_token(Canal.DTE, tenant_id, cert, preguntar)
 
 
 def crear_http(timeout: float) -> httpx.AsyncClient:
