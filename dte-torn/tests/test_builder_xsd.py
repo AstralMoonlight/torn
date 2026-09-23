@@ -4,15 +4,15 @@ Los XSD están en `app/dte/xsd/`, tal como los publica el SII (`schema_dte.zip`
 y `schema_envio_bol.zip`). Validar contra ellos es la única forma de saber que
 la estructura es correcta sin mandarle nada al SII.
 
-El esquema exige `<TED>`, `<TmstFirma>` y `<ds:Signature>`, que produce el
-firmador (#20). Mientras no exista, `_completar` les pone relleno con la forma
-correcta: lo que se está validando acá es todo lo demás.
+Se valida el DTE **completo**: construido por `builder.py` y timbrado y
+firmado por `signer.py`, tal como sale hacia el SII.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -26,13 +26,13 @@ from app.dte.builder import (
     Receptor,
     Referencia,
     construir_dte,
-    serializar,
 )
+from app.core.certificados import parsear_pfx
 from app.dte.caf import parsear_caf
-from tests.factories import caf_xml
+from app.dte.signer import firmar_dte
+from tests.factories import CLAVE_PFX, caf_xml, pfx
 
 XSD = Path(__file__).resolve().parent.parent / "app" / "dte" / "xsd"
-DS = "http://www.w3.org/2000/09/xmldsig#"
 N = {"s": NS}
 
 EMISOR = Emisor(
@@ -104,55 +104,27 @@ def esquema_boleta(tmp_path_factory: pytest.TempPathFactory) -> etree.XMLSchema:
     return etree.XMLSchema(etree.parse(str(envoltorio)))
 
 
+@lru_cache(maxsize=1)
+def _cert():
+    return parsear_pfx(pfx(rut="11111111-1"), CLAVE_PFX)
+
+
 def _completar(dte: etree._Element) -> etree._Element:
-    """Agrega TED, TmstFirma y Signature de relleno, con la forma del esquema.
+    """Timbra y firma con el firmador real, para validar el DTE completo.
 
-    El TED se arma como texto y el `<CAF>` se inserta **literal**, igual que lo
-    hará el firmador: al quedar dentro del namespace por defecto del `<DTE>`, sus
-    elementos pasan a ser del namespace del SII. Reconstruirlo nodo por nodo lo
-    dejaría fuera del namespace (con `xmlns=""`) y el esquema lo rechazaría.
+    Valida lo mismo que el SII: timbre, `TmstFirma` y firma incluidos. Devuelve
+    el árbol releído desde los bytes firmados, que es lo que se guarda y se envía.
     """
-    doc = dte.find("s:Documento", N)
-    t = lambda ruta: doc.findtext(ruta, namespaces=N)  # noqa: E731
-    caf = parsear_caf(caf_xml(rut=t(".//s:RUTEmisor"), tipo_dte=int(t(".//s:TipoDTE"))))
-
-    ted = (
-        f'<TED xmlns="{NS}" version="1.0"><DD>'
-        f"<RE>{t('.//s:RUTEmisor')}</RE>"
-        f"<TD>{t('.//s:TipoDTE')}</TD>"
-        f"<F>{t('.//s:Folio')}</F>"
-        f"<FE>{t('.//s:FchEmis')}</FE>"
-        f"<RR>{t('.//s:RUTRecep')}</RR>"
-        f"<RSR>{(t('.//s:RznSocRecep') or 'CONSUMIDOR FINAL')[:40]}</RSR>"
-        f"<MNT>{t('.//s:MntTotal')}</MNT>"
-        f"<IT1>{t('.//s:NmbItem')[:40]}</IT1>"
-    ).encode("latin-1")
-    ted += caf.nodo_caf
-    ted += b'<TSTED>2026-09-23T10:00:00</TSTED></DD><FRMT algoritmo="SHA1withRSA">AAAA</FRMT></TED>'
-    # Sin declaración, lxml asume UTF-8 y una "ó" en latin-1 revienta el parseo.
-    # Es la misma trampa que tendrá el firmador al armar el TED.
-    doc.append(etree.fromstring(b'<?xml version="1.0" encoding="ISO-8859-1"?>' + ted))
-
-    tmst = etree.SubElement(doc, f"{{{NS}}}TmstFirma")
-    tmst.text = "2026-09-23T10:00:00"
-
-    firma = etree.fromstring(
-        f"""<Signature xmlns="{DS}"><SignedInfo>
-<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
-<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
-<Reference URI="#{doc.get('ID')}"><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
-<DigestValue>AAAA</DigestValue></Reference></SignedInfo>
-<SignatureValue>AAAA</SignatureValue>
-<KeyInfo><KeyValue><RSAKeyValue><Modulus>AAAA</Modulus><Exponent>AQAB</Exponent></RSAKeyValue></KeyValue>
-<X509Data><X509Certificate>AAAA</X509Certificate></X509Data></KeyInfo></Signature>"""
-    )
-    dte.append(firma)
-    return dte
+    rut = dte.findtext(".//s:RUTEmisor", namespaces=N)
+    tipo = int(dte.findtext(".//s:TipoDTE", namespaces=N))
+    caf = parsear_caf(caf_xml(rut=rut, tipo_dte=tipo, desde=1, hasta=5000))
+    firmado = firmar_dte(dte, caf, _cert(), datetime(2026, 9, 23, 13, 0, tzinfo=timezone.utc))
+    return etree.fromstring(firmado.xml)
 
 
 def _validar(esquema: etree.XMLSchema, dte: etree._Element) -> None:
-    """Valida después de serializar y releer, que es lo que verá el SII."""
-    arbol = etree.fromstring(serializar(_completar(dte)))
+    """Valida el DTE firmado, releído desde sus bytes: lo que verá el SII."""
+    arbol = _completar(dte)
     if not esquema.validate(arbol):
         errores = "\n".join(f"  línea {e.line}: {e.message}" for e in esquema.error_log)
         pytest.fail(f"El XML no cumple el esquema del SII:\n{errores}")
@@ -232,7 +204,8 @@ def test_el_esquema_si_detecta_errores(esquema_dte: etree.XMLSchema) -> None:
     todos los tests de arriba sin probar nada.
     """
     dte = _completar(construir_dte(EMISOR, FACTURAS["33 simple"], 1000))
+    assert esquema_dte.validate(dte)
     folio = dte.find(".//s:Folio", N)
     folio.getparent().remove(folio)
 
-    assert not esquema_dte.validate(etree.fromstring(serializar(dte)))
+    assert not esquema_dte.validate(dte)

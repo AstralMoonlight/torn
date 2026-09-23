@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (93 tests en verde dentro del contenedor):
+Construido y verificado (108 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -25,10 +25,13 @@ Construido y verificado (93 tests en verde dentro del contenedor):
   del SII versionados en `app/dte/xsd/`. El esquema de boletas del SII trae un
   defecto que libxml2 no compila; el test lo corrige en una copia (ver
   `tests/test_builder_xsd.py`) y avisa si el SII lo cambia.
+- Timbre (TED) y firma XMLDSig del DTE (`app/dte/signer.py`) — issue #20: con
+  los algoritmos que fija el SII, verificado dentro del sobre `<EnvioDTE>` y
+  validado contra el XSD con timbre y firma reales.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
-Pendiente: `signer.py` (#20), `sii_client.py` (#21),
+Pendiente: `sii_client.py` (#21),
 `caf_request.py`, la capa `tasks/` con sus colas, la API y el PDF. Los issues
 #15 y #22 tienen su núcleo hecho pero siguen abiertos: les falta el endpoint
 HTTP, que llega con la capa de API.
