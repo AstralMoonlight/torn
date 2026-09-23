@@ -51,7 +51,7 @@ from app.core.certificados import CertificadoInvalidoError, guardar_certificado,
 from app.core.config import get_settings
 from app.db import control_session, get_engine, tenant_session
 from app.dte import pipeline
-from app.dte.builder import BOLETAS, DatosDocumento, Item, Receptor, calcular_totales
+from app.dte.builder import BOLETAS, DatosDocumento, Item, Receptor, Referencia, calcular_totales
 from app.dte.caf import guardar_caf, parsear_caf
 from app.dte.folios import DatosEmision, emitir_documento
 from app.dte.signer import ZONA_CHILE
@@ -214,20 +214,81 @@ async def _preparar_emisor(caf_bytes: bytes, pfx: bytes, clave: str, huella: str
     return tenant_id, caf.tipo_dte
 
 
-async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
-    datos = DatosDocumento(
-        tipo_dte=tipo_dte,
-        fecha_emision=date.today(),
-        receptor=None if tipo_dte in BOLETAS else _RECEPTOR_PRUEBA,
-        items=[Item(nombre="Prueba de certificacion dte-torn", precio=Decimal("1190" if tipo_dte in BOLETAS else "1000"))],
+#: Qué anula cada tipo de nota de prueba: la nota de crédito anula una factura,
+#: la de débito anula una nota de crédito.
+_ANULA_A = {61: 33, 56: 61}
+
+
+async def _documento_a_anular(tenant_id: uuid.UUID, tipo_nota: int) -> Document:
+    """El documento aceptado de folio más bajo que ninguna nota anuló todavía."""
+    tipo_objetivo = _ANULA_A[tipo_nota]
+    async with tenant_session(tenant_id) as s:
+        notas = (
+            await s.execute(select(Document.payload).where(Document.tipo_dte.in_([56, 61])))
+        ).scalars().all()
+        ya_anulados = {
+            (r["tipo_doc"], r["folio"])
+            for payload in notas
+            for r in payload.get("referencias", [])
+            if r.get("codigo") == 1
+        }
+        candidatos = (
+            await s.execute(
+                select(Document)
+                .where(Document.tipo_dte == tipo_objetivo, Document.estado == "ACEPTADO")
+                .order_by(Document.folio)
+            )
+        ).scalars().all()
+    for doc in candidatos:
+        if (str(doc.tipo_dte), str(doc.folio)) not in ya_anulados:
+            return doc
+    sys.exit(
+        f"No hay documentos tipo {tipo_objetivo} aceptados y sin anular para la nota tipo {tipo_nota}. "
+        "Primero emite y envía uno."
     )
-    t = calcular_totales(datos.tipo_dte, datos.items)
+
+
+async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
+    """Emite un documento de prueba libre (fuera del set).
+
+    Factura o boleta: una línea de prueba. Nota de crédito o débito: anula el
+    documento aceptado más antiguo que no esté anulado, copiando sus líneas para
+    que los montos calcen.
+    """
+    if tipo_dte in _ANULA_A:
+        anulado = await _documento_a_anular(tenant_id, tipo_dte)
+        base = DatosDocumento.model_validate(anulado.payload)
+        datos = DatosDocumento(
+            tipo_dte=tipo_dte,
+            fecha_emision=date.today(),
+            receptor=base.receptor,
+            items=base.items,
+            descuentos_globales=base.descuentos_globales,
+            referencias=[
+                Referencia(
+                    tipo_doc=str(anulado.tipo_dte),
+                    folio=str(anulado.folio),
+                    fecha=anulado.fecha_emision,
+                    codigo=1,
+                    razon="Anula documento de prueba",
+                )
+            ],
+        )
+        print(f"Anula: tipo {anulado.tipo_dte}, folio {anulado.folio}")
+    else:
+        datos = DatosDocumento(
+            tipo_dte=tipo_dte,
+            fecha_emision=date.today(),
+            receptor=None if tipo_dte in BOLETAS else _RECEPTOR_PRUEBA,
+            items=[Item(nombre="Prueba de certificacion dte-torn", precio=Decimal("1190" if tipo_dte in BOLETAS else "1000"))],
+        )
+    t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
     async with tenant_session(tenant_id) as s:
         doc, _ = await emitir_documento(
             s,
             tenant_id,
             DatosEmision(
-                external_id=f"certificacion-{datetime.now(timezone.utc):%Y%m%d%H%M%S}",
+                external_id=f"certificacion-{datetime.now(timezone.utc):%Y%m%d%H%M%S%f}",
                 tipo_dte=tipo_dte,
                 fecha_emision=datos.fecha_emision,
                 payload=datos.model_dump(mode="json"),

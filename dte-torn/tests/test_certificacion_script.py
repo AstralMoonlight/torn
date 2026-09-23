@@ -14,7 +14,7 @@ from app.db import control_session, tenant_session
 from app.models import Certificate, Document, Tenant
 from app.scripts import certificacion
 from tests.factories import CLAVE_PFX, caf_xml, pfx
-from tests.test_sii_client import SiiFalso
+from tests.test_sii_client import SiiFalso, _estado, _upload
 
 
 @pytest.fixture
@@ -83,4 +83,32 @@ async def test_correrlo_dos_veces_usa_folios_distintos(entorno) -> None:
 async def test_sin_datos_del_emisor_no_parte(entorno, monkeypatch) -> None:
     monkeypatch.delenv("DTE_FCH_RESOL")
     with pytest.raises(SystemExit, match="DTE_FCH_RESOL"):
+        await certificacion.modo_enviar()
+
+
+async def test_nota_de_credito_de_prueba_anula_una_factura(entorno, tmp_path, monkeypatch) -> None:
+    """Para subir el máximo de notas de crédito: cada una anula una factura aceptada."""
+    await certificacion.modo_enviar()  # factura folio 1, aceptada
+
+    caf_nc = tmp_path / "caf_61.xml"
+    caf_nc.write_bytes(caf_xml(rut="76543210-3", tipo_dte=61, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_CAF", str(caf_nc))
+    entorno.uploads = [(200, _upload("0", "999"))]
+    entorno.estados = [_estado("EPR", aceptados=1)]
+    assert await certificacion.modo_enviar() == 0
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        nc = (await s.execute(select(Document).where(Document.tipo_dte == 61))).scalar_one()
+    ref = nc.payload["referencias"][0]
+    assert (ref["tipo_doc"], ref["folio"], ref["codigo"]) == ("33", "1", 1)
+    assert nc.estado == "ACEPTADO"
+
+
+async def test_sin_factura_que_anular_no_parte(entorno, tmp_path, monkeypatch) -> None:
+    caf_nc = tmp_path / "caf_61.xml"
+    caf_nc.write_bytes(caf_xml(rut="76543210-3", tipo_dte=61, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_CAF", str(caf_nc))
+    with pytest.raises(SystemExit, match="Primero emite"):
         await certificacion.modo_enviar()
