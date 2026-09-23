@@ -331,3 +331,11 @@ def test_caracteres_especiales_de_xml_se_escapan() -> None:
     assert b"P\xe9rez &amp; Hijos &lt;Ltda&gt;" in salida
     releido = etree.fromstring(salida)
     assert _texto(releido, ".//s:RznSocRecep") == "Pérez & Hijos <Ltda>"
+
+
+def test_linea_sin_precio_omite_prcitem() -> None:
+    """El esquema del SII exige PrcItem > 0: un regalo a $0 no puede llevarlo."""
+    dte = construir_dte(EMISOR, _factura([Item(nombre="Regalo", precio=Decimal("0"))]), 1)
+    detalle = dte.find(".//s:Detalle", N)
+    assert detalle.find("s:PrcItem", N) is None
+    assert _texto(detalle, "s:MontoItem") == "0"
