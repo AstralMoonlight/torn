@@ -105,7 +105,15 @@ class SiiError(Exception):
 
 
 class SiiNoDisponibleError(SiiError):
-    """Transitorio: red, timeout, 5xx, sistema bloqueado. Reintentar."""
+    """Transitorio: red, timeout, 5xx, sistema bloqueado. Reintentar.
+
+    `ambiguo` es True cuando el pedido **alcanzó a salir** y no hubo respuesta
+    (timeout de lectura, conexión cortada a mitad). En una subida eso significa
+    que el SII pudo haber recibido el sobre: reintentar a ciegas podría
+    duplicar el envío.
+    """
+
+    ambiguo: bool = False
 
 
 class SiiTokenInvalidoError(SiiError):
@@ -402,8 +410,13 @@ class ClienteSii:
     async def _pedir(self, metodo: str, url: str, **kwargs) -> httpx.Response:
         try:
             respuesta = await self.http.request(metodo, url, **kwargs)
-        except httpx.TransportError as exc:
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            # No se llegó a conectar: el pedido nunca salió.
             raise SiiNoDisponibleError(f"Sin conexión con el SII: {exc!r}") from exc
+        except httpx.TransportError as exc:
+            error = SiiNoDisponibleError(f"El SII no respondió: {exc!r}")
+            error.ambiguo = True
+            raise error from exc
         if respuesta.status_code >= 500:
             raise SiiNoDisponibleError(
                 f"El SII respondió {respuesta.status_code}", str(respuesta.status_code), respuesta.text[:500]

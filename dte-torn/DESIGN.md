@@ -431,3 +431,13 @@ un espejo.
 Esto se ejecuta **después** de que el servicio emita de verdad contra
 certificación. Hasta entonces las tablas del monolito se quedan donde están:
 borrarlas antes sería apostar a que esto funciona.
+
+---
+
+## 10. Pedidos para la capa de API
+
+- **Vigencia del certificado en el dashboard** (pedido del usuario, 2026-09-23):
+  `GET /certificates/actual` con titular, `not_before`, `not_after` y días
+  restantes, sin material sensible. El backend lo consulta y lo muestra en el
+  dashboard de la app. Los datos ya están en `certificates`; la alerta de
+  vencimiento del scheduler usa los mismos.

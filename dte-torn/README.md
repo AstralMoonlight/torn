@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (152 tests en verde dentro del contenedor):
+Construido y verificado (167 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -36,6 +36,10 @@ Construido y verificado (152 tests en verde dentro del contenedor):
 - **Verificado contra el SII de certificación (2026-09-23):** con un certificado
   real, maullin y apicert aceptaron la firma y entregaron token por los dos
   canales (`app/scripts/certificacion.py`).
+- Pipeline de vida del documento (`app/dte/pipeline.py`): firmar, enviar y
+  consultar como pasos idempotentes, con reintentos y revisión manual basados en
+  Postgres, XML y sobres write-once en S3, y la fila de `audit_log` por cada
+  firma. Es lo que ejecutarán los workers.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
@@ -171,6 +175,20 @@ docker compose run --rm -v "./certificado.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=
 Si falla con `SiiAutenticacionError`, casi siempre es que el titular del
 certificado no está autorizado en el SII para operar la facturación electrónica
 de la empresa; eso se configura en el portal del SII.
+
+### Enviar un documento de prueba
+
+`enviar` emite **un documento real** al SII de certificación y espera su
+resultado, recorriendo el mismo pipeline que los workers. Gasta un folio del CAF
+de certificación y el documento queda registrado en el SII de pruebas. Siempre
+contra certificación: nunca toca producción.
+
+Necesita, además de lo anterior, completar en `.env` `DTE_FCH_RESOL` y los
+`DTE_EMISOR_*`, y un CAF de certificación (el tipo de documento sale del CAF):
+
+```bash
+docker compose run --rm -v "./certificado.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=/tmp/cert.pfx -v "./caf.xml:/tmp/caf.xml:ro" -e DTE_CAF=/tmp/caf.xml api python -m app.scripts.certificacion enviar
+```
 
 ## Tres cosas que no hay que tocar sin leer primero
 

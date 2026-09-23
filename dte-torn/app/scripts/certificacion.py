@@ -1,15 +1,33 @@
 """Diagnóstico contra el ambiente de certificación del SII (maullin / apicert).
 
-Pide semilla y token con el certificado real, por los dos canales. Si el SII
-entrega el token, la firma XMLDSig de este servicio es aceptada por el SII de
-verdad, no solo por los tests. No emite documentos ni toca la base de datos.
+Dos modos:
 
-Uso (la clave del .pfx va en `.env` como `DTE_CERT_PASSWORD`, nunca en el
-comando ni en el chat):
+- `token` (por defecto): pide semilla y token con el certificado real, por los
+  dos canales. No emite nada ni toca la base de datos.
+- `enviar`: emite **un documento de prueba real** al SII de certificación y
+  espera su resultado. Recorre el mismo pipeline que los workers (folio,
+  firma, S3, sobre, subida, consulta), así que lo que se prueba es lo que
+  corre en producción. Usa un folio del CAF de certificación y deja el
+  documento registrado en el SII de pruebas.
 
-    docker compose run --rm \
-        -v "./<archivo>.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=/tmp/cert.pfx \
-        api python -m app.scripts.certificacion
+Siempre contra certificación: el emisor se crea o actualiza con ambiente CERT.
+
+Variables (en `.env`; la clave nunca en el comando ni en un chat):
+
+    DTE_CERT_PASSWORD         clave del .pfx
+    DTE_FCH_RESOL             fecha de la resolución de certificación (AAAA-MM-DD)
+    DTE_EMISOR_GIRO           giro, tal como está en el SII
+    DTE_EMISOR_ACTECO         código de actividad económica
+    DTE_EMISOR_DIRECCION      dirección de casa matriz
+    DTE_EMISOR_COMUNA         comuna
+    DTE_EMISOR_CIUDAD         ciudad (opcional)
+
+Uso:
+
+    docker compose run --rm \\
+        -v "./<certificado>.pfx:/tmp/cert.pfx:ro" -e DTE_CERT_PFX=/tmp/cert.pfx \\
+        -v "./<caf>.xml:/tmp/caf.xml:ro" -e DTE_CAF=/tmp/caf.xml \\
+        api python -m app.scripts.certificacion enviar
 """
 
 from __future__ import annotations
@@ -18,34 +36,65 @@ import asyncio
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from redis.asyncio import Redis
+from sqlalchemy import select
 
-from app.core.certificados import CertificadoInvalidoError, parsear_pfx
+from app.core.almacen import Almacen
+from app.core.certificados import CertificadoInvalidoError, guardar_certificado, parsear_pfx
 from app.core.config import get_settings
+from app.db import control_session, get_engine, tenant_session
+from app.dte import pipeline
+from app.dte.builder import BOLETAS, DatosDocumento, Item, Receptor, calcular_totales
+from app.dte.caf import guardar_caf, parsear_caf
+from app.dte.folios import DatosEmision, emitir_documento
 from app.dte.sii_client import Canal, ClienteSii, SiiError, crear_http
+from app.models import CAF, Certificate, Document, Envio, Tenant
 
-#: Tenant ficticio: la clave del token en Redis queda aislada de los reales.
+#: Tenant ficticio del modo token: su clave en Redis queda aislada de las reales.
 _TENANT_DIAGNOSTICO = uuid.UUID("00000000-0000-0000-0000-00000000d1a6")
 
+#: Receptor del documento de prueba: el propio SII. Se puede cambiar si el SII
+#: lo objeta, pero es un receptor con RUT válido que siempre existe.
+_RECEPTOR_PRUEBA = Receptor(
+    rut="60803000-K",
+    razon_social="Servicio de Impuestos Internos",
+    giro="Gobierno",
+    direccion="Teatinos 120",
+    comuna="Santiago",
+    ciudad="Santiago",
+)
 
-async def main() -> int:
+#: Cuánto esperar el resultado del SII antes de devolver el control.
+_ESPERA_TOTAL_SEGUNDOS = 600
+_ENTRE_CONSULTAS_SEGUNDOS = 15
+
+
+def _certificado():
     ruta, clave = os.environ.get("DTE_CERT_PFX"), os.environ.get("DTE_CERT_PASSWORD")
     if not ruta or not clave:
-        print("Faltan DTE_CERT_PFX (ruta al .pfx) y/o DTE_CERT_PASSWORD (en .env).")
-        return 2
-
+        sys.exit("Faltan DTE_CERT_PFX (ruta al .pfx) y/o DTE_CERT_PASSWORD (en .env).")
     try:
         with open(ruta, "rb") as f:
-            cert = parsear_pfx(f.read(), clave)
+            pfx = f.read()
+        cert = parsear_pfx(pfx, clave)
     except (OSError, CertificadoInvalidoError) as exc:
-        print(f"No se pudo abrir el certificado: {exc}")
-        return 1
-
+        sys.exit(f"No se pudo abrir el certificado: {exc}")
     vigente = cert.not_after is None or cert.not_after > datetime.now(timezone.utc)
-    print(f"Certificado: titular {cert.rut or '(sin RUT)'}, vence {cert.not_after:%Y-%m-%d}"
-          f"{'' if vigente else '  <-- VENCIDO'}")
+    print(
+        f"Certificado: titular {cert.rut or '(sin RUT)'}, vence {cert.not_after:%Y-%m-%d}"
+        f"{'' if vigente else '  <-- VENCIDO'}"
+    )
+    return pfx, clave, cert
+
+
+# ------------------------------------------------------------------- token --
+
+
+async def modo_token() -> int:
+    _, _, cert = _certificado()
     print(f"Huella: {cert.fingerprint_sha256[:16]}...\n")
 
     s = get_settings()
@@ -67,5 +116,159 @@ async def main() -> int:
     return 1 if fallos else 0
 
 
+# ------------------------------------------------------------------ enviar --
+
+
+def _requerida(nombre: str) -> str:
+    valor = os.environ.get(nombre, "").strip()
+    if not valor:
+        sys.exit(f"Falta {nombre} en .env (ver la ayuda al inicio de este archivo).")
+    return valor
+
+
+async def _preparar_emisor(caf_bytes: bytes, pfx: bytes, clave: str, huella: str) -> tuple[uuid.UUID, int]:
+    """Deja el emisor, su certificado y su CAF cargados, como lo haría la API."""
+    caf = parsear_caf(caf_bytes)
+    datos = {
+        "razon_social": caf.razon_social or _requerida("DTE_EMISOR_RAZON_SOCIAL"),
+        "giro": _requerida("DTE_EMISOR_GIRO"),
+        "acteco": _requerida("DTE_EMISOR_ACTECO"),
+        "direccion": _requerida("DTE_EMISOR_DIRECCION"),
+        "comuna": _requerida("DTE_EMISOR_COMUNA"),
+        "ciudad": os.environ.get("DTE_EMISOR_CIUDAD") or None,
+        "resolucion_fecha": date.fromisoformat(_requerida("DTE_FCH_RESOL")),
+        "resolucion_numero": 0,
+        "ambiente": "CERT",
+    }
+
+    async with control_session() as s:
+        tenant = (
+            await s.execute(select(Tenant).where(Tenant.rut_emisor == caf.rut_emisor))
+        ).scalar_one_or_none()
+        if tenant is None:
+            tenant = Tenant(id=uuid.uuid4(), rut_emisor=caf.rut_emisor, **datos)
+            s.add(tenant)
+        else:
+            for campo, valor in datos.items():
+                setattr(tenant, campo, valor)
+        tenant_id = tenant.id
+
+    async with tenant_session(tenant_id) as s:
+        activo = (
+            await s.execute(select(Certificate.fingerprint_sha256).where(Certificate.activo.is_(True)))
+        ).scalar_one_or_none()
+    if activo != huella:
+        async with tenant_session(tenant_id) as s:
+            await guardar_certificado(s, tenant_id, pfx, clave, subido_por="diagnostico-certificacion")
+
+    async with tenant_session(tenant_id) as s:
+        cargado = (
+            await s.execute(
+                select(CAF.id).where(
+                    CAF.tipo_dte == caf.tipo_dte,
+                    CAF.folio_desde == caf.folio_desde,
+                    CAF.folio_hasta == caf.folio_hasta,
+                )
+            )
+        ).scalar_one_or_none()
+    if cargado is None:
+        async with tenant_session(tenant_id) as s:
+            await guardar_caf(s, tenant_id, caf_bytes, subido_por="diagnostico-certificacion")
+
+    print(f"Emisor: {caf.rut_emisor} ({datos['razon_social']}), CAF tipo {caf.tipo_dte} "
+          f"folios {caf.folio_desde}-{caf.folio_hasta}")
+    return tenant_id, caf.tipo_dte
+
+
+async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
+    datos = DatosDocumento(
+        tipo_dte=tipo_dte,
+        fecha_emision=date.today(),
+        receptor=None if tipo_dte in BOLETAS else _RECEPTOR_PRUEBA,
+        items=[Item(nombre="Prueba de certificacion dte-torn", precio=Decimal("1190" if tipo_dte in BOLETAS else "1000"))],
+    )
+    t = calcular_totales(datos.tipo_dte, datos.items)
+    async with tenant_session(tenant_id) as s:
+        doc, _ = await emitir_documento(
+            s,
+            tenant_id,
+            DatosEmision(
+                external_id=f"certificacion-{datetime.now(timezone.utc):%Y%m%d%H%M%S}",
+                tipo_dte=tipo_dte,
+                fecha_emision=datos.fecha_emision,
+                payload=datos.model_dump(mode="json"),
+                receptor_rut=datos.receptor.rut if datos.receptor else None,
+                monto_neto=t.neto, monto_exento=t.exento, monto_iva=t.iva, monto_total=t.total,
+            ),
+        )
+        print(f"Documento: tipo {tipo_dte}, folio {doc.folio}, total ${t.total}")
+        return doc.id
+
+
+async def _mostrar(tenant_id: uuid.UUID, doc_id: uuid.UUID) -> Document:
+    async with tenant_session(tenant_id) as s:
+        return (await s.execute(select(Document).where(Document.id == doc_id))).scalar_one()
+
+
+async def modo_enviar() -> int:
+    pfx, clave, cert = _certificado()
+    ruta_caf = _requerida("DTE_CAF")
+    try:
+        with open(ruta_caf, "rb") as f:
+            caf_bytes = f.read()
+    except OSError as exc:
+        sys.exit(f"No se pudo leer el CAF: {exc}")
+
+    s = get_settings()
+    almacen = Almacen(s)
+    await almacen.asegurar_bucket()
+    tenant_id, tipo_dte = await _preparar_emisor(caf_bytes, pfx, clave, cert.fingerprint_sha256)
+    doc_id = await _emitir_prueba(tenant_id, tipo_dte)
+
+    redis = Redis.from_url(s.redis_url)
+    async with crear_http(s.sii_timeout_segundos) as http:
+        ctx = pipeline.Contexto(http=http, redis=redis, almacen=almacen, ttl_token=s.sii_token_ttl_segundos)
+
+        estado = await pipeline.firmar(ctx, tenant_id, doc_id)
+        print(f"\n1. Firma: {estado}")
+        if estado != "FIRMADO":
+            print(f"   {(await _mostrar(tenant_id, doc_id)).last_error}")
+            return 1
+
+        estado = await pipeline.enviar(ctx, tenant_id, doc_id)
+        doc = await _mostrar(tenant_id, doc_id)
+        print(f"2. Envío: {estado}")
+        if estado != "ENVIADO":
+            print(f"   {doc.last_error}")
+            return 1
+        async with tenant_session(tenant_id) as sesion:
+            envio = (await sesion.execute(select(Envio).where(Envio.id == doc.envio_id))).scalar_one()
+        print(f"   Track ID: {envio.track_id}")
+        print(f"   Sobre guardado en S3: {envio.xml_key}")
+
+        print(f"3. Esperando resultado del SII (hasta {_ESPERA_TOTAL_SEGUNDOS // 60} min)...")
+        for _ in range(_ESPERA_TOTAL_SEGUNDOS // _ENTRE_CONSULTAS_SEGUNDOS):
+            await asyncio.sleep(_ENTRE_CONSULTAS_SEGUNDOS)
+            estado = await pipeline.consultar(ctx, tenant_id, doc_id)
+            doc = await _mostrar(tenant_id, doc_id)
+            print(f"   {datetime.now():%H:%M:%S}  estado SII: {doc.estado_sii or '-'}  ->  {estado}")
+            if estado != "ENVIADO":
+                break
+
+    await redis.aclose()
+    await get_engine().dispose()
+
+    doc = await _mostrar(tenant_id, doc_id)
+    print(f"\nResultado: {doc.estado}")
+    if doc.glosa_sii:
+        print(f"Glosa del SII: {doc.glosa_sii}")
+    if doc.estado == "ENVIADO":
+        print("El SII todavía no termina de procesarlo. El track ID sirve para consultarlo después.")
+    return 0 if doc.estado in ("ACEPTADO", "REPAROS", "ENVIADO") else 1
+
+
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    modo = sys.argv[1] if len(sys.argv) > 1 else "token"
+    if modo not in ("token", "enviar"):
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token' o 'enviar'.")
+    sys.exit(asyncio.run(modo_token() if modo == "token" else modo_enviar()))
