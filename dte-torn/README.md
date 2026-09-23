@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (35 tests en verde dentro del contenedor):
+Construido y verificado (54 tests en verde dentro del contenedor):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -18,11 +18,15 @@ Construido y verificado (35 tests en verde dentro del contenedor):
   digital con auditoría de cada acceso (`app/core/certificados.py`) — issue #15.
 - Canario de la llave maestra: el servicio no arranca si la llave configurada
   no es la que cifró los datos existentes.
+- Carga de CAF (`app/dte/caf.py`) — issue #22: parseo, validación contra el
+  RUT del tenant, rechazo de rangos solapados y guardado cifrado byte a byte.
 - Imagen multi-stage con `lxml` y `xmlsec` compilados contra la misma libxml2,
   comprobado firmando y verificando un XMLDSig de verdad.
 
-Pendiente: carga de CAF (#22), `builder.py` (#14), `signer.py` (#20),
-`sii_client.py` (#21), la capa `tasks/` con sus colas, la API y el PDF.
+Pendiente: `builder.py` (#14), `signer.py` (#20), `sii_client.py` (#21),
+`caf_request.py`, la capa `tasks/` con sus colas, la API y el PDF. Los issues
+#15 y #22 tienen su núcleo hecho pero siguen abiertos: les falta el endpoint
+HTTP, que llega con la capa de API.
 
 ## Puesta en marcha
 
