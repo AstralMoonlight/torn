@@ -313,8 +313,10 @@ reprograman `next_action_at` en vez de golpear.
   CAF es la lectura más segura de la especificación. **Confirmado** con una
   boleta real de producción de otro proveedor (2026-09-23): su `<DD>` está
   aplanado con el CAF incluido y el timbre verifica sobre esos bytes.
-- Documentos **recibidos** (para #12): en esa misma boleta real, la firma del
-  sobre verifica pero la del DTE no, en ningún contexto de namespaces. No hay
+- Documentos **recibidos** (para #12): en una boleta y una factura reales del
+  mismo proveedor, la firma del sobre verifica pero la del DTE no, en ningún
+  contexto de namespaces (el proveedor re-indenta el DTE después de firmarlo).
+  El SII igual se los acepta en producción. No hay
   que exigir la firma del DTE de terceros como condición dura al recibir, o se
   rechazarían documentos que el SII acepta. La emisión propia sigue estricta.
 - Algoritmos fijados por el esquema de firma del SII (`xmldsignature_v10.xsd`):
