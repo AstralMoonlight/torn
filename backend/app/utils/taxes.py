@@ -121,3 +121,43 @@ def round_to_nearest_ten(amount: Decimal) -> Decimal:
     else:
         pesos += 10 - last_digit
     return Decimal(pesos)
+
+
+# ── Montos del DTE ───────────────────────────────────────────────────
+#
+# Lo que el POS cobra tiene que ser exactamente el total del documento que
+# emite dte-torn. Estas funciones replican `monto_linea` y `calcular_totales`
+# de `dte-torn/app/dte/builder.py`, y `recalcTotals` en
+# `frontend/lib/store/cartStore.ts` replica estas: si una cambia, las tres.
+
+#: Boletas: el precio que va al DTE ya trae el IVA.
+BOLETAS = frozenset({39, 41})
+
+#: La única tasa que dte-torn sabe declarar. Un producto con otra tasa no se
+#: puede emitir (impuestos adicionales no están soportados).
+TASA_IVA_DTE = Decimal("0.19")
+
+
+def precio_dte(tipo_dte: int, precio_neto: Decimal, rate: Decimal) -> Decimal:
+    """Precio unitario tal como va al DTE: neto en facturas y notas, bruto al
+    peso en boletas (el mismo que muestra el POS)."""
+    if tipo_dte in BOLETAS:
+        return quantize_money(precio_neto * (1 + rate))
+    return precio_neto
+
+
+def monto_linea_dte(cantidad: Decimal, precio: Decimal, descuento: Decimal) -> Decimal:
+    """`MontoItem`: cantidad por precio redondeado al peso, menos el descuento."""
+    return quantize_money(cantidad * precio) - quantize_money(descuento)
+
+
+def totales_dte(tipo_dte: int, lineas: list[tuple[Decimal, bool]]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """(neto, exento, iva, total) a partir de `(monto_linea, es_exenta)`."""
+    documento_exento = tipo_dte in EXEMPT_DTES
+    afecto = sum((m for m, ex in lineas if not (ex or documento_exento)), Decimal("0"))
+    exento = sum((m for m, ex in lineas if ex or documento_exento), Decimal("0"))
+    if tipo_dte in BOLETAS:
+        neto = quantize_money(afecto / (1 + TASA_IVA_DTE)) if afecto else Decimal("0")
+        return neto, exento, afecto - neto, afecto + exento
+    iva = quantize_money(afecto * TASA_IVA_DTE)
+    return afecto, exento, iva, afecto + exento + iva

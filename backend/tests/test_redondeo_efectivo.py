@@ -2,7 +2,6 @@ import time
 from decimal import Decimal
 
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
@@ -21,7 +20,6 @@ class TestRedondeoEfectivo:
         db_session.add(issuer)
         # tipo_dte 34 (Factura Exenta) para que total == precio_neto, sin IVA
         # de por medio, y así controlar el último dígito del total con precisión.
-        db_session.add(CAF(tipo_documento=34, folio_desde=1, folio_hasta=1000, ultimo_folio_usado=0, xml_caf="DUMMY"))
         pm_cash = PaymentMethod(code="EFECTIVO", name="Efectivo")
         pm_card = PaymentMethod(code="DEBITO", name="Debito")
         db_session.add(pm_cash)

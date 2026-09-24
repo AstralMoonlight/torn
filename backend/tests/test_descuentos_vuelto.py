@@ -2,7 +2,6 @@ import time
 from decimal import Decimal
 
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
@@ -17,7 +16,6 @@ class TestDescuentoPorLinea:
             acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce",
         )
         db_session.add(issuer)
-        db_session.add(CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY"))
         pm_cash = PaymentMethod(code="EFECTIVO", name="Efectivo")
         db_session.add(pm_cash)
         product = Product(codigo_interno="DESC-PROD", nombre="Producto Descuento", precio_neto=1000, controla_stock=False)
@@ -82,7 +80,6 @@ class TestVuelto:
             acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce",
         )
         db_session.add(issuer)
-        db_session.add(CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY"))
         pm_cash = PaymentMethod(code="EFECTIVO", name="Efectivo")
         pm_card = PaymentMethod(code="DEBITO", name="Debito")
         db_session.add(pm_cash)

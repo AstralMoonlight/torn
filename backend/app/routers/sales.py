@@ -1,5 +1,6 @@
 """Router para gestión de Ventas (Facturas)."""
 
+import logging
 from decimal import Decimal
 from pathlib import Path
 from typing import List
@@ -9,7 +10,6 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.dte import CAF, DTE
 from app.models.issuer import Issuer
 from app.models.product import Product
 from app.models.sale import Sale, SaleDetail
@@ -19,16 +19,20 @@ from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
-from app.services.xml_generator import render_factura_xml
+from app.services import dte_client
 from app.utils.formatters import format_clp, format_number
-from app.utils.folios import siguiente_folio
 from app.utils.pricing import resolve_unit_price
-from app.utils.taxes import quantize_money, resolve_tax_rate, round_to_nearest_ten
+from app.utils.dates import get_now
+from app.utils.taxes import (
+    BOLETAS, TASA_IVA_DTE, monto_linea_dte, precio_dte, quantize_money,
+    resolve_tax_rate, round_to_nearest_ten, totales_dte,
+)
 from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
 from app.models.saas import TenantUser, SaaSUser
 
 router = APIRouter(prefix="/sales", tags=["sales"])
+log = logging.getLogger(__name__)
 
 # ── Jinja2 para plantillas HTML ──────────────────────────────────────
 _HTML_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "html"
@@ -38,6 +42,74 @@ _html_env = Environment(
 )
 _html_env.filters["clp"] = format_clp
 _html_env.filters["number"] = format_number
+
+
+def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Decimal, descuento: Decimal,
+               tipo_impuesto: int | None = None):
+    """Línea tal como va a dte-torn, con su `MontoItem` y si es exenta.
+
+    `tipo_impuesto`: tipo de DTE que decide el IVA, si no es `tipo` (una NC
+    hereda el del documento que anula: devolver una boleta exenta no genera IVA).
+    """
+    rate = resolve_tax_rate(product, tipo_impuesto or tipo)
+    if rate not in (Decimal("0"), TASA_IVA_DTE):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{product.nombre}: la facturación electrónica solo admite IVA 19% o exento (tasa {rate}).",
+        )
+    precio = precio_dte(tipo, precio_neto, rate)
+    if tipo in BOLETAS:
+        descuento = descuento * (1 + rate)
+    monto = monto_linea_dte(cantidad, precio, descuento)
+    item = {
+        "nombre": product.nombre,
+        "codigo": product.codigo_interno,
+        "unidad": product.unidad_medida,
+        "cantidad": str(cantidad),
+        "precio": str(precio),
+        "descuento": int(quantize_money(descuento)),
+        "exento": rate == 0,
+    }
+    return item, monto, rate == 0
+
+
+def _emitir_dte(db: Session, tenant_id: int, sale: Sale, customer: Customer, items: list, referencias: list, actor: str) -> None:
+    """Pide el folio a dte-torn y lo deja en `sale.folio`.
+
+    Si dte-torn rechaza o no responde, se revierte la venta entera: no se
+    entrega un documento sin folio autorizado.
+    """
+    documento = {
+        "external_id": f"venta-{sale.id}",
+        "tipo_dte": sale.tipo_dte,
+        "fecha_emision": get_now().date().isoformat(),
+        "items": items,
+        "referencias": referencias,
+    }
+    if sale.tipo_dte not in BOLETAS:
+        documento["receptor"] = {
+            "rut": customer.rut, "razon_social": customer.razon_social, "giro": customer.giro,
+            "direccion": customer.direccion, "comuna": customer.comuna, "ciudad": customer.ciudad,
+            "correo": customer.email,
+        }
+    try:
+        emitido = dte_client.emitir(tenant_id, documento, actor)
+    except dte_client.DteError as exc:
+        db.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    sale.folio = emitido["folio"]
+    if Decimal(emitido["monto_total"]) != sale.monto_total:
+        # No debería pasar: `totales_dte` replica el cálculo de dte-torn. El
+        # documento ya está emitido, así que la venta se guarda igual.
+        log.error("Venta %s: total cobrado %s, total del DTE %s", sale.id, sale.monto_total, emitido["monto_total"])
+
+
+def _referencias_dte(referencias) -> list:
+    return [
+        {"tipo_doc": r["tipo_documento"], "folio": r["folio"], "fecha": r["fecha"], "codigo": r.get("sii_reason_code")}
+        for r in referencias or []
+    ]
 
 
 @router.get("/payment-methods/", response_model=List[PaymentMethodOut],
@@ -79,7 +151,8 @@ def create_sale(
     sale_in: SaleCreate, 
     db: Session = Depends(get_tenant_db),
     local_user: User = Depends(get_current_local_user),
-    global_user: SaaSUser = Depends(get_current_global_user)
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
     """
     Registra una nueva venta en el sistema.
@@ -89,9 +162,8 @@ def create_sale(
     2. Valida cliente y productos (existencia y stock).
     3. Descuenta inventario y genera movimientos (Kardex).
     4. Procesa pagos (múltiples medios de pago).
-    5. Asigna Folio fiscal (CAF).
-    6. Genera XML del DTE (Factura Electrónica/Boleta).
-    7. Persiste todo en una transacción atómica.
+    5. Emite el DTE en dte-torn, que asigna el folio y firma.
+    6. Persiste todo en una transacción atómica.
 
     Args:
         sale_in (SaleCreate): Datos de la venta (cliente, items, pagos).
@@ -104,7 +176,7 @@ def create_sale(
         HTTPException(409): Si la caja está cerrada o no hay stock.
         HTTPException(404): Si cliente o producto no existen.
         HTTPException(400): Si los montos no cuadran.
-        HTTPException(500): Si falla la generación del DTE.
+        HTTPException(409/422/503): Si dte-torn rechaza el documento o no responde.
     """
     # 0. Validar Caja Abierta
     seller_id_to_use = local_user.id
@@ -145,8 +217,8 @@ def create_sale(
 
     # 2. Validar Productos y Calcular Totales
     tipo = sale_in.tipo_dte
-    total_neto = Decimal("0")
-    total_iva = Decimal("0")
+    lineas_dte = []
+    items_dte = []
     sale_details = []
     stock_movements = []
 
@@ -203,12 +275,10 @@ def create_sale(
                 ),
             )
         subtotal_linea = subtotal_bruto_linea - descuento
-        total_neto += subtotal_linea
 
-        # El IVA se calcula por línea: un DTE exento no lleva impuesto y un
-        # producto puede tener su propia tasa (o ser exento dentro de un
-        # documento afecto). Se calcula sobre el subtotal ya descontado.
-        total_iva += subtotal_linea * resolve_tax_rate(product, tipo)
+        item_dte, monto, exenta = _linea_dte(tipo, product, cantidad, precio_unitario, descuento)
+        items_dte.append(item_dte)
+        lineas_dte.append((monto, exenta))
 
         detail_obj = SaleDetail(
             product_id=product.id,
@@ -219,9 +289,9 @@ def create_sale(
         )
         sale_details.append(detail_obj)
 
-    # 3. Calcular IVA y Total
-    iva = quantize_money(total_iva)
-    total = quantize_money(total_neto + iva)
+    # 3. Totales con las reglas del DTE (ver `totales_dte`)
+    neto, exento, iva, total = totales_dte(tipo, lineas_dte)
+    total_neto = neto + exento
 
     cash_method_ids = {
         pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "EFECTIVO").all()
@@ -269,27 +339,6 @@ def create_sale(
             ),
         )
 
-    # 4. Asignar Folio (CAF según tipo de DTE)
-    caf = db.query(CAF).filter(
-        CAF.tipo_documento == tipo,
-        CAF.ultimo_folio_usado < CAF.folio_hasta,
-    ).order_by(CAF.id.asc()).first()
-
-    if not caf:
-        # Sin CAF vigente no se puede emitir: inventar un correlativo produce
-        # documentos con folios no autorizados por el SII.
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"No hay folios disponibles para el DTE tipo {tipo}. "
-                "Carga un CAF vigente antes de emitir."
-            ),
-        )
-
-    nuevo_folio = siguiente_folio(caf)
-    caf.ultimo_folio_usado = nuevo_folio
-    db.add(caf)
-
     # Serializar referencias para columna JSON (solo para Factura)
     referencias_json = None
     if sale_in.referencias:
@@ -298,7 +347,7 @@ def create_sale(
     # 5. Crear Venta
     new_sale = Sale(
         customer_id=customer.id,
-        folio=nuevo_folio,
+        folio=0,  # provisorio: _emitir_dte pone el real antes del commit
         tipo_dte=tipo,
         monto_neto=total_neto,
         iva=iva,
@@ -336,26 +385,10 @@ def create_sale(
     # 5.2 Los movimientos de stock ya quedan vinculados a la venta: se pasan en
     # `stock_movements=` al construir `Sale`, y SQLAlchemy propaga el sale_id.
 
-    # 6. Generar XML DTE y guardarlo atómicamente
-    try:
-        issuer = db.query(Issuer).first()
-        xml_content = render_factura_xml(new_sale, issuer, customer) if issuer else ""
-
-        dte = DTE(
-            sale_id=new_sale.id,
-            tipo_dte=tipo,
-            folio=nuevo_folio,
-            xml_content=xml_content,
-            estado_sii="GENERADO",
-        )
-        db.add(dte)
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error al generar el DTE. Transacción revertida.",
-        )
+    # 6. Emitir en dte-torn (asigna el folio) y confirmar
+    _emitir_dte(db, tenant_user.tenant_id, new_sale, customer, items_dte,
+                _referencias_dte(referencias_json), global_user.email)
+    db.commit()
 
     # Eager load para respuesta
     sale_loaded = (
@@ -379,7 +412,8 @@ def create_return(
     return_in: ReturnCreate, 
     db: Session = Depends(get_tenant_db),
     local_user: User = Depends(get_current_local_user),
-    global_user: SaaSUser = Depends(get_current_global_user)
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
     """
     Registra una Devolución de mercadería (Nota de Crédito).
@@ -442,8 +476,9 @@ def create_return(
     # 2. Calcular Montos de Devolución
     # La NC hereda el tipo de DTE del documento original para efectos de IVA:
     # devolver una Boleta Exenta no puede generar impuesto.
-    total_neto = Decimal("0")
-    total_iva = Decimal("0")
+    tipo = return_in.tipo_dte
+    lineas_dte = []
+    items_dte = []
     sale_details = []
     stock_movements = []
 
@@ -477,8 +512,11 @@ def create_return(
             precio_unitario = original_detail.precio_unitario
         
         subtotal = precio_unitario * item.cantidad
-        total_neto += subtotal
-        total_iva += subtotal * resolve_tax_rate(product, original_sale.tipo_dte)
+        item_dte, monto, exenta = _linea_dte(
+            tipo, product, item.cantidad, precio_unitario, Decimal("0"), tipo_impuesto=original_sale.tipo_dte
+        )
+        items_dte.append(item_dte)
+        lineas_dte.append((monto, exenta))
 
         sale_details.append(SaleDetail(
             product_id=product.id,
@@ -487,32 +525,13 @@ def create_return(
             subtotal=subtotal
         ))
 
-    iva = quantize_money(total_iva)
-    total = quantize_money(total_neto + iva)
+    neto, exento, iva, total = totales_dte(tipo, lineas_dte)
+    total_neto = neto + exento
 
     # 3. Registrar Documento de Ajuste
-    tipo = return_in.tipo_dte
     ADJUSTMENT_DTES = [56, 61, 111, 112]
     if tipo not in ADJUSTMENT_DTES:
         raise HTTPException(status_code=400, detail="El tipo de DTE para ajuste debe ser 56, 61, 111 o 112.")
-
-    caf = db.query(CAF).filter(
-        CAF.tipo_documento == tipo,
-        CAF.ultimo_folio_usado < CAF.folio_hasta,
-    ).order_by(CAF.id.asc()).first()
-
-    if not caf:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"No hay folios disponibles para el DTE tipo {tipo}. "
-                "Carga un CAF vigente antes de emitir la nota de crédito."
-            ),
-        )
-
-    nuevo_folio = siguiente_folio(caf)
-    caf.ultimo_folio_usado = nuevo_folio
-    db.add(caf)
 
     # Generar la referencia al documento original automáticamente
     referencias_json = [{
@@ -524,7 +543,7 @@ def create_return(
 
     nc_sale = Sale(
         customer_id=original_sale.customer_id,
-        folio=nuevo_folio,
+        folio=0,  # provisorio: _emitir_dte pone el real antes del commit
         tipo_dte=tipo,
         monto_neto=total_neto,
         iva=iva,
@@ -568,7 +587,9 @@ def create_return(
     )
     db.add(pm)
     
-    # 5. Commit
+    # 5. Emitir en dte-torn y confirmar
+    _emitir_dte(db, tenant_user.tenant_id, nc_sale, original_sale.customer, items_dte,
+                _referencias_dte(referencias_json), global_user.email)
     db.commit()
     return nc_sale
 

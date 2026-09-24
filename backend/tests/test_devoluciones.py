@@ -12,7 +12,6 @@ from decimal import Decimal
 import pytest
 
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
@@ -24,14 +23,6 @@ def venta(client, db_session):
     db_session.add(Issuer(
         rut="76123456-0", razon_social="Emisor", giro="Giro",
         acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce",
-    ))
-    db_session.add(CAF(
-        tipo_documento=33, folio_desde=1, folio_hasta=100,
-        ultimo_folio_usado=0, xml_caf="DUMMY",
-    ))
-    db_session.add(CAF(
-        tipo_documento=61, folio_desde=500, folio_hasta=600,
-        ultimo_folio_usado=0, xml_caf="DUMMY",
     ))
     db_session.add(Customer(rut="12345678-5", razon_social="Cliente", email="c@test.com"))
     db_session.add(PaymentMethod(code="EFECTIVO", name="Efectivo"))

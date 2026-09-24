@@ -9,6 +9,8 @@ tenant-per-schema.
 """
 
 import os
+from collections import defaultdict
+from decimal import Decimal
 
 os.environ.setdefault("TORN_AUTO_CREATE_TABLES", "0")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
@@ -31,6 +33,8 @@ from app.dependencies.tenant import (
 from app.main import app
 from app.models.saas import SaaSUser, TenantUser
 from app.models.user import User
+from app.services import dte_client
+from app.utils.taxes import monto_linea_dte, totales_dte
 
 # ── BD en memoria para tests ────────────────────────────────────────
 SQLALCHEMY_TEST_URL = "sqlite://"
@@ -107,3 +111,35 @@ def client(db_session, admin_local_user):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+class FakeDte:
+    """dte-torn de mentira: folios correlativos por tipo y totales del payload.
+
+    `documentos` guarda lo que se emitió; `error` hace fallar la próxima emisión.
+    """
+
+    def __init__(self):
+        self.documentos = []
+        self.error = None
+        self._folios = defaultdict(int)
+
+    def emitir(self, tenant_id, documento, actor=None):
+        if self.error:
+            raise self.error
+        self.documentos.append(documento)
+        self._folios[documento["tipo_dte"]] += 1
+        lineas = [
+            (monto_linea_dte(Decimal(i["cantidad"]), Decimal(i["precio"]), Decimal(i["descuento"])), i["exento"])
+            for i in documento["items"]
+        ]
+        _, _, _, total = totales_dte(documento["tipo_dte"], lineas)
+        return {"folio": self._folios[documento["tipo_dte"]], "monto_total": int(total)}
+
+
+@pytest.fixture(autouse=True)
+def fake_dte(monkeypatch):
+    """Ningún test habla con un dte-torn real."""
+    fake = FakeDte()
+    monkeypatch.setattr(dte_client, "emitir", fake.emitir)
+    return fake

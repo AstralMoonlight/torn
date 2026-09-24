@@ -8,7 +8,6 @@ from app.models.sale import Sale
 from app.models.inventory import StockMovement
 from app.models.user import User
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 
 class TestWorldClass:
@@ -19,11 +18,6 @@ class TestWorldClass:
         # 1. Setup Data
         issuer = Issuer(rut="76123456-K", razon_social="Emisor WC", giro="Giro", acteco="123")
         db_session.add(issuer)
-        caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
-        db_session.add(caf)
-        # La Nota de Crédito consume folios de su propio CAF (tipo 61).
-        caf_nc = CAF(tipo_documento=61, folio_desde=500, folio_hasta=600, ultimo_folio_usado=0, xml_caf="DUMMY")
-        db_session.add(caf_nc)
         
         # Cliente
         customer = Customer(rut="12345678-5", razon_social="Cliente Fiador", email="fiado@test.com", current_balance=0)
