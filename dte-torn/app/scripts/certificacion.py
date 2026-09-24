@@ -131,6 +131,14 @@ def _certificado():
     return pfx, clave, cert
 
 
+def _emisor_como_receptor(tenant: Tenant) -> Receptor:
+    """El emisor como receptor: lo exige el SII en la guía de traslado interno."""
+    return Receptor(
+        rut=tenant.rut_emisor, razon_social=tenant.razon_social, giro=tenant.giro,
+        direccion=tenant.direccion, comuna=tenant.comuna, ciudad=tenant.ciudad,
+    )
+
+
 def _leer_set():
     """El set de `DTE_SET_NOMBRE` (básico por defecto) del archivo `DTE_SET`."""
     from app.dte.set_pruebas import parsear_set
@@ -453,6 +461,10 @@ async def modo_set() -> int:
         print("No se emitió nada: carga los CAF que faltan y vuelve a correrlo.")
         return 1
 
+    async with control_session() as sesion:
+        tenant = (await sesion.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one()
+    emisor_como_receptor = _emisor_como_receptor(tenant)
+
     # 1. Emitir y firmar cada caso, en orden (las notas necesitan el folio de su referencia).
     redis = Redis.from_url(s.redis_url)
     resueltos = resolver_lineas(set_)
@@ -464,7 +476,9 @@ async def modo_set() -> int:
             doc = existentes.get(claves[caso.id])
             if doc is None:
                 lineas, global_pct = resueltos[caso.id]
-                datos = armar_documento(set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios)
+                datos = armar_documento(
+                    set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios, emisor_como_receptor
+                )
                 t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
                 async with tenant_session(tenant_id) as sesion:
                     doc, _ = await emitir_documento(
@@ -519,9 +533,6 @@ async def modo_set() -> int:
             else:
                 print(f"Los casos están en estados mezclados {sorted(estados)}: no se reenvía. Revisar a mano.")
                 return 1
-
-        async with control_session() as sesion:
-            tenant = (await sesion.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one()
 
         if estados == {"FIRMADO"}:
             # 2. Un solo sobre con los 8 documentos, exactamente como quedaron firmados.
@@ -748,16 +759,24 @@ def modo_revisar_set() -> int:
 
     set_ = _leer_set()
     resueltos = resolver_lineas(set_)
-    nombres = {33: "Factura", 34: "Factura exenta", 56: "Nota de débito", 61: "Nota de crédito"}
+    nombres = {33: "Factura", 34: "Factura exenta", 52: "Guía de despacho", 56: "Nota de débito", 61: "Nota de crédito"}
+    traslados = {1: "venta", 5: "traslado interno (receptor = emisor)"}
+    despachos = {1: "por cuenta del cliente", 2: "del emisor al local del cliente", 3: "del emisor a otras instalaciones"}
     codigos = {1: "anula", 2: "corrige texto", 3: "corrige montos"}
 
     print(f"Set número de atención {set_.numero_atencion}: {len(set_.casos)} casos\n")
     folios: dict[str, tuple[int, int]] = {}
     for caso in set_.casos:
         lineas, global_pct = resueltos[caso.id]
-        datos = armar_documento(set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios)
+        # Solo se muestran montos: el receptor real del traslado interno lo pone `set`.
+        datos = armar_documento(
+            set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios, _RECEPTOR_PRUEBA
+        )
         folios[caso.id] = (caso.tipo_dte, 0)
         print(f"CASO {caso.id} - {nombres[caso.tipo_dte]}")
+        if caso.ind_traslado:
+            print(f"  traslado: {traslados.get(caso.ind_traslado, caso.ind_traslado)}"
+                  + (f", despacho {despachos[caso.tipo_despacho]}" if caso.tipo_despacho else ""))
         if caso.referencia:
             print(f"  referencia: caso {caso.referencia}, {codigos[caso.codigo_referencia]} ({caso.razon})")
         for item in datos.items:

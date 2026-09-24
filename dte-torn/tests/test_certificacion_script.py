@@ -318,3 +318,26 @@ async def test_enviar_una_factura_exenta_de_prueba(entorno, tmp_path, monkeypatc
     async with tenant_session(tenant_id) as s:
         doc = (await s.execute(select(Document))).scalar_one()
     assert (doc.tipo_dte, doc.monto_exento, doc.monto_iva, doc.estado) == (34, 1000, 0, "ACEPTADO")
+
+
+async def test_el_set_de_guias_manda_el_traslado_interno_al_propio_emisor(entorno, tmp_path, monkeypatch) -> None:
+    from tests.test_set_pruebas import SET_GUIA
+
+    ruta_set = tmp_path / "set.txt"
+    ruta_set.write_bytes(SET_GUIA.encode("latin-1"))
+    caf = tmp_path / "caf_52.xml"
+    caf.write_bytes(caf_xml(rut="76543210-3", tipo_dte=52, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_SET", str(ruta_set))
+    monkeypatch.setenv("DTE_SET_NOMBRE", "SET GUIA DE DESPACHO")
+    monkeypatch.setenv("DTE_CAFS", str(caf))
+    entorno.estados = [_estado("EPR", aceptados=3)] * 5
+    assert await certificacion.modo_set() == 0
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        docs = (await s.execute(select(Document).order_by(Document.folio))).scalars().all()
+    assert [(d.receptor_rut, d.payload["ind_traslado"], d.monto_total) for d in docs] == [
+        ("76543210-3", 5, 0), ("60803000-K", 1, 940142), ("60803000-K", 1, 750795),
+    ]
+    assert docs[0].payload["receptor"]["direccion"] == "Av. Siempre Viva 742"

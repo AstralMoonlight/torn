@@ -18,18 +18,29 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 
-from app.dte.builder import DTE_EXENTOS, DatosDocumento, DescuentoGlobal, Item, Receptor, Referencia
+from app.dte.builder import DTE_EXENTOS, GUIA_DESPACHO, DatosDocumento, DescuentoGlobal, Item, Receptor, Referencia
 
 #: Documentos que el set nombra por texto.
 TIPOS = {
     "FACTURA ELECTRONICA": 33,
     "FACTURA NO AFECTA O EXENTA ELECTRONICA": 34,
+    "GUIA DE DESPACHO": GUIA_DESPACHO,
     "NOTA DE DEBITO ELECTRONICA": 56,
     "NOTA DE CREDITO ELECTRONICA": 61,
 }
 
 #: CodRef: 1 anula, 2 corrige texto, 3 corrige montos.
 ANULA, CORRIGE_TEXTO, CORRIGE_MONTOS = 1, 2, 3
+
+#: IndTraslado de la guía según el "MOTIVO:" del set.
+VENTA, TRASLADO_INTERNO = 1, 5
+#: TipoDespacho según "TRASLADO POR:". Se busca de lo más largo a lo más corto:
+#: "EMISOR DEL DOCUMENTO AL LOCAL DEL CLIENTE" también contiene "CLIENTE".
+_DESPACHOS = (
+    ("EMISOR DEL DOCUMENTO AL LOCAL DEL CLIENTE", 2),
+    ("OTRAS INSTALACIONES", 3),
+    ("CLIENTE", 1),
+)
 
 _CASO = re.compile(r"^CASO\s+(\d+-\d+)")
 _ATENCION = re.compile(r"NUMERO DE ATENCI[OÓ]N:\s*(\d+)")
@@ -76,6 +87,8 @@ class Caso:
     descuento_global_pct: Decimal | None = None
     referencia: str | None = None
     razon: str | None = None
+    ind_traslado: int | None = None
+    tipo_despacho: int | None = None
 
     @property
     def codigo_referencia(self) -> int | None:
@@ -156,6 +169,19 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
             if not ref:
                 raise SetInvalidoError(f"Caso {actual.id}: referencia sin número de caso")
             actual.referencia = ref.group(1)
+        elif clave == "MOTIVO:":
+            motivo = " ".join(partes[1:]).upper()
+            if motivo == "VENTA":
+                actual.ind_traslado = VENTA
+            elif "TRASLADO" in motivo and ("BODEGA" in motivo or "INTERNO" in motivo):
+                actual.ind_traslado = TRASLADO_INTERNO
+            else:
+                raise SetInvalidoError(f"Caso {actual.id}: motivo de traslado no soportado: {motivo!r}")
+        elif clave == "TRASLADO POR:":
+            por = " ".join(partes[1:]).upper()
+            actual.tipo_despacho = next((c for texto_, c in _DESPACHOS if texto_ in por), None)
+            if actual.tipo_despacho is None:
+                raise SetInvalidoError(f"Caso {actual.id}: tipo de despacho no soportado: {por!r}")
         elif clave.startswith("DESCUENTO GLOBAL"):
             actual.descuento_global_pct = _numero(partes[-1])
         elif clave == "ITEM":
@@ -171,6 +197,8 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
             for campo in ("cantidad", "precio", "descuento_pct"):
                 if campo in campos:
                     campos[campo] = _numero(campos[campo])
+            if actual.tipo_dte == GUIA_DESPACHO and "precio" not in campos:
+                campos["precio"] = Decimal(0)  # traslado sin valorizar
             actual.lineas.append(
                 Linea(nombre=partes[0], exento=actual.tipo_dte in DTE_EXENTOS, **campos)
             )
@@ -242,6 +270,7 @@ def armar_documento(
     receptor: Receptor,
     fecha: date,
     folios: dict[str, tuple[int, int]],
+    emisor_como_receptor: Receptor | None = None,
 ) -> DatosDocumento:
     """Arma el documento de un caso, listo para `emitir_documento`.
 
@@ -249,7 +278,13 @@ def armar_documento(
         folios: `{caso_id: (tipo_dte, folio)}` de los casos ya emitidos. Las
             notas necesitan el folio del documento que referencian, así que los
             casos se emiten en orden.
+        emisor_como_receptor: Los datos del emisor. En una guía de traslado
+            interno el SII exige que el receptor coincida con el emisor.
     """
+    if caso.ind_traslado == TRASLADO_INTERNO:
+        if emisor_como_receptor is None:
+            raise SetInvalidoError(f"Caso {caso.id}: el traslado interno necesita los datos del emisor como receptor")
+        receptor = emisor_como_receptor
     # Todo documento del set se identifica con una referencia de tipo SET cuya
     # razón es el número de caso. ponytail: FolioRef "0" es la convención más
     # difundida para esta referencia; a confirmar con el primer set enviado.
@@ -291,6 +326,8 @@ def armar_documento(
             else []
         ),
         referencias=referencias,
+        ind_traslado=caso.ind_traslado,
+        tipo_despacho=caso.tipo_despacho,
     )
 
 

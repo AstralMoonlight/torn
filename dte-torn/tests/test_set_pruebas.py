@@ -224,18 +224,18 @@ def test_set_sin_numero_de_atencion() -> None:
 
 
 def test_documento_no_soportado() -> None:
-    texto = SET_BASICO.replace("NOTA DE DEBITO ELECTRONICA\r\nREF", "GUIA DE DESPACHO ELECTRONICA\r\nREF")
+    texto = SET_BASICO.replace("NOTA DE DEBITO ELECTRONICA\r\nREF", "LIQUIDACION FACTURA ELECTRONICA\r\nREF")
     with pytest.raises(SetInvalidoError, match="no soportado"):
         parsear_set(texto)
 
 
 def test_archivo_con_varios_sets_lee_solo_el_pedido() -> None:
-    # Así llega cuando se piden varios sets: el de guías trae un documento que
-    # el set básico no soporta, y no debe leerse.
+    # Así llega cuando se piden varios sets: el de liquidaciones trae un
+    # documento que no se soporta, y no debe leerse.
     separador = "-" * 80 + "\r\n"
     guias = (
-        "SET GUIA DE DESPACHO - NUMERO DE ATENCIÓN: 7654321\r\n\r\n"
-        "CASO 7654321-1\r\n==============\r\nDOCUMENTO\tGUIA DE DESPACHO\r\n"
+        "SET BASICO LIQUIDACIONES - NUMERO DE ATENCION: 7654321\r\n\r\n"
+        "CASO 7654321-1\r\n==============\r\nDOCUMENTO\tLIQUIDACION FACTURA ELECTRONICA\r\n"
     )
     texto = SET_BASICO + separador + guias
     set_ = parsear_set(texto)
@@ -514,3 +514,110 @@ def test_exenta_cumple_el_esquema_sin_iva(caso: str, esquema) -> None:
         ["MntExe", "MntTotal"] if ESPERADOS_EXENTA[caso][1] else ["MntTotal"]
     )
     assert totales.findtext("{%s}MntTotal" % NS) == str(ESPERADOS_EXENTA[caso][1])
+
+
+# -------------------------------------------------------- guía de despacho --
+
+SET_GUIA = "\r\n".join(
+    [
+        "SET GUIA DE DESPACHO - NUMERO DE ATENCIÓN: 5550001",
+        "",
+        "IMPORTANTE: Se debe señalar el tipo de traslado en todos los documentos de Guía de Despacho Electrónica.",
+        "",
+        "CASO 5550001-1",
+        "==============",
+        f"DOCUMENTO{T}GUIA DE DESPACHO",
+        f"MOTIVO:{T}{T}TRASLADO DE MATERIALES ENTRE BODEGAS DE LA EMPRESA",
+        "",
+        f"ITEM{T}{T}CANTIDAD{T}",
+        f"ITEM 1{T}{T}     61{T}{T}",
+        f"ITEM 2{T}{T}     73{T}{T}",
+        f"ITEM 3{T}{T}     39",
+        "",
+        "",
+        "CASO 5550001-2",
+        "==============",
+        f"DOCUMENTO{T}GUIA DE DESPACHO",
+        f"MOTIVO:{T}{T}VENTA",
+        f"TRASLADO POR: {T}EMISOR DEL DOCUMENTO AL LOCAL DEL CLIENTE",
+        "",
+        f"ITEM{T}{T}CANTIDAD{T}PRECIO UNITARIO",
+        f"ITEM 1{T}{T}    145{T}{T}   3363",
+        f"ITEM 2{T}{T}    270{T}{T}   1120",
+        "",
+        "",
+        "CASO 5550001-3",
+        "==============",
+        f"DOCUMENTO{T}GUIA DE DESPACHO",
+        f"MOTIVO:{T}{T}VENTA",
+        f"TRASLADO POR: {T}CLIENTE",
+        "",
+        f"ITEM{T}{T}CANTIDAD{T}PRECIO UNITARIO",
+        f"ITEM 1{T}{T}    107{T}{T}   1330",
+        f"ITEM 2{T}{T}    183{T}{T}   2670",
+    ]
+)
+
+#: (neto, iva, total) a mano. Caso 2: 145×3.363 = 487.635 + 270×1.120 =
+#: 302.400 → 790.035, IVA 150.106,65 → 150.107. Caso 3: 107×1.330 = 142.310 +
+#: 183×2.670 = 488.610 → 630.920, IVA 119.874,8 → 119.875.
+ESPERADOS_GUIA = {
+    "5550001-1": (0, 0, 0),
+    "5550001-2": (790035, 150107, 940142),
+    "5550001-3": (630920, 119875, 750795),
+}
+EMISOR_COMO_RECEPTOR = Receptor(
+    rut=EMISOR.rut, razon_social=EMISOR.razon_social, giro=EMISOR.giro,
+    direccion=EMISOR.direccion, comuna=EMISOR.comuna,
+)
+
+
+def _documentos_guia():
+    set_ = parsear_set(SET_GUIA, "SET GUIA DE DESPACHO")
+    resueltos = resolver_lineas(set_)
+    return {
+        caso.id: armar_documento(
+            set_, caso, *resueltos[caso.id], RECEPTOR, FECHA, {}, emisor_como_receptor=EMISOR_COMO_RECEPTOR
+        )
+        for caso in set_.casos
+    }
+
+
+def test_guia_lee_traslado_y_despacho() -> None:
+    set_ = parsear_set(SET_GUIA, "SET GUIA DE DESPACHO")
+    assert folios_necesarios(set_) == {52: 3}
+    assert [(c.ind_traslado, c.tipo_despacho) for c in set_.casos] == [(5, None), (1, 2), (1, 1)]
+    assert [(l.nombre, l.cantidad, l.precio) for l in set_.caso("5550001-1").lineas] == [
+        ("ITEM 1", 61, 0), ("ITEM 2", 73, 0), ("ITEM 3", 39, 0),
+    ]
+
+
+def test_guia_de_traslado_interno_va_al_propio_emisor() -> None:
+    docs = _documentos_guia()
+    assert docs["5550001-1"].receptor == EMISOR_COMO_RECEPTOR
+    assert docs["5550001-2"].receptor == RECEPTOR
+    assert (docs["5550001-2"].ind_traslado, docs["5550001-2"].tipo_despacho) == (1, 2)
+
+
+def test_guia_de_traslado_interno_sin_emisor_no_se_arma() -> None:
+    set_ = parsear_set(SET_GUIA, "SET GUIA DE DESPACHO")
+    caso = set_.caso("5550001-1")
+    with pytest.raises(SetInvalidoError, match="emisor"):
+        armar_documento(set_, caso, *resolver_lineas(set_)[caso.id], RECEPTOR, FECHA, {})
+
+
+def test_guia_motivo_desconocido() -> None:
+    with pytest.raises(SetInvalidoError, match="motivo"):
+        parsear_set(SET_GUIA.replace("MOTIVO:\t\tVENTA", "MOTIVO:\t\tARRIENDO", 1), "SET GUIA DE DESPACHO")
+
+
+@pytest.mark.parametrize("caso", ESPERADOS_GUIA)
+def test_guia_totales_y_esquema(caso: str, esquema) -> None:
+    d = _documentos_guia()[caso]
+    t = calcular_totales(d.tipo_dte, d.items, d.descuentos_globales)
+    assert (t.neto, t.iva, t.total) == ESPERADOS_GUIA[caso]
+    firmado = firmar_dte(
+        construir_dte(EMISOR, d, 1), _caf(52), _cert(), datetime(2026, 9, 23, 13, tzinfo=timezone.utc)
+    )
+    arbol = etree.fromstring(firmado.xml)
+    assert esquema.validate(arbol), "\n".join(str(e) for e in esquema.error_log)
