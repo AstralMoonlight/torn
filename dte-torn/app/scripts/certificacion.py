@@ -640,7 +640,7 @@ async def modo_muestras() -> int:
     """
     from pathlib import Path
 
-    from app.dte.pdf import CEDIBLES, DatosImpresion, generar_pdf
+    from app.dte.pdf import DatosImpresion, es_cedible, generar_pdf
 
     set_ = _leer_set()
     oficina = _requerida("DTE_EMISOR_OFICINA_SII")
@@ -671,7 +671,8 @@ async def modo_muestras() -> int:
                 print(f"   tipo {doc.tipo_dte} folio {doc.folio}: está {doc.estado}, se omite")
                 continue
             xml = await almacen.leer(doc.xml_key, doc.xml_sha256)
-            for cedible in (False, True) if doc.tipo_dte in CEDIBLES else (False,):
+            cedible_ = es_cedible(doc.tipo_dte, doc.payload.get("ind_traslado"))
+            for cedible in (False, True) if cedible_ else (False,):
                 pdf = generar_pdf(xml, DatosImpresion(tenant.resolucion_numero, tenant.resolucion_fecha, oficina, cedible))
                 nombre = f"{doc.external_id.removeprefix(prefijo)}_DTE{doc.tipo_dte}_F{doc.folio}{'_cedible' if cedible else ''}.pdf"
                 (carpeta / nombre).write_bytes(pdf)

@@ -142,3 +142,37 @@ def test_sesenta_lineas_pasan_a_otra_pagina(cert) -> None:
     texto = _texto_pdf(pdf)
     assert b"continuaci\\363n" in texto
     assert rb"Descuento global \(Promo\): 10%" in texto  # los paréntesis van escapados
+
+
+# ------------------------------------------------------- guía de despacho --
+
+
+def _paginas(pdf: bytes) -> int:
+    return len(re.findall(rb"/Type /Page\b(?!s)", pdf))
+
+
+def test_guia_de_venta_trae_tipo_de_traslado_y_copia_cedible(cert) -> None:
+    xml = _firmado(cert, 52, ind_traslado=1, tipo_despacho=2).xml
+    pdf = generar_pdf(xml, DatosImpresion(0, date(2020, 11, 30), con_cedible=True))
+    assert _paginas(pdf) == 2
+    texto = _texto_pdf(pdf)
+    assert b"GUIA DE DESPACHO" in texto
+    assert texto.count(b"Operaci\\363n constituye venta") == 2
+    assert b"Por cuenta del emisor a instalaciones del cliente" in texto
+    # La guía se cede junto con su factura: así lo dice su copia cedible.
+    assert b"CEDIBLE CON SU FACTURA" in texto
+
+
+def test_guia_de_traslado_interno_no_tiene_cedible(cert) -> None:
+    """Una operación que no es venta no se cede: el ejemplar cedible es inoficioso."""
+    receptor = Receptor(rut=EMISOR.rut, razon_social=EMISOR.razon_social, giro=EMISOR.giro,
+                        direccion=EMISOR.direccion, comuna=EMISOR.comuna)
+    xml = _firmado(cert, 52, ind_traslado=5, receptor=receptor,
+                   items=[Item(nombre="ITEM 1", cantidad=Decimal(61), precio=Decimal(0))]).xml
+    pdf = generar_pdf(xml, DatosImpresion(0, date(2020, 11, 30), con_cedible=True))
+    assert _paginas(pdf) == 1
+    texto = _texto_pdf(pdf)
+    assert b"Traslado interno" in texto
+    assert b"CEDIBLE" not in texto
+    ted = leer_dte(xml).ted
+    assert zxingcpp.read_barcode(render_image(codigos_timbre(ted), scale=3)).bytes == ted

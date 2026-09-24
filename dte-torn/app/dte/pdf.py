@@ -14,8 +14,9 @@ Lo que pide el SII de la representación impresa y está resuelto acá:
 - Timbre electrónico en PDF417 con nivel de corrección 5 y, bajo él, la leyenda
   "Timbre Electrónico SII" con la resolución y el sitio de verificación.
 - Montos en pesos con punto de miles, fechas dd-mm-aaaa.
-- Copia cedible de facturas: recuadro de acuse de recibo (Ley 19.983) y la
-  leyenda CEDIBLE.
+- Copia cedible de facturas y guías de venta: recuadro de acuse de recibo
+  (Ley 19.983) y la leyenda CEDIBLE (CEDIBLE CON SU FACTURA en la guía).
+- Tipo de traslado en toda guía de despacho.
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import simpleSplit
 from reportlab.pdfgen.canvas import Canvas
 
-from app.dte.builder import BOLETAS, NS
+from app.dte.builder import BOLETAS, GUIA_DESPACHO, NS
 from app.dte.rut import RUT_CONSUMIDOR_FINAL
 
 NOMBRES = {
@@ -47,8 +48,25 @@ NOMBRES = {
     56: "NOTA DE DEBITO ELECTRONICA",
     61: "NOTA DE CREDITO ELECTRONICA",
 }
-#: Documentos con copia cedible (se pueden ceder a un factoring).
+#: Documentos con copia cedible (se pueden ceder a un factoring). La guía de
+#: despacho también, pero solo cuando el traslado es una venta: ver `es_cedible`.
 CEDIBLES = frozenset({33, 34})
+#: IndTraslado de una guía que constituye venta.
+TRASLADO_VENTA = "1"
+_TRASLADOS = {
+    "1": "Operación constituye venta",
+    "2": "Venta por efectuar",
+    "3": "Consignación",
+    "4": "Promoción o donación",
+    "5": "Traslado interno",
+    "6": "Otros traslados sin venta",
+    "7": "Guía de devolución",
+}
+_DESPACHOS = {
+    "1": "Por cuenta del cliente",
+    "2": "Por cuenta del emisor a instalaciones del cliente",
+    "3": "Por cuenta del emisor a otras instalaciones",
+}
 _CODIGOS_REFERENCIA = {"1": "Anula documento", "2": "Corrige texto", "3": "Corrige montos"}
 _FORMAS_PAGO = {"1": "Contado", "2": "Crédito", "3": "Sin costo"}
 
@@ -128,6 +146,8 @@ class Documento:
     fecha_emision: str
     forma_pago: str
     fecha_vencimiento: str
+    ind_traslado: str
+    tipo_despacho: str
     emisor: dict[str, str]
     receptor: dict[str, str]
     totales: dict[str, str]
@@ -184,6 +204,8 @@ def leer_dte(xml: bytes) -> Documento:
         fecha_emision=id_doc.get("FchEmis", ""),
         forma_pago=id_doc.get("FmaPago", ""),
         fecha_vencimiento=id_doc.get("FchVenc", ""),
+        ind_traslado=id_doc.get("IndTraslado", ""),
+        tipo_despacho=id_doc.get("TipoDespacho", ""),
         emisor=emisor,
         receptor=_hijos(doc.find("s:Encabezado/s:Receptor", _NSX)),
         totales=_hijos(doc.find("s:Encabezado/s:Totales", _NSX)),
@@ -192,6 +214,17 @@ def leer_dte(xml: bytes) -> Documento:
         referencias=[_hijos(n) for n in doc.findall("s:Referencia", _NSX)],
         ted=ted.group(0),
     )
+
+
+def es_cedible(tipo: int, ind_traslado: str | int | None = None) -> bool:
+    """Si el documento lleva copia cedible.
+
+    Una guía que no es venta (un traslado interno, por ejemplo) no se cede: el
+    SII dice que en ese caso el ejemplar cedible es inoficioso.
+    """
+    if tipo == GUIA_DESPACHO:
+        return str(ind_traslado or "") == TRASLADO_VENTA
+    return tipo in CEDIBLES
 
 
 # ----------------------------------------------------------------- timbre ---
@@ -309,6 +342,8 @@ def _receptor(h: _Hoja) -> None:
             ("Ciudad", r.get("CiudadRecep", "")),
         ]
     pares += [
+        ("Tipo de traslado", _TRASLADOS.get(d.ind_traslado, d.ind_traslado)),
+        ("Despacho", _DESPACHOS.get(d.tipo_despacho, d.tipo_despacho)),
         ("Forma de pago", _FORMAS_PAGO.get(d.forma_pago, "")),
         ("Vencimiento", fecha(d.fecha_vencimiento)),
     ]
@@ -458,7 +493,7 @@ def _pie(h: _Hoja, imp: DatosImpresion) -> None:
     c, d = h.c, h.doc
     textos = _textos_pie(d)
     totales = _filas_totales(d)
-    cedible = imp.cedible and d.tipo in CEDIBLES
+    cedible = imp.cedible and es_cedible(d.tipo, d.ind_traslado)
     columnas, filas = barcode_size(codigos_timbre(d.ted))
     alto_timbre = filas * (ANCHO_TIMBRE / columnas) * 3
     alto_derecha = len(totales) * 13 + 8 + (_ALTO_ACUSE + 30 if cedible else 0)
@@ -497,10 +532,12 @@ def _pie(h: _Hoja, imp: DatosImpresion) -> None:
     )
 
     if cedible:
-        _acuse(c, x_tot - 25 * mm, h.y - alto_tot - 6 * mm, ancho_tot + 25 * mm)
+        # La guía se cede junto con la factura que la ampara.
+        leyenda = "CEDIBLE CON SU FACTURA" if d.tipo == GUIA_DESPACHO else "CEDIBLE"
+        _acuse(c, x_tot - 25 * mm, h.y - alto_tot - 6 * mm, ancho_tot + 25 * mm, leyenda)
 
 
-def _acuse(c: Canvas, x: float, arriba: float, ancho: float) -> None:
+def _acuse(c: Canvas, x: float, arriba: float, ancho: float, leyenda: str) -> None:
     """Recuadro de acuse de recibo y leyenda CEDIBLE de la copia cedible."""
     c.rect(x, arriba - _ALTO_ACUSE, ancho, _ALTO_ACUSE)
     c.setFont("Helvetica", 8)
@@ -517,7 +554,7 @@ def _acuse(c: Canvas, x: float, arriba: float, ancho: float) -> None:
         c.drawString(x + 5, y, texto)
         y -= 7
     c.setFont("Helvetica-Bold", 14)
-    c.drawRightString(x + ancho, arriba - _ALTO_ACUSE - 18, "CEDIBLE")
+    c.drawRightString(x + ancho, arriba - _ALTO_ACUSE - 18, leyenda)
 
 
 def generar_pdf(xml: bytes, imp: DatosImpresion) -> bytes:
@@ -526,10 +563,11 @@ def generar_pdf(xml: bytes, imp: DatosImpresion) -> bytes:
     salida = BytesIO()
     c = Canvas(salida, pagesize=letter, pageCompression=1)
     nombre = NOMBRES.get(d.tipo, f"DTE {d.tipo}")
-    c.setTitle(f"{nombre} N° {d.folio}" + (" - CEDIBLE" if imp.cedible and d.tipo in CEDIBLES else ""))
+    cedible = es_cedible(d.tipo, d.ind_traslado)
+    c.setTitle(f"{nombre} N° {d.folio}" + (" - CEDIBLE" if imp.cedible and cedible else ""))
     c.setAuthor(d.emisor.get("RznSoc", ""))
 
-    copias = [False, True] if imp.con_cedible and d.tipo in CEDIBLES else [imp.cedible]
+    copias = [False, True] if imp.con_cedible and cedible else [imp.cedible]
     for cedible in copias:
         copia = replace(imp, cedible=cedible)
         h = _Hoja(c=c, doc=d)
