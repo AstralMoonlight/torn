@@ -261,3 +261,60 @@ async def test_muestras_sin_set_emitido(entorno_set, tmp_path, monkeypatch) -> N
     monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path))
     monkeypatch.setenv("DTE_EMISOR_OFICINA_SII", "S.I.I. - Santiago Centro")
     assert await certificacion.modo_muestras() == 1
+
+
+# ------------------------------------------------------------ otros sets --
+
+
+@pytest.fixture
+def entorno_exenta(entorno, tmp_path, monkeypatch):
+    """Archivo con el set básico y el de exenta, como lo entrega el SII."""
+    from tests.test_set_pruebas import SET_BASICO, SET_EXENTA
+
+    ruta_set = tmp_path / "set.txt"
+    ruta_set.write_bytes((SET_BASICO + "\r\n" + "-" * 80 + "\r\n" + SET_EXENTA).encode("latin-1"))
+    rutas = []
+    for tipo in (34, 61, 56):
+        ruta = tmp_path / f"caf_{tipo}.xml"
+        ruta.write_bytes(caf_xml(rut="76543210-3", tipo_dte=tipo, desde=1, hasta=10))
+        rutas.append(str(ruta))
+    monkeypatch.setenv("DTE_SET", str(ruta_set))
+    monkeypatch.setenv("DTE_SET_NOMBRE", "SET FACTURA EXENTA")
+    monkeypatch.setenv("DTE_CAFS", ",".join(rutas))
+    monkeypatch.setenv("DTE_CAF", rutas[0])
+    entorno.estados = [_estado("EPR", aceptados=8)] * 5
+    return entorno
+
+
+def test_revisar_set_usa_el_set_pedido(entorno_exenta, capsys) -> None:
+    assert certificacion.modo_revisar_set() == 0
+    salida = capsys.readouterr().out
+    assert "Set número de atención 7654321: 8 casos" in salida
+    assert "3 de factura exenta (tipo 34)" in salida
+
+
+async def test_el_set_de_exenta_va_en_un_solo_envio_sin_iva(entorno_exenta, capsys) -> None:
+    assert await certificacion.modo_set() == 0
+    assert entorno_exenta.llamadas.count("upload") == 1
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        docs = (await s.execute(select(Document))).scalars().all()
+    assert sorted(d.external_id for d in docs) == [f"set-7654321-7654321-{n}" for n in range(1, 9)]
+    assert {d.estado for d in docs} == {"ACEPTADO"}
+    assert {(d.monto_neto, d.monto_iva) for d in docs} == {(0, 0)}
+
+
+async def test_enviar_una_factura_exenta_de_prueba(entorno, tmp_path, monkeypatch) -> None:
+    """Para subir el máximo de folios del 34 antes de pedir los del set."""
+    caf = tmp_path / "caf_34.xml"
+    caf.write_bytes(caf_xml(rut="76543210-3", tipo_dte=34, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_CAF", str(caf))
+    assert await certificacion.modo_enviar() == 0
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        doc = (await s.execute(select(Document))).scalar_one()
+    assert (doc.tipo_dte, doc.monto_exento, doc.monto_iva, doc.estado) == (34, 1000, 0, "ACEPTADO")

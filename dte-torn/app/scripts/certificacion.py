@@ -30,6 +30,8 @@ Variables (en `.env`; la clave nunca en el comando ni en un chat):
     DTE_EMISOR_COMUNA         comuna
     DTE_EMISOR_CIUDAD         ciudad (opcional)
     DTE_EMISOR_OFICINA_SII    unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`)
+    DTE_SET                   archivo del set de pruebas del SII (`set`, `revisar-set`, `muestras`)
+    DTE_SET_NOMBRE            set a usar del archivo (por defecto `SET BASICO`; p. ej. `SET FACTURA EXENTA`)
 
 Uso:
 
@@ -127,6 +129,14 @@ def _certificado():
         f"{'' if vigente else '  <-- VENCIDO'}"
     )
     return pfx, clave, cert
+
+
+def _leer_set():
+    """El set de `DTE_SET_NOMBRE` (básico por defecto) del archivo `DTE_SET`."""
+    from app.dte.set_pruebas import parsear_set
+
+    with open(_requerida("DTE_SET"), "rb") as f:
+        return parsear_set(f.read().decode("latin-1"), os.environ.get("DTE_SET_NOMBRE") or "SET BASICO")
 
 
 # ------------------------------------------------------------------- token --
@@ -404,13 +414,12 @@ async def modo_set() -> int:
     alcanzan.
     """
     from app.core.almacen import clave_envio
-    from app.dte.set_pruebas import armar_documento, folios_necesarios, parsear_set, resolver_lineas
+    from app.dte.set_pruebas import armar_documento, folios_necesarios, resolver_lineas
     from app.dte.signer import DocumentoFirmado, firmar_sobre
     from app.models import AuditLog, EstadoEnvio
 
     pfx, clave, cert = _certificado()
-    with open(_requerida("DTE_SET"), "rb") as f:
-        set_ = parsear_set(f.read().decode("latin-1"))
+    set_ = _leer_set()
     rutas = [r.strip() for r in _requerida("DTE_CAFS").split(",") if r.strip()]
     cafs = [open(r, "rb").read() for r in rutas]
 
@@ -621,10 +630,8 @@ async def modo_muestras() -> int:
     from pathlib import Path
 
     from app.dte.pdf import CEDIBLES, DatosImpresion, generar_pdf
-    from app.dte.set_pruebas import parsear_set
 
-    with open(_requerida("DTE_SET"), "rb") as f:
-        set_ = parsear_set(f.read().decode("latin-1"))
+    set_ = _leer_set()
     oficina = _requerida("DTE_EMISOR_OFICINA_SII")
     carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
     carpeta.mkdir(parents=True, exist_ok=True)
@@ -737,11 +744,9 @@ def _pesos(n: int) -> str:
 
 def modo_revisar_set() -> int:
     from app.dte.builder import calcular_totales, descuento_linea, monto_linea
-    from app.dte.set_pruebas import armar_documento, folios_necesarios, parsear_set, resolver_lineas
+    from app.dte.set_pruebas import armar_documento, folios_necesarios, resolver_lineas
 
-    ruta = _requerida("DTE_SET")
-    with open(ruta, "rb") as f:
-        set_ = parsear_set(f.read().decode("latin-1"))
+    set_ = _leer_set()
     resueltos = resolver_lineas(set_)
     nombres = {33: "Factura", 34: "Factura exenta", 56: "Nota de débito", 61: "Nota de crédito"}
     codigos = {1: "anula", 2: "corrige texto", 3: "corrige montos"}
