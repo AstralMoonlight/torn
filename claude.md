@@ -207,9 +207,10 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 
 ### Pendiente / lo que parece faltar
 
-- **Impresión con timbre**: los tickets y la carta del backend no llevan el timbre PDF417 ("Borrador sin validez
-  tributaria"). La representación impresa válida hoy es el PDF carta de dte-torn; tras la certificación se mueve
-  al backend (decisión del 2026-09-24).
+- **Impresión**: carta = PDF de dte-torn; 57/80 mm = `dte_ticket.html` armado en el backend desde el XML
+  firmado (`backend/app/services/dte_impreso.py`, timbre PDF417 verificado con zxing-cpp). Las ventas que
+  dte-torn no tiene usan las plantillas antiguas sin timbre. El ancho de módulo del timbre en térmica
+  (`COLUMNAS_TIMBRE`) está calibrado a ojo: falta validarlo leyendo un ticket impreso.
 - **Retiro de tablas locales**: `backend/scripts/migrate_retiro_dte_local.py` borra `dtes`, `cafs` y
   `folio_request_logs` de cada esquema. Hay que volver a cargar en dte-torn los CAF con folios libres antes de
   correrlo con `--aplicar`.
