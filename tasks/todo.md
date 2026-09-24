@@ -26,8 +26,8 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 ## Fase 2: Factura exenta (5093759)
 
 ### U2: Subir máximos (en paralelo, ya se puede)
-- [ ] 56: una emisión de prueba más (`certificacion enviar` tipo 56) → máximo ≥ 2
-- [ ] 34: 2–3 emisiones de prueba tras T3 → máximo ≥ 3
+- [x] 56: no hizo falta; el SII autorizó 2 folios directo
+- [x] 34: no hizo falta; el SII autorizó 3 folios directo
 
 ### T2: Lector entiende el set de exenta
 **Descripción:** `set_pruebas.py` hoy falla con este set. Hay que soportar la columna `UNIDAD MEDIDA` (texto),
@@ -52,13 +52,13 @@ contra `DTE_v10.xsd` y sin IVA ni tasa.
 **Dependencias:** T2 · **Archivos:** `app/scripts/certificacion.py`, `tests/test_certificacion_script.py`, `tests/test_builder_xsd.py` · **Tamaño:** S
 
 ### T4: Enviar y declarar el set de exenta
-- [ ] Máximos 34 ≥ 3 y 56 ≥ 2 (U2); pedir CAF 34×3, 61×3, 56×2
-- [ ] Envío único EPR 8 aceptados 0 reparos; usuario declara
+- [x] Máximos 34 ≥ 3 y 56 ≥ 2 (U2); pedir CAF 34×3, 61×3, 56×2 — el SII los dio directo: 34 101-103, 61 72-74, 56 61-62
+- [x] Envío único EPR 8 aceptados 0 reparos — track 0260081142 (24-09-2026); falta que el usuario declare
 **Dependencias:** T3, U2 · **Tamaño:** XS
 
 ### Checkpoint A
 - [x] Suite verde · revisión `code-review-and-quality` del diff de fase 2
-- [ ] Básico y exenta enviados sin reparos
+- [x] Básico y exenta enviados sin reparos
 
 ---
 
