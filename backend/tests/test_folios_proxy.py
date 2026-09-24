@@ -18,8 +18,8 @@ def test_status_suma_los_caf_activos_por_tipo(client, monkeypatch):
     ]}]
     llamadas = []
 
-    def fake_request(method, path, tenant_id=None, actor=None, **kwargs):
-        llamadas.append((method, path, tenant_id))
+    def fake_request(method, path, tenant=None, actor=None, **kwargs):
+        llamadas.append((method, path, tenant.id))
         return httpx.Response(200, json=stock)
 
     monkeypatch.setattr(dte_client, "request", fake_request)

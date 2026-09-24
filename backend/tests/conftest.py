@@ -31,7 +31,7 @@ from app.dependencies.tenant import (
     require_admin,
 )
 from app.main import app
-from app.models.saas import SaaSUser, TenantUser
+from app.models.saas import SaaSUser, Tenant, TenantUser
 from app.models.user import User
 from app.services import dte_client
 from app.utils.taxes import monto_linea_dte, totales_dte
@@ -97,7 +97,8 @@ def client(db_session, admin_local_user):
         id=1, email="admin@torn.cl", full_name="Admin", is_superuser=False
     )
     tenant_user = TenantUser(
-        tenant_id=1, user_id=1, role_name="ADMINISTRADOR", is_active=True
+        tenant_id=1, user_id=1, role_name="ADMINISTRADOR", is_active=True,
+        tenant=Tenant(id=1, name="Empresa Test", schema_name="tenant_test"),
     )
 
     app.dependency_overrides[get_db] = override_db
@@ -124,7 +125,7 @@ class FakeDte:
         self.error = None
         self._folios = defaultdict(int)
 
-    def emitir(self, tenant_id, documento, actor=None):
+    def emitir(self, tenant, documento, actor=None):
         if self.error:
             raise self.error
         self.documentos.append(documento)

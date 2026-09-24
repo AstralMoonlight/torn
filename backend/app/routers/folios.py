@@ -30,9 +30,9 @@ class FolioStockOut(BaseModel):
     fecha_vencimiento: Optional[date] = None
 
 
-def _llamar(method: str, path: str, tenant_id: int, actor: str | None = None, **kwargs):
+def _llamar(method: str, path: str, tenant, actor: str | None = None, **kwargs):
     try:
-        return dte_client.request(method, path, tenant_id, actor, **kwargs)
+        return dte_client.request(method, path, tenant, actor, **kwargs)
     except dte_client.DteError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -40,7 +40,7 @@ def _llamar(method: str, path: str, tenant_id: int, actor: str | None = None, **
 @router.get("/status", response_model=List[FolioStockOut], summary="Estado del Stock de Folios")
 def get_folios_status(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Folios disponibles por tipo de documento, uno por cada tipo que se puede emitir."""
-    stock = {s["tipo_dte"]: s for s in _llamar("GET", "/folios", tenant_user.tenant_id).json()}
+    stock = {s["tipo_dte"]: s for s in _llamar("GET", "/folios", tenant_user.tenant).json()}
     result = []
     for tipo in TIPOS_DTE:
         cafs = [c for c in stock.get(tipo, {}).get("cafs", []) if c["estado"] == "ACTIVO"]
@@ -68,7 +68,7 @@ async def upload_caf(
     RUT, vencimiento y que el rango no se solape con otro."""
     contenido = await file.read()
     return _llamar(
-        "POST", "/cafs", admin.tenant_id, global_user.email,
+        "POST", "/cafs", admin.tenant, global_user.email,
         files={"archivo": (file.filename or "caf.xml", contenido, "application/xml")},
     ).json()
 
@@ -77,7 +77,7 @@ async def upload_caf(
 def get_certificate(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Titular y vigencia del certificado, sin material sensible. `null` si no hay."""
     try:
-        return dte_client.request("GET", "/certificates/actual", tenant_user.tenant_id).json()
+        return dte_client.request("GET", "/certificates/actual", tenant_user.tenant).json()
     except dte_client.DteError as exc:
         if exc.status_code == 404:
             return None
@@ -94,7 +94,7 @@ async def upload_certificate(
     """Sube el .pfx; dte-torn lo guarda cifrado y lo deja como el activo."""
     contenido = await file.read()
     return _llamar(
-        "POST", "/certificates", admin.tenant_id, global_user.email,
+        "POST", "/certificates", admin.tenant, global_user.email,
         files={"archivo": (file.filename or "certificado.pfx", contenido, "application/x-pkcs12")},
         data={"password": password},
     ).json()

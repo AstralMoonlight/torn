@@ -38,7 +38,7 @@ def main() -> int:
             continue
         try:
             dte_client.sincronizar_emisor(tenant, issuer)
-            print(f"ok {tenant.id} {tenant.name} ({issuer.rut}) -> {dte_client.tenant_uuid(tenant.id)}")
+            print(f"ok {tenant.id} {tenant.name} ({issuer.rut}) -> {dte_client.tenant_uuid(tenant)}")
         except dte_client.DteError as exc:
             fallas += 1
             print(f"!! {tenant.id} {tenant.name} ({issuer.rut}): {exc.status_code} {exc.detail}")

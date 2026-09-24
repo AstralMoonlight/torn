@@ -4,7 +4,7 @@ Estos modelos gestionan la infraestructura multi-tenant, usuarios globales
 y los planes de suscripción. Residen exclusivamente en el esquema 'public'.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric, Date
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric, Date, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -64,6 +64,8 @@ class Tenant(Base):
     sii_resolucion_numero = Column(Integer, nullable=False, default=0, server_default="0")
     sii_resolucion_fecha = Column(Date, nullable=True)
     sii_oficina = Column(String(60), nullable=True, comment="Unidad del SII, p.ej. 'S.I.I. - CONCEPCION'")
+    #: Id de la empresa en dte-torn cuando no es el derivado (ver `dte_client.tenant_uuid`).
+    dte_tenant_id = Column(Uuid, nullable=True, unique=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

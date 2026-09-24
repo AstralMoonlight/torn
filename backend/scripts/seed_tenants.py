@@ -121,6 +121,8 @@ def seed_tenant(cur, schema, tenant_data):
             "razon_social": c["razon_social"],
             "giro": c.get("giro"),
             "email": c.get("email"),
+            "direccion": c.get("direccion"),
+            "comuna": c.get("comuna"),
             "ciudad": c.get("ciudad"),
             "current_balance": Decimal("0"),
             "is_active": True,

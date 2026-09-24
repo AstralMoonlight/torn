@@ -35,7 +35,7 @@ def test_guardar_emisor_lo_copia_a_dte_torn(client, con_dte):
     assert resp.status_code == 200, resp.text
 
     (args, kwargs), = con_dte
-    assert args == ("PUT", f"/tenants/{dte_client.tenant_uuid(7)}")
+    assert args == ("PUT", f"/tenants/{dte_client.uuid.uuid5(dte_client._NAMESPACE, 'torn-tenant-7')}")
     enviado = kwargs["json"]
     assert enviado["rut_emisor"] == "76123456-0"
     assert enviado["acteco"] == "464903"

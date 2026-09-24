@@ -38,18 +38,25 @@ class DteNoDisponible(DteError):
         super().__init__(503, detail)
 
 
-def tenant_uuid(tenant_id: int) -> uuid.UUID:
-    return uuid.uuid5(_NAMESPACE, f"torn-tenant-{tenant_id}")
+def tenant_uuid(tenant) -> uuid.UUID:
+    """Id de la empresa en dte-torn: el guardado en `Tenant.dte_tenant_id` o, si no
+    hay, uno derivado del id entero.
+
+    El guardado existe para empresas que ya estaban en dte-torn antes que en Torn
+    (la de certificación): allá no se les puede cambiar el id, porque sus CAF y su
+    certificado están cifrados con una llave derivada de él.
+    """
+    return tenant.dte_tenant_id or uuid.uuid5(_NAMESPACE, f"torn-tenant-{tenant.id}")
 
 
-def request(method: str, path: str, tenant_id: int | None = None, actor: str | None = None, **kwargs) -> httpx.Response:
+def request(method: str, path: str, tenant=None, actor: str | None = None, **kwargs) -> httpx.Response:
     """Llama a dte-torn. Errores de red y respuestas 4xx/5xx salen como `DteError`."""
     base = os.getenv("TORN_DTE_URL")
     if not base:
         raise DteNoDisponible("El servicio de facturación electrónica no está configurado (TORN_DTE_URL).")
     headers = {"X-Internal-Api-Key": os.getenv("TORN_DTE_API_KEY", "")}
-    if tenant_id is not None:
-        headers["X-Tenant-Id"] = str(tenant_uuid(tenant_id))
+    if tenant is not None:
+        headers["X-Tenant-Id"] = str(tenant_uuid(tenant))
     if actor:
         headers["X-Actor"] = actor[:150]
     try:
@@ -65,10 +72,10 @@ def request(method: str, path: str, tenant_id: int | None = None, actor: str | N
     return resp
 
 
-def emitir(tenant_id: int, documento: dict, actor: str | None = None) -> dict:
+def emitir(tenant, documento: dict, actor: str | None = None) -> dict:
     """Emite factura, boleta o nota. Idempotente por `documento["external_id"]`."""
     ruta = "/boletas" if documento["tipo_dte"] in (39, 41) else "/documents"
-    return request("POST", ruta, tenant_id, actor, json=documento).json()
+    return request("POST", ruta, tenant, actor, json=documento).json()
 
 
 def sincronizar_emisor(tenant, issuer) -> None:
@@ -80,7 +87,7 @@ def sincronizar_emisor(tenant, issuer) -> None:
     """
     if not os.getenv("TORN_DTE_URL") or issuer is None:
         return
-    request("PUT", f"/tenants/{tenant_uuid(tenant.id)}", json={
+    request("PUT", f"/tenants/{tenant_uuid(tenant)}", json={
         "rut_emisor": issuer.rut,
         "razon_social": issuer.razon_social,
         "giro": issuer.giro,

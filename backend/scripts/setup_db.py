@@ -26,7 +26,7 @@ from sqlalchemy import text
 from app.database import engine, Base
 
 # Importar todos los modelos para que Base.metadata los registre
-from app.models import User, Sale, DTE  # noqa: F401
+from app.models import User, Sale  # noqa: F401
 
 
 def main():

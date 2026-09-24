@@ -73,7 +73,7 @@ def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Deci
     return item, monto, rate == 0
 
 
-def _emitir_dte(db: Session, tenant_id: int, sale: Sale, customer: Customer, items: list, referencias: list, actor: str) -> None:
+def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
@@ -93,7 +93,7 @@ def _emitir_dte(db: Session, tenant_id: int, sale: Sale, customer: Customer, ite
             "correo": customer.email,
         }
     try:
-        emitido = dte_client.emitir(tenant_id, documento, actor)
+        emitido = dte_client.emitir(tenant, documento, actor)
     except dte_client.DteError as exc:
         db.rollback()
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
@@ -386,7 +386,7 @@ def create_sale(
     # `stock_movements=` al construir `Sale`, y SQLAlchemy propaga el sale_id.
 
     # 6. Emitir en dte-torn (asigna el folio) y confirmar
-    _emitir_dte(db, tenant_user.tenant_id, new_sale, customer, items_dte,
+    _emitir_dte(db, tenant_user.tenant, new_sale, customer, items_dte,
                 _referencias_dte(referencias_json), global_user.email)
     db.commit()
 
@@ -588,7 +588,7 @@ def create_return(
     db.add(pm)
     
     # 5. Emitir en dte-torn y confirmar
-    _emitir_dte(db, tenant_user.tenant_id, nc_sale, original_sale.customer, items_dte,
+    _emitir_dte(db, tenant_user.tenant, nc_sale, original_sale.customer, items_dte,
                 _referencias_dte(referencias_json), global_user.email)
     db.commit()
     return nc_sale
