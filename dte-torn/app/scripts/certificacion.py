@@ -34,6 +34,7 @@ Variables (en `.env`; la clave nunca en el comando ni en un chat):
     DTE_EMISOR_OFICINA_SII    unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`)
     DTE_SET                   archivo del set de pruebas del SII (`set`, `revisar-set`, `muestras`)
     DTE_SET_NOMBRE            set a usar del archivo (por defecto `SET BASICO`; p. ej. `SET FACTURA EXENTA`)
+    DTE_SET_INTENTO           2, 3...: reenvía un set rechazado con folios nuevos (`set`, `muestras`, `libro`)
 
 Uso:
 
@@ -140,6 +141,16 @@ def _emisor_como_receptor(tenant: Tenant) -> Receptor:
         rut=tenant.rut_emisor, razon_social=tenant.razon_social, giro=tenant.giro,
         direccion=tenant.direccion, comuna=tenant.comuna, ciudad=tenant.ciudad,
     )
+
+
+def _prefijo_set(numero_atencion: str) -> str:
+    """Prefijo del `external_id` de los documentos de un set.
+
+    `DTE_SET_INTENTO=2` (3, ...) reenvía un set rechazado con folios nuevos: sin
+    él, `set` encontraría los documentos del intento anterior y no emitiría nada.
+    """
+    intento = int(os.environ.get("DTE_SET_INTENTO") or 1)
+    return f"set-{numero_atencion}-" + (f"r{intento}-" if intento > 1 else "")
 
 
 def _leer_set():
@@ -467,7 +478,7 @@ async def modo_set() -> int:
     for caf_bytes in cafs[1:]:
         await _cargar_caf_si_falta(tenant_id, caf_bytes)
 
-    claves = {c.id: f"set-{set_.numero_atencion}-{c.id}" for c in set_.casos}
+    claves = {c.id: _prefijo_set(set_.numero_atencion) + c.id for c in set_.casos}
     async with tenant_session(tenant_id) as sesion:
         existentes = {
             d.external_id: d
@@ -675,7 +686,7 @@ async def modo_muestras() -> int:
     oficina = _requerida("DTE_EMISOR_OFICINA_SII")
     carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
     carpeta.mkdir(parents=True, exist_ok=True)
-    prefijo = f"set-{set_.numero_atencion}-"
+    prefijo = _prefijo_set(set_.numero_atencion)
 
     almacen = Almacen(get_settings())
     async with control_session() as sesion:
@@ -822,7 +833,7 @@ async def modo_libro() -> int:
     nombre_set = "SET GUIA DE DESPACHO" if libro == "guias" else "SET BASICO"
     origen = parsear_set(texto, nombre_set)
     tenant, docs = await _documentos_del_set(
-        [f"set-{origen.numero_atencion}-{c.id}" for c in origen.casos], nombre_set
+        [_prefijo_set(origen.numero_atencion) + c.id for c in origen.casos], nombre_set
     )
 
     def caratula(folio_notificacion: int) -> Caratula:

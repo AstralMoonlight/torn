@@ -445,3 +445,22 @@ async def test_libro_de_guias_con_factura_y_anulada(entorno, tmp_path, monkeypat
     assert detalle[1].findtext("s:MntTotal", namespaces=n) == "940142"
     assert detalle[2].findtext("s:Anulado", namespaces=n) == "2"
     assert arbol.findtext(".//s:TotMntGuiaVta", namespaces=n) == "940142"
+
+
+
+async def test_reenviar_un_set_rechazado_emite_con_folios_nuevos(entorno_set, monkeypatch) -> None:
+    await certificacion.modo_set()
+    monkeypatch.setenv("DTE_SET_INTENTO", "2")
+    entorno_set.uploads.append((200, _upload("0", "222")))
+    entorno_set.estados = [_estado("EPR", aceptados=8)] * 3
+    assert await certificacion.modo_set() == 0
+    assert entorno_set.llamadas.count("upload") == 2
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        docs = (await s.execute(select(Document).order_by(Document.tipo_dte, Document.folio))).scalars().all()
+    assert len(docs) == 16
+    nuevos = [d for d in docs if d.external_id.startswith("set-1234567-r2-")]
+    assert len(nuevos) == 8 and {d.estado for d in nuevos} == {"ACEPTADO"}
+    assert len({d.folio for d in docs if d.tipo_dte == 33}) == 8  # ningún folio repetido
