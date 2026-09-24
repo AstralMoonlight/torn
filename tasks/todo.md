@@ -133,6 +133,7 @@ retención total, entrega gratuita como IVA no recuperable (código a confirmar)
 ### T13: Modo `libros` en el script, enviar y declarar
 - [x] `certificacion libro` (`DTE_LIBRO=ventas|compras`) sube el libro, espera el estado y muestra el track. Falta guías.
 - [ ] Los 3 aceptados; usuario declara cada uno
+  - 2026-09-24: libro de ventas declarado con 0260084694 → **SRH "No Tiene un SET Basico Aprobado"**. Cada libro se declara recién cuando su set de origen está APROBADO (ventas ← básico, guías ← guía). Reenviar el libro de ventas (nuevo track) cuando el básico salga aprobado.
 **Dependencias:** T10, T11, T12
 
 ### Checkpoint C
