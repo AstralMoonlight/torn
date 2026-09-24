@@ -16,7 +16,7 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 ### T1: Enviar y declarar el set básico
 **Descripción:** correr `certificacion set` con el archivo nuevo y los CAF de U1.
 **Aceptación:**
-- [ ] `revisar-set` muestra los 8 casos con totales que cuadran a mano
+- [x] `revisar-set` muestra los 8 casos con totales que cuadran a mano
 - [ ] Envío único: EPR, 8 aceptados, 0 reparos
 - [ ] Usuario declara el avance con el track ID
 **Dependencias:** U1 · **Archivos:** ninguno (solo `.env`) · **Tamaño:** XS
