@@ -155,13 +155,16 @@ instructivo de formato.
 
 ---
 
-## Tabla para declarar todo junto (24-09-2026)
+## Tabla para declarar todo junto (24-09-2026, segundo intento)
 
-| Set | N° Envío | Fecha |
-|---|---|---|
-| SET BASICO | 0260080046 | 24-09-2026 |
-| SET GUIA DE DESPACHO | 0260086000 | 24-09-2026 |
-| SET FACTURA EXENTA | 0260081142 | 24-09-2026 |
-| LIBRO DE VENTAS | 0260084694 | 24-09-2026 |
-| LIBRO DE COMPRAS | 0260084758 | 24-09-2026 |
-| LIBRO DE GUIAS | 0260086522 | 24-09-2026 |
+Básico y exenta se reenviaron (DTE_SET_INTENTO=2) tras el SRH por "Los Valores de la Linea 1 del
+Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
+
+| Set | N° Envío | Fecha | Estado |
+|---|---|---|---|
+| SET BASICO | 0260088892 | 24-09-2026 | reenviado, EPR 8/8 |
+| SET GUIA DE DESPACHO | 0260086000 | 24-09-2026 | SOK |
+| SET FACTURA EXENTA | 0260088718 | 24-09-2026 | reenviado, EPR 8/8 |
+| LIBRO DE VENTAS | 0260088990 | 24-09-2026 | LOK (docs del intento 2) |
+| LIBRO DE COMPRAS | 0260084758 | 24-09-2026 | LOK, sin resultado de revisión aún |
+| LIBRO DE GUIAS | 0260086522 | 24-09-2026 | SOK |
