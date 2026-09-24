@@ -1,11 +1,12 @@
+{% set nombre_doc = {33: 'FACTURA ELECTRÓNICA', 34: 'FACTURA EXENTA ELECTRÓNICA', 39: 'BOLETA ELECTRÓNICA',
+    41: 'BOLETA EXENTA ELECTRÓNICA', 56: 'NOTA DE DÉBITO ELECTRÓNICA', 61: 'NOTA DE CRÉDITO ELECTRÓNICA'}.get(sale.tipo_dte, 'TICKET DE VENTA') %}
+{% set exento = sale.tipo_dte in [34, 41] %}
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <title>{% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA{% elif sale.tipo_dte == 34 %}FACTURA EXENTA{% elif
-        sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA{% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO{% else %}TICKET DE VENTA{%
-        endif %} N° {{ sale.folio }}</title>
+    <title>{{ nombre_doc }} N° {{ sale.folio }}</title>
     <style>
         @page {
             size: {{ papel_mm }}mm auto;
@@ -187,7 +188,7 @@
 
 <body>
 
-    {% set copies = ['COPIA CLIENTE', 'CEDIBLE'] if sale.tipo_dte in [33, 34, 61] else ['COPIA CLIENTE'] %}
+    {% set copies = ['COPIA CLIENTE', 'CEDIBLE'] if sale.tipo_dte in [33, 34] else ['COPIA CLIENTE'] %}
 
     {% for copy_name in copies %}
     {% if not loop.first %}
@@ -203,12 +204,7 @@
 
         <div class="doc-info">
             <div class="doc-type">
-                {% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA
-                {% elif sale.tipo_dte == 34 %}FACTURA EXENTA
-                {% elif sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA
-                {% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO
-                {% else %}TICKET DE VENTA
-                {% endif %}
+                {{ nombre_doc }}
             </div>
             <div class="folio">N° {{ sale.folio }}</div>
         </div>
@@ -253,13 +249,15 @@
 
     <div class="totals">
         <div class="total-row">
-            <span>NETO:</span>
+            <span>{% if exento %}EXENTO:{% else %}NETO:{% endif %}</span>
             <span>{{ sale.monto_neto | clp }}</span>
         </div>
+        {% if not exento %}
         <div class="total-row">
             <span>IVA (19%):</span>
             <span>{{ sale.iva | clp }}</span>
         </div>
+        {% endif %}
         <div class="total-row grand-total">
             <span>TOTAL:</span>
             <span>{{ sale.monto_total | clp }}</span>

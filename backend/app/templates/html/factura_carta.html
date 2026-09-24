@@ -1,11 +1,12 @@
+{% set nombre_doc = {33: 'FACTURA ELECTRÓNICA', 34: 'FACTURA EXENTA ELECTRÓNICA', 39: 'BOLETA ELECTRÓNICA',
+    41: 'BOLETA EXENTA ELECTRÓNICA', 56: 'NOTA DE DÉBITO ELECTRÓNICA', 61: 'NOTA DE CRÉDITO ELECTRÓNICA'}.get(sale.tipo_dte, 'DOCUMENTO TRIBUTARIO') %}
+{% set exento = sale.tipo_dte in [34, 41] %}
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <title>{% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA{% elif sale.tipo_dte == 34 %}FACTURA EXENTA{% elif
-        sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA{% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO{% else %}DOCUMENTO
-        TRIBUTARIO{% endif %} N° {{ sale.folio }}</title>
+    <title>{{ nombre_doc }} N° {{ sale.folio }}</title>
     <style>
         @page {
             size: letter;
@@ -250,7 +251,7 @@
 
 <body>
 
-    {% set copies = ['COPIA CLIENTE', 'CEDIBLE'] if sale.tipo_dte in [33, 34, 61] else ['COPIA CLIENTE'] %}
+    {% set copies = ['COPIA CLIENTE', 'CEDIBLE'] if sale.tipo_dte in [33, 34] else ['COPIA CLIENTE'] %}
 
     {% for copy_name in copies %}
     <div class="document-copy">
@@ -267,12 +268,7 @@
 
             <div class="folio-box">
                 <div class="doc-type">
-                    {% if sale.tipo_dte == 33 %}FACTURA ELECTRÓNICA
-                    {% elif sale.tipo_dte == 34 %}FACTURA EXENTA
-                    {% elif sale.tipo_dte == 39 %}BOLETA ELECTRÓNICA
-                    {% elif sale.tipo_dte == 61 %}NOTA DE CRÉDITO
-                    {% else %}DOCUMENTO TRIBUTARIO
-                    {% endif %}
+                    {{ nombre_doc }}
                 </div>
                 <div class="rut">R.U.T.: {{ issuer.rut }}</div>
                 <div class="folio">N° {{ sale.folio }}</div>
@@ -336,13 +332,15 @@
         <div class="totals-container">
             <div class="totals">
                 <div class="totals-row">
-                    <span>Monto Neto</span>
+                    <span>{% if exento %}Monto Exento{% else %}Monto Neto{% endif %}</span>
                     <span>{{ sale.monto_neto | clp }}</span>
                 </div>
+                {% if not exento %}
                 <div class="totals-row">
                     <span>IVA (19%)</span>
                     <span>{{ sale.iva | clp }}</span>
                 </div>
+                {% endif %}
                 <div class="totals-row border-top">
                     <span>TOTAL</span>
                     <span>{{ sale.monto_total | clp }}</span>
