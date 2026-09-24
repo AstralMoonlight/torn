@@ -109,9 +109,9 @@ def test_copia_cedible(cert) -> None:
 
 def test_con_cedible_trae_copia_cliente_y_cedible(cert) -> None:
     pdf = generar_pdf(_firmado(cert).xml, DatosImpresion(0, date(2020, 11, 30), con_cedible=True))
-    assert len(re.findall(rb"/Type /Page(?!s)", pdf)) == 2
+    assert len(re.findall(rb"/Type /Page\b(?!s)", pdf)) == 2
     texto = _texto_pdf(pdf)
-    assert texto.count(b"Timbre Electr\363nico SII") == 2
+    assert texto.count(b"Timbre Electr\\363nico SII") == 2
     assert texto.count(b"CEDIBLE") == 1
     assert texto.count(b"Factureando.cl: Hazla simple!") == 2
 
