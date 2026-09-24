@@ -788,7 +788,8 @@ async def modo_libro() -> int:
                 print(f"   ({_transcurrido(subido)})  consulta falló: {exc}")
                 continue
             print(f"   ({_transcurrido(subido)})  {resultado.estado}: {resultado.glosa or ''}")
-            if resultado.estado not in ("REC", "SOK", "CRT", "FOK", "PDR", "PRD", "-"):
+            # LSO ("Schema de Envio de Libro Correcto") es intermedio: falta la cuadratura.
+            if resultado.estado not in ("REC", "SOK", "CRT", "FOK", "PDR", "PRD", "LSO", "-"):
                 break
     await redis.aclose()
     await get_engine().dispose()
@@ -796,9 +797,9 @@ async def modo_libro() -> int:
     if resultado is None:
         print(f"El SII todavía no responde. Consultar el track {track} más tarde.")
         return 1
-    # ponytail: los estados finales de un libro (LOK, LTC, LRH...) no están en los
-    # documentos que revisamos; se trata como rechazo lo que empieza con "LR" y
-    # se muestra la respuesta completa para decidir a mano.
+    # Visto en certificación: LSO (schema correcto, intermedio), LOK (aceptado y
+    # cuadrado), LRH (rechazado por descuadrado). Se trata como rechazo lo que
+    # empieza con "LR" y se muestra la respuesta completa.
     print(resultado.crudo)
     rechazado = resultado.estado.startswith("LR") or resultado.estado.startswith("R")
     if not rechazado:
