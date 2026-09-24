@@ -375,6 +375,7 @@ async def listar(
     tenant: TenantDep,
     estado: str | None = None,
     tipo_dte: int | None = None,
+    folio: int | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[DocumentoOut]:
@@ -384,6 +385,10 @@ async def listar(
         consulta = consulta.where(Document.estado == estado)
     if tipo_dte:
         consulta = consulta.where(Document.tipo_dte == tipo_dte)
+    if folio:
+        # Con tipo_dte identifica un documento: así lo encuentra el backend para
+        # los emitidos fuera del POS, cuyo external_id no es `venta-{id}`.
+        consulta = consulta.where(Document.folio == folio)
     async with tenant_session(tenant.id) as s:
         docs = (await s.execute(consulta)).scalars().all()
     return [await _documento_out(tenant.id, d) for d in docs]

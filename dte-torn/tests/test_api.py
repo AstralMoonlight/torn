@@ -187,3 +187,6 @@ async def test_un_tenant_no_ve_los_documentos_de_otro(api) -> None:
     assert (await api.get("/documents/venta-1", headers=otro)).status_code == 404
     assert (await api.get("/documents", headers=otro)).json() == []
     assert len((await api.get("/documents?estado=FIRMADO", headers=h)).json()) == 1
+    [doc] = (await api.get("/documents?tipo_dte=33&folio=1", headers=h)).json()
+    assert doc["external_id"] == "venta-1"
+    assert (await api.get("/documents?tipo_dte=33&folio=2", headers=h)).json() == []

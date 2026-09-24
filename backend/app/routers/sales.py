@@ -1,12 +1,13 @@
 """Router para gestión de Ventas (Facturas)."""
 
 import logging
+from urllib.parse import quote
 from decimal import Decimal
 from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
@@ -19,7 +20,7 @@ from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
-from app.services import dte_client
+from app.services import dte_client, dte_impreso
 from app.utils.formatters import format_clp, format_number
 from app.utils.pricing import resolve_unit_price
 from app.utils.dates import get_now
@@ -597,12 +598,67 @@ def create_return(
 # ── PDF Preview ──────────────────────────────────────────────────────
 
 
+def _external_id_dte(tenant, sale: Sale) -> str | None:
+    """Documento de dte-torn que corresponde a la venta, buscado por tipo y folio
+    (únicos por empresa). None si dte-torn no lo tiene: ventas anteriores a la
+    integración."""
+    docs = dte_client.request("GET", "/documents", tenant,
+                              params={"tipo_dte": sale.tipo_dte, "folio": sale.folio, "limit": 1}).json()
+    # Se verifica lo devuelto: un dte-torn sin el filtro `folio` respondería con
+    # el documento más reciente del tipo, que no es el de esta venta.
+    doc = next((d for d in docs if d["tipo_dte"] == sale.tipo_dte and d["folio"] == sale.folio), None)
+    return doc["external_id"] if doc else None
+
+
+def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Response | None:
+    """Representación impresa desde dte-torn, o None si no tiene el documento.
+
+    Carta: el PDF que arma dte-torn. Ticket: HTML armado acá desde el XML
+    firmado, con el timbre en PDF417.
+    """
+    try:
+        external_id = _external_id_dte(tenant, sale)
+        if external_id is None:
+            return None
+        ruta = f"/documents/{quote(external_id, safe='')}"
+        if papel_mm is None:
+            pdf = dte_client.request("GET", f"{ruta}/pdf", tenant, params={"cedible": "true"} if cedible else None)
+            return Response(pdf.content, media_type="application/pdf",
+                            headers={"Content-Disposition": pdf.headers.get("content-disposition", "inline")})
+        xml = dte_client.request("GET", f"{ruta}/xml", tenant).content
+    except dte_client.DteError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    if tenant.sii_resolucion_fecha is None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "La empresa no tiene fecha de resolución del SII: va impresa bajo el timbre.")
+    doc = dte_impreso.leer_dte(xml)
+    html = _html_env.get_template("dte_ticket.html").render(
+        doc=doc, papel_mm=papel_mm, timbre=dte_impreso.timbre_svg(doc["ted"], papel_mm),
+        cedible=cedible and doc["tipo"] in dte_impreso.CEDIBLES,
+        oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,
+        resolucion_anio=tenant.sii_resolucion_fecha.year,
+        rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha,
+    )
+    return HTMLResponse(html)
+
+
 @router.get("/{sale_id}/pdf", response_class=HTMLResponse,
              summary="Vista Previa Factura",
-             description="Genera HTML para impresión de la factura.")
-def get_sale_pdf(sale_id: int, db: Session = Depends(get_tenant_db)):
+             description="PDF de dte-torn con el timbre (formato carta) o HTML de ticket.")
+def get_sale_pdf(
+    sale_id: int,
+    cedible: bool = False,
+    db: Session = Depends(get_tenant_db),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
     """
-    Genera una vista previa HTML del documento tributario.
+    Representación impresa del documento.
+
+    Sale del XML firmado en dte-torn, con el timbre electrónico: en carta es el
+    PDF de dte-torn; en 57/80 mm, un ticket HTML armado acá desde ese XML.
+    `?cedible=true` da la copia cedible de las facturas. Las ventas que dte-torn
+    no tiene (anteriores a la integración) usan las plantillas antiguas.
 
     Renderiza una plantilla Jinja2 con los datos de la venta, el emisor
     y el cliente, lista para ser impresa o convertida a PDF.
@@ -645,9 +701,12 @@ def get_sale_pdf(sale_id: int, db: Session = Depends(get_tenant_db)):
     # Cargar configuración del sistema para el formato de impresión
     settings = db.query(SystemSettings).first()
     print_format = resolve_print_format(settings, str(sale.tipo_dte))
-
-    # Seleccionar plantilla según formato
     papel_mm = PAPEL_TICKET_MM.get(print_format)
+    impreso = _impreso_dte(tenant_user.tenant, sale, papel_mm, cedible)
+    if impreso is not None:
+        return impreso
+
+    # Venta sin documento en dte-torn: plantilla antigua, sin timbre.
     template_name = "factura_ticket.html" if papel_mm else "factura_carta.html"
     template = _html_env.get_template(template_name)
 

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ doc.nombre }} N° {{ doc.folio }}</title>
+    <style>
+        @page {
+            size: {{ papel_mm }}mm auto;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: {{ papel_mm - 8 }}mm;
+            margin: 0 auto;
+            padding: 4mm 1mm 3mm 1mm;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: {{ 8 if papel_mm >= 80 else 7 }}pt;
+            line-height: 1.25;
+            background: white;
+            color: #000;
+        }
+
+        .centro { text-align: center; }
+        .der { text-align: right; }
+        .negrita { font-weight: bold; }
+        .sep { border-top: 1px dashed #000; margin: 5px 0; }
+
+        .emisor h1 { font-size: 1.2em; text-transform: uppercase; }
+
+        .recuadro {
+            border: 2px solid #000;
+            padding: 4px;
+            margin: 6px 4mm 2px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .fila { display: flex; justify-content: space-between; gap: 4px; }
+        .etiqueta { font-weight: bold; white-space: nowrap; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; border-bottom: 1px solid #000; font-size: 0.9em; }
+        td { vertical-align: top; padding-top: 2px; }
+
+        .total { font-weight: bold; font-size: 1.15em; border-top: 1px solid #000; margin-top: 3px; padding-top: 3px; }
+
+        .timbre { margin: 8px 1mm 2px; }
+        .timbre svg { display: block; }
+        .leyenda { font-size: 0.85em; }
+
+        .acuse { border: 1px solid #000; padding: 4px; margin-top: 8px; font-size: 0.85em; }
+        .acuse .linea { border-bottom: 1px dotted #000; height: 14px; margin-top: 2px; }
+    </style>
+</head>
+
+<body>
+    <div class="centro emisor">
+        <h1>{{ doc.emisor.RznSoc }}</h1>
+        <p>{{ doc.emisor.GiroEmis }}</p>
+        <p>{{ doc.emisor.DirOrigen }}{% if doc.emisor.CmnaOrigen %}, {{ doc.emisor.CmnaOrigen }}{% endif %}</p>
+    </div>
+
+    <div class="recuadro">
+        <p>R.U.T.: {{ rut(doc.emisor.RUTEmisor) }}</p>
+        <p>{{ doc.nombre }}</p>
+        <p>N° {{ doc.folio }}</p>
+    </div>
+    {% if oficina_sii %}<p class="centro negrita">{{ oficina_sii }}</p>{% endif %}
+
+    <div class="sep"></div>
+    <div class="fila"><span class="etiqueta">Fecha:</span><span>{{ fecha(doc.fecha) }}</span></div>
+    {% if doc.receptor and doc.receptor.RUTRecep and doc.receptor.RUTRecep != '66666666-6' %}
+    <div class="fila"><span class="etiqueta">Señor(es):</span><span class="der">{{ doc.receptor.RznSocRecep }}</span></div>
+    <div class="fila"><span class="etiqueta">R.U.T.:</span><span>{{ rut(doc.receptor.RUTRecep) }}</span></div>
+    {% if doc.receptor.GiroRecep %}<div class="fila"><span class="etiqueta">Giro:</span><span class="der">{{ doc.receptor.GiroRecep }}</span></div>{% endif %}
+    {% if doc.receptor.DirRecep %}<div class="fila"><span class="etiqueta">Dirección:</span><span class="der">{{ doc.receptor.DirRecep }}{% if doc.receptor.CmnaRecep %}, {{ doc.receptor.CmnaRecep }}{% endif %}</span></div>{% endif %}
+    {% endif %}
+
+    <div class="sep"></div>
+    <table>
+        <thead>
+            <tr><th>Detalle</th><th class="der">Total</th></tr>
+        </thead>
+        <tbody>
+            {% for l in doc.lineas %}
+            <tr>
+                <td>
+                    {{ l.NmbItem }}{% if l.IndExe == '1' %} (exento){% endif %}<br>
+                    {{ l.QtyItem or '1' }}{% if l.UnmdItem %} {{ l.UnmdItem }}{% endif %}{% if l.PrcItem %} x {{ l.PrcItem | clp }}{% endif %}
+                    {% if l.DescuentoMonto %}<br>Dcto: -{{ l.DescuentoMonto | clp }}{% endif %}
+                </td>
+                <td class="der">{{ l.MontoItem | clp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% for d in doc.descuentos %}
+    <div class="fila"><span>{{ d.GlosaDR or ('Descuento' if d.TpoMov == 'D' else 'Recargo') }}{% if d.TpoValor == '%' %} {{ d.ValorDR }}%{% endif %}</span></div>
+    {% endfor %}
+
+    <div class="sep"></div>
+    {% if doc.totales.MntNeto %}<div class="fila"><span>Neto:</span><span>{{ doc.totales.MntNeto | clp }}</span></div>{% endif %}
+    {% if doc.totales.MntExe %}<div class="fila"><span>Exento:</span><span>{{ doc.totales.MntExe | clp }}</span></div>{% endif %}
+    {% if doc.totales.IVA %}<div class="fila"><span>IVA ({{ doc.totales.TasaIVA or '19' }}%):</span><span>{{ doc.totales.IVA | clp }}</span></div>{% endif %}
+    <div class="fila total"><span>TOTAL:</span><span>{{ doc.totales.MntTotal | clp }}</span></div>
+
+    {% if doc.referencias %}
+    <div class="sep"></div>
+    <p class="negrita">Referencias:</p>
+    {% for r in doc.referencias %}
+    <p>{{ r.TpoDocRef }} N° {{ r.FolioRef }} del {{ fecha(r.FchRef) }}{% if r.motivo %} - {{ r.motivo }}{% endif %}{% if r.RazonRef %}: {{ r.RazonRef }}{% endif %}</p>
+    {% endfor %}
+    {% endif %}
+
+    <div class="timbre">{{ timbre | safe }}</div>
+    <div class="centro leyenda">
+        <p>Timbre Electrónico SII</p>
+        <p>Res. N° {{ resolucion_numero }} de {{ resolucion_anio }}</p>
+        <p>Verifique documento: www.sii.cl</p>
+    </div>
+
+    {% if cedible %}
+    <div class="acuse">
+        <p class="negrita centro">ACUSE DE RECIBO</p>
+        <div class="linea">Nombre:</div>
+        <div class="linea">R.U.T.:</div>
+        <div class="linea">Fecha:</div>
+        <div class="linea">Recinto:</div>
+        <div class="linea" style="height: 26px;">Firma:</div>
+        <p style="margin-top: 4px;">El acuse de recibo que se declara en este acto, de acuerdo a lo dispuesto en la
+            letra b) del Art. 4°, y la letra c) del Art. 5° de la Ley 19.983, acredita que la entrega de
+            mercaderías o servicio(s) prestado(s) ha(n) sido recibido(s).</p>
+    </div>
+    <p class="centro negrita" style="margin-top: 4px;">CEDIBLE</p>
+    {% endif %}
+
+    <script>
+        window.onload = function () {
+            setTimeout(function () { window.print(); }, 300);
+        };
+        window.addEventListener('afterprint', function () {
+            window.close();
+        });
+    </script>
+</body>
+
+</html>

@@ -37,3 +37,4 @@ uvicorn
 watchfiles
 websockets
 httpx
+pdf417gen

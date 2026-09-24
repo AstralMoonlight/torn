@@ -123,8 +123,13 @@ api.interceptors.request.use((config) => {
  * ya no la necesite.
  */
 export async function fetchBlobUrl(path: string): Promise<string> {
-    const response = await api.get(path, { responseType: 'blob' })
-    return URL.createObjectURL(response.data)
+    return (await fetchBlob(path)).url
+}
+
+/** Como `fetchBlobUrl`, pero dice además si es un PDF o un HTML de impresión. */
+export async function fetchBlob(path: string): Promise<{ url: string; isPdf: boolean }> {
+    const response = await api.get<Blob>(path, { responseType: 'blob' })
+    return { url: URL.createObjectURL(response.data), isPdf: response.data.type === 'application/pdf' }
 }
 
 export default api

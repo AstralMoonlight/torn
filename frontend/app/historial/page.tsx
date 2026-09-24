@@ -26,6 +26,7 @@ import {
     ExternalLink,
     Loader2,
     Receipt,
+    FileSignature,
 } from 'lucide-react'
 import {
     Table,
@@ -144,9 +145,9 @@ export default function HistorialPage() {
         }
     }
 
-    const verPdf = async (saleId: number) => {
+    const verPdf = async (saleId: number, cedible = false) => {
         try {
-            const blobUrl = await fetchBlobUrl(getSalePdfPath(saleId))
+            const blobUrl = await fetchBlobUrl(getSalePdfPath(saleId) + (cedible ? '?cedible=true' : ''))
             window.open(blobUrl, '_blank')
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
         } catch (err) {
@@ -227,6 +228,17 @@ export default function HistorialPage() {
                                                     >
                                                         <ExternalLink className="h-4 w-4" />
                                                     </Button>
+                                                    {[33, 34].includes(sale.tipo_dte) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            title="Copia cedible"
+                                                            onClick={() => verPdf(sale.id, true)}
+                                                        >
+                                                            <FileSignature className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                     {![56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
                                                         <Button
                                                             variant="ghost"

@@ -1,6 +1,6 @@
 'use client'
 
-import { getApiErrorDetail, getApiErrorStatus, fetchBlobUrl } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus, fetchBlob } from '@/services/api'
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -199,7 +199,16 @@ export default function CheckoutModal({ open, onClose }: Props) {
             // Vía `api` (no fetch()/<a href> directos): el endpoint exige
             // Authorization + X-Tenant-ID, que sólo el interceptor de axios
             // agrega — un fetch a la URL pelada responde 401.
-            const blobUrl = await fetchBlobUrl(getSalePdfPath(lastSaleId))
+            const { url: blobUrl, isPdf } = await fetchBlob(getSalePdfPath(lastSaleId))
+
+            // Formato carta: es el PDF de dte-torn con el timbre. Un PDF en un
+            // iframe oculto no imprime de forma confiable; se abre en el visor.
+            if (isPdf) {
+                window.open(blobUrl, '_blank')
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+                handleFinish()
+                return
+            }
 
             const iframeId = 'receipt-hidden-frame'
             let iframe = document.getElementById(iframeId) as HTMLIFrameElement

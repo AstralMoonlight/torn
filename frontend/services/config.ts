@@ -18,8 +18,8 @@ export interface TaxCreate {
 export type PrintFormat = '80mm' | '57mm' | 'carta'
 
 export const PRINT_FORMAT_OPTIONS: { value: PrintFormat; label: string }[] = [
-    { value: '80mm', label: 'Térmico 80mm' },
     { value: '57mm', label: 'Térmico 57mm' },
+    { value: '80mm', label: 'Térmico 80mm' },
     { value: 'carta', label: 'Carta / A4' },
 ]
 
