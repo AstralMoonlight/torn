@@ -6,7 +6,7 @@ propia entrada en `SystemSettings.print_formats`; `print_format` queda como
 respaldo para cualquier tipo sin entrada explícita.
 """
 
-from typing import Optional
+from typing import Literal
 
 #: Claves válidas para `SystemSettings.print_formats`, con su etiqueta legible.
 #: "33".."61" son `Sale.tipo_dte`; "purchase" no es un DTE, es el comprobante
@@ -21,6 +21,12 @@ DOCUMENT_TYPES: dict[str, str] = {
     "purchase": "Compras (Comprobante Proveedor)",
 }
 
+PrintFormat = Literal["carta", "80mm", "57mm"]
+
+#: Ancho del rollo de las impresoras térmicas, en mm. Los formatos que no están
+#: acá (carta) usan su propia plantilla de página completa.
+PAPEL_TICKET_MM: dict[str, int] = {"80mm": 80, "57mm": 57}
+
 DEFAULT_PRINT_FORMAT = "80mm"
 
 
@@ -32,7 +38,7 @@ def resolve_print_format(settings, doc_type_key: str) -> str:
         doc_type_key: Clave en `DOCUMENT_TYPES` (p.ej. `str(sale.tipo_dte)` o `"purchase"`).
 
     Returns:
-        `"80mm"` o `"carta"`.
+        `"80mm"`, `"57mm"` o `"carta"`.
     """
     if settings is None:
         return DEFAULT_PRINT_FORMAT

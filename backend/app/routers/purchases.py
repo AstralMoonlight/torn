@@ -17,7 +17,7 @@ from app.models.issuer import Issuer
 from app.models.settings import SystemSettings
 from app.schemas import PurchaseCreate, PurchaseOut
 from app.utils.formatters import format_clp, format_number
-from app.utils.print_settings import resolve_print_format
+from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
 from app.utils.taxes import quantize_money, resolve_purchase_tax_rate
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -269,10 +269,12 @@ def get_purchase_pdf(purchase_id: int, db: Session = Depends(get_tenant_db)):
 
     settings = db.query(SystemSettings).first()
     print_format = resolve_print_format(settings, "purchase")
-    template_name = "purchase_print_80mm.html" if print_format == "80mm" else "purchase_print.html"
+    papel_mm = PAPEL_TICKET_MM.get(print_format)
+    template_name = "purchase_print_ticket.html" if papel_mm else "purchase_print.html"
 
     template = _html_env.get_template(template_name)
     html_content = template.render(
+        papel_mm=papel_mm,
         purchase=purchase,
         issuer=issuer,
         provider=purchase.provider,

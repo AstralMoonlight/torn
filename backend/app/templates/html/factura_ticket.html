@@ -8,7 +8,7 @@
         endif %} N° {{ sale.folio }}</title>
     <style>
         @page {
-            size: 80mm auto;
+            size: {{ papel_mm }}mm auto;
             margin: 0;
         }
 
@@ -19,7 +19,7 @@
         }
 
         body {
-            width: 72mm;
+            width: {{ papel_mm - 8 }}mm;
             margin: 0 auto;
             padding: 5mm 2mm 2mm 2mm;
             font-family: 'Courier New', Courier, monospace;

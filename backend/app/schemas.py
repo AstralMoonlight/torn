@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 from app.utils.validators import validar_rut
+from app.utils.print_settings import PrintFormat
 
 
 # ── Brand (Marca) ────────────────────────────────────────────────────
@@ -115,8 +116,8 @@ class TaxOut(TaxBase):
 # ── Configuración (Settings) ─────────────────────────────────────────
 
 class SettingsBase(BaseModel):
-    print_format: str = "80mm"
-    print_formats: Dict[str, str] = Field(default_factory=dict)
+    print_format: PrintFormat = "80mm"
+    print_formats: Dict[str, PrintFormat] = Field(default_factory=dict)
     iva_default_id: Optional[int] = None
 
 class SettingsUpdate(SettingsBase):
