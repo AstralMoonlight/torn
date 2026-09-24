@@ -1,6 +1,6 @@
 'use client'
 
-import { getApiErrorDetail, fetchBlobUrl } from '@/services/api'
+import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
 import { useEffect, useState, Fragment } from 'react'
 import { getSales, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
@@ -146,7 +146,13 @@ export default function HistorialPage() {
 
     const verPdf = async (saleId: number) => {
         try {
-            const blobUrl = await fetchBlobUrl(getSalePdfPath(saleId))
+            // PDF (carta, de dte-torn): diálogo de impresión con vista previa.
+            // HTML (tickets): se abre en una pestaña y se imprime solo al cargar.
+            const { url: blobUrl, isPdf } = await fetchBlob(getSalePdfPath(saleId))
+            if (isPdf) {
+                printPdf(blobUrl)
+                return
+            }
             window.open(blobUrl, '_blank')
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
         } catch (err) {

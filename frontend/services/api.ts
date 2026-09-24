@@ -126,6 +126,37 @@ export async function fetchBlobUrl(path: string): Promise<string> {
     return (await fetchBlob(path)).url
 }
 
+/**
+ * Abre el diálogo de impresión de un PDF (con su vista previa).
+ *
+ * Un PDF abierto en una pestaña no puede imprimirse solo, a diferencia de los
+ * HTML de impresión, que llaman a `window.print()` al cargar. Se carga en un
+ * iframe invisible del mismo origen (blob:) y se imprime desde ahí. No puede ser
+ * `display: none`: Chrome no carga el visor de PDF en un iframe oculto así.
+ * Si el navegador no lo permite, se abre en una pestaña.
+ */
+export function printPdf(url: string): void {
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0'
+    iframe.onload = () => {
+        // El visor de PDF termina de montarse un poco después del onload.
+        setTimeout(() => {
+            try {
+                iframe.contentWindow?.focus()
+                iframe.contentWindow?.print()
+            } catch {
+                window.open(url, '_blank')
+            }
+        }, 500)
+    }
+    iframe.src = url
+    document.body.appendChild(iframe)
+    setTimeout(() => {
+        iframe.remove()
+        URL.revokeObjectURL(url)
+    }, 120000)
+}
+
 /** Como `fetchBlobUrl`, pero dice además si es un PDF o un HTML de impresión. */
 export async function fetchBlob(path: string): Promise<{ url: string; isPdf: boolean }> {
     const response = await api.get<Blob>(path, { responseType: 'blob' })

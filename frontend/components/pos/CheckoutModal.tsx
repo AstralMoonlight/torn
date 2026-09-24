@@ -1,6 +1,6 @@
 'use client'
 
-import { getApiErrorDetail, getApiErrorStatus, fetchBlob } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus, fetchBlob, printPdf } from '@/services/api'
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
@@ -201,11 +201,9 @@ export default function CheckoutModal({ open, onClose }: Props) {
             // agrega — un fetch a la URL pelada responde 401.
             const { url: blobUrl, isPdf } = await fetchBlob(getSalePdfPath(lastSaleId))
 
-            // Formato carta: es el PDF de dte-torn con el timbre. Un PDF en un
-            // iframe oculto no imprime de forma confiable; se abre en el visor.
+            // Formato carta: es el PDF de dte-torn con el timbre.
             if (isPdf) {
-                window.open(blobUrl, '_blank')
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+                printPdf(blobUrl)
                 handleFinish()
                 return
             }
