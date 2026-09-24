@@ -32,12 +32,13 @@
         .negrita { font-weight: bold; }
         .sep { border-top: 1px dashed #000; margin: 5px 0; }
 
+        .emisor { margin-top: 6px; }
         .emisor h1 { font-size: 1.2em; text-transform: uppercase; }
 
         .recuadro {
             border: 2px solid #000;
             padding: 4px;
-            margin: 6px 4mm 2px;
+            margin: 0 4mm 2px;
             text-align: center;
             font-weight: bold;
         }
@@ -71,18 +72,18 @@
 <body>
     {% for cedible in copias %}
     <section class="copia">
-    <div class="centro emisor">
-        <h1>{{ doc.emisor.RznSoc }}</h1>
-        <p>{{ doc.emisor.GiroEmis }}</p>
-        <p>{{ doc.emisor.DirOrigen }}{% if doc.emisor.CmnaOrigen %}, {{ doc.emisor.CmnaOrigen }}{% endif %}</p>
-    </div>
-
     <div class="recuadro">
         <p>R.U.T.: {{ rut(doc.emisor.RUTEmisor) }}</p>
         <p>{{ doc.nombre }}</p>
         <p>N° {{ doc.folio }}</p>
     </div>
     {% if oficina_sii %}<p class="centro negrita">{{ oficina_sii }}</p>{% endif %}
+
+    <div class="centro emisor">
+        <h1>{{ doc.emisor.RznSoc }}</h1>
+        <p>{{ doc.emisor.GiroEmis }}</p>
+        <p>{{ doc.emisor.DirOrigen }}{% if doc.emisor.CmnaOrigen %}, {{ doc.emisor.CmnaOrigen }}{% endif %}</p>
+    </div>
 
     <div class="sep"></div>
     <div class="fila"><span class="etiqueta">Fecha:</span><span>{{ fecha(doc.fecha) }}</span></div>
