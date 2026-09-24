@@ -383,3 +383,134 @@ def test_el_sobre_del_set_cumple_el_esquema_de_envio() -> None:
         for s in arbol.iter(f"{{{NS}}}SubTotDTE")
     }
     assert subtotales == {33: 4, 56: 1, 61: 3}
+
+
+# --------------------------------------------------------- factura exenta --
+
+SET_EXENTA = "\r\n".join(
+    [
+        "SET FACTURA EXENTA - NUMERO DE ATENCIÓN: 7654321",
+        "INDICACIÓN: No se debe señalar el monto IVA 19% en los documentos de Factura No Afecta o Exenta.",
+        "CASO 7654321-1",
+        "==============",
+        f"DOCUMENTO{T}FACTURA NO AFECTA O EXENTA ELECTRONICA",
+        f"ITEM{T}{T}{T}CANTIDAD{T}UNIDAD MEDIDA{T}VALOR UNITARIO",
+        f"HORAS PROGRAMADOR{T}     10{T}{T}Hora{T}{T}   5968",
+        "CASO 7654321-2",
+        "==============",
+        f"DOCUMENTO{T}{T}NOTA DE CREDITO ELECTRONICA",
+        f"REFERENCIA{T}{T}FACTURA NO AFECTA O EXENTA ELECTRONICA CORRESPONDIENTE A CASO 7654321-1",
+        f"RAZON REFERENCIA{T}MODIFICA MONTO",
+        f"ITEM{T}{T}{T}VALOR UNITARIO",
+        f"HORAS PROGRAMADOR {T}    746",
+        "CASO 7654321-3",
+        "==============",
+        f"DOCUMENTO{T}FACTURA NO AFECTA O EXENTA ELECTRONICA",
+        f"ITEM{T}{T}{T}{T}{T}CANTIDAD{T}VALOR UNITARIO",
+        f"SERV CONSULTORIA FACT ELECTRONICA{T}1{T}{T} 318672",
+        f"SERV CONSULTORIA GUIA DESPACHO ELECT{T}1{T}{T} 246793",
+        "CASO 7654321-4",
+        "==============",
+        f"DOCUMENTO{T}{T}NOTA DE CREDITO ELECTRONICA",
+        f"REFERENCIA{T}{T}FACTURA NO AFECTA O EXENTA ELECTRONICA CORRESPONDIENTE A CASO 7654321-3",
+        f"RAZON REFERENCIA{T}CORRIGE GIRO",
+        "CASO 7654321-5",
+        "==============",
+        f"DOCUMENTO{T}{T}NOTA DE DEBITO ELECTRONICA",
+        f"REFERENCIA{T}{T}NOTA DE CREDITO ELECTRONICA CORRESPONDIENTE A CASO 7654321-4",
+        f"RAZON REFERENCIA{T}ANULA NOTA DE CREDITO ELECTRONICA",
+        "CASO 7654321-6",
+        "==============",
+        f"DOCUMENTO{T}FACTURA NO AFECTA O EXENTA ELECTRONICA",
+        f"ITEM{T}{T}{T}{T}CANTIDAD{T}VALOR UNITARIO",
+        f"CAPACITACION USO CIGUEÑALES{T}1{T}{T} 332530",
+        f"CAPACITACION USO PLC's CNC{T}1{T}{T} 223896",
+        "CASO 7654321-7",
+        "==============",
+        f"DOCUMENTO{T}{T}NOTA DE CREDITO ELECTRONICA",
+        f"REFERENCIA{T}{T}FACTURA NO AFECTA O EXENTA ELECTRONICA CORRESPONDIENTE A CASO 7654321-6",
+        f"RAZON REFERENCIA{T}MODIFICA MONTO",
+        f"ITEM{T}{T}{T}{T}VALOR UNITARIO",
+        f"CAPACITACION USO CIGUEÑALES{T} 166265",
+        "CASO 7654321-8",
+        "==============",
+        f"DOCUMENTO{T}{T}NOTA DE DEBITO ELECTRONICA",
+        f"REFERENCIA{T}{T}FACTURA NO AFECTA O EXENTA ELECTRONICA CORRESPONDIENTE A CASO 7654321-6",
+        f"RAZON REFERENCIA{T}MODIFICA MONTO",
+        f"ITEM{T}{T}{T}{T}VALOR UNITARIO",
+        f"CAPACITACION USO PLC's CNC{T}  44779",
+    ]
+)
+
+#: (exento, total) a mano. Caso 1: 10×5.968 = 59.680. Caso 2: la cantidad (10)
+#: sale del caso 1, 10×746 = 7.460. Caso 3: 318.672+246.793 = 565.465. Casos 4
+#: y 5: corrección de giro y su anulación, sin montos. Caso 6: 332.530+223.896
+#: = 556.426. Casos 7 y 8: cantidad 1 del caso 6.
+ESPERADOS_EXENTA = {
+    "7654321-1": (59680, 59680),
+    "7654321-2": (7460, 7460),
+    "7654321-3": (565465, 565465),
+    "7654321-4": (0, 0),
+    "7654321-5": (0, 0),
+    "7654321-6": (556426, 556426),
+    "7654321-7": (166265, 166265),
+    "7654321-8": (44779, 44779),
+}
+
+
+def _documentos_exenta():
+    set_ = parsear_set(SET_EXENTA, "SET FACTURA EXENTA")
+    resueltos = resolver_lineas(set_)
+    folios: dict[str, tuple[int, int]] = {}
+    docs: dict[str, DatosDocumento] = {}
+    siguiente = {34: 100, 61: 200, 56: 300}
+    for caso in set_.casos:
+        docs[caso.id] = armar_documento(set_, caso, *resueltos[caso.id], RECEPTOR, FECHA, folios)
+        folios[caso.id] = (caso.tipo_dte, siguiente[caso.tipo_dte])
+        siguiente[caso.tipo_dte] += 1
+    return docs, folios
+
+
+def test_exenta_lee_los_ocho_casos() -> None:
+    set_ = parsear_set(SET_EXENTA, "SET FACTURA EXENTA")
+    assert set_.numero_atencion == "7654321"
+    assert folios_necesarios(set_) == {34: 3, 61: 3, 56: 2}
+    linea = set_.caso("7654321-1").lineas[0]
+    assert (linea.nombre, linea.cantidad, linea.unidad, linea.precio) == ("HORAS PROGRAMADOR", 10, "Hora", 5968)
+    assert set_.caso("7654321-2").codigo_referencia == CORRIGE_MONTOS
+    assert set_.caso("7654321-4").codigo_referencia == CORRIGE_TEXTO
+    assert set_.caso("7654321-8").referencia == "7654321-6"
+
+
+def test_exenta_modifica_monto_toma_la_cantidad_del_caso_referenciado() -> None:
+    resueltos = resolver_lineas(parsear_set(SET_EXENTA, "SET FACTURA EXENTA"))
+    [linea] = resueltos["7654321-2"][0]
+    assert (linea.cantidad, linea.precio, linea.unidad, linea.exento) == (10, 746, "Hora", True)
+    [linea] = resueltos["7654321-8"][0]
+    assert (linea.nombre, linea.cantidad, linea.precio) == ("CAPACITACION USO PLC's CNC", 1, 44779)
+
+
+@pytest.mark.parametrize("caso", ESPERADOS_EXENTA)
+def test_exenta_totales_sin_iva(caso: str) -> None:
+    docs, _ = _documentos_exenta()
+    d = docs[caso]
+    t = calcular_totales(d.tipo_dte, d.items, d.descuentos_globales)
+    assert (t.neto, t.iva, t.tasa_iva) == (0, 0, None)
+    assert (t.exento, t.total) == ESPERADOS_EXENTA[caso]
+
+
+@pytest.mark.parametrize("caso", ESPERADOS_EXENTA)
+def test_exenta_cumple_el_esquema_sin_iva(caso: str, esquema) -> None:
+    docs, folios = _documentos_exenta()
+    d = docs[caso]
+    firmado = firmar_dte(
+        construir_dte(EMISOR, d, folios[caso][1]), _caf(d.tipo_dte), _cert(),
+        datetime(2026, 9, 23, 13, tzinfo=timezone.utc),
+    )
+    arbol = etree.fromstring(firmado.xml)
+    assert esquema.validate(arbol), "\n".join(str(e) for e in esquema.error_log)
+    totales = arbol.find(".//{%s}Totales" % NS)
+    assert [etree.QName(h).localname for h in totales] == (
+        ["MntExe", "MntTotal"] if ESPERADOS_EXENTA[caso][1] else ["MntTotal"]
+    )
+    assert totales.findtext("{%s}MntTotal" % NS) == str(ESPERADOS_EXENTA[caso][1])

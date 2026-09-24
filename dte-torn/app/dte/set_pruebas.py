@@ -18,7 +18,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 
-from app.dte.builder import DatosDocumento, DescuentoGlobal, Item, Receptor, Referencia
+from app.dte.builder import DTE_EXENTOS, DatosDocumento, DescuentoGlobal, Item, Receptor, Referencia
 
 #: Documentos que el set nombra por texto.
 TIPOS = {
@@ -37,6 +37,16 @@ _ATENCION = re.compile(r"NUMERO DE ATENCI[OÓ]N:\s*(\d+)")
 #: larga a propósito: el set de libro de compras trae una más corta adentro.
 _SEPARADOR = re.compile(r"^-{40,}\s*$", re.MULTILINE)
 _REF_CASO = re.compile(r"CASO\s+(\d+-\d+)")
+#: Columnas del encabezado `ITEM ...` de cada caso, y el campo de `Linea` que
+#: llenan. Cada set trae las suyas: el de exenta dice "VALOR UNITARIO" y agrega
+#: la unidad, y sus notas traen solo el valor, sin cantidad.
+_COLUMNAS = {
+    "CANTIDAD": "cantidad",
+    "PRECIO UNITARIO": "precio",
+    "VALOR UNITARIO": "precio",
+    "UNIDAD MEDIDA": "unidad",
+    "DESCUENTO ITEM": "descuento_pct",
+}
 
 
 class SetInvalidoError(Exception):
@@ -46,13 +56,16 @@ class SetInvalidoError(Exception):
 @dataclass
 class Linea:
     nombre: str
-    cantidad: Decimal
+    cantidad: Decimal | None = None
     precio: Decimal | None = None
     descuento_pct: Decimal | None = None
+    unidad: str | None = None
+    #: Exenta por su nombre ("... EXENTO") o por estar en un documento exento.
+    #: Las notas la heredan de la línea que modifican.
+    exento: bool = False
 
-    @property
-    def exento(self) -> bool:
-        return self.nombre.upper().endswith("EXENTO")
+    def __post_init__(self) -> None:
+        self.exento = self.exento or self.nombre.upper().endswith("EXENTO")
 
 
 @dataclass
@@ -115,6 +128,7 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
 
     casos: list[Caso] = []
     actual: Caso | None = None
+    columnas: list[str] = []
     for cruda in texto.splitlines():
         linea = cruda.rstrip("\r")
         limpia = linea.strip()
@@ -123,6 +137,7 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
         if m := _CASO.match(limpia):
             actual = Caso(id=m.group(1))
             casos.append(actual)
+            columnas = []
             continue
         if actual is None:
             continue  # encabezado del archivo: indicaciones generales
@@ -143,21 +158,21 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
             actual.referencia = ref.group(1)
         elif clave.startswith("DESCUENTO GLOBAL"):
             actual.descuento_global_pct = _numero(partes[-1])
-        elif clave == "ITEM" and "CANTIDAD" in linea.upper():
-            continue  # encabezado de columnas
+        elif clave == "ITEM":
+            desconocidas = [p for p in partes[1:] if p.upper() not in _COLUMNAS]
+            if desconocidas:
+                raise SetInvalidoError(f"Caso {actual.id}: columnas no soportadas: {desconocidas}")
+            columnas = [_COLUMNAS[p.upper()] for p in partes[1:]]
         else:
-            numeros = partes[1:]
-            if not numeros:
-                raise SetInvalidoError(f"Caso {actual.id}: línea sin cantidad: {limpia!r}")
-            pct = next((_numero(n) for n in numeros if n.endswith("%")), None)
-            montos = [_numero(n) for n in numeros if not n.endswith("%")]
+            valores = partes[1:]
+            if not valores or len(valores) > len(columnas):
+                raise SetInvalidoError(f"Caso {actual.id}: la línea no calza con las columnas: {limpia!r}")
+            campos: dict = dict(zip(columnas, valores))
+            for campo in ("cantidad", "precio", "descuento_pct"):
+                if campo in campos:
+                    campos[campo] = _numero(campos[campo])
             actual.lineas.append(
-                Linea(
-                    nombre=partes[0],
-                    cantidad=montos[0],
-                    precio=montos[1] if len(montos) > 1 else None,
-                    descuento_pct=pct,
-                )
+                Linea(nombre=partes[0], exento=actual.tipo_dte in DTE_EXENTOS, **campos)
             )
 
     if not casos:
@@ -171,8 +186,9 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
 def resolver_lineas(set_: SetPruebas) -> dict[str, tuple[list[Linea], Decimal | None]]:
     """Completa las líneas de cada caso con lo que el set no repite.
 
-    - Devolución parcial: cada línea toma precio y descuento de la línea del
-      mismo nombre en el caso referenciado.
+    - Devolución parcial o "modifica monto": cada línea toma lo que no trae
+      (precio, cantidad, descuento, unidad, exención) de la línea del mismo
+      nombre en el caso referenciado.
     - Anulación sin líneas: copia el caso referenciado completo, descuento
       global incluido.
     - Corrección de texto sin líneas: una línea sin monto que describe la
@@ -196,22 +212,24 @@ def resolver_lineas(set_: SetPruebas) -> dict[str, tuple[list[Linea], Decimal | 
                 completas = []
                 for l in lineas:
                     original = por_nombre.get(l.nombre)
-                    if l.precio is None and original is None:
-                        raise SetInvalidoError(
-                            f"Caso {caso.id}: {l.nombre!r} no tiene precio ni está en el caso {caso.referencia}"
-                        )
+                    if original is None:
+                        completas.append(l)
+                        continue
                     completas.append(
                         Linea(
                             nombre=l.nombre,
-                            cantidad=l.cantidad,
+                            cantidad=l.cantidad if l.cantidad is not None else original.cantidad,
                             precio=l.precio if l.precio is not None else original.precio,
                             descuento_pct=l.descuento_pct if l.descuento_pct is not None else original.descuento_pct,
+                            unidad=l.unidad or original.unidad,
+                            exento=l.exento or original.exento,
                         )
                     )
                 lineas = completas
         for l in lineas:
-            if l.precio is None:
-                raise SetInvalidoError(f"Caso {caso.id}: {l.nombre!r} no tiene precio")
+            if l.precio is None or l.cantidad is None:
+                falta = "precio" if l.precio is None else "cantidad"
+                raise SetInvalidoError(f"Caso {caso.id}: {l.nombre!r} no tiene {falta}")
         resueltos[caso.id] = (lineas, global_pct)
     return resueltos
 
@@ -261,6 +279,7 @@ def armar_documento(
                 nombre=l.nombre,
                 cantidad=l.cantidad,
                 precio=l.precio,
+                unidad=l.unidad,
                 descuento_pct=l.descuento_pct,
                 exento=l.exento,
             )
