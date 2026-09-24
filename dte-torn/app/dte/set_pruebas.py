@@ -16,9 +16,20 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
-from app.dte.builder import DTE_EXENTOS, GUIA_DESPACHO, DatosDocumento, DescuentoGlobal, Item, Receptor, Referencia
+from app.dte.builder import (
+    DTE_EXENTOS,
+    GUIA_DESPACHO,
+    TASA_IVA,
+    DatosDocumento,
+    DescuentoGlobal,
+    Item,
+    Receptor,
+    Referencia,
+)
+from app.dte.libros import IVA_NO_REC_ENTREGA_GRATUITA, RETENCION_TOTAL, DetalleCV
+from app.dte.rut import digito_verificador
 
 #: Documentos que el set nombra por texto.
 TIPOS = {
@@ -119,6 +130,18 @@ def _numero(texto: str) -> Decimal:
     return Decimal(texto.strip().rstrip("%").replace(",", "."))
 
 
+def _seccion(texto: str, nombre: str) -> str:
+    """La sección del archivo cuyo título empieza con `nombre`; sin títulos, todo."""
+    secciones = _SEPARADOR.split(texto)
+    if len(secciones) == 1:
+        return texto
+    titulo = re.compile(rf"^{re.escape(nombre)}\b", re.MULTILINE)
+    seccion = next((s for s in secciones if titulo.search(s)), None)
+    if seccion is None:
+        raise SetInvalidoError(f"El archivo no trae el {nombre}")
+    return seccion
+
+
 def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
     """Lee un set del `.txt` del SII (ya decodificado desde latin-1).
 
@@ -129,12 +152,7 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
     Raises:
         SetInvalidoError: No se encontró el set, el número de atención o ningún caso.
     """
-    secciones = _SEPARADOR.split(texto)
-    if len(secciones) > 1:
-        titulo = re.compile(rf"^{re.escape(nombre)}\b", re.MULTILINE)
-        texto = next((s for s in secciones if titulo.search(s)), None)
-        if texto is None:
-            raise SetInvalidoError(f"El archivo no trae el {nombre}")
+    texto = _seccion(texto, nombre)
     atencion = _ATENCION.search(texto)
     if not atencion:
         raise SetInvalidoError("No se encontró el número de atención del set")
@@ -337,3 +355,127 @@ def folios_necesarios(set_: SetPruebas) -> dict[int, int]:
     for caso in set_.casos:
         conteo[caso.tipo_dte] = conteo.get(caso.tipo_dte, 0) + 1
     return conteo
+
+
+# ----------------------------------------------------- set libro de compras --
+
+#: Documentos recibidos que nombra el set de libro de compras. Los que no dicen
+#: "ELECTRONICA" son de papel.
+TIPOS_COMPRA = {
+    "FACTURA": 30,
+    "FACTURA ELECTRONICA": 33,
+    "FACTURA EXENTA": 32,
+    "FACTURA EXENTA ELECTRONICA": 34,
+    "FACTURA DE COMPRA ELECTRONICA": 46,
+    "NOTA DE DEBITO": 55,
+    "NOTA DE DEBITO ELECTRONICA": 56,
+    "NOTA DE CREDITO": 60,
+    "NOTA DE CREDITO ELECTRONICA": 61,
+}
+_FACTOR = re.compile(r"PROPORCIONALIDAD\s+DEL\s+IVA\s+ES\s+DE\s+([\d.,]+)")
+#: "... A FACTURA 234", "... FACTURA ELECTRONICA 32": el documento que corrige una nota.
+_CORRIGE_A = re.compile(r"FACTURA(?: ELECTRONICA)?\s+(\d+)\s*$")
+
+
+@dataclass
+class DocumentoCompra:
+    tipo_doc: int
+    folio: int
+    observacion: str
+    exento: int
+    afecto: int
+
+
+@dataclass
+class SetLibroCompras:
+    numero_atencion: str
+    documentos: list[DocumentoCompra]
+    factor_proporcionalidad: Decimal | None
+
+
+def parsear_libro_compras(texto: str, nombre: str = "SET LIBRO DE COMPRAS") -> SetLibroCompras:
+    """Lee la tabla del set de libro de compras.
+
+    Cada documento ocupa tres líneas: tipo y folio, observación, y montos
+    (exento en la primera columna, afecto en la última). Una línea que empieza
+    con tabulación no trae exento.
+    """
+    texto = _seccion(texto, nombre)
+    atencion = _ATENCION.search(texto)
+    if not atencion:
+        raise SetInvalidoError("No se encontró el número de atención del set")
+
+    lineas = [l.rstrip("\r") for l in texto.splitlines() if l.strip() and not l.strip().startswith(("===", "---"))]
+    documentos: list[DocumentoCompra] = []
+    i = 0
+    while i < len(lineas):
+        partes = [p.strip() for p in lineas[i].split("\t") if p.strip()]
+        es_documento = "\t" in lineas[i] and len(partes) >= 2 and partes[-1].isdigit() and not partes[0][0].isdigit()
+        if not es_documento or partes[0].upper() == "TIPO DOCUMENTO":
+            i += 1
+            continue
+        nombre_doc = " ".join(partes[:-1]).upper()
+        if nombre_doc not in TIPOS_COMPRA:
+            raise SetInvalidoError(f"Libro de compras: documento no soportado: {nombre_doc!r}")
+        if i + 2 >= len(lineas):
+            raise SetInvalidoError(f"Libro de compras: al folio {partes[-1]} le faltan la observación o los montos")
+        columnas = lineas[i + 2].split("\t")
+        montos = [c.strip() for c in columnas[1:] if c.strip()]
+        documentos.append(
+            DocumentoCompra(
+                tipo_doc=TIPOS_COMPRA[nombre_doc],
+                folio=int(partes[-1]),
+                observacion=lineas[i + 1].strip(),
+                exento=int(columnas[0]) if columnas[0].strip() else 0,
+                afecto=int(montos[-1]) if montos else 0,
+            )
+        )
+        i += 3
+
+    if not documentos:
+        raise SetInvalidoError("El set de libro de compras no trae documentos")
+    factor = _FACTOR.search(" ".join(texto.split()))
+    return SetLibroCompras(
+        numero_atencion=atencion.group(1),
+        documentos=documentos,
+        factor_proporcionalidad=_numero(factor.group(1)) if factor else None,
+    )
+
+
+def detalles_libro_compras(set_: SetLibroCompras, fecha: date) -> list[DetalleCV]:
+    """Las líneas del libro de compras, con el IVA calculado según la observación.
+
+    - IVA de uso común: todo el IVA va a `IVAUsoComun` (el crédito sale del factor
+      en el resumen).
+    - Entrega gratuita: IVA no recuperable, código 4.
+    - Retención total: el IVA se informa y se retiene entero (código 15), así que
+      el total es el neto.
+
+    El SII pide RUT válidos para los proveedores, sin exigir que sean reales: se
+    usa uno distinto por documento, y cada nota lleva el de la factura que corrige.
+    """
+    ruts: dict[int, str] = {}
+    detalles = []
+    for n, doc in enumerate(set_.documentos, start=1):
+        obs = doc.observacion.upper()
+        corregido = _CORRIGE_A.search(obs) if doc.tipo_doc in (55, 56, 60, 61) else None
+        cuerpo = 77000000 + n
+        rut = ruts.get(int(corregido.group(1))) if corregido else None
+        rut = rut or f"{cuerpo}-{digito_verificador(cuerpo)}"
+        ruts[doc.folio] = rut
+
+        iva = int((Decimal(doc.afecto) * TASA_IVA / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        d = DetalleCV(
+            tipo_doc=doc.tipo_doc, folio=doc.folio, fecha=fecha, rut=rut,
+            razon_social=f"Proveedor {rut}", exento=doc.exento, neto=doc.afecto, iva=iva,
+            tasa_iva=TASA_IVA if doc.afecto else None, total=doc.exento + doc.afecto + iva,
+        )
+        if "USO COMUN" in obs:
+            d.iva, d.iva_uso_comun = 0, iva
+        elif "ENTREGA GRATUITA" in obs:
+            d.iva, d.iva_no_recuperable = 0, (IVA_NO_REC_ENTREGA_GRATUITA, iva)
+        elif "RETENCION TOTAL" in obs:
+            d.otros_impuestos = [(RETENCION_TOTAL, TASA_IVA, iva)]
+            d.total -= iva
+        detalles.append(d)
+    return detalles

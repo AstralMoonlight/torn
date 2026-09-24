@@ -156,3 +156,40 @@ def xsd_boleta_parcheado(carpeta: Path) -> Path:
     )
     (carpeta / "xmldsignature_v10.xsd").write_bytes((XSD / "boleta" / "xmldsignature_v10.xsd").read_bytes())
     return destino
+
+
+def xsd_libros_parcheado(carpeta: Path) -> Path:
+    """Copia los esquemas oficiales de libros con sus dos defectos corregidos.
+
+    - `LceSiiTypes_v10.xsd`: `MontoType` tiene un `maxInclusive` de 34 dígitos,
+      más de lo que libxml2 acepta para un decimal. Se quita: `totalDigits` y
+      `fractionDigits` ya acotan el valor.
+    - `LibroGuia_v10.xsd` (2004): declara la firma como `SiiDte:Signature`, pero
+      una firma XMLDSig vive en el namespace `ds`. Se cambia por una referencia
+      a `ds:Signature`, como en `LibroCV_v10.xsd`.
+
+    Devuelve la carpeta; los archivos del SII quedan intactos en el repositorio.
+    """
+    origen = XSD / "libros"
+    for archivo in origen.iterdir():
+        (carpeta / archivo.name).write_bytes(archivo.read_bytes())
+
+    tipos = carpeta / "LceSiiTypes_v10.xsd"
+    maximo = b'<xs:maxInclusive value="999999999999999999999999999999.9999"/>'
+    original = tipos.read_bytes()
+    assert original.count(maximo) == 1, "El SII cambió LceSiiTypes; revisar si el defecto sigue ahí"
+    tipos.write_bytes(original.replace(maximo, b""))
+
+    guia = carpeta / "LibroGuia_v10.xsd"
+    firma = b'<xs:element name="Signature" type="SiiDte:SignatureType">'
+    original = guia.read_bytes()
+    assert original.count(firma) == 1, "El SII cambió LibroGuia; revisar si el defecto sigue ahí"
+    guia.write_bytes(
+        original.replace(firma, b'<xs:element ref="ds:Signature">')
+        .replace(b'xmlns:SiiDte="http://www.sii.cl/SiiDte"',
+                 b'xmlns:SiiDte="http://www.sii.cl/SiiDte" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"', 1)
+        .replace(b'attributeFormDefault="unqualified">',
+                 b'attributeFormDefault="unqualified">'
+                 b'<xs:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="xmldsignature_v10.xsd"/>', 1)
+    )
+    return carpeta
