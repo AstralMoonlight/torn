@@ -10,6 +10,8 @@ Dos modos:
   declaración de avance) y muestra el N° de envío para declararlo.
 - `muestras`: genera los PDF de los documentos del set (y la copia cedible de
   las facturas) para la etapa de muestras impresas. No toca el SII.
+- `libro`: arma, firma y sube el libro de ventas o de compras del set
+  (`DTE_LIBRO=ventas|compras`) y muestra el N° de envío para declararlo.
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -688,6 +690,122 @@ async def modo_muestras() -> int:
     return 0
 
 
+# -------------------------------------------------------------------- libro --
+
+#: Folio de notificación de cada libro en certificación (inst_set_pruebas.pdf).
+_FOLIO_NOTIFICACION = {"ventas": 1, "compras": 2}
+
+
+async def _documentos_del_set_basico(claves: list[str]) -> tuple[Tenant, list[Document]]:
+    """El emisor que emitió el set básico y sus documentos, en el orden de los casos."""
+    async with control_session() as sesion:
+        tenants = (await sesion.execute(select(Tenant))).scalars().all()
+    for tenant in tenants:
+        async with tenant_session(tenant.id) as sesion:
+            docs = {
+                d.external_id: d
+                for d in (
+                    await sesion.execute(select(Document).where(Document.external_id.in_(claves)))
+                ).scalars()
+            }
+        if docs:
+            faltan = [c for c in claves if c not in docs or docs[c].estado != "ACEPTADO"]
+            if faltan:
+                sys.exit(f"El set básico no está completo y aceptado; faltan: {', '.join(faltan)}")
+            return tenant, [docs[c] for c in claves]
+    sys.exit("No hay documentos del set básico: primero corre el modo 'set'.")
+
+
+def _detalle_venta(doc: Document):
+    from app.dte.libros import DetalleCV
+
+    referencia = next((r for r in doc.payload.get("referencias", []) if r["tipo_doc"] != "SET"), None)
+    return DetalleCV(
+        tipo_doc=doc.tipo_dte, folio=doc.folio, fecha=doc.fecha_emision, rut=doc.receptor_rut,
+        razon_social=(doc.payload.get("receptor") or {}).get("razon_social"),
+        exento=doc.monto_exento, neto=doc.monto_neto, iva=doc.monto_iva, total=doc.monto_total,
+        tasa_iva=Decimal(19) if doc.monto_neto else None,
+        tipo_doc_ref=int(referencia["tipo_doc"]) if referencia else None,
+        folio_ref=int(referencia["folio"]) if referencia else None,
+    )
+
+
+async def modo_libro() -> int:
+    """Arma, firma y sube el libro de ventas o de compras del set (`DTE_LIBRO`).
+
+    El de ventas sale de los documentos del set básico ya aceptados; el de
+    compras, de la tabla del set de libro de compras. Los dos van al período de
+    los documentos del set básico. Guarda una copia del XML en `DTE_MUESTRAS`.
+
+    Cada corrida es un envío nuevo al SII: no correrlo dos veces sin necesidad.
+    """
+    from pathlib import Path
+
+    from app.dte.libros import COMPRA, Caratula, construir_libro_cv, firmar_libro
+    from app.dte.libros import VENTA as OPERACION_VENTA
+    from app.dte.set_pruebas import detalles_libro_compras, parsear_libro_compras, parsear_set
+
+    libro = os.environ.get("DTE_LIBRO", "").strip().lower()
+    if libro not in _FOLIO_NOTIFICACION:
+        sys.exit("DTE_LIBRO debe ser 'ventas' o 'compras'.")
+    _, _, cert = _certificado()
+    with open(_requerida("DTE_SET"), "rb") as f:
+        texto = f.read().decode("latin-1")
+    basico = parsear_set(texto, "SET BASICO")
+    tenant, docs = await _documentos_del_set_basico([f"set-{basico.numero_atencion}-{c.id}" for c in basico.casos])
+
+    caratula = Caratula(
+        rut_emisor=tenant.rut_emisor, rut_envia=cert.rut, periodo=docs[0].fecha_emision.strftime("%Y-%m"),
+        fecha_resolucion=tenant.resolucion_fecha, numero_resolucion=tenant.resolucion_numero,
+        folio_notificacion=_FOLIO_NOTIFICACION[libro],
+    )
+    if libro == "ventas":
+        arbol = construir_libro_cv(caratula, OPERACION_VENTA, [_detalle_venta(d) for d in docs])
+    else:
+        compras = parsear_libro_compras(texto)
+        arbol = construir_libro_cv(
+            caratula, COMPRA, detalles_libro_compras(compras, docs[0].fecha_emision), compras.factor_proporcionalidad
+        )
+    xml = firmar_libro(arbol, cert)
+    carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / f"libro_{libro}.xml").write_bytes(xml)
+    print(f"Libro de {libro}, período {caratula.periodo}: guardado en {carpeta / f'libro_{libro}.xml'}")
+
+    s = get_settings()
+    redis = Redis.from_url(s.redis_url)
+    resultado = None
+    async with crear_http(s.sii_timeout_segundos) as http:
+        sii = ClienteSii(http, redis, ambiente="CERT", ttl_token=s.sii_token_ttl_segundos)
+        track = await sii.enviar(Canal.DTE, tenant.id, cert, tenant.rut_emisor, xml, f"libro-{libro}.xml")
+        subido = datetime.now(ZONA_CHILE)
+        print(f"Envío del libro: track {track}, subido {subido:%H:%M:%S} hora de Chile")
+        while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
+            await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
+            try:
+                resultado = await sii.consultar(Canal.DTE, tenant.id, cert, tenant.rut_emisor, track)
+            except SiiError as exc:
+                print(f"   ({_transcurrido(subido)})  consulta falló: {exc}")
+                continue
+            print(f"   ({_transcurrido(subido)})  {resultado.estado}: {resultado.glosa or ''}")
+            if resultado.estado not in ("REC", "SOK", "CRT", "FOK", "PDR", "PRD", "-"):
+                break
+    await redis.aclose()
+    await get_engine().dispose()
+
+    if resultado is None:
+        print(f"El SII todavía no responde. Consultar el track {track} más tarde.")
+        return 1
+    # ponytail: los estados finales de un libro (LOK, LTC, LRH...) no están en los
+    # documentos que revisamos; se trata como rechazo lo que empieza con "LR" y
+    # se muestra la respuesta completa para decidir a mano.
+    print(resultado.crudo)
+    rechazado = resultado.estado.startswith("LR") or resultado.estado.startswith("R")
+    if not rechazado:
+        print(f"Para declarar el avance: N° de envío {track}, fecha {subido:%d-%m-%Y}")
+    return 1 if rechazado else 0
+
+
 # ---------------------------------------------------------------- verificar --
 
 
@@ -802,7 +920,7 @@ if __name__ == "__main__":
     if modo == "revisar-set":
         sys.exit(modo_revisar_set())
     modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar, "set": modo_set,
-             "muestras": modo_muestras}
+             "muestras": modo_muestras, "libro": modo_libro}
     if modo not in modos:
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set', 'muestras' o 'revisar-set'.")
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set', 'muestras', 'libro' o 'revisar-set'.")
     sys.exit(asyncio.run(modos[modo]()))

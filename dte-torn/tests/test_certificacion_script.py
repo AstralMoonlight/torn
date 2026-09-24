@@ -355,3 +355,40 @@ async def test_enviar_una_guia_de_prueba(entorno, tmp_path, monkeypatch) -> None
     async with tenant_session(tenant_id) as s:
         doc = (await s.execute(select(Document))).scalar_one()
     assert (doc.tipo_dte, doc.payload["ind_traslado"], doc.monto_total, doc.estado) == (52, 1, 1190, "ACEPTADO")
+
+
+
+# ----------------------------------------------------------------- libros --
+
+
+async def test_libro_de_ventas_con_los_documentos_del_set(entorno_set, tmp_path, monkeypatch, capsys) -> None:
+    """Totales de facturas del set básico de prueba, a mano (ver
+    test_set_pruebas.ESPERADOS): 521.719 + 2.491.535 + 880.874 + 1.003.611 = 4.897.739."""
+    from lxml import etree
+
+    from app.dte.builder import NS
+
+    await certificacion.modo_set()
+    monkeypatch.setenv("DTE_LIBRO", "ventas")
+    monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path / "libros"))
+    entorno_set.uploads.append((200, _upload("0", "5555")))
+    entorno_set.estados = [_estado("LOK", glosa="Libro Cuadrado")]
+    assert await certificacion.modo_libro() == 0
+
+    assert entorno_set.llamadas.count("upload") == 2
+    salida = capsys.readouterr().out
+    assert "N° de envío 5555" in salida
+    arbol = etree.fromstring((tmp_path / "libros" / "libro_ventas.xml").read_bytes())
+    n = {"s": NS}
+    facturas = arbol.find(".//s:TotalesPeriodo[s:TpoDoc='33']", n)
+    assert (facturas.findtext("s:TotDoc", namespaces=n), facturas.findtext("s:TotMntTotal", namespaces=n)) == (
+        "4", "4897739",
+    )
+    assert len(arbol.findall(".//s:Detalle", n)) == 8
+    assert arbol.findtext(".//s:FolioNotificacion", namespaces=n) == "1"
+
+
+async def test_libro_sin_set_emitido_no_parte(entorno_set, monkeypatch) -> None:
+    monkeypatch.setenv("DTE_LIBRO", "ventas")
+    with pytest.raises(SystemExit, match="primero corre"):
+        await certificacion.modo_libro()
