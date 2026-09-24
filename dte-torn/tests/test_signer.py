@@ -366,3 +366,19 @@ def test_alterar_el_sobre_rompe_su_firma(cert, caf33) -> None:
 
     with pytest.raises(FirmaInvalidaError, match="del sobre"):
         verificar_sobre(etree.fromstring(alterado), cert.cert_pem)
+
+
+def test_guia_de_despacho_se_timbra_y_firma(cert) -> None:
+    caf52 = parsear_caf(caf_xml(rut="76543210-3", tipo_dte=52, desde=1, hasta=10))
+    datos = DatosDocumento(
+        tipo_dte=52, fecha_emision=date(2026, 9, 23), receptor=RECEPTOR, ind_traslado=1,
+        items=[Item(nombre="ITEM 1", cantidad=Decimal(145), precio=Decimal("3363"))],
+    )
+    firmado = firmar_dte(construir_dte(EMISOR, datos, 1), caf52, cert, MOMENTO)
+
+    verificar_firma_dte(etree.fromstring(firmado.xml), cert.cert_pem)
+    dd, frmt = _dd_y_frmt(firmado.xml)
+    assert b"<TD>52</TD><F>1</F>" in dd
+    assert b"<MNT>580286</MNT>" in dd  # 145 x 3.363 = 487.635 + IVA 92.651
+    llave = serialization.load_pem_private_key(caf52.llave_ted_pem, password=None)
+    llave.public_key().verify(frmt, dd, padding.PKCS1v15(), hashes.SHA1())

@@ -150,6 +150,19 @@ FACTURAS = {
         items=[_item(nombre="Devolución")],
         referencias=[Referencia(tipo_doc="33", folio="1000", fecha=HOY, codigo=1, razon="Anula")],
     ),
+    "52 guía de venta": DatosDocumento(
+        tipo_dte=52, fecha_emision=HOY, receptor=RECEPTOR, ind_traslado=1, tipo_despacho=1, items=[_item()],
+    ),
+    "52 traslado interno sin precios": DatosDocumento(
+        tipo_dte=52,
+        fecha_emision=HOY,
+        receptor=Receptor(
+            rut=EMISOR.rut, razon_social=EMISOR.razon_social, giro=EMISOR.giro,
+            direccion=EMISOR.direccion, comuna=EMISOR.comuna,
+        ),
+        ind_traslado=5,
+        items=[_item(precio=Decimal(0)), _item(nombre="Otro", cantidad=Decimal(3), precio=Decimal(0))],
+    ),
     "33 caso de certificación": DatosDocumento(
         tipo_dte=33,
         fecha_emision=HOY,

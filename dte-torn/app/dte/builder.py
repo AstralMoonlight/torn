@@ -61,7 +61,8 @@ BOLETAS = frozenset({39, 41})
 #: Notas de débito y crédito: sin referencia al documento que modifican, el SII
 #: las rechaza.
 REQUIEREN_REFERENCIA = frozenset({56, 61})
-TIPOS_SOPORTADOS = frozenset({33, 34, 39, 41, 56, 61})
+GUIA_DESPACHO = 52
+TIPOS_SOPORTADOS = frozenset({33, 34, 39, 41, GUIA_DESPACHO, 56, 61})
 
 #: Máximo de líneas de detalle en un DTE que no es boleta.
 MAX_LINEAS = 60
@@ -166,11 +167,22 @@ class DatosDocumento(BaseModel):
     #: 1 = contado, 2 = crédito, 3 = sin costo. Solo facturas.
     forma_pago: int | None = Field(default=None, ge=1, le=3)
     fecha_vencimiento: date | None = None
+    #: Solo guías (`IndTraslado`): 1 venta, 2 venta por efectuar, 3 consignación,
+    #: 4 promoción o donación, 5 traslado interno, 6 otros sin venta, 7 devolución.
+    ind_traslado: int | None = Field(default=None, ge=1, le=9)
+    #: Solo guías (`TipoDespacho`): 1 por cuenta del comprador, 2 del emisor a
+    #: instalaciones del comprador, 3 del emisor a otras instalaciones.
+    tipo_despacho: int | None = Field(default=None, ge=1, le=3)
 
     @model_validator(mode="after")
     def _reglas_por_tipo(self) -> DatosDocumento:
         if self.tipo_dte not in TIPOS_SOPORTADOS:
             raise ValueError(f"Tipo de documento no soportado: {self.tipo_dte}")
+
+        if self.tipo_dte == GUIA_DESPACHO and self.ind_traslado is None:
+            raise ValueError("La guía de despacho requiere el tipo de traslado (IndTraslado)")
+        if self.tipo_dte != GUIA_DESPACHO and (self.ind_traslado or self.tipo_despacho):
+            raise ValueError("El tipo de traslado y de despacho son solo para guías de despacho")
 
         if self.tipo_dte not in BOLETAS:
             if self.receptor is None:
@@ -391,6 +403,8 @@ def _id_doc(encabezado: etree._Element, datos: DatosDocumento, folio: int) -> No
     _sub(nodo, "TipoDTE", datos.tipo_dte)
     _sub(nodo, "Folio", folio)
     _sub(nodo, "FchEmis", datos.fecha_emision.isoformat())
+    _sub(nodo, "TipoDespacho", datos.tipo_despacho)
+    _sub(nodo, "IndTraslado", datos.ind_traslado)
     if datos.tipo_dte in BOLETAS:
         _sub(nodo, "IndServicio", IND_SERVICIO_BOLETA)
     else:

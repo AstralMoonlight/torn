@@ -264,7 +264,7 @@ def test_rut_con_dv_incorrecto_se_rechaza_antes_de_gastar_folio() -> None:
 
 def test_tipo_no_soportado() -> None:
     with pytest.raises(ValidationError, match="no soportado"):
-        _factura([Item(nombre="A", precio=Decimal("1"))], tipo_dte=52)
+        _factura([Item(nombre="A", precio=Decimal("1"))], tipo_dte=46)
 
 
 def test_emisor_sin_direccion_no_puede_facturar() -> None:
@@ -339,3 +339,39 @@ def test_linea_sin_precio_omite_prcitem() -> None:
     detalle = dte.find(".//s:Detalle", N)
     assert detalle.find("s:PrcItem", N) is None
     assert _texto(detalle, "s:MontoItem") == "0"
+
+
+# ------------------------------------------------------ guía de despacho ---
+
+
+def test_guia_lleva_traslado_y_despacho_en_su_lugar() -> None:
+    """Orden del XSD: FchEmis, IndNoRebaja, TipoDespacho, IndTraslado."""
+    guia = _factura(
+        [Item(nombre="ITEM 1", cantidad=145, precio=Decimal("3363"))],
+        tipo_dte=52, ind_traslado=1, tipo_despacho=2,
+    )
+    dte = construir_dte(EMISOR, guia, 1)
+    assert _hijos(dte, ".//s:IdDoc") == ["TipoDTE", "Folio", "FchEmis", "TipoDespacho", "IndTraslado"]
+    assert (_texto(dte, ".//s:TipoDespacho"), _texto(dte, ".//s:IndTraslado")) == ("2", "1")
+
+
+def test_guia_de_traslado_interno_sin_precios() -> None:
+    guia = _factura(
+        [Item(nombre="ITEM 1", cantidad=61, precio=0), Item(nombre="ITEM 2", cantidad=73, precio=0)],
+        tipo_dte=52, ind_traslado=5,
+    )
+    dte = construir_dte(EMISOR, guia, 1)
+    assert _hijos(dte, ".//s:Totales") == ["MntTotal"]
+    assert _texto(dte, ".//s:MntTotal") == "0"
+    assert dte.find(".//s:PrcItem", N) is None
+    assert _texto(dte, ".//s:TipoDespacho") is None
+
+
+def test_guia_sin_tipo_de_traslado_se_rechaza() -> None:
+    with pytest.raises(ValidationError, match="IndTraslado"):
+        _factura([Item(nombre="A", precio=Decimal(1))], tipo_dte=52)
+
+
+def test_traslado_fuera_de_una_guia_se_rechaza() -> None:
+    with pytest.raises(ValidationError, match="guías"):
+        _factura([Item(nombre="A", precio=Decimal(1))], ind_traslado=1)
