@@ -9,7 +9,7 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 ## Fase 1: Set básico (5093757)
 
 ### U1: Pedir folios del set básico
-- [ ] CAF 33 ×4, 61 ×3, 56 ×1 en maullin, guardados en `dte-torn/` (gitignored)
+- [x] CAF 33 ×4, 61 ×3, 56 ×1 en maullin, guardados en `dte-torn/` (gitignored)
   - Estado 2026-09-24: los `caf_*_set_*.xml` de `dte-torn/` están AGOTADOS (los usó el set anterior 5093021). Hay que pedir CAF nuevos.
   - El archivo vigente es `setDePruebas/SIISetDePruebas763989569 (1).txt` (atención 5093757…); el sin "(1)" es un set anterior (5093746…).
 
@@ -17,7 +17,7 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 **Descripción:** correr `certificacion set` con el archivo nuevo y los CAF de U1.
 **Aceptación:**
 - [x] `revisar-set` muestra los 8 casos con totales que cuadran a mano
-- [ ] Envío único: EPR, 8 aceptados, 0 reparos
+- [x] Envío único: EPR, 8 aceptados, 0 reparos — track 0260080046 (24-09-2026). CAF en `dte-torn/folios/`: 33 71-74, 61 69-71, 56 60
 - [ ] Usuario declara el avance con el track ID
 **Dependencias:** U1 · **Archivos:** ninguno (solo `.env`) · **Tamaño:** XS
 
