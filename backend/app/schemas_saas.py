@@ -1,8 +1,8 @@
 """Esquemas Pydantic para el API Global del SaaS (Usuarios y Tenants)."""
 
-from pydantic import BaseModel, ConfigDict
-from datetime import datetime
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import date, datetime
+from typing import Literal, Optional
 
 
 class ActecoOut(BaseModel):
@@ -40,7 +40,13 @@ class TenantOut(BaseModel):
     giro: Optional[str] = None
     billing_day: int
     economic_activities: Optional[list] = []
-    
+
+    # Datos SII (copiados a dte-torn)
+    sii_ambiente: str = "CERT"
+    sii_resolucion_numero: int = 0
+    sii_resolucion_fecha: Optional[date] = None
+    sii_oficina: Optional[str] = None
+
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
@@ -98,6 +104,10 @@ class TenantUpdate(BaseModel):
     giro: Optional[str] = None
     billing_day: Optional[int] = None
     economic_activities: Optional[list] = None
+    sii_ambiente: Optional[Literal["CERT", "PROD"]] = None
+    sii_resolucion_numero: Optional[int] = Field(default=None, ge=0)
+    sii_resolucion_fecha: Optional[date] = None
+    sii_oficina: Optional[str] = Field(default=None, max_length=60)
 
 class TenantUserUpdate(BaseModel):
     role_name: Optional[str] = None

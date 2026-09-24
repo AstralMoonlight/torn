@@ -3,8 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db
 from app.models.issuer import Issuer
+from app.models.saas import TenantUser
+from app.services import dte_client
 from app.schemas import IssuerCreate, IssuerOut, IssuerUpdate
 
 router = APIRouter(prefix="/issuer", tags=["issuer"])
@@ -38,11 +40,16 @@ def get_issuer(db: Session = Depends(get_tenant_db)):
 @router.put("/", response_model=IssuerOut,
              summary="Configurar Emisor",
              description="Crea o actualiza los datos tributarios de la empresa.")
-def upsert_issuer(data: IssuerUpdate, db: Session = Depends(get_tenant_db)):
+def upsert_issuer(
+    data: IssuerUpdate,
+    db: Session = Depends(get_tenant_db),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
     """Crea o actualiza los datos del emisor (singleton).
     
     Si ya existe, actualiza parcialmente los campos no nulos.
-    Si no existe, crea uno nuevo.
+    Si no existe, crea uno nuevo. El resultado se copia a dte-torn; si dte-torn
+    lo rechaza, no se guarda nada.
     
     Args:
         data (IssuerUpdate): Datos nuevos o a actualizar.
@@ -63,6 +70,13 @@ def upsert_issuer(data: IssuerUpdate, db: Session = Depends(get_tenant_db)):
         issuer = Issuer(**data.model_dump(exclude_unset=True))
         db.add(issuer)
 
+    db.flush()
+    try:
+        dte_client.sincronizar_emisor(tenant_user.tenant, issuer)
+    except dte_client.DteError as exc:
+        db.rollback()
+        raise HTTPException(status_code=exc.status_code,
+                            detail=f"No se pudo registrar el emisor en facturación electrónica: {exc.detail}") from exc
     db.commit()
     db.refresh(issuer)
     return issuer

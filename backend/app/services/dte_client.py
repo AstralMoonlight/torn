@@ -69,3 +69,30 @@ def emitir(tenant_id: int, documento: dict, actor: str | None = None) -> dict:
     """Emite factura, boleta o nota. Idempotente por `documento["external_id"]`."""
     ruta = "/boletas" if documento["tipo_dte"] in (39, 41) else "/documents"
     return request("POST", ruta, tenant_id, actor, json=documento).json()
+
+
+def sincronizar_emisor(tenant, issuer) -> None:
+    """Copia el emisor a dte-torn (`PUT /tenants/{id}`, upsert idempotente).
+
+    Se llama cada vez que cambia el `Issuer` del tenant o sus datos del SII.
+    Sin `TORN_DTE_URL` no hace nada: la emisión fallará igual con un mensaje
+    claro, y así un entorno sin dte-torn puede seguir configurando empresas.
+    """
+    if not os.getenv("TORN_DTE_URL") or issuer is None:
+        return
+    request("PUT", f"/tenants/{tenant_uuid(tenant.id)}", json={
+        "rut_emisor": issuer.rut,
+        "razon_social": issuer.razon_social,
+        "giro": issuer.giro,
+        "acteco": issuer.acteco,
+        "direccion": issuer.direccion,
+        "comuna": issuer.comuna,
+        "ciudad": issuer.ciudad,
+        "telefono": issuer.telefono,
+        "email": issuer.email,
+        "ambiente": tenant.sii_ambiente,
+        "resolucion_numero": tenant.sii_resolucion_numero,
+        "resolucion_fecha": tenant.sii_resolucion_fecha.isoformat() if tenant.sii_resolucion_fecha else None,
+        "oficina_sii": tenant.sii_oficina,
+        "activo": tenant.is_active,
+    })
