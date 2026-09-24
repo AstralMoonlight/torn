@@ -1,7 +1,7 @@
 # Tareas: set de pruebas SII completo
 
 Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
-`cd dte-torn && docker compose --profile test run --rm tests` (250 en verde al 2026-09-24).
+`cd dte-torn && docker compose --profile test run --rm tests` (291 en verde al 2026-09-24; la imagen no monta el código: agregar `-v "$(pwd -W)/app:/srv/app" -v "$(pwd -W)/tests:/srv/tests"` o reconstruir).
 **U** = lo hace el usuario en maullin (crea cosas en el SII). **T** = código.
 
 ---
@@ -10,6 +10,8 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 
 ### U1: Pedir folios del set básico
 - [ ] CAF 33 ×4, 61 ×3, 56 ×1 en maullin, guardados en `dte-torn/` (gitignored)
+  - Estado 2026-09-24: los `caf_*_set_*.xml` de `dte-torn/` están AGOTADOS (los usó el set anterior 5093021). Hay que pedir CAF nuevos.
+  - El archivo vigente es `setDePruebas/SIISetDePruebas763989569 (1).txt` (atención 5093757…); el sin "(1)" es un set anterior (5093746…).
 
 ### T1: Enviar y declarar el set básico
 **Descripción:** correr `certificacion set` con el archivo nuevo y los CAF de U1.
@@ -32,9 +34,9 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 el encabezado `VALOR UNITARIO` sin `CANTIDAD`, las notas "MODIFICA MONTO" que traen solo el valor unitario
 (la cantidad sale del caso referenciado) y la nota de débito del caso 8, que referencia la factura.
 **Aceptación:**
-- [ ] `parsear_set(texto, "SET FACTURA EXENTA")` devuelve 8 casos: 34×3, 61×3, 56×2
-- [ ] Unidad "Hora" llega a `Item.unidad`; montos de cada caso calculados a mano en el test
-- [ ] El set básico sigue pasando igual
+- [x] `parsear_set(texto, "SET FACTURA EXENTA")` devuelve 8 casos: 34×3, 61×3, 56×2
+- [x] Unidad "Hora" llega a `Item.unidad`; montos de cada caso calculados a mano en el test
+- [x] El set básico sigue pasando igual
 **Verificación:** tests de `test_set_pruebas.py` · **Dependencias:** ninguna
 **Archivos:** `app/dte/set_pruebas.py`, `tests/test_set_pruebas.py` · **Tamaño:** S
 **Skill:** test-driven-development
@@ -44,9 +46,9 @@ el encabezado `VALOR UNITARIO` sin `CANTIDAD`, las notas "MODIFICA MONTO" que tr
 `set-<atención>-<caso>` ya distinta por set. Test: los 8 documentos de exenta construyen XML válido
 contra `DTE_v10.xsd` y sin IVA ni tasa.
 **Aceptación:**
-- [ ] `revisar-set` con `DTE_SET_NOMBRE="SET FACTURA EXENTA"` lista los 8 casos y folios necesarios
-- [ ] XML del 34 sin `IVA`/`TasaIVA`/`MntNeto`, valida XSD
-- [ ] `certificacion enviar` emite una prueba con un CAF 34 (para U2)
+- [x] `revisar-set` con `DTE_SET_NOMBRE="SET FACTURA EXENTA"` lista los 8 casos y folios necesarios
+- [x] XML del 34 sin `IVA`/`TasaIVA`/`MntNeto`, valida XSD
+- [x] `certificacion enviar` emite una prueba con un CAF 34 (para U2)
 **Dependencias:** T2 · **Archivos:** `app/scripts/certificacion.py`, `tests/test_certificacion_script.py`, `tests/test_builder_xsd.py` · **Tamaño:** S
 
 ### T4: Enviar y declarar el set de exenta
@@ -55,7 +57,7 @@ contra `DTE_v10.xsd` y sin IVA ni tasa.
 **Dependencias:** T3, U2 · **Tamaño:** XS
 
 ### Checkpoint A
-- [ ] Suite verde · revisión `code-review-and-quality` del diff de fase 2
+- [x] Suite verde · revisión `code-review-and-quality` del diff de fase 2
 - [ ] Básico y exenta enviados sin reparos
 
 ---
@@ -68,28 +70,28 @@ contra `DTE_v10.xsd` y sin IVA ni tasa.
 Hay que permitir líneas sin precio en el traslado interno. En el traslado interno el receptor es el emisor.
 Todo contra XSD e instructivo (**source-driven-development**).
 **Aceptación:**
-- [ ] Los 3 casos construyen XML válido contra `DTE_v10.xsd`, con totales a mano (caso 1 en $0)
-- [ ] 52 sin `IndTraslado` se rechaza con error claro
-- [ ] Timbre (TED) y firma verifican para 52
+- [x] Los 3 casos construyen XML válido contra `DTE_v10.xsd`, con totales a mano (caso 1 en $0)
+- [x] 52 sin `IndTraslado` se rechaza con error claro
+- [x] Timbre (TED) y firma verifican para 52
 **Dependencias:** ninguna · **Archivos:** `app/dte/builder.py`, `tests/test_builder.py`, `tests/test_builder_xsd.py`, `tests/test_signer.py` · **Tamaño:** M
 
 ### T6: Lector entiende el set de guía
 **Descripción:** `MOTIVO:` → `IndTraslado`, `TRASLADO POR:` → `TipoDespacho`, líneas sin precio.
 Caso 1: receptor = datos del emisor.
 **Aceptación:**
-- [ ] `parsear_set(texto, "SET GUIA DE DESPACHO")` → 3 casos 52 con traslado y despacho correctos
+- [x] `parsear_set(texto, "SET GUIA DE DESPACHO")` → 3 casos 52 con traslado y despacho correctos
 **Dependencias:** T5 · **Archivos:** `app/dte/set_pruebas.py`, `app/scripts/certificacion.py`, tests · **Tamaño:** S
 
 ### T7: PDF de la guía
 **Descripción:** nombre del documento (ya está en `pdf.py`), tipo de traslado impreso y copia cedible
 solo si el traslado es venta. En el traslado interno "el ejemplar cedible es inoficioso".
 **Aceptación:**
-- [ ] Caso 2 y 3 generan tributaria + cedible; caso 1 solo tributaria
-- [ ] Timbre legible en el PDF (mismo test PDF417 que 33)
+- [x] Caso 2 y 3 generan tributaria + cedible; caso 1 solo tributaria
+- [x] Timbre legible en el PDF (mismo test PDF417 que 33)
 **Dependencias:** T5 · **Archivos:** `app/dte/pdf.py`, `tests/test_pdf.py` · **Tamaño:** S
 
 ### T8: Subir máximo del 52, enviar y declarar
-- [ ] `certificacion enviar` emite una prueba con un CAF 52
+- [x] `certificacion enviar` emite una prueba con un CAF 52
 - [ ] Emisiones de prueba de 52 hasta máximo ≥ 3 (U)
 - [ ] CAF 52×3; envío único EPR 3 aceptados 0 reparos; usuario declara
 **Dependencias:** T6, T7
