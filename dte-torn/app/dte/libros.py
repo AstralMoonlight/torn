@@ -200,9 +200,11 @@ def construir_libro_cv(
         _sub(e, "RznSoc", texto_sii(d.razon_social, 50))
         _sub(e, "TpoDocRef", d.tipo_doc_ref)
         _sub(e, "FolioDocRef", d.folio_ref)
-        _sub(e, "MntExe", d.exento or None)
-        _sub(e, "MntNeto", d.neto or None)
-        _sub(e, "MntIVA", d.iva if d.neto else None)
+        # Los tres, aunque sean cero: sin ellos el SII rechaza el libro por
+        # descuadrado ("LBR - 3 - Falta [MntNeto MntExe MntIVA]", 2026-09-24).
+        _sub(e, "MntExe", d.exento)
+        _sub(e, "MntNeto", d.neto)
+        _sub(e, "MntIVA", d.iva)
         if d.iva_no_recuperable:
             n = etree.SubElement(e, _q("IVANoRec"))
             _sub(n, "CodIVANoRec", d.iva_no_recuperable[0])

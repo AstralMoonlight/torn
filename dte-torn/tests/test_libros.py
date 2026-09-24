@@ -218,7 +218,9 @@ def test_libro_de_ventas(esquemas) -> None:
     assert (t[56]["TotMntNeto"], t[56]["TotMntIVA"], t[56]["TotMntTotal"]) == ("0", "0", "0")
     assert "TotOpIVARec" not in t[33]  # solo compras
     nd = arbol.find(".//s:Detalle[s:TpoDoc='56']", N)
-    assert nd.find("s:MntNeto", N) is None and nd.findtext("s:FolioDocRef", namespaces=N) == "200"
+    assert nd.findtext("s:FolioDocRef", namespaces=N) == "200"
+    # El SII exige los tres montos aunque sean cero (rechazo LBR - 3 si faltan).
+    assert [nd.findtext(f"s:{m}", namespaces=N) for m in ("MntExe", "MntNeto", "MntIVA")] == ["0", "0", "0"]
 
 
 def test_la_firma_del_libro_se_rompe_si_cambia_un_monto() -> None:
