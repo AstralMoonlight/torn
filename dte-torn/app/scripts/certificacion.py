@@ -58,9 +58,10 @@ from app.core.certificados import CertificadoInvalidoError, guardar_certificado,
 from app.core.config import get_settings
 from app.db import control_session, get_engine, tenant_session
 from app.dte import pipeline
-from app.dte.builder import BOLETAS, DatosDocumento, Item, Receptor, Referencia, calcular_totales
+from app.dte.builder import BOLETAS, GUIA_DESPACHO, DatosDocumento, Item, Receptor, Referencia, calcular_totales
 from app.dte.caf import guardar_caf, parsear_caf
 from app.dte.folios import DatosEmision, emitir_documento
+from app.dte.set_pruebas import VENTA
 from app.dte.signer import ZONA_CHILE
 from app.dte.sii_client import Canal, ClienteSii, SiiError, crear_http
 from app.models import CAF, Certificate, Document, Envio, Tenant
@@ -309,6 +310,7 @@ async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
             fecha_emision=date.today(),
             receptor=None if tipo_dte in BOLETAS else _RECEPTOR_PRUEBA,
             items=[Item(nombre="Prueba de certificacion dte-torn", precio=Decimal("1190" if tipo_dte in BOLETAS else "1000"))],
+            ind_traslado=VENTA if tipo_dte == GUIA_DESPACHO else None,
         )
     t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
     async with tenant_session(tenant_id) as s:

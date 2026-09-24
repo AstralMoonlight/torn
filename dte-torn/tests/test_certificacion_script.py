@@ -341,3 +341,17 @@ async def test_el_set_de_guias_manda_el_traslado_interno_al_propio_emisor(entorn
         ("76543210-3", 5, 0), ("60803000-K", 1, 940142), ("60803000-K", 1, 750795),
     ]
     assert docs[0].payload["receptor"]["direccion"] == "Av. Siempre Viva 742"
+
+
+async def test_enviar_una_guia_de_prueba(entorno, tmp_path, monkeypatch) -> None:
+    """Para subir el máximo de folios del 52: una guía de venta."""
+    caf = tmp_path / "caf_52.xml"
+    caf.write_bytes(caf_xml(rut="76543210-3", tipo_dte=52, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_CAF", str(caf))
+    assert await certificacion.modo_enviar() == 0
+
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        doc = (await s.execute(select(Document))).scalar_one()
+    assert (doc.tipo_dte, doc.payload["ind_traslado"], doc.monto_total, doc.estado) == (52, 1, 1190, "ACEPTADO")
