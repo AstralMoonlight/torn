@@ -12,7 +12,6 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, engine, Base
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.product import Product
 from app.models.user import User
@@ -37,18 +36,6 @@ def seed_data():
             email="contacto@biotech.cl",
         )
         db.add(issuer)
-
-    # 2. CAF (Folios 1-100 para Facturas 33)
-    if not db.query(CAF).filter_by(tipo_documento=33).first():
-        print("Creating CAF...")
-        caf = CAF(
-            tipo_documento=33,
-            folio_desde=1,
-            folio_hasta=100,
-            ultimo_folio_usado=0,
-            xml_caf="<CAF>DUMMY_CONTENT</CAF>",  # Simulado
-        )
-        db.add(caf)
 
     # 3. Cliente (Santiago)
     if not db.query(User).filter_by(rut="11222333-9").first():
