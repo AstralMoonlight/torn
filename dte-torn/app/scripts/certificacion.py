@@ -11,7 +11,7 @@ Dos modos:
 - `muestras`: genera los PDF de los documentos del set (y la copia cedible de
   las facturas) para la etapa de muestras impresas. No toca el SII.
 - `libro`: arma, firma y sube el libro de ventas o de compras del set
-  (`DTE_LIBRO=ventas|compras`) y muestra el N° de envío para declararlo.
+  (`DTE_LIBRO=ventas|compras|guias`) y muestra el N° de envío para declararlo.
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -279,12 +279,24 @@ async def _documento_a_anular(tenant_id: uuid.UUID, tipo_nota: int) -> Document:
     )
 
 
+async def _guia(tenant_id: uuid.UUID, folio: int) -> Document:
+    async with tenant_session(tenant_id) as s:
+        guia = (
+            await s.execute(select(Document).where(Document.tipo_dte == GUIA_DESPACHO, Document.folio == folio))
+        ).scalar_one_or_none()
+    if guia is None or guia.estado != "ACEPTADO":
+        sys.exit(f"No hay una guía de despacho folio {folio} aceptada por el SII.")
+    return guia
+
+
 async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
     """Emite un documento de prueba libre (fuera del set).
 
-    Factura o boleta: una línea de prueba. Nota de crédito o débito: anula el
-    documento aceptado más antiguo que no esté anulado, copiando sus líneas para
-    que los montos calcen.
+    Factura o boleta: una línea de prueba. Con `DTE_FACTURA_DE_GUIA=<folio>`, la
+    factura ampara esa guía: copia sus líneas y la referencia (lo pide el libro
+    de guías para una guía "que se facturó en el período"). Nota de crédito o
+    débito: anula el documento aceptado más antiguo que no esté anulado,
+    copiando sus líneas para que los montos calcen.
     """
     if tipo_dte in _ANULA_A:
         anulado = await _documento_a_anular(tenant_id, tipo_dte)
@@ -306,6 +318,19 @@ async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
             ],
         )
         print(f"Anula: tipo {anulado.tipo_dte}, folio {anulado.folio}")
+    elif tipo_dte == 33 and os.environ.get("DTE_FACTURA_DE_GUIA"):
+        guia = await _guia(tenant_id, int(os.environ["DTE_FACTURA_DE_GUIA"]))
+        base = DatosDocumento.model_validate(guia.payload)
+        datos = DatosDocumento(
+            tipo_dte=33,
+            fecha_emision=date.today(),
+            receptor=base.receptor,
+            items=base.items,
+            referencias=[
+                Referencia(tipo_doc="52", folio=str(guia.folio), fecha=guia.fecha_emision, razon="Factura guia de despacho")
+            ],
+        )
+        print(f"Factura la guía folio {guia.folio}")
     else:
         datos = DatosDocumento(
             tipo_dte=tipo_dte,
@@ -693,11 +718,14 @@ async def modo_muestras() -> int:
 # -------------------------------------------------------------------- libro --
 
 #: Folio de notificación de cada libro en certificación (inst_set_pruebas.pdf).
+#: El instructivo no nombra el libro de guías: lleva el número de atención de su
+#: set (ver `modo_libro`).
 _FOLIO_NOTIFICACION = {"ventas": 1, "compras": 2}
+_LIBROS = ("ventas", "compras", "guias")
 
 
-async def _documentos_del_set_basico(claves: list[str]) -> tuple[Tenant, list[Document]]:
-    """El emisor que emitió el set básico y sus documentos, en el orden de los casos."""
+async def _documentos_del_set(claves: list[str], nombre: str) -> tuple[Tenant, list[Document]]:
+    """El emisor que emitió un set y sus documentos, en el orden de los casos."""
     async with control_session() as sesion:
         tenants = (await sesion.execute(select(Tenant))).scalars().all()
     for tenant in tenants:
@@ -711,9 +739,47 @@ async def _documentos_del_set_basico(claves: list[str]) -> tuple[Tenant, list[Do
         if docs:
             faltan = [c for c in claves if c not in docs or docs[c].estado != "ACEPTADO"]
             if faltan:
-                sys.exit(f"El set básico no está completo y aceptado; faltan: {', '.join(faltan)}")
+                sys.exit(f"El {nombre} no está completo y aceptado; faltan: {', '.join(faltan)}")
             return tenant, [docs[c] for c in claves]
-    sys.exit("No hay documentos del set básico: primero corre el modo 'set'.")
+    sys.exit(f"No hay documentos del {nombre}: primero corre el modo 'set'.")
+
+
+async def _detalles_guias(tenant: Tenant, guias: list[Document], casos: list, texto: str):
+    """Las guías del set con las marcas del set de libro de guías."""
+    from app.dte.libros import GUIA_ANULADA, DetalleGuia
+    from app.dte.set_pruebas import parsear_libro_guias
+
+    marcas = parsear_libro_guias(texto)
+    async with tenant_session(tenant.id) as sesion:
+        facturas = (
+            await sesion.execute(select(Document).where(Document.tipo_dte == 33, Document.estado == "ACEPTADO"))
+        ).scalars().all()
+    detalles = []
+    for caso, guia in zip(casos, guias):
+        numero = int(caso.id.split("-")[1])
+        factura = None
+        if numero in marcas.facturadas:
+            factura = next(
+                (f for f in facturas
+                 if any(r["tipo_doc"] == "52" and r["folio"] == str(guia.folio) for r in f.payload.get("referencias", []))),
+                None,
+            )
+            if factura is None:
+                sys.exit(
+                    f"La guía folio {guia.folio} (caso {caso.id}) se facturó según el set, pero no hay factura "
+                    f"aceptada que la referencie. Emítela con: DTE_FACTURA_DE_GUIA={guia.folio} ... enviar"
+                )
+        detalles.append(
+            DetalleGuia(
+                folio=guia.folio, fecha=guia.fecha_emision, rut=guia.receptor_rut,
+                razon_social=guia.payload["receptor"]["razon_social"], tipo_operacion=guia.payload["ind_traslado"],
+                neto=guia.monto_neto, iva=guia.monto_iva, total=guia.monto_total,
+                tasa_iva=Decimal(19) if guia.monto_neto else None,
+                anulado=GUIA_ANULADA if numero in marcas.anuladas else None,
+                factura=(33, factura.folio, factura.fecha_emision) if factura else None,
+            )
+        )
+    return detalles, marcas.numero_atencion
 
 
 def _detalle_venta(doc: Document):
@@ -731,46 +797,57 @@ def _detalle_venta(doc: Document):
 
 
 async def modo_libro() -> int:
-    """Arma, firma y sube el libro de ventas o de compras del set (`DTE_LIBRO`).
+    """Arma, firma y sube un libro del set: `DTE_LIBRO=ventas|compras|guias`.
 
     El de ventas sale de los documentos del set básico ya aceptados; el de
-    compras, de la tabla del set de libro de compras. Los dos van al período de
-    los documentos del set básico. Guarda una copia del XML en `DTE_MUESTRAS`.
+    compras, de la tabla del set de libro de compras (los dos al período del set
+    básico); el de guías, de las guías del set de guía, con la factura y la
+    anulación que indica el set de libro de guías. Guarda una copia del XML en
+    `DTE_MUESTRAS`.
 
     Cada corrida es un envío nuevo al SII: no correrlo dos veces sin necesidad.
     """
     from pathlib import Path
 
-    from app.dte.libros import COMPRA, Caratula, construir_libro_cv, firmar_libro
+    from app.dte.libros import COMPRA, Caratula, construir_libro_cv, construir_libro_guias, firmar_libro
     from app.dte.libros import VENTA as OPERACION_VENTA
     from app.dte.set_pruebas import detalles_libro_compras, parsear_libro_compras, parsear_set
 
     libro = os.environ.get("DTE_LIBRO", "").strip().lower()
-    if libro not in _FOLIO_NOTIFICACION:
-        sys.exit("DTE_LIBRO debe ser 'ventas' o 'compras'.")
+    if libro not in _LIBROS:
+        sys.exit("DTE_LIBRO debe ser 'ventas', 'compras' o 'guias'.")
     _, _, cert = _certificado()
     with open(_requerida("DTE_SET"), "rb") as f:
         texto = f.read().decode("latin-1")
-    basico = parsear_set(texto, "SET BASICO")
-    tenant, docs = await _documentos_del_set_basico([f"set-{basico.numero_atencion}-{c.id}" for c in basico.casos])
-
-    caratula = Caratula(
-        rut_emisor=tenant.rut_emisor, rut_envia=cert.rut, periodo=docs[0].fecha_emision.strftime("%Y-%m"),
-        fecha_resolucion=tenant.resolucion_fecha, numero_resolucion=tenant.resolucion_numero,
-        folio_notificacion=_FOLIO_NOTIFICACION[libro],
+    nombre_set = "SET GUIA DE DESPACHO" if libro == "guias" else "SET BASICO"
+    origen = parsear_set(texto, nombre_set)
+    tenant, docs = await _documentos_del_set(
+        [f"set-{origen.numero_atencion}-{c.id}" for c in origen.casos], nombre_set
     )
-    if libro == "ventas":
-        arbol = construir_libro_cv(caratula, OPERACION_VENTA, [_detalle_venta(d) for d in docs])
+
+    def caratula(folio_notificacion: int) -> Caratula:
+        return Caratula(
+            rut_emisor=tenant.rut_emisor, rut_envia=cert.rut, periodo=docs[0].fecha_emision.strftime("%Y-%m"),
+            fecha_resolucion=tenant.resolucion_fecha, numero_resolucion=tenant.resolucion_numero,
+            folio_notificacion=folio_notificacion,
+        )
+
+    if libro == "guias":
+        detalles, atencion = await _detalles_guias(tenant, docs, origen.casos, texto)
+        arbol = construir_libro_guias(caratula(int(atencion)), detalles)
+    elif libro == "ventas":
+        arbol = construir_libro_cv(caratula(_FOLIO_NOTIFICACION[libro]), OPERACION_VENTA, [_detalle_venta(d) for d in docs])
     else:
         compras = parsear_libro_compras(texto)
         arbol = construir_libro_cv(
-            caratula, COMPRA, detalles_libro_compras(compras, docs[0].fecha_emision), compras.factor_proporcionalidad
+            caratula(_FOLIO_NOTIFICACION[libro]), COMPRA, detalles_libro_compras(compras, docs[0].fecha_emision),
+            compras.factor_proporcionalidad,
         )
     xml = firmar_libro(arbol, cert)
     carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
     carpeta.mkdir(parents=True, exist_ok=True)
     (carpeta / f"libro_{libro}.xml").write_bytes(xml)
-    print(f"Libro de {libro}, período {caratula.periodo}: guardado en {carpeta / f'libro_{libro}.xml'}")
+    print(f"Libro de {libro}, período {docs[0].fecha_emision:%Y-%m}: guardado en {carpeta / f'libro_{libro}.xml'}")
 
     s = get_settings()
     redis = Redis.from_url(s.redis_url)

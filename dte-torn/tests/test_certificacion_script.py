@@ -392,3 +392,56 @@ async def test_libro_sin_set_emitido_no_parte(entorno_set, monkeypatch) -> None:
     monkeypatch.setenv("DTE_LIBRO", "ventas")
     with pytest.raises(SystemExit, match="primero corre"):
         await certificacion.modo_libro()
+
+
+
+async def test_libro_de_guias_con_factura_y_anulada(entorno, tmp_path, monkeypatch, capsys) -> None:
+    """Caso 1 traslado interno, caso 2 facturado (referencia a su factura), caso 3 anulado."""
+    from lxml import etree
+
+    from app.dte.builder import NS
+    from tests.test_set_pruebas import SET_GUIA
+
+    libro = (
+        "SET LIBRO DE GUIAS - NUMERO DE ATENCION: 5550009\r\n\r\n"
+        "- EL CASO 2 CORRESPONDE A UNA GUIA QUE SE FACTURO EN EL PERIODO\r\n"
+        "- EL CASO 3 CORRESPONDE A UNA GUIA ANULADA\r\n"
+    )
+    ruta_set = tmp_path / "set.txt"
+    ruta_set.write_bytes((SET_GUIA + "\r\n" + "-" * 80 + "\r\n" + libro).encode("latin-1"))
+    caf52 = tmp_path / "caf_52.xml"
+    caf52.write_bytes(caf_xml(rut="76543210-3", tipo_dte=52, desde=1, hasta=10))
+    caf33 = tmp_path / "caf_33.xml"
+    caf33.write_bytes(caf_xml(rut="76543210-3", tipo_dte=33, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_SET", str(ruta_set))
+    monkeypatch.setenv("DTE_SET_NOMBRE", "SET GUIA DE DESPACHO")
+    monkeypatch.setenv("DTE_CAFS", str(caf52))
+    entorno.estados = [_estado("EPR", aceptados=3)] * 3
+    assert await certificacion.modo_set() == 0
+
+    # Sin la factura de la guía 2, el libro no se arma.
+    monkeypatch.setenv("DTE_LIBRO", "guias")
+    monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path / "libros"))
+    with pytest.raises(SystemExit, match="DTE_FACTURA_DE_GUIA=2"):
+        await certificacion.modo_libro()
+
+    monkeypatch.setenv("DTE_CAF", str(caf33))
+    monkeypatch.setenv("DTE_FACTURA_DE_GUIA", "2")
+    entorno.uploads.append((200, _upload("0", "777")))
+    entorno.estados = [_estado("EPR", aceptados=1)]
+    assert await certificacion.modo_enviar() == 0
+
+    entorno.uploads.append((200, _upload("0", "888")))
+    entorno.estados = [_estado("LOK", glosa="Envio de Libro Aceptado - Cuadrado")]
+    assert await certificacion.modo_libro() == 0
+    assert "N° de envío 888" in capsys.readouterr().out
+
+    n = {"s": NS}
+    arbol = etree.fromstring((tmp_path / "libros" / "libro_guias.xml").read_bytes())
+    assert arbol.findtext(".//s:FolioNotificacion", namespaces=n) == "5550009"
+    detalle = arbol.findall(".//s:Detalle", n)
+    assert [d.findtext("s:TpoOper", namespaces=n) for d in detalle] == ["5", "1", "1"]
+    assert (detalle[1].findtext("s:TpoDocRef", namespaces=n), detalle[1].findtext("s:FolioDocRef", namespaces=n)) == ("33", "1")
+    assert detalle[1].findtext("s:MntTotal", namespaces=n) == "940142"
+    assert detalle[2].findtext("s:Anulado", namespaces=n) == "2"
+    assert arbol.findtext(".//s:TotMntGuiaVta", namespaces=n) == "940142"

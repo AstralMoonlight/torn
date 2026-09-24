@@ -479,3 +479,30 @@ def detalles_libro_compras(set_: SetLibroCompras, fecha: date) -> list[DetalleCV
             d.total -= iva
         detalles.append(d)
     return detalles
+
+
+# ------------------------------------------------------- set libro de guías --
+
+_GUIA_DEL_LIBRO = re.compile(r"CASO\s+(\d+)\s+CORRESPONDE\s+A\s+UNA\s+GUIA\s+(QUE\s+SE\s+FACTURO|ANULADA)")
+
+
+@dataclass
+class SetLibroGuias:
+    numero_atencion: str
+    #: Número de caso (el que va después del guion) de las guías facturadas en el período.
+    facturadas: set[int]
+    anuladas: set[int]
+
+
+def parsear_libro_guias(texto: str, nombre: str = "SET LIBRO DE GUIAS") -> SetLibroGuias:
+    """Lee qué guías del set de guía se facturaron y cuáles se anularon."""
+    texto = _seccion(texto, nombre)
+    atencion = _ATENCION.search(texto)
+    if not atencion:
+        raise SetInvalidoError("No se encontró el número de atención del set")
+    marcas = _GUIA_DEL_LIBRO.findall(" ".join(texto.split()))
+    return SetLibroGuias(
+        numero_atencion=atencion.group(1),
+        facturadas={int(caso) for caso, que in marcas if que.startswith("QUE")},
+        anuladas={int(caso) for caso, que in marcas if que == "ANULADA"},
+    )
