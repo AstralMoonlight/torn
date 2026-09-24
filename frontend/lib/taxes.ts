@@ -29,3 +29,46 @@ export function productTaxRate(
     if (!product || !product.tax) return DEFAULT_TAX_RATE
     return normalizeTaxRate(product.tax.rate)
 }
+
+// ── Montos del DTE ──────────────────────────────────────────────────
+// Réplica de `totales_dte` en backend/app/utils/taxes.py, que a su vez replica
+// `calcular_totales` de dte-torn. Lo que muestra el POS tiene que ser el total
+// exacto del documento: si una de las tres cambia, las tres.
+
+/** Boletas: el precio que va al documento ya trae el IVA. */
+export const BOLETAS = [39, 41]
+
+/**
+ * Redondeo al peso, mitad hacia arriba (ROUND_HALF_UP del backend). El margen
+ * absorbe el error de punto flotante: 950 * 1.19 da 1130.4999999999998 y debe
+ * redondear a 1131, igual que con Decimal.
+ */
+export function pesos(x: number): number {
+    return Math.round(x + 1e-6)
+}
+
+/** Precio unitario bruto al peso, el que se muestra y el que va a la boleta. */
+export function precioBruto(precioNeto: number, rate: number): number {
+    return pesos(precioNeto * (1 + rate))
+}
+
+/** Totales de un documento a partir de sus líneas (neto unitario, cantidad, tasa). */
+export function totalesDte(
+    tipoDte: number,
+    lineas: { precioNeto: number; cantidad: number; rate: number }[],
+): { neto: number; iva: number; total: number } {
+    const boleta = BOLETAS.includes(tipoDte)
+    let afecto = 0
+    let exento = 0
+    for (const l of lineas) {
+        const precio = boleta ? precioBruto(l.precioNeto, l.rate) : l.precioNeto
+        const monto = pesos(l.cantidad * precio)
+        if (l.rate === 0) exento += monto
+        else afecto += monto
+    }
+    const iva = boleta
+        ? afecto - (afecto ? pesos(afecto / (1 + DEFAULT_TAX_RATE)) : 0)
+        : pesos(afecto * DEFAULT_TAX_RATE)
+    const total = boleta ? afecto + exento : afecto + exento + iva
+    return { neto: total - iva, iva, total }
+}
