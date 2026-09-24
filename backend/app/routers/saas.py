@@ -12,6 +12,7 @@ from app.schemas_saas import TenantCreate, TenantOut, TenantUserOut, TenantUserC
 from app.models.saas import Tenant, TenantUser, SaaSPlan
 from app.models.acteco import Acteco
 from app.utils.security import get_password_hash
+from app.services import dte_client
 from app.services.tenant_service import provision_new_tenant
 from app.utils.schemas import safe_schema_name
 
@@ -146,7 +147,30 @@ def update_tenant(
         finally:
             connection.close()
 
+    # dte-torn guarda su propia copia del emisor: cualquier cambio de los datos
+    # de empresa o del SII se le reenvía.
+    sii_fields = {"is_active", "sii_ambiente", "sii_resolucion_numero", "sii_resolucion_fecha", "sii_oficina"}
+    if any(field in update_data for field in dte_fields | sii_fields):
+        _sincronizar_con_dte(tenant)
+
     return tenant
+
+
+def _sincronizar_con_dte(tenant: Tenant) -> None:
+    from sqlalchemy import text
+    from app.database import engine
+    with engine.connect() as connection:
+        issuer = connection.execute(
+            text(f'SELECT * FROM "{safe_schema_name(tenant.schema_name)}".issuers LIMIT 1')
+        ).first()
+    try:
+        dte_client.sincronizar_emisor(tenant, issuer)
+    except dte_client.DteError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=f"Datos guardados, pero no se pudieron copiar a facturación electrónica: {exc.detail}. "
+                   "Vuelve a guardar para reintentar.",
+        ) from exc
 
 @router.delete("/tenants/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tenant(

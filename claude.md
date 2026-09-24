@@ -11,12 +11,14 @@ Todo lo aquí descrito proviene de la inspección directa de los archivos locale
 
 Según la lógica encontrada en `backend/app/`, el sistema cubre:
 
-- **Emisión de DTEs**: generación de XML a partir de plantillas Jinja2 (`backend/app/services/xml_generator.py`,
-  `backend/app/templates/xml/factura_template.xml`) y gestión de folios autorizados por el SII mediante CAF
-  (`backend/app/models/dte.py`: `DTE`, `CAF`, `FolioRequestLog`; router `backend/app/routers/folios.py`).
+- **Emisión de DTEs**: delegada al microservicio **`dte-torn/`** (folios, CAF, certificado, XML, firma, envío
+  y consulta al SII; ver `dte-torn/DESIGN.md`). El backend lo llama con `backend/app/services/dte_client.py`
+  (`TORN_DTE_URL`, `TORN_DTE_API_KEY`) y solo guarda `Sale.tipo_dte`/`Sale.folio` como caché de impresión.
+  `backend/app/routers/folios.py` es un proxy hacia dte-torn para CAF, stock de folios y certificado.
   Los tipos de documento manejados en el modelo son 33 (Factura), 34 (Exenta), 39 (Boleta), 41, 56 (ND), 61 (NC).
 - **Punto de Venta**: flujo transaccional de venta que valida caja abierta y stock, descuenta inventario,
-  registra kardex, registra pagos y asigna folio/DTE de forma atómica (`backend/app/routers/sales.py`).
+  registra kardex, registra pagos y emite el DTE en dte-torn dentro de la misma transacción
+  (`backend/app/routers/sales.py`). Si dte-torn rechaza o no responde, la venta se revierte.
 - **Inventario y catálogo**: productos, marcas, listas de precios, proveedores y compras
   (`backend/app/models/product.py`, `brand.py`, `price_list.py`, `provider.py`, `purchase.py`).
 - **Caja**: sesiones de caja con arqueo ciego (`backend/app/models/cash.py`, `backend/app/routers/cash.py`).
@@ -83,7 +85,8 @@ Detectado exclusivamente a partir de los archivos de dependencias y configuraci�
 | PostgreSQL 18 (alpine) | servicio `db` |
 | Node 20 (alpine) | `Dockerfile.frontend` |
 
-> Nota: `backend/app/services/dte_signer.py` menciona `lxml` y `signxml` como **dependencias futuras** en un comentario;
+> Nota: la firma y el XML del DTE viven en `dte-torn/`, con sus propias dependencias (`dte-torn/requirements.txt`,
+> versiones fijas). El backend solo agrega `httpx` para hablar con él.
 > no están instaladas ni declaradas en `backend/requirements.txt`, por lo que **no forman parte del stack actual**.
 
 ---
@@ -107,8 +110,8 @@ Torn/
 │   │   ├── routers/          # ~20 routers HTTP (sales, folios, saas, auth, ...)
 │   │   ├── schemas.py        # Pydantic por tenant
 │   │   ├── schemas_saas.py   # Pydantic del plano SaaS/public
-│   │   ├── services/         # xml_generator.py, dte_signer.py, tenant_service.py
-│   │   ├── templates/        # XML del DTE + HTML de impresión (80mm / carta)
+│   │   ├── services/         # dte_client.py (cliente de dte-torn), tenant_service.py
+│   │   ├── templates/        # HTML de impresión (ticket 80/57mm y carta)
 │   │   └── utils/            # security, validators (RUT), dates, formatters
 │   ├── alembic/          # Migraciones (6 revisiones)
 │   ├── alembic.ini
@@ -192,20 +195,26 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   (`max_users`, `max_users_override`).
 - Modelo de datos completo (21 modelos ORM) + 6 migraciones Alembic + `modelo_base_datos.sql`.
 - Motor de ventas transaccional, caja con arqueo ciego, kardex, crédito interno y devoluciones con NC.
-- Gestión de folios/CAF con rangos, `ultimo_folio_usado` y `fecha_vencimiento`, más log de solicitudes.
-- Generación de XML DTE por plantilla Jinja2 y plantillas de impresión HTML (80mm y carta).
+- Emisión de DTE a través de dte-torn; carga de CAF y certificado desde Configuración → Folios; datos del SII
+  por empresa (`public.tenants.sii_*`, solo superusuario) copiados a dte-torn al guardar el emisor.
+- Plantillas de impresión HTML (ticket 80mm/57mm y carta), formato configurable por tipo de documento.
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
-- Suite Pytest de integración: **70 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-17).
+- Suite Pytest de integración: **74 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-24).
+  dte-torn se sustituye por un fake (`FakeDte` en `backend/tests/conftest.py`).
 - Contenerización completa (backend + frontend + PostgreSQL) vía Docker Compose.
 
 ### Pendiente / lo que parece faltar
 
-- **Firma digital del DTE**: `backend/app/services/dte_signer.py` está vacío salvo TODOs (carga de certificado `.pfx`,
-  firma XML según esquema SII, Timbre Electrónico TED). Sin esto los DTEs no son válidos ante el SII.
-- **Envío al SII**: `DTE.track_id` y `DTE.estado_sii` existen en el modelo, pero no se detecta cliente ni
-  servicio que haga el envío/consulta de estado.
+- **Impresión con timbre**: los tickets y la carta del backend no llevan el timbre PDF417 ("Borrador sin validez
+  tributaria"). La representación impresa válida hoy es el PDF carta de dte-torn; tras la certificación se mueve
+  al backend (decisión del 2026-09-24).
+- **Retiro de tablas locales**: `backend/scripts/migrate_retiro_dte_local.py` borra `dtes`, `cafs` y
+  `folio_request_logs` de cada esquema. Hay que volver a cargar en dte-torn los CAF con folios libres antes de
+  correrlo con `--aplicar`.
+- **Totales replicados en tres lugares**: `calcular_totales` (dte-torn), `totales_dte`
+  (`backend/app/utils/taxes.py`) y `totalesDte` (`frontend/lib/taxes.ts`). Si cambia uno, cambian los tres.
 - **`backend/requirements.txt` sin versiones**: por decisión explícita del proyecto; implica builds no reproducibles.
 - **`bcrypt` pineado fuera de `backend/requirements.txt`**: `Dockerfile.backend` instala `bcrypt==4.0.1` aparte, lo que
   duplica la gestión de dependencias.
@@ -245,7 +254,7 @@ partir de sus llamadas (ambos lo indican en su docstring; conviene revisarlos).
 | NC creada sin `user_id`/`seller_id` | Toda devolución fallaba contra el NOT NULL de `sales.user_id` |
 | Venta sin CAF inventaba un correlativo | Se emitían documentos con folios no autorizados en silencio; ahora devuelve 409 |
 
-La aritmética de folios vive en `backend/app/utils/folios.py` y las tasas en
+La aritmética de folios vivía en `backend/app/utils/folios.py` (hoy en dte-torn) y las tasas en
 `backend/app/utils/taxes.py`; `frontend/lib/store/cartStore.ts` replica `EXEMPT_DTES`
 para que el total del POS coincida con el que cobra el backend.
 

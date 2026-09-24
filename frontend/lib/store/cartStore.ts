@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware'
 import type { Product } from '@/services/products'
 import type { Customer } from '@/services/customers'
 import { resolvePrice, type PriceListRead } from '@/services/price_lists'
-import { productTaxRate } from '@/lib/taxes'
+import { precioBruto, productTaxRate, totalesDte } from '@/lib/taxes'
 import { toast } from 'sonner'
 
 export interface CartItem {
@@ -51,16 +51,14 @@ export function isExemptDte(tipoDte: number): boolean {
 }
 
 function recalcTotals(items: CartItem[], tipoDte: number) {
-    const totalNeto = items.reduce((acc, i) => acc + i.subtotal, 0)
-    // Por línea, con la tasa del producto (0% si está exento) — igual que
-    // resolve_tax_rate en app/utils/taxes.py. Un 19% plano sobre totalNeto
-    // sobrecobraba IVA a los productos exentos del carrito en cuanto
-    // convivían con productos afectos.
-    const totalIva = isExemptDte(tipoDte)
-        ? 0
-        : Math.round(items.reduce((acc, i) => acc + i.subtotal * productTaxRate(i.product), 0))
-    const totalFinal = totalNeto + totalIva
-    return { totalNeto, totalIva, totalFinal }
+    // Las reglas del DTE (lib/taxes.ts): en boletas el precio va bruto al peso
+    // y el total es la suma de líneas; en facturas el IVA va sobre el neto.
+    const { neto, iva, total } = totalesDte(tipoDte, items.map((i) => ({
+        precioNeto: i.precio_neto,
+        cantidad: i.quantity,
+        rate: isExemptDte(tipoDte) ? 0 : productTaxRate(i.product),
+    })))
+    return { totalNeto: neto, totalIva: iva, totalFinal: total }
 }
 
 export const useCartStore = create<CartState>()(
@@ -139,7 +137,7 @@ export const useCartStore = create<CartState>()(
                     }
 
                     const precioNeto = resolved_price
-                    const precioBruto = Math.round(precioNeto * (1 + productTaxRate(product)))
+                    const precioBrutoItem = precioBruto(precioNeto, productTaxRate(product))
 
                     newItems = [
                         ...items,
@@ -147,7 +145,7 @@ export const useCartStore = create<CartState>()(
                             product,
                             quantity: qty,
                             precio_neto: precioNeto,
-                            precio_bruto: precioBruto,
+                            precio_bruto: precioBrutoItem,
                             subtotal: precioNeto * qty,
                             price_source: source,
                         },
@@ -217,7 +215,7 @@ async function recalculatePrices(
                 source = 'price_list'
             }
 
-            const pBruto = Math.round(pNeto * (1 + productTaxRate(i.product)))
+            const pBruto = precioBruto(pNeto, productTaxRate(i.product))
             return {
                 ...i,
                 precio_neto: pNeto,

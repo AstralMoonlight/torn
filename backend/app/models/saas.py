@@ -4,7 +4,7 @@ Estos modelos gestionan la infraestructura multi-tenant, usuarios globales
 y los planes de suscripción. Residen exclusivamente en el esquema 'public'.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -56,6 +56,14 @@ class Tenant(Base):
     # Ejemplo: [{"code": "464903", "name": "...", "category": "1ra", "taxable": true}]
     from sqlalchemy.dialects.postgresql import JSONB
     economic_activities = Column(JSONB, nullable=True, server_default='[]')
+
+    # Datos del SII que se copian a dte-torn (ver `dte_client.sincronizar_emisor`).
+    # Solo los edita un superusuario: pasar a producción o cambiar la
+    # resolución no es algo que la empresa haga sola.
+    sii_ambiente = Column(String(4), nullable=False, default="CERT", server_default="CERT", comment="CERT | PROD")
+    sii_resolucion_numero = Column(Integer, nullable=False, default=0, server_default="0")
+    sii_resolucion_fecha = Column(Date, nullable=True)
+    sii_oficina = Column(String(60), nullable=True, comment="Unidad del SII, p.ej. 'S.I.I. - CONCEPCION'")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -25,6 +25,10 @@ export interface Tenant {
     giro?: string
     billing_day: number
     economic_activities?: EconomicActivity[]
+    sii_ambiente: 'CERT' | 'PROD'
+    sii_resolucion_numero: number
+    sii_resolucion_fecha: string | null
+    sii_oficina: string | null
 
     created_at: string
 }
@@ -50,6 +54,10 @@ export interface TenantUpdate {
     giro?: string
     billing_day?: number
     economic_activities?: EconomicActivity[]
+    sii_ambiente?: 'CERT' | 'PROD'
+    sii_resolucion_numero?: number
+    sii_resolucion_fecha?: string | null
+    sii_oficina?: string | null
 }
 
 export interface TenantUser {

@@ -5,9 +5,8 @@ from decimal import Decimal
 
 
 
-def _seed_caf(db_session, client):
-    """Inserta un CAF de prueba tipo 33 directamente en la BD y abre caja."""
-    from app.models.dte import CAF
+def _seed_venta(db_session, client):
+    """Siembra el medio de pago y abre caja. Los folios los pone el fake de dte-torn."""
     from app.models.payment import PaymentMethod
     from app.models.user import User
 
@@ -17,16 +16,6 @@ def _seed_caf(db_session, client):
         db_session.add(admin)
         db_session.commit()
 
-    # Seed CAF
-    caf = CAF(
-        tipo_documento=33,
-        folio_desde=1,
-        folio_hasta=100,
-        ultimo_folio_usado=0,
-        xml_caf="<CAF_TEST>",
-    )
-    db_session.add(caf)
-    
     # Seed Payment Methods
     pm = PaymentMethod(code="EFECTIVO", name="Efectivo")
     db_session.add(pm)
@@ -45,7 +34,7 @@ class TestSalesFlow:
         Prueba de integración end-to-end:
         1. Crear cliente
         2. Crear producto
-        3. Insertar CAF
+        3. Abrir caja
         4. Realizar venta
         5. Verificar totales e IVA exactos
         """
@@ -85,8 +74,8 @@ class TestSalesFlow:
         assert resp_b.status_code == 201, f"Error creando producto B: {resp_b.text}"
         prod_b = resp_b.json()
 
-        # ── 3. Insertar CAF y Abrir Caja ─────────────────────────────
-        _seed_caf(db_session, client)
+        # ── 3. Abrir Caja ─────────────────────────────
+        _seed_venta(db_session, client)
 
         # ── 4. Realizar venta ────────────────────────────────────────
         sale_data = {
@@ -136,10 +125,8 @@ class TestSalesFlow:
         resp = client.post("/customers/", json=bad_customer)
         assert resp.status_code == 422, "Debería rechazar RUT inválido"
 
-    def test_sale_without_caf_fails(self, client, db_session):
-        """Verifica que una venta falla si no hay CAF disponible."""
-        # Setup Cash Session manually because _seed_caf is not called here (it inserts caf)
-        # We need Cash Open but NO CAF.
+    def test_sale_without_folios_fails(self, client, db_session, fake_dte):
+        """Si dte-torn no tiene folios (409), la venta no se registra."""
         from app.models.user import User
         if not db_session.get(User, 1):
             admin = User(id=1, rut="11111111-1", razon_social="Admin", email="admin@torn.cl")
@@ -159,10 +146,11 @@ class TestSalesFlow:
         })
         prod = resp_p.json()
 
-        # Intentar venta sin CAF
+        from app.services.dte_client import DteError
+        fake_dte.error = DteError(409, "Sin folios disponibles para el tipo 33")
         resp = client.post("/sales/", json={
             "rut_cliente": "12345678-5",
             "items": [{"product_id": prod["id"], "cantidad": "1"}],
             "payments": [{"payment_method_id": 1, "amount": "1190", "transaction_code": "TEST"}]
         })
-        assert resp.status_code == 409, "Debería fallar sin CAF"
+        assert resp.status_code == 409, "Debería fallar sin folios"

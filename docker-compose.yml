@@ -35,6 +35,11 @@ services:
       - .env
     environment:
       TORN_DB_HOST: db
+      # dte-torn corre en su propio compose (dte-torn/) y publica la API en el
+      # puerto 8001 del host.
+      TORN_DTE_URL: http://host.docker.internal:8001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy

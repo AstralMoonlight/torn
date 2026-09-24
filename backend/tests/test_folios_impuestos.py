@@ -1,12 +1,8 @@
-"""Regresiones de folios (rango CAF) e IVA (DTE exento / impuesto por producto).
+"""Emisión en dte-torn e IVA (DTE exento / impuesto por producto).
 
-Cubren tres defectos que estaban en producción:
+La aritmética de folios y CAF vive en dte-torn y se prueba allá. Acá:
 
-* El folio emitido se calculaba como `ultimo_folio_usado + 1`, ignorando
-  `folio_desde`. Un CAF autorizado de 1000 a 1100 emitía su primer documento con
-  folio 1, fuera del rango autorizado por el SII.
-* `GET /folios/status` informaba `available = folio_hasta - ultimo_folio_usado`,
-  por lo que un CAF recién cargado declaraba muchos más folios de los reales.
+* La venta toma el folio que asigna dte-torn y se revierte si no lo hay.
 * El IVA era `Decimal("0.19")` fijo, así que una Boleta/Factura Exenta o un
   producto exento salían con 19% de impuesto.
 * `quantize_money` redondeaba a centavos (2 decimales) en vez de al peso
@@ -24,11 +20,12 @@ from decimal import Decimal
 import pytest
 
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
+from app.models.sale import Sale
 from app.models.tax import Tax
+from app.services import dte_client
 
 
 @pytest.fixture
@@ -60,59 +57,72 @@ def _vender(client, product_id, tipo_dte, monto, cantidad=1):
     })
 
 
-class TestRangoDeFolios:
-    """El folio emitido debe caer siempre dentro del rango del CAF."""
+class TestEmisionEnDte:
+    """El folio lo asigna dte-torn; si rechaza o no responde, la venta no existe."""
 
-    def test_primer_folio_respeta_folio_desde(self, client, entorno_venta):
+    def test_el_folio_viene_de_dte_torn(self, client, entorno_venta, fake_dte):
         db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=1000, folio_hasta=1100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
         prod = Product(codigo_interno="P-1", nombre="Producto", precio_neto=1000)
         db.add(prod)
         db.commit()
 
+        folios = [_vender(client, prod.id, 33, 1190).json()["folio"] for _ in range(2)]
+        assert folios == [1, 2]
+        assert fake_dte.documentos[0]["external_id"] != fake_dte.documentos[1]["external_id"]
+        assert fake_dte.documentos[0]["receptor"]["rut"] == "12345678-5"
+
+    @pytest.mark.parametrize("error, codigo", [
+        (dte_client.DteError(409, "Sin folios disponibles para el tipo 33"), 409),
+        (dte_client.DteNoDisponible("no respondió"), 503),
+    ])
+    def test_rechazo_de_dte_torn_revierte_la_venta(self, client, entorno_venta, fake_dte, error, codigo):
+        db = entorno_venta
+        prod = Product(codigo_interno="P-2", nombre="Producto", precio_neto=1000,
+                       controla_stock=True, stock_actual=5)
+        db.add(prod)
+        db.commit()
+        fake_dte.error = error
+
         resp = _vender(client, prod.id, 33, 1190)
+        assert resp.status_code == codigo, resp.text
+        db.expire_all()
+        assert db.query(Sale).count() == 0
+        assert db.get(Product, prod.id).stock_actual == 5
+
+    def test_boleta_manda_precio_bruto_y_cobra_la_suma_de_lineas(self, client, entorno_venta, fake_dte):
+        """950 neto -> 1.131 bruto por unidad (1.130,5 redondeado). Dos unidades
+        en líneas distintas suman 2.262, que es lo que declara el DTE; el cálculo
+        antiguo (IVA sobre el neto total) daba 2.261."""
+        db = entorno_venta
+        a = Product(codigo_interno="B-1", nombre="A", precio_neto=950)
+        b = Product(codigo_interno="B-2", nombre="B", precio_neto=950)
+        db.add_all([a, b])
+        db.commit()
+
+        resp = client.post("/sales/", json={
+            "rut_cliente": "12345678-5", "tipo_dte": 39,
+            "items": [{"product_id": a.id, "cantidad": "1"}, {"product_id": b.id, "cantidad": "1"}],
+            "payments": [{"payment_method_id": 1, "amount": "2270"}],
+        })
         assert resp.status_code == 201, resp.text
-        assert resp.json()["folio"] == 1000, "El primer folio debe ser folio_desde"
+        assert [i["precio"] for i in fake_dte.documentos[0]["items"]] == ["1131", "1131"]
+        assert "receptor" not in fake_dte.documentos[0]
+        venta = resp.json()
+        assert Decimal(venta["monto_total"]) == 2262
+        assert Decimal(venta["iva"]) == 361        # 2262 - round(2262 / 1,19)
 
-    def test_folios_correlativos_dentro_del_rango(self, client, entorno_venta):
+    def test_producto_con_impuesto_no_soportado_se_rechaza_sin_emitir(self, client, entorno_venta, fake_dte):
         db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=1000, folio_hasta=1100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        prod = Product(codigo_interno="P-2", nombre="Producto", precio_neto=1000)
+        ila = Tax(name="ILA", rate=Decimal("0.315"))
+        db.add(ila)
+        db.flush()
+        prod = Product(codigo_interno="P-ILA", nombre="Destilado", precio_neto=1000, tax_id=ila.id)
         db.add(prod)
         db.commit()
 
-        folios = [_vender(client, prod.id, 33, 1190).json()["folio"] for _ in range(3)]
-        assert folios == [1000, 1001, 1002]
-
-    def test_status_no_infla_los_folios_disponibles(self, client, entorno_venta):
-        db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=1000, folio_hasta=1100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        db.commit()
-
-        resp = client.get("/folios/status")
-        assert resp.status_code == 200, resp.text
-        caf_33 = next(f for f in resp.json() if f["dte_type"] == 33)
-        assert caf_33["total"] == 101
-        assert caf_33["available"] == 101, "Un CAF sin usar tiene disponible == total"
-
-    def test_venta_sin_caf_es_rechazada(self, client, entorno_venta):
-        db = entorno_venta
-        prod = Product(codigo_interno="P-3", nombre="Producto", precio_neto=1000)
-        db.add(prod)
-        db.commit()
-
-        resp = _vender(client, prod.id, 33, 1190)
-        assert resp.status_code == 409
-        assert "folios disponibles" in resp.json()["detail"]
+        resp = _vender(client, prod.id, 33, 2000)
+        assert resp.status_code == 422, resp.text
+        assert fake_dte.documentos == []
 
 
 class TestIvaPorDocumentoYProducto:
@@ -120,10 +130,6 @@ class TestIvaPorDocumentoYProducto:
 
     def test_boleta_exenta_no_lleva_iva(self, client, entorno_venta):
         db = entorno_venta
-        db.add(CAF(
-            tipo_documento=41, folio_desde=1, folio_hasta=100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
         prod = Product(codigo_interno="P-EX", nombre="Producto", precio_neto=1000)
         db.add(prod)
         db.commit()
@@ -136,10 +142,6 @@ class TestIvaPorDocumentoYProducto:
 
     def test_factura_afecta_lleva_iva(self, client, entorno_venta):
         db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=1, folio_hasta=100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
         prod = Product(codigo_interno="P-AF", nombre="Producto", precio_neto=1000)
         db.add(prod)
         db.commit()
@@ -152,10 +154,6 @@ class TestIvaPorDocumentoYProducto:
 
     def test_producto_exento_no_paga_iva_en_documento_afecto(self, client, entorno_venta):
         db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=1, folio_hasta=100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
         exento = Tax(name="Exento", rate=Decimal("0"))
         db.add(exento)
         db.flush()
@@ -169,45 +167,6 @@ class TestIvaPorDocumentoYProducto:
         resp = _vender(client, prod.id, 33, 1000)
         assert resp.status_code == 201, resp.text
         assert Decimal(resp.json()["iva"]) == Decimal("0")
-
-
-class TestMultiplesCafPorTipo:
-    """Un inquilino acumula varios CAF del mismo tipo conforme el SII autoriza folios."""
-
-    def test_la_emision_salta_al_siguiente_caf_al_agotarse(self, client, entorno_venta):
-        db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=10, folio_hasta=11,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        db.add(CAF(
-            tipo_documento=33, folio_desde=900, folio_hasta=910,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        prod = Product(codigo_interno="P-MULTI", nombre="Producto", precio_neto=1000)
-        db.add(prod)
-        db.commit()
-
-        folios = [_vender(client, prod.id, 33, 1190).json()["folio"] for _ in range(3)]
-        assert folios == [10, 11, 900], "Agotado el primer CAF debe continuar en el segundo"
-
-    def test_el_status_suma_todos_los_caf_del_tipo(self, client, entorno_venta):
-        db = entorno_venta
-        db.add(CAF(
-            tipo_documento=33, folio_desde=10, folio_hasta=11,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        db.add(CAF(
-            tipo_documento=33, folio_desde=900, folio_hasta=910,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
-        db.commit()
-
-        caf_33 = next(f for f in client.get("/folios/status").json() if f["dte_type"] == 33)
-        assert caf_33["total"] == 13          # 2 + 11
-        assert caf_33["available"] == 13
-        assert caf_33["latest_folio_desde"] == 900
-        assert caf_33["latest_folio_hasta"] == 910
 
 
 class TestRedondeoAPesoEntero:
@@ -226,10 +185,6 @@ class TestRedondeoAPesoEntero:
         poder pagarse con Débito por el monto justo, sin vuelto fantasma."""
         db = entorno_venta
         db.add(PaymentMethod(code="DEBITO", name="Débito"))
-        db.add(CAF(
-            tipo_documento=39, folio_desde=1, folio_hasta=100,
-            ultimo_folio_usado=0, xml_caf="DUMMY",
-        ))
         # neto 950 -> iva 180.50 -> total exacto 1130.50, que antes del fix
         # quedaba en 1130.50 (centavos) en vez de 1131 (peso entero).
         prod = Product(codigo_interno="P-FRAC", nombre="Producto Fraccionario", precio_neto=950)

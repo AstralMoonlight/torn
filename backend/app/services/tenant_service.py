@@ -34,7 +34,6 @@ import app.models.sale
 import app.models.purchase
 import app.models.inventory
 import app.models.cash
-import app.models.dte
 import app.models.issuer
 import app.models.payment
 import app.models.price_list

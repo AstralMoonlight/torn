@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem, type EconomicActivity } from '@/services/saas'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorDetail, getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
 import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
@@ -36,6 +36,14 @@ import {
     TableRow,
 } from '@/components/ui/table'
 
+/** Datos del SII que se copian a dte-torn. Una empresa nueva parte en certificación. */
+const SII_VACIO = {
+    sii_ambiente: 'CERT' as 'CERT' | 'PROD',
+    sii_resolucion_numero: 0,
+    sii_resolucion_fecha: '',
+    sii_oficina: '',
+}
+
 export default function TenantsListPage() {
     const [tenants, setTenants] = useState<Tenant[]>([])
     const [loading, setLoading] = useState(true)
@@ -54,7 +62,8 @@ export default function TenantsListPage() {
         city: '',
         giro: '',
         billing_day: 1,
-        economic_activities: [] as EconomicActivity[]
+        economic_activities: [] as EconomicActivity[],
+        ...SII_VACIO,
     })
     const [actecoSearch, setActecoSearch] = useState('')
     const [actecoResults, setActecoResults] = useState<ActecoItem[]>([])
@@ -132,7 +141,8 @@ export default function TenantsListPage() {
             city: '',
             giro: '',
             billing_day: 1,
-            economic_activities: []
+            economic_activities: [],
+            ...SII_VACIO,
         })
         setOpenModal(true)
     }
@@ -147,7 +157,11 @@ export default function TenantsListPage() {
             city: tenant.city || '',
             giro: tenant.giro || '',
             billing_day: tenant.billing_day || 1,
-            economic_activities: tenant.economic_activities || []
+            economic_activities: tenant.economic_activities || [],
+            sii_ambiente: tenant.sii_ambiente,
+            sii_resolucion_numero: tenant.sii_resolucion_numero,
+            sii_resolucion_fecha: tenant.sii_resolucion_fecha || '',
+            sii_oficina: tenant.sii_oficina || '',
         })
         setOpenModal(true)
     }
@@ -168,7 +182,9 @@ export default function TenantsListPage() {
         try {
             const payload = {
                 ...formData,
-                rut: formatRut(formData.rut)
+                rut: formatRut(formData.rut),
+                sii_resolucion_fecha: formData.sii_resolucion_fecha || null,
+                sii_oficina: formData.sii_oficina || null,
             }
 
             if (editingTenantId) {
@@ -182,7 +198,7 @@ export default function TenantsListPage() {
             setOpenModal(false)
             fetchTenants()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, editingTenantId ? 'Error al actualizar' : 'Error al provisionar'))
+            toast.error(getApiErrorDetail(error, editingTenantId ? 'Error al actualizar' : 'Error al provisionar'))
         } finally {
             setIsCreating(false)
         }
@@ -333,6 +349,68 @@ export default function TenantsListPage() {
                                         </Select>
                                         <p className="text-[10px] text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
                                     </div>
+
+                                    {editingTenantId && (
+                                        <div className="space-y-4 p-4 bg-muted rounded-lg border border-border">
+                                            <div>
+                                                <Label>Facturación Electrónica (SII)</Label>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    Resolución y ambiente con que el SII autorizó a la empresa. Van impresos bajo el timbre.
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Ambiente</Label>
+                                                    <Select
+                                                        value={formData.sii_ambiente}
+                                                        onValueChange={v => setFormData({ ...formData, sii_ambiente: v as 'CERT' | 'PROD' })}
+                                                    >
+                                                        <SelectTrigger className="border-border">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-card border-border">
+                                                            <SelectItem value="CERT">Certificación</SelectItem>
+                                                            <SelectItem value="PROD">Producción</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Unidad del SII</Label>
+                                                    <Input
+                                                        placeholder="S.I.I. - CONCEPCION"
+                                                        maxLength={60}
+                                                        value={formData.sii_oficina}
+                                                        onChange={e => setFormData({ ...formData, sii_oficina: e.target.value })}
+                                                        className="border-border focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>N° Resolución</Label>
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        value={formData.sii_resolucion_numero}
+                                                        onChange={e => setFormData({ ...formData, sii_resolucion_numero: parseInt(e.target.value) || 0 })}
+                                                        className="border-border focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Fecha Resolución</Label>
+                                                    <Input
+                                                        type="date"
+                                                        value={formData.sii_resolucion_fecha}
+                                                        onChange={e => setFormData({ ...formData, sii_resolucion_fecha: e.target.value })}
+                                                        className="border-border focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {formData.sii_ambiente === 'PROD' && (
+                                                <p className="text-xs text-destructive flex items-center gap-1">
+                                                    <AlertTriangle className="h-3.5 w-3.5" /> En producción cada documento emitido es tributariamente válido.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3 p-4 bg-muted rounded-lg border border-border">

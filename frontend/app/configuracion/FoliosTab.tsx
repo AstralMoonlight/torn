@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { FileText, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { FileUp, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     Dialog,
     DialogContent,
@@ -14,9 +13,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import api from "@/services/api";
+import api, { getApiErrorDetail } from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 
 type FolioStock = {
@@ -28,12 +26,11 @@ type FolioStock = {
     fecha_vencimiento: string | null;
 };
 
-type FolioLog = {
-    id: number;
-    dte_type: number;
-    amount_requested: number;
-    status: string;
-    timestamp: string;
+type Certificado = {
+    titular_rut: string | null;
+    not_after: string | null;
+    dias_restantes: number | null;
+    subido_en: string;
 };
 
 const DTE_NAMES: Record<number, string> = {
@@ -41,42 +38,41 @@ const DTE_NAMES: Record<number, string> = {
     34: "Factura Exenta",
     39: "Boleta Electrónica",
     41: "Boleta Exenta",
-    52: "Guía de Despacho",
     56: "Nota de Débito",
     61: "Nota de Crédito",
-    110: "Factura de Exportación",
-    111: "ND de Exportación",
-    112: "NC de Exportación",
 };
 
+/**
+ * Folios (CAF) y certificado digital. Ambos viven en dte-torn; el backend
+ * solo reenvía (`backend/app/routers/folios.py`).
+ */
 export default function FoliosTab() {
     const [stocks, setStocks] = useState<FolioStock[]>([]);
-    const [logs, setLogs] = useState<FolioLog[]>([]);
+    const [certificado, setCertificado] = useState<Certificado | null>(null);
     const [loading, setLoading] = useState(true);
+    const [subiendo, setSubiendo] = useState(false);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isRequesting, setIsRequesting] = useState(false);
+    const [certOpen, setCertOpen] = useState(false);
+    const [pfx, setPfx] = useState<File | null>(null);
+    const [password, setPassword] = useState("");
 
-    const [selectedDte, setSelectedDte] = useState<string>("");
-    const [amount, setAmount] = useState<string>("");
-
+    const cafInput = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
-            const [resStocks, resLogs] = await Promise.all([
+            const [resStocks, resCert] = await Promise.all([
                 api.get("/folios/status"),
-                api.get("/folios/requests/history")
+                api.get("/folios/certificate"),
             ]);
             setStocks(resStocks.data);
-            setLogs(resLogs.data);
+            setCertificado(resCert.data);
         } catch (error) {
-            console.error(error);
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "No se pudo cargar la información de folios.",
+                description: getApiErrorDetail(error, "No se pudo cargar la información de folios."),
             });
         } finally {
             setLoading(false);
@@ -87,44 +83,42 @@ export default function FoliosTab() {
         fetchData();
     }, [fetchData]);
 
-    const handleRequestFolios = async () => {
-        if (!selectedDte || !amount) {
-            toast({
-                variant: "destructive",
-                description: "Por favor selecciona un tipo de DTE y una cantidad.",
-            });
-            return;
+    const subir = async (ruta: string, form: FormData, exito: string) => {
+        setSubiendo(true);
+        try {
+            // El cliente manda JSON por defecto, y con ese Content-Type axios
+            // convierte el FormData a JSON: hay que pedir multipart explícito.
+            await api.post(ruta, form, { headers: { "Content-Type": "multipart/form-data" } });
+            toast({ title: exito });
+            fetchData();
+            return true;
+        } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: getApiErrorDetail(error, "No se pudo cargar el archivo.") });
+            return false;
+        } finally {
+            setSubiendo(false);
         }
+    };
 
-        setIsRequesting(true);
+    const handleCaf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        const form = new FormData();
+        form.append("file", file);
+        await subir("/folios/upload", form, "CAF cargado");
+    };
 
-        // Simulate connection lag to SII
-        setTimeout(async () => {
-            try {
-                await api.post("/folios/request", {
-                    dte_type: parseInt(selectedDte),
-                    amount_requested: parseInt(amount)
-                });
-
-                toast({
-                    title: "Solicitud Registrada",
-                    description: "Los folios aparecerán en el sistema en breve.",
-                });
-
-                setIsModalOpen(false);
-                setAmount("");
-                setSelectedDte("");
-                fetchData();
-            } catch {
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Ocurrió un error al solicitar los folios.",
-                });
-            } finally {
-                setIsRequesting(false);
-            }
-        }, 3000); // 3 seconds simulation
+    const handleCertificado = async () => {
+        if (!pfx || !password) return;
+        const form = new FormData();
+        form.append("file", pfx);
+        form.append("password", password);
+        if (await subir("/folios/certificate", form, "Certificado cargado")) {
+            setCertOpen(false);
+            setPfx(null);
+            setPassword("");
+        }
     };
 
     return (
@@ -133,79 +127,19 @@ export default function FoliosTab() {
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">Gestión de Folios (CAF)</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Revisa el stock disponible y solicita nuevos folios al SII.
+                        Descarga el CAF desde el sitio del SII y cárgalo aquí.
                     </p>
                 </div>
-
-                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="">
-                            <FileText className="mr-2 h-4 w-4" />
-                            Solicitar Folios
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Solicitar Folios al SII</DialogTitle>
-                            <DialogDescription>
-                                Se conectará con el SII para autorizar y descargar un nuevo archivo CAF.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        {isRequesting ? (
-                            <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                                <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                                <p className="text-sm font-medium">Conectando con el SII...</p>
-                            </div>
-                        ) : (
-                            <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                    <label htmlFor="dte" className="text-sm font-medium leading-none">
-                                        Tipo de Documento
-                                    </label>
-                                    <Select value={selectedDte} onValueChange={setSelectedDte}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccione Tipo de DTE" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Object.entries(DTE_NAMES).map(([code, name]) => (
-                                                <SelectItem key={code} value={code}>
-                                                    {name} ({code})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                    <label htmlFor="amount" className="text-sm font-medium leading-none">
-                                        Cantidad a Solicitar
-                                    </label>
-                                    <Input
-                                        id="amount"
-                                        type="number"
-                                        placeholder="Ej. 100"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <DialogFooter className="sm:justify-end">
-                            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} disabled={isRequesting}>
-                                Cancelar
-                            </Button>
-                            <Button type="button" onClick={handleRequestFolios} disabled={isRequesting}>
-                                Solicitar
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
+                <Button onClick={() => cafInput.current?.click()} disabled={subiendo}>
+                    {subiendo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                    Cargar CAF
+                </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {loading ? (
-                    [1, 2, 3, 4].map(i => (
+                    [1, 2, 3].map(i => (
                         <Card key={i} className="animate-pulse">
                             <CardHeader className="h-32 bg-muted" />
                         </Card>
@@ -268,60 +202,63 @@ export default function FoliosTab() {
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Historial de Solicitudes</CardTitle>
-                    <CardDescription>
-                        Registro de las últimas peticiones de folios enviadas al SII.
-                    </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                    <div>
+                        <CardTitle>Certificado Digital</CardTitle>
+                        <CardDescription>
+                            Con él se firman los documentos. Se guarda cifrado.
+                        </CardDescription>
+                    </div>
+                    <Dialog open={certOpen} onOpenChange={setCertOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary">
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                {certificado ? "Reemplazar" : "Cargar"}
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Cargar Certificado Digital</DialogTitle>
+                                <DialogDescription>Archivo .pfx o .p12 de la empresa y su contraseña.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <Input type="file" accept=".pfx,.p12" onChange={(e) => setPfx(e.target.files?.[0] ?? null)} />
+                                <Input
+                                    type="password"
+                                    placeholder="Contraseña del certificado"
+                                    autoComplete="off"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button variant="secondary" onClick={() => setCertOpen(false)} disabled={subiendo}>
+                                    Cancelar
+                                </Button>
+                                <Button onClick={handleCertificado} disabled={subiendo || !pfx || !password}>
+                                    {subiendo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Cargar
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Fecha</TableHead>
-                                <TableHead>Documento</TableHead>
-                                <TableHead>Cantidad</TableHead>
-                                <TableHead>Estado</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                        Cargando historial...
-                                    </TableCell>
-                                </TableRow>
-                            ) : logs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                                        No hay solicitudes registradas.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                logs.map((log) => (
-                                    <TableRow key={log.id}>
-                                        <TableCell>
-                                            {new Date(log.timestamp).toLocaleString("es-CL", {
-                                                dateStyle: "short", timeStyle: "short"
-                                            })}
-                                        </TableCell>
-                                        <TableCell>
-                                            {DTE_NAMES[log.dte_type] || log.dte_type} ({log.dte_type})
-                                        </TableCell>
-                                        <TableCell>{log.amount_requested}</TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'PENDING' ? 'bg-muted text-muted-foreground' :
-                                                log.status === 'COMPLETED' ? 'bg-primary/10 text-primary' :
-                                                    'bg-destructive/10 text-destructive'
-                                                }`}>
-                                                {log.status}
-                                            </span>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                    {loading ? (
+                        <p className="text-sm text-muted-foreground">Cargando...</p>
+                    ) : !certificado ? (
+                        <p className="text-sm text-destructive">Sin certificado: no se pueden emitir documentos.</p>
+                    ) : (
+                        <div className="text-sm space-y-1">
+                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "—"}</span></p>
+                            {certificado.not_after && (
+                                <p className={certificado.dias_restantes !== null && certificado.dias_restantes < 30 ? "text-destructive font-medium" : ""}>
+                                    Vence: {new Date(certificado.not_after).toLocaleDateString("es-CL")}
+                                    {certificado.dias_restantes !== null && ` (${certificado.dias_restantes} días)`}
+                                </p>
                             )}
-                        </TableBody>
-                    </Table>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

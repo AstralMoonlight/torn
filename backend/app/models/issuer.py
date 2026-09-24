@@ -10,7 +10,7 @@ class Issuer(Base):
     """Datos del contribuyente emisor (singleton — una sola empresa).
 
     Almacena la información tributaria de la empresa dueña del sistema.
-    Estos datos son obligatorios para generar el XML del DTE.
+    Estos datos se copian a dte-torn, que los usa para emitir los DTE.
 
     Attributes:
         id (int): Identificador único (PK).

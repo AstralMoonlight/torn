@@ -8,7 +8,6 @@ from app.models.sale import Sale
 from app.models.inventory import StockMovement
 from app.models.user import User
 from app.models.customer import Customer
-from app.models.dte import CAF
 from app.models.issuer import Issuer
 
 class TestPOS:
@@ -17,11 +16,9 @@ class TestPOS:
 
     def test_pos_flow(self, client, db_session):
         # 1. Setup Data
-        # Emisor, CAF, Cliente
+        # Emisor, Cliente
         issuer = Issuer(rut="76123456-K", razon_social="Emisor Test", giro="Giro", acteco="123", direccion="Dir", comuna="Conce", ciudad="Conce")
         db_session.add(issuer)
-        caf = CAF(tipo_documento=33, folio_desde=1, folio_hasta=100, ultimo_folio_usado=0, xml_caf="DUMMY")
-        db_session.add(caf)
         customer = Customer(rut="12345678-5", razon_social="Cliente Test", email="c@test.com")
         db_session.add(customer)
 
