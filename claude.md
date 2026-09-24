@@ -217,12 +217,6 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   **solo para desarrollo local**; deben eliminarse del `.env` antes de cualquier despliegue a producción.
 - **Deuda menor**: uso de `Query.get()` legacy de SQLAlchemy 1.x en `backend/app/routers/sales.py` (warnings en pytest)
   y `create_all()` conviviendo con Alembic.
-- **Precio de venta**: `create_sale` cobra `product.precio_neto` e ignora la lista de precios que el POS sí
-  resuelve, de modo que el cliente puede pagar distinto de lo cotizado.
-- **`CAF.tipo_documento` es UNIQUE**: impide cargar un segundo CAF del mismo tipo cuando se agotan los folios,
-  pese a que `create_sale` ya consulta ordenando por `id`.
-- **IVA fijo en compras y reportes**: `backend/app/routers/purchases.py`, `dashboard/page.tsx` y `reporte-diario/page.tsx`
-  siguen asumiendo 19%.
 
 ---
 
