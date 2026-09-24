@@ -9,6 +9,7 @@ import {
     Tax,
     SystemSettings,
     DOCUMENT_PRINT_TYPES,
+    PRINT_FORMAT_OPTIONS,
     type PrintFormat,
 } from '@/services/config'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -155,24 +156,18 @@ export default function ConfigurationPage() {
                                             >
                                                 <span className="text-sm font-medium">{label}</span>
                                                 <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => setDocPrintFormat(key, '80mm')}
-                                                        className={`flex items-center gap-2 rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === '80mm'
-                                                            ? 'border-primary bg-primary text-primary-foreground'
-                                                            : 'border-border bg-background text-muted-foreground hover:border-primary/40'
-                                                            }`}
-                                                    >
-                                                        <Printer className="h-3.5 w-3.5" /> Térmico 80mm
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDocPrintFormat(key, 'carta')}
-                                                        className={`rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === 'carta'
-                                                            ? 'border-primary bg-primary text-primary-foreground'
-                                                            : 'border-border bg-background text-muted-foreground hover:border-primary/40'
-                                                            }`}
-                                                    >
-                                                        Carta / A4
-                                                    </button>
+                                                    {PRINT_FORMAT_OPTIONS.map(({ value, label: optLabel }) => (
+                                                        <button
+                                                            key={value}
+                                                            onClick={() => setDocPrintFormat(key, value)}
+                                                            className={`flex items-center gap-2 rounded-md border-2 px-3 py-1.5 text-xs font-semibold transition-all ${current === value
+                                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                                : 'border-border bg-background text-muted-foreground hover:border-primary/40'
+                                                                }`}
+                                                        >
+                                                            {value !== 'carta' && <Printer className="h-3.5 w-3.5" />} {optLabel}
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             </div>
                                         )
