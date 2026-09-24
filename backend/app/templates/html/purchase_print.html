@@ -274,7 +274,19 @@
         <p>Este documento es para control interno de recepción de mercadería.</p>
     </div>
 
-    <!-- Formato carta: se abre para ver; se imprime desde el visor si hace falta. -->
+    <script>
+        window.onload = function () {
+            setTimeout(function () {
+                window.print();
+            }, 500);
+        };
+        // Cierra la pestaña sola tras imprimir o cancelar. En el iframe oculto del
+        // POS es no-op (window.close() no hace nada fuera de una pestaña abierta
+        // por window.open()), así que es seguro tenerlo en ambos contextos.
+        window.addEventListener('afterprint', function () {
+            window.close();
+        });
+    </script>
 </body>
 
 </html>
