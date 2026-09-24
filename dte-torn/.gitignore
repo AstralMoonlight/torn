@@ -8,3 +8,5 @@ __pycache__/
 # XML sueltos en la raíz: CAF (traen la llave privada del timbre) y documentos
 # reales de la empresa. Los esquemas del SII viven en app/dte/xsd/ y no caen acá.
 /*.xml
+# CAF descargados del SII, guardados por carpeta.
+/folios/
