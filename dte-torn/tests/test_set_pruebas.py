@@ -229,6 +229,22 @@ def test_documento_no_soportado() -> None:
         parsear_set(texto)
 
 
+def test_archivo_con_varios_sets_lee_solo_el_pedido() -> None:
+    # Así llega cuando se piden varios sets: el de guías trae un documento que
+    # el set básico no soporta, y no debe leerse.
+    separador = "-" * 80 + "\r\n"
+    guias = (
+        "SET GUIA DE DESPACHO - NUMERO DE ATENCIÓN: 7654321\r\n\r\n"
+        "CASO 7654321-1\r\n==============\r\nDOCUMENTO\tGUIA DE DESPACHO\r\n"
+    )
+    texto = SET_BASICO + separador + guias
+    set_ = parsear_set(texto)
+    assert set_.numero_atencion == parsear_set(SET_BASICO).numero_atencion
+    assert len(set_.casos) == 8
+    with pytest.raises(SetInvalidoError, match="no trae"):
+        parsear_set(texto, "SET FACTURA EXENTA")
+
+
 # ------------------------------------------------------------------ montos --
 
 

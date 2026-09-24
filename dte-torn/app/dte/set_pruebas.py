@@ -32,7 +32,10 @@ TIPOS = {
 ANULA, CORRIGE_TEXTO, CORRIGE_MONTOS = 1, 2, 3
 
 _CASO = re.compile(r"^CASO\s+(\d+-\d+)")
-_ATENCION = re.compile(r"NUMERO DE ATENCION:\s*(\d+)")
+_ATENCION = re.compile(r"NUMERO DE ATENCI[OÓ]N:\s*(\d+)")
+#: Línea que separa un set del siguiente cuando el archivo trae varios. Es
+#: larga a propósito: el set de libro de compras trae una más corta adentro.
+_SEPARADOR = re.compile(r"^-{40,}\s*$", re.MULTILINE)
 _REF_CASO = re.compile(r"CASO\s+(\d+-\d+)")
 
 
@@ -90,12 +93,22 @@ def _numero(texto: str) -> Decimal:
     return Decimal(texto.strip().rstrip("%").replace(",", "."))
 
 
-def parsear_set(texto: str) -> SetPruebas:
-    """Lee el `.txt` del SII (ya decodificado desde latin-1).
+def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
+    """Lee un set del `.txt` del SII (ya decodificado desde latin-1).
+
+    El archivo trae todos los sets pedidos, uno tras otro; se lee solo la
+    sección cuyo título empieza con `nombre`. Un archivo sin títulos se lee
+    entero.
 
     Raises:
-        SetInvalidoError: No se encontró el número de atención o ningún caso.
+        SetInvalidoError: No se encontró el set, el número de atención o ningún caso.
     """
+    secciones = _SEPARADOR.split(texto)
+    if len(secciones) > 1:
+        titulo = re.compile(rf"^{re.escape(nombre)}\b", re.MULTILINE)
+        texto = next((s for s in secciones if titulo.search(s)), None)
+        if texto is None:
+            raise SetInvalidoError(f"El archivo no trae el {nombre}")
     atencion = _ATENCION.search(texto)
     if not atencion:
         raise SetInvalidoError("No se encontró el número de atención del set")
