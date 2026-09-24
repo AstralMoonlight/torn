@@ -93,7 +93,7 @@ solo si el traslado es venta. En el traslado interno "el ejemplar cedible es ino
 ### T8: Subir máximo del 52, enviar y declarar
 - [x] `certificacion enviar` emite una prueba con un CAF 52
 - [ ] Emisiones de prueba de 52 hasta máximo ≥ 3 (U)
-- [ ] CAF 52×3; envío único EPR 3 aceptados 0 reparos; usuario declara
+- [x] CAF 52×3 (106-108); envío único EPR 3 aceptados 0 reparos — track 0260086000 (24-09-2026)
 **Dependencias:** T6, T7
 
 ### Checkpoint B
@@ -127,7 +127,7 @@ retención total, entrega gratuita como IVA no recuperable (código a confirmar)
 
 ### T12: Libro de guías desde el set de guía
 **Descripción:** 3 guías; caso 2 marcada facturada y caso 3 anulada.
-**Aceptación:** [ ] valida XSD · [ ] marcas de facturada y anulada según el instructivo
+**Aceptación:** [x] valida XSD · [x] marcas de facturada y anulada — factura 75 (track 0260086476) ampara la guía 107; **libro ENVIADO: track 0260086522, LOK** (24-09-2026). FolioNotificacion = N° de atención del set de libro de guías.
 **Dependencias:** T9, T8 · **Tamaño:** S
 
 ### T13: Modo `libros` en el script, enviar y declarar
@@ -152,3 +152,16 @@ instructivo de formato.
 - [ ] `certificacion muestras` genera los PDF de los 3 sets en `setDePruebas/muestras/`
 - [ ] Revisión visual del usuario
 **Dependencias:** Checkpoint C · **Archivos:** `app/dte/pdf.py`, `app/scripts/certificacion.py`, `tests/test_pdf.py` · **Tamaño:** S
+
+---
+
+## Tabla para declarar todo junto (24-09-2026)
+
+| Set | N° Envío | Fecha |
+|---|---|---|
+| SET BASICO | 0260080046 | 24-09-2026 |
+| SET GUIA DE DESPACHO | 0260086000 | 24-09-2026 |
+| SET FACTURA EXENTA | 0260081142 | 24-09-2026 |
+| LIBRO DE VENTAS | 0260084694 | 24-09-2026 |
+| LIBRO DE COMPRAS | 0260084758 | 24-09-2026 |
+| LIBRO DE GUIAS | 0260086522 | 24-09-2026 |
