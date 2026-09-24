@@ -109,20 +109,20 @@ solo si el traslado es venta. En el traslado interno "el ejemplar cedible es ino
 detalle, firma sobre `EnvioLibro`) y subirlos con `ClienteSii.enviar`. Hay que confirmar en el instructivo
 `TipoLibro`, `TipoEnvio` y `FolioNotificacion`.
 **Aceptación:**
-- [ ] Un libro mínimo de cada tipo valida contra su XSD y su firma verifica
-- [ ] Preguntas abiertas de `plan.md` respondidas con cita al instructivo
+- [x] Un libro mínimo de cada tipo valida contra su XSD y su firma verifica (XSD en `app/dte/xsd/libros/`, parche de 2 defectos en `tests/factories.py`)
+- [x] Preguntas abiertas respondidas: `inst_set_pruebas.pdf` → ESPECIAL, TOTAL, FolioNotificacion 1 (ventas) y 2 (compras), período = el del set básico. Aceptado así por el SII.
 **Dependencias:** ninguna (se puede adelantar) · **Archivos:** `app/dte/libros.py` (nuevo), `app/dte/signer.py`, XSD, `tests/test_libros.py` · **Tamaño:** M
 
 ### T10: Libro de ventas desde el set básico
 **Descripción:** detalle y resumen por tipo a partir de los 8 documentos aceptados (tabla `documents`,
 external_id `set-5093757-*`).
-**Aceptación:** [ ] totales por tipo a mano en el test · [ ] valida XSD
+**Aceptación:** [x] totales por tipo a mano en el test · [x] valida XSD — **ENVIADO: track 0260084694, LOK** (24-09-2026). El primer intento (0260084070) fue LRH: faltaban MntExe/MntNeto/MntIVA en 0.
 **Dependencias:** T9, T1 · **Tamaño:** S
 
 ### T11: Libro de compras desde el set
 **Descripción:** leer la tabla del set: IVA de uso común con factor 0,60, factura de compra 46 con
 retención total, entrega gratuita como IVA no recuperable (código a confirmar) y notas de crédito.
-**Aceptación:** [ ] 7 detalles con montos e IVA a mano · [ ] valida XSD
+**Aceptación:** [x] 7 detalles con montos e IVA a mano · [x] valida XSD — **ENVIADO: track 0260084758, LOK** (24-09-2026)
 **Dependencias:** T9 · **Tamaño:** S
 
 ### T12: Libro de guías desde el set de guía
@@ -131,7 +131,7 @@ retención total, entrega gratuita como IVA no recuperable (código a confirmar)
 **Dependencias:** T9, T8 · **Tamaño:** S
 
 ### T13: Modo `libros` en el script, enviar y declarar
-- [ ] `certificacion libros` sube cada libro, espera el estado y muestra el track
+- [x] `certificacion libro` (`DTE_LIBRO=ventas|compras`) sube el libro, espera el estado y muestra el track. Falta guías.
 - [ ] Los 3 aceptados; usuario declara cada uno
 **Dependencias:** T10, T11, T12
 
