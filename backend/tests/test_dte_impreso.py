@@ -57,20 +57,25 @@ def dte_torn(monkeypatch):
             return httpx.Response(200, json=[d for d in docs if d["folio"] == params["folio"]])
         if path.endswith("/xml"):
             return httpx.Response(200, content=XML)
+        assert params == {"con_cedible": "true"}
         return httpx.Response(200, content=b"%PDF-1.4", headers={"content-disposition": "inline"})
     monkeypatch.setattr(dte_client, "request", request)
 
 
-def test_ticket_sale_del_xml_con_timbre(dte_torn):
+def test_ticket_de_factura_trae_copia_cliente_y_cedible(dte_torn):
     html = _impreso_dte(TENANT, VENTA, 57, cedible=False).body.decode()
     for esperado in ("FACTURA ELECTRÓNICA", "N° 7", "76.543.210-3", "S.I.I. - CONCEPCION",
-                     "$23.800", "Res. N° 80 de 2014", "<svg", "size: 57mm auto"):
+                     "$23.800", "Res. N° 80 de 2014", "size: 57mm auto", "COPIA CLIENTE", "CORTE AQUÍ"):
         assert esperado in html, esperado
-    assert "CEDIBLE" not in html
+    assert html.count("<svg") == 2
+    assert html.count('height="30mm"') == 2        # mismo alto de timbre en ambas copias
+    assert html.count("ACUSE DE RECIBO") == 1
+    assert html.count("Factureando.cl: Hazla simple!") == 2
 
 
-def test_copia_cedible_en_ticket(dte_torn):
-    assert "CEDIBLE" in _impreso_dte(TENANT, VENTA, 80, cedible=True).body.decode()
+def test_solo_cedible(dte_torn):
+    html = _impreso_dte(TENANT, VENTA, 80, cedible=True).body.decode()
+    assert html.count("<svg") == 1 and "ACUSE DE RECIBO" in html and "COPIA CLIENTE" not in html
 
 
 def test_carta_es_el_pdf_de_dte_torn(dte_torn):

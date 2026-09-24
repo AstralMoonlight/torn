@@ -28,11 +28,16 @@ CODIGOS_REFERENCIA = {"1": "Anula documento", "2": "Corrige texto", "3": "Corrig
 
 #: Nivel de corrección de errores del PDF417 que pide el SII.
 NIVEL_CORRECCION_TIMBRE = 5
-#: Columnas de datos del PDF417 por ancho de rollo. Menos columnas = barras más
-#: anchas (legibles en térmica de 203 dpi) y timbre más alto.
-# ponytail: calibrado a ojo (~0,25 mm por módulo); ajustar si un lector del SII
-# no lo lee en papel real.
-COLUMNAS_TIMBRE = {80: 12, 57: 8}
+#: Timbre por ancho de rollo: (columnas de datos del PDF417, alto en mm). Ocupa
+#: todo el ancho imprimible y siempre el mismo alto, en la copia cliente y en la
+#: cedible. Con un TED típico (~1 KB) queda cada módulo de ~0,21-0,23 mm de ancho
+#: y cada fila de 2,2-2,5 veces eso: más columnas = más bajo, pero barras más
+#: finas para una térmica de 203 dpi (0,125 mm por punto).
+# ponytail: calibrado leyendo en pantalla; confirmar con un lector sobre papel real.
+TIMBRE = {80: (14, 28), 57: (10, 30)}
+
+#: Firma del software al final del documento impreso.
+LEYENDA_PIE = "Factureando.cl: Hazla simple!"
 
 
 def _hijos(nodo) -> dict[str, str]:
@@ -79,7 +84,7 @@ def leer_dte(xml: bytes) -> dict:
 
 def codigos_timbre(ted: bytes, papel_mm: int) -> list[list[int]]:
     """PDF417 del TED. Si el timbre no cabe en 90 filas, se agregan columnas."""
-    columnas = COLUMNAS_TIMBRE.get(papel_mm, 12)
+    columnas = TIMBRE.get(papel_mm, TIMBRE[80])[0]
     while True:
         try:
             return pdf417gen.encode(ted, columns=columnas, security_level=NIVEL_CORRECCION_TIMBRE)
@@ -92,19 +97,20 @@ def codigos_timbre(ted: bytes, papel_mm: int) -> list[list[int]]:
 def timbre_svg(ted: bytes, papel_mm: int) -> str:
     """El PDF417 como SVG vectorial: una barra por tramo de módulos contiguos.
 
-    Ocupa todo el ancho disponible; el alto de fila es 3 módulos (proporción del
-    estándar)."""
+    Todo el ancho disponible y alto fijo (`TIMBRE`): el SVG se estira sin
+    conservar la proporción, así que el alto no depende del largo del TED."""
     codigos = codigos_timbre(ted, papel_mm)
     filas = ["".join(format(valor, "b") for valor in fila) for fila in codigos]
-    ancho, alto = len(filas[0]), len(filas) * 3
     barras = "".join(
-        f'<rect x="{m.start()}" y="{n * 3}" width="{m.end() - m.start()}" height="3"/>'
+        f'<rect x="{m.start()}" y="{n}" width="{m.end() - m.start()}" height="1"/>'
         for n, bits in enumerate(filas)
         for m in re.finditer("1+", bits)
     )
+    alto_mm = TIMBRE.get(papel_mm, TIMBRE[80])[1]
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {ancho} {alto}" '
-        f'width="100%" shape-rendering="crispEdges">{barras}</svg>'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {len(filas[0])} {len(filas)}" '
+        f'width="100%" height="{alto_mm}mm" preserveAspectRatio="none" '
+        f'shape-rendering="crispEdges">{barras}</svg>'
     )
 
 

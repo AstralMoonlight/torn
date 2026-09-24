@@ -55,12 +55,17 @@
         .timbre svg { display: block; }
         .leyenda { font-size: 0.85em; }
 
+        .corte { text-align: center; margin: 10px 0; font-weight: bold; }
+        .pie { margin-top: 6px; font-style: italic; font-size: 0.85em; }
+
         .acuse { border: 1px solid #000; padding: 4px; margin-top: 8px; font-size: 0.85em; }
         .acuse .linea { border-bottom: 1px dotted #000; height: 14px; margin-top: 2px; }
     </style>
 </head>
 
 <body>
+    {% for cedible in copias %}
+    {% if not loop.first %}<div class="corte">- - - - CORTE AQUÍ - - - -</div>{% endif %}
     <div class="centro emisor">
         <h1>{{ doc.emisor.RznSoc }}</h1>
         <p>{{ doc.emisor.GiroEmis }}</p>
@@ -127,6 +132,7 @@
         <p>Verifique documento: www.sii.cl</p>
     </div>
 
+    {% if not cedible and copias | length > 1 %}<p class="centro negrita" style="margin-top: 4px;">COPIA CLIENTE</p>{% endif %}
     {% if cedible %}
     <div class="acuse">
         <p class="negrita centro">ACUSE DE RECIBO</p>
@@ -141,6 +147,8 @@
     </div>
     <p class="centro negrita" style="margin-top: 4px;">CEDIBLE</p>
     {% endif %}
+    <p class="centro pie">{{ leyenda }}</p>
+    {% endfor %}
 
     <script>
         window.onload = function () {

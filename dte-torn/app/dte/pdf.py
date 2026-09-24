@@ -21,7 +21,7 @@ Lo que pide el SII de la representación impresa y está resuelto acá:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
@@ -69,6 +69,9 @@ ANCHO_TIMBRE = 70 * mm
 
 ANCHO, ALTO = letter
 MARGEN = 12 * mm
+
+#: Firma del software al pie de cada hoja.
+LEYENDA_PIE = "Factureando.cl: Hazla simple!"
 
 _NSX = {"s": NS}
 _TED = re.compile(rb"<TED[ >].*?</TED>", re.S)
@@ -227,6 +230,9 @@ class DatosImpresion:
     #: `S.I.I. - CONCEPCION`. Sin ella no se imprime la línea (mejor que inventarla).
     oficina_sii: str | None = None
     cedible: bool = False
+    #: Copia cliente y copia cedible en el mismo PDF (una hoja cada una). Solo
+    #: afecta a documentos cedibles; el resto sale con una hoja.
+    con_cedible: bool = False
 
 
 @dataclass
@@ -347,8 +353,14 @@ def _cabecera_tabla(h: _Hoja) -> None:
     h.y -= 14
 
 
+def _cerrar_hoja(c: Canvas) -> None:
+    c.setFont("Helvetica-Oblique", 7)
+    c.drawCentredString(ANCHO / 2, MARGEN / 2, LEYENDA_PIE)
+    c.showPage()
+
+
 def _nueva_pagina(h: _Hoja) -> None:
-    h.c.showPage()
+    _cerrar_hoja(h.c)
     h.pagina += 1
     h.c.setFont("Helvetica", 8)
     h.c.drawString(
@@ -517,11 +529,14 @@ def generar_pdf(xml: bytes, imp: DatosImpresion) -> bytes:
     c.setTitle(f"{nombre} N° {d.folio}" + (" - CEDIBLE" if imp.cedible and d.tipo in CEDIBLES else ""))
     c.setAuthor(d.emisor.get("RznSoc", ""))
 
-    h = _Hoja(c=c, doc=d)
-    _encabezado(h, imp)
-    _receptor(h)
-    _detalle(h)
-    _pie(h, imp)
-    c.showPage()
+    copias = [False, True] if imp.con_cedible and d.tipo in CEDIBLES else [imp.cedible]
+    for cedible in copias:
+        copia = replace(imp, cedible=cedible)
+        h = _Hoja(c=c, doc=d)
+        _encabezado(h, copia)
+        _receptor(h)
+        _detalle(h)
+        _pie(h, copia)
+        _cerrar_hoja(c)
     c.save()
     return salida.getvalue()

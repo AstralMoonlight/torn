@@ -437,9 +437,13 @@ async def descargar_pdf(
     external_id: str, tenant: TenantDep,
     ctx: Annotated[pipeline.Contexto, Depends(contexto)],
     cedible: bool = False,
+    con_cedible: bool = False,
     actor: Actor = None,
 ) -> Response:
-    """Representación impresa, generada del XML firmado (nunca del payload)."""
+    """Representación impresa, generada del XML firmado (nunca del payload).
+
+    `cedible=true`: solo la copia cedible. `con_cedible=true`: copia cliente y
+    cedible en dos hojas (facturas; el resto sale con una)."""
     doc = await _buscar(tenant.id, external_id)
     if tenant.resolucion_fecha is None:
         raise HTTPException(409, "El emisor no tiene fecha de resolución del SII: va impresa bajo el timbre")
@@ -451,6 +455,7 @@ async def descargar_pdf(
             resolucion_fecha=tenant.resolucion_fecha,
             oficina_sii=tenant.oficina_sii,
             cedible=cedible,
+            con_cedible=con_cedible,
         ),
     )
     sufijo = "_cedible" if cedible else ""

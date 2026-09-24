@@ -614,7 +614,8 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
     """Representación impresa desde dte-torn, o None si no tiene el documento.
 
     Carta: el PDF que arma dte-torn. Ticket: HTML armado acá desde el XML
-    firmado, con el timbre en PDF417.
+    firmado, con el timbre en PDF417. Las facturas salen con copia cliente y
+    copia cedible; `cedible=True` deja solo la cedible.
     """
     try:
         external_id = _external_id_dte(tenant, sale)
@@ -622,7 +623,9 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
             return None
         ruta = f"/documents/{quote(external_id, safe='')}"
         if papel_mm is None:
-            pdf = dte_client.request("GET", f"{ruta}/pdf", tenant, params={"cedible": "true"} if cedible else None)
+            # Facturas: copia cliente y cedible en dos hojas, salvo que se pida solo la cedible.
+            pdf = dte_client.request("GET", f"{ruta}/pdf", tenant,
+                                     params={"cedible": "true"} if cedible else {"con_cedible": "true"})
             return Response(pdf.content, media_type="application/pdf",
                             headers={"Content-Disposition": pdf.headers.get("content-disposition", "inline")})
         xml = dte_client.request("GET", f"{ruta}/xml", tenant).content
@@ -635,7 +638,8 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
     doc = dte_impreso.leer_dte(xml)
     html = _html_env.get_template("dte_ticket.html").render(
         doc=doc, papel_mm=papel_mm, timbre=dte_impreso.timbre_svg(doc["ted"], papel_mm),
-        cedible=cedible and doc["tipo"] in dte_impreso.CEDIBLES,
+        copias=([True] if cedible else [False, True]) if doc["tipo"] in dte_impreso.CEDIBLES else [False],
+        leyenda=dte_impreso.LEYENDA_PIE,
         oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,
         resolucion_anio=tenant.sii_resolucion_fecha.year,
         rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha,
