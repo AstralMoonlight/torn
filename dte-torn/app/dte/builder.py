@@ -483,8 +483,12 @@ def _detalle(documento: etree._Element, datos: DatosDocumento) -> None:
             _sub(nodo, "IndExe", 1)
         _sub(nodo, "NmbItem", texto_sii(item.nombre, 80))
         _sub(nodo, "DscItem", texto_sii(item.descripcion, 1000))
-        _sub(nodo, "QtyItem", _decimal(item.cantidad))
-        _sub(nodo, "UnmdItem", texto_sii(item.unidad, 4))
+        # Sin precio, la cantidad solo tiene sentido en una guía (lo que se
+        # traslada). En una nota que corrige texto el SII rechaza QtyItem sin
+        # PrcItem: "Los Valores de la Linea 1 del Detalle No Cuadran".
+        if item.precio > 0 or datos.tipo_dte == GUIA_DESPACHO:
+            _sub(nodo, "QtyItem", _decimal(item.cantidad))
+            _sub(nodo, "UnmdItem", texto_sii(item.unidad, 4))
         # El esquema exige PrcItem > 0: una línea sin precio (un regalo, o la
         # línea de una nota que solo corrige texto) lo omite, que es válido.
         if item.precio > 0:

@@ -375,3 +375,21 @@ def test_guia_sin_tipo_de_traslado_se_rechaza() -> None:
 def test_traslado_fuera_de_una_guia_se_rechaza() -> None:
     with pytest.raises(ValidationError, match="guías"):
         _factura([Item(nombre="A", precio=Decimal(1))], ind_traslado=1)
+
+
+def test_linea_sin_precio_de_una_nota_no_lleva_cantidad() -> None:
+    """Una nota que solo corrige texto: glosa y monto cero, sin QtyItem. Con
+    QtyItem=1 y sin PrcItem el SII rechazó el set básico ("Los Valores de la
+    Linea 1 del Detalle No Cuadran", 2026-09-24)."""
+    nota = _factura(
+        [Item(nombre="CORRIGE GIRO DEL RECEPTOR", precio=0)],
+        tipo_dte=61,
+        referencias=[Referencia(tipo_doc="33", folio="1", fecha=date(2026, 9, 23), codigo=2, razon="Corrige giro")],
+    )
+    assert _hijos(construir_dte(EMISOR, nota, 1), ".//s:Detalle") == ["NroLinDet", "NmbItem", "MontoItem"]
+
+
+def test_guia_sin_precio_si_lleva_cantidad() -> None:
+    """En la guía la cantidad es lo que se traslada (el SII aceptó así el set de guía)."""
+    guia = _factura([Item(nombre="ITEM 1", cantidad=61, precio=0)], tipo_dte=52, ind_traslado=5)
+    assert _texto(construir_dte(EMISOR, guia, 1), ".//s:QtyItem") == "61"
