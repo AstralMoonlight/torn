@@ -65,9 +65,11 @@ def dte_torn(monkeypatch):
 def test_ticket_de_factura_trae_copia_cliente_y_cedible(dte_torn):
     html = _impreso_dte(TENANT, VENTA, 57, cedible=False).body.decode()
     for esperado in ("FACTURA ELECTRÓNICA", "N° 7", "76.543.210-3", "S.I.I. - CONCEPCION",
-                     "$23.800", "Res. N° 80 de 2014", "size: 57mm auto", "COPIA CLIENTE", "CORTE AQUÍ"):
+                     "$23.800", "Res. N° 80 de 2014", "size: 57mm auto", "COPIA CLIENTE"):
         assert esperado in html, esperado
     assert html.count("<svg") == 2
+    assert html.count('<section class="copia">') == 2   # una página por copia: el driver corta entre ellas
+    assert "CORTE AQUÍ" not in html
     assert html.count('height="30mm"') == 2        # mismo alto de timbre en ambas copias
     assert html.count("ACUSE DE RECIBO") == 1
     assert html.count("Factureando.cl: Hazla simple!") == 2

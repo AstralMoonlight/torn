@@ -55,7 +55,12 @@
         .timbre svg { display: block; }
         .leyenda { font-size: 0.85em; }
 
-        .corte { text-align: center; margin: 10px 0; font-weight: bold; }
+        /* Cada copia es una página: con el driver de la térmica en "cortar al
+           final de cada página", la máquina corta sola entre copias. El margen
+           inferior avanza el papel para que el corte no toque la leyenda. */
+        .copia { padding-bottom: 10mm; break-after: page; page-break-after: always; }
+        .copia:last-of-type { break-after: auto; page-break-after: auto; }
+        .copia + .copia { padding-top: 4mm; }
         .pie { margin-top: 6px; font-style: italic; font-size: 0.85em; }
 
         .acuse { border: 1px solid #000; padding: 4px; margin-top: 8px; font-size: 0.85em; }
@@ -65,7 +70,7 @@
 
 <body>
     {% for cedible in copias %}
-    {% if not loop.first %}<div class="corte">- - - - CORTE AQUÍ - - - -</div>{% endif %}
+    <section class="copia">
     <div class="centro emisor">
         <h1>{{ doc.emisor.RznSoc }}</h1>
         <p>{{ doc.emisor.GiroEmis }}</p>
@@ -148,6 +153,7 @@
     <p class="centro negrita" style="margin-top: 4px;">CEDIBLE</p>
     {% endif %}
     <p class="centro pie">{{ leyenda }}</p>
+    </section>
     {% endfor %}
 
     <script>
