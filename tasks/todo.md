@@ -182,6 +182,6 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 - [x] `setDePruebas/simulacion.txt` (gitignored): 24 documentos con clientes, productos y precios reales de Bsale (facturas 1648-1667). 17×33, 1×34 exenta, 2×52 y 3×61. La NC que anula apunta a la exenta, porque JCB no tiene productos exentos. 1×56.
 - [x] Envío único EPR, 24 aceptados, 0 reparos - **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
 - [x] Usuario declara el avance con el track ID
-- [ ] ~~Intercambio de información~~: el SII no lo exigió en esta certificación. Ahora es la prioridad P1 de [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md)
+- [ ] ~~Intercambio de información~~: el SII no lo exigió en esta certificación. Postergado hasta tener casilla de correo: [`intercambio.md`](intercambio.md)
 - [x] Muestras impresas: las del set de pruebas + 7 de la simulación (reemplazo 0260200310), enviadas; esperando validación del SII
 - 2026-09-24: las muestras de la simulación 0260198860 no pasan el validador ("Fecha Firma del TED debe ser mayor o igual a la fecha del documento"): FchEmis 25-09 por UTC (fix 248851b). Se emitió un envío de reemplazo con 1 documento por tipo, EPR 5/5, **track 0260200310** (33 F97, 34 F108, 52 F111, 61 F84, 56 F67). Sus PDF están en `setDePruebas/subir_sii_simulacion/`.

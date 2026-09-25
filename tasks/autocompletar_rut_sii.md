@@ -5,7 +5,7 @@ proveedor (`frontend/components/providers/ProviderDialog.tsx`), escribir el RUT
 y que se llenen solos la **razón social** y el **giro**. La dirección no se
 busca: el usuario la escribe en el momento.
 
-> **Prioridad (2026-09-25):** va después de las prioridades P1-P3 de
+> **Prioridad (2026-09-25):** va después de las prioridades P2 y P3 de
 > [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md).
 
 ## Decisión (2026-09-25)
