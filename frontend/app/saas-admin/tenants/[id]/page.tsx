@@ -190,6 +190,7 @@ export default function TenantDetailsPage() {
                     role_name: 'ADMINISTRADOR',
                     is_active: tenant.is_active,
                     max_users: tenant.max_users_override || tenant.plan_max_users || 1,
+                    sii_ambiente: tenant.sii_ambiente,
                     permissions: {
                         can_manage_users: true,
                         can_view_reports: true,

@@ -76,7 +76,7 @@ export interface SaleOut {
     descripcion: string | null
     created_at: string
     related_sale_id: number | null
-    /** Estado en dte-torn (ACEPTADO, REPAROS, RECHAZADO, ENVIADO...). null: venta anterior a la integración. */
+    /** Estado en dte-torn (ACEPTADO, REPAROS, RECHAZADO, ENVIADO, SIMULADO en Desarrollador...). null: venta anterior a la integración. */
     dte_estado: string | null
     dte_glosa: string | null
     ind_traslado: number | null

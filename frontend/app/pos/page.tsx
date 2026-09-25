@@ -17,6 +17,7 @@ import { formatCLP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import Aviso from '@/components/layout/Aviso'
+import DistintivoModo from '@/components/layout/DistintivoModo'
 import { useControlCaja } from '@/lib/store/settingsStore'
 
 export default function POSPage() {
@@ -162,6 +163,7 @@ export default function POSPage() {
             ) : (
                 <section data-section="pos.productos" className="flex flex-1 flex-col gap-3 p-3 md:p-4 min-h-0">
                 <Aviso />
+                <DistintivoModo conDetalle className="self-start" />
                 <ProductSearch
                     value={query}
                     onChange={setQuery}
