@@ -31,7 +31,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
 
 - [ ] **Configuración > General se guarda sola al elegir cada opción.** Hoy el
   botón "Guardar Cambios" queda al final de la tarjeta, la gente no lo ve y se
-  va sin guardar. Además, en la misma tarjeta, "Vista del POS — Variantes" ya
+  va sin guardar. Además, en la misma tarjeta, "Vista del Terminal POS - Variantes" ya
   aplica al instante (va a `uiStore`) y los formatos de impresión no: dos
   comportamientos en la misma pantalla.
   - `app/configuracion/page.tsx`: que `setDocPrintFormat` llame a
@@ -51,6 +51,27 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   - Aplicar la misma regla (guardado inmediato) a otros ajustes simples de
     Configuración. Los formularios con varios campos (emisor, impuestos nuevos)
     siguen con botón.
+
+- [ ] **Eliminar el guion largo "—" de todo el proyecto.** Usar "-" normal o
+  reescribir la frase (coma, dos puntos, paréntesis). Hay 106 usos en archivos
+  versionados (`git grep -c "—"`):
+  - texto que ve el usuario: `frontend/app` (13), `frontend/components` (7),
+    `frontend/lib` (1) y las plantillas de impresión de `backend/app/templates/html/`
+    (por ejemplo `customer.giro or '—'` como relleno de campo vacío, y el pie
+    "Documento generado por Torn — ...");
+  - comentarios y docstrings: `backend/`, `dte-torn/app`, `dte-torn/tests`;
+  - documentación: `dte-torn/DESIGN.md` (19), `dte-torn/README.md`, `CLAUDE.md`,
+    `tasks/*.md`, `.env.example`, `dte-torn/Dockerfile`.
+
+  **Excepción:** `dte-torn/app/dte/builder.py:336` (`texto_sii`) convierte a propósito
+  "—" en "-" antes de mandar el texto al SII, y `dte-torn/tests/test_builder.py`
+  (líneas 299 y 310) lo prueba. Ahí el carácter no se borra: se escribe como
+  `"—"` para que el código siga igual y el grep quede limpio.
+
+  Para que no vuelva: agregar la regla a la sección 5 de `CLAUDE.md` y un paso
+  en `.github/workflows/ci.yml` que falle si `git grep "—"` encuentra algo.
+  Después de reemplazar, correr los tests de backend y de dte-torn y
+  revisar en pantalla los textos del frontend.
 
 ## Prioridad alta
 
