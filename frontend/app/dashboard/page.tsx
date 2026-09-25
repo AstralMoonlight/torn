@@ -148,7 +148,7 @@ export default function DashboardPage() {
             />
 
             {/* main KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div data-section="dashboard.indicadores" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
                     title={`Ventas ${currentStats.period}`}
                     value={formatCLP(currentStats.sales_total)}
@@ -182,7 +182,7 @@ export default function DashboardPage() {
             <DashboardCharts salesData={data.ventas_por_hora} paymentData={data.medios_pago} />
 
             {/* Rankings Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div data-section="dashboard.rankings" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top by Quantity */}
                 <Card className="shadow-sm">
                     <CardHeader className="pb-3 border-b">

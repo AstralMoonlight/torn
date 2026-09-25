@@ -184,7 +184,7 @@ export default function CajaPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="gestion" className="space-y-4 max-w-2xl">
+                <TabsContent data-section="caja.gestion" value="gestion" className="space-y-4 max-w-2xl">
                     {/* User Info Card */}
                     <div className="rounded-xl border border-border bg-card p-4 flex shadow-sm items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
@@ -325,7 +325,7 @@ export default function CajaPage() {
                 </TabsContent>
 
                 {/* Historial Tab */}
-                <TabsContent value="historial" className="space-y-4">
+                <TabsContent data-section="caja.historial" value="historial" className="space-y-4">
                     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <Table>

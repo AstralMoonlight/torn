@@ -121,7 +121,7 @@ export default function BrandsPage() {
                 }
             />
 
-            <div className="flex items-center gap-2 max-w-sm">
+            <div data-section="marcas.buscador" className="flex items-center gap-2 max-w-sm">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar marca..."
@@ -131,7 +131,7 @@ export default function BrandsPage() {
                 />
             </div>
 
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/60">
                         <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
@@ -188,7 +188,7 @@ export default function BrandsPage() {
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent>
+                <DialogContent data-section="marcas.formulario">
                     <DialogHeader>
                         <DialogTitle>{editingBrand ? 'Editar Marca' : 'Nueva Marca'}</DialogTitle>
                     </DialogHeader>

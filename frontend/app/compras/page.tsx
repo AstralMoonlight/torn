@@ -240,7 +240,7 @@ export default function ComprasPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="nuevo" className="space-y-6">
+                <TabsContent data-section="compras.nueva" value="nuevo" className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Left Panel: Form Info */}
                         <Card className="lg:col-span-1 shadow-sm">
@@ -476,7 +476,7 @@ export default function ComprasPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="historial" className="space-y-4">
+                <TabsContent data-section="compras.historial" value="historial" className="space-y-4">
                     <Card>
                         <CardHeader className="py-4">
                             <CardTitle className="text-base">Historial de Compras</CardTitle>
@@ -556,7 +556,7 @@ export default function ComprasPage() {
 
             {/* Purchase Detail Modal */}
             <Dialog open={!!selectedPurchase} onOpenChange={() => setSelectedPurchase(null)}>
-                <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
+                <DialogContent data-section="compras.detalle" className="max-w-3xl overflow-y-auto max-h-[90vh]">
                     <DialogHeader>
                         <div className="flex items-center justify-between pr-8">
                             <div>

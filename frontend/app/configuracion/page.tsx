@@ -130,7 +130,7 @@ export default function ConfigurationPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="general">
+                <TabsContent data-section="configuracion.general" value="general">
                     <Card>
                         <CardHeader>
                             <CardTitle>Preferencias de Impresión</CardTitle>
@@ -227,7 +227,7 @@ export default function ConfigurationPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="impuestos">
+                <TabsContent data-section="configuracion.impuestos" value="impuestos">
                     <Card>
                         <CardHeader>
                             <CardTitle>Gestión de Impuestos</CardTitle>
@@ -302,7 +302,7 @@ export default function ConfigurationPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="folios">
+                <TabsContent data-section="configuracion.folios" value="folios">
                     <Card>
                         <CardContent className="pt-6">
                             <FoliosTab />

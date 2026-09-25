@@ -138,7 +138,7 @@ export default function CartPanel({ onClose }: Props) {
     return (
         <div className="flex h-full max-h-[85vh] lg:max-h-full flex-col bg-card">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
+            <div data-section="pos.carrito.encabezado" className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
                 <div className="flex items-center gap-2">
                     <ShoppingBag className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
                     <h2 className="font-semibold text-sm text-foreground">Ticket</h2>
@@ -164,7 +164,7 @@ export default function CartPanel({ onClose }: Props) {
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-auto px-3 py-2 min-h-0">
+            <div data-section="pos.carrito.items" className="flex-1 overflow-auto px-3 py-2 min-h-0">
                 {items.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
                         <ShoppingBag className="h-12 w-12 opacity-20" />
@@ -238,14 +238,14 @@ export default function CartPanel({ onClose }: Props) {
                         dentro del modal de cobro; ahora se decide acá, visible
                         mientras se arma el carro, para no tener que volver atrás
                         en medio del pago si hay que corregir algo. */}
-                    <div className="px-4 pt-3 space-y-2 border-b border-border pb-3">
+                    <div data-section="pos.carrito.documento" className="px-4 pt-3 space-y-2 border-b border-border pb-3">
                         {(
                             <div className="space-y-1.5">
                                 {/* flex-wrap: si el ícono de cliente se expande (panel inline,
                                     no modal), no cabe junto a los tabs y baja a su propia línea
                                     en vez de quedar apretado o cortado. */}
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                    <Tabs value={tipoDte.toString()} onValueChange={(v) => setTipoDte(Number(v))} className="flex-1 min-w-0">
+                                    <Tabs value={tipoDte.toString()} onValueChange={(v) => { if (v === "33" || v === "39") setTipoDte(Number(v)) }} className="flex-1 min-w-0">
                                         <TabsList className="grid w-full grid-cols-3">
                                             <TabsTrigger
                                                 value="39"
@@ -343,7 +343,7 @@ export default function CartPanel({ onClose }: Props) {
                         )}
 
                         {!isBoleta && !isGuia && (
-                            <div className="rounded-lg border border-border bg-muted/50 overflow-hidden">
+                            <div data-section="pos.carrito.referencias" className="rounded-lg border border-border bg-muted/50 overflow-hidden">
                                 <button
                                     type="button"
                                     onClick={() => setRefsSectionOpen((o) => !o)}
@@ -409,7 +409,7 @@ export default function CartPanel({ onClose }: Props) {
                         )}
                     </div>
 
-                    <div className="space-y-0.5 px-4 py-2.5 font-tabular">
+                    <div data-section="pos.carrito.totales" className="space-y-0.5 px-4 py-2.5 font-tabular">
                         <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Neto</span>
                             <span>{formatCLP(totalNeto)}</span>

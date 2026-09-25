@@ -134,3 +134,24 @@
     text-align: right;
   }
 }
+/* Ctrl+Alt+S (AppShell): contorno y nombre de cada contenedor con data-section,
+   para pedir cambios concretos. Los fixed/absolute/sticky ya están posicionados. */
+html[data-ver-secciones] [data-section] {
+  outline: 1px dashed hsl(var(--primary));
+  outline-offset: -1px;
+}
+html[data-ver-secciones] [data-section]:not(.fixed):not(.absolute):not(.sticky) {
+  position: relative;
+}
+html[data-ver-secciones] [data-section]::before {
+  content: attr(data-section);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  padding: 0 4px;
+  font: 600 10px/16px ui-monospace, monospace;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  pointer-events: none;
+}

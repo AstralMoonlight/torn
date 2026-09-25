@@ -103,7 +103,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent data-section="personal.formulario" className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {user ? (

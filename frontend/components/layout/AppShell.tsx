@@ -132,6 +132,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             })
     }, [setSession, setStatus, userId, token, selectedTenantId])
 
+    // Ctrl+Alt+S muestra el nombre de cada contenedor (atributo data-section), para
+    // poder pedir cambios concretos: "en pos.carrito.documento, ...". Se recuerda.
+    useEffect(() => {
+        const html = document.documentElement
+        const aplicar = (ver: boolean) => {
+            if (ver) html.dataset.verSecciones = ''
+            else delete html.dataset.verSecciones
+        }
+        try { aplicar(localStorage.getItem('ver-secciones') === '1') } catch { /* sin storage */ }
+        const alTeclear = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey && e.altKey && e.code === 'KeyS')) return
+            const ver = html.dataset.verSecciones === undefined
+            aplicar(ver)
+            try { localStorage.setItem('ver-secciones', ver ? '1' : '0') } catch { /* sin storage */ }
+        }
+        window.addEventListener('keydown', alTeclear)
+        return () => window.removeEventListener('keydown', alTeclear)
+    }, [])
+
     if (!isMounted) return null // Prevent hydration mismatch
 
     if (pathname === '/login' || pathname === '/select-tenant' || pathname.startsWith('/saas-admin')) {
@@ -143,7 +162,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-[100dvh] overflow-hidden">
             <Sidebar />
-            <main className="flex-1 overflow-auto bg-background pb-16 md:pb-0">
+            <main data-section="contenido" className="flex-1 overflow-auto bg-background pb-16 md:pb-0">
                 {children}
             </main>
             <MobileNav />

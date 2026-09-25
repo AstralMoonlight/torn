@@ -138,7 +138,7 @@ export default function InventarioPage() {
             />
 
             {/* Search */}
-            <div className="relative">
+            <div data-section="inventario.buscador" className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar por nombre, SKU o código de barras..."
@@ -149,7 +149,7 @@ export default function InventarioPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="inventario.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted">
                         <TableRow className="border-b border-border">

@@ -87,7 +87,7 @@ export default function ProvidersPage() {
                 }
             />
 
-            <Card>
+            <Card data-section="proveedores.tabla">
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-medium">Listado de Proveedores</CardTitle>

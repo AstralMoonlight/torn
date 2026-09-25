@@ -329,7 +329,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
     return (
         <>
             <Dialog open={open} onOpenChange={(open) => !open && !success && onClose()}>
-                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => success && e.preventDefault()}>
+                <DialogContent data-section="pos.cobro" className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => success && e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle className="text-xl">
                             {success ? '✅ Venta Exitosa' : `Cobrar ${DTE_LABELS[tipoDte] || ''}`}
@@ -383,7 +383,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 </p>
                             ) : (<>
                             {/* Payment Methods */}
-                            <div className="space-y-2.5">
+                            <div data-section="pos.cobro.pagos" className="space-y-2.5">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-xs">Medios de Pago</Label>
                                     <Button variant="outline" size="sm" onClick={addPaymentLine} className="h-7 text-[11px] gap-1">
@@ -441,7 +441,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             <Separator />
 
                             {/* Summary */}
-                            <div className="space-y-1 font-tabular text-sm">
+                            <div data-section="pos.cobro.resumen" className="space-y-1 font-tabular text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Total</span>
                                     <span className="font-semibold">{formatCLP(totalFinal)}</span>

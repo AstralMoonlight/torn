@@ -184,7 +184,7 @@ export default function CustomersPage() {
                 }
             />
 
-            <div className="flex items-center gap-2 max-w-sm">
+            <div data-section="clientes.buscador" className="flex items-center gap-2 max-w-sm">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar por RUT o Nombre..."
@@ -194,7 +194,7 @@ export default function CustomersPage() {
                 />
             </div>
 
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/60">
                         <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
@@ -264,7 +264,7 @@ export default function CustomersPage() {
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent data-section="clientes.formulario" className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
                     </DialogHeader>

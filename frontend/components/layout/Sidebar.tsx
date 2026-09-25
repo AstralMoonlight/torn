@@ -87,7 +87,7 @@ export default function Sidebar() {
     const isSuperadmin = userPayload?.is_superuser === true
 
     return (
-        <aside
+        <aside data-section="menu-lateral"
             className={cn(
                 'hidden md:flex h-screen flex-col border-r border-border bg-card transition-all duration-300 print:hidden',
                 collapsed ? 'w-[68px]' : 'w-60'

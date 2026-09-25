@@ -238,7 +238,7 @@ export default function PersonalPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="list" className="space-y-4">
+                <TabsContent data-section="personal.usuarios" value="list" className="space-y-4">
                     <div className="flex justify-end">
                         <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
                             <Plus className="h-4 w-4" /> Nuevo Personal
@@ -320,7 +320,7 @@ export default function PersonalPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="roles" className="space-y-6">
+                <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="relative max-w-xs w-full">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

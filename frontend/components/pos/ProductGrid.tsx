@@ -47,7 +47,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
 
     if (loading) {
         return (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 flex-1 overflow-auto">
+            <div data-section="pos.grilla" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 flex-1 overflow-auto">
                 {Array.from({ length: 8 }).map((_, i) => (
                     <Skeleton key={i} className="h-32 rounded-xl" />
                 ))}

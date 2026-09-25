@@ -54,7 +54,7 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <div className="w-full max-w-sm space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border">
+            <div data-section="login.formulario" className="w-full max-w-sm space-y-8 bg-card p-8 rounded-2xl shadow-xl border border-border">
                 <div className="text-center space-y-2">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-primary-foreground mb-2 shadow-lg shadow-primary/20">
                         <Store className="w-6 h-6" />

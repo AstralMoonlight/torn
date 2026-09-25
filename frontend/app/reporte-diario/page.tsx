@@ -83,7 +83,7 @@ export default function DailyReportPage() {
     return (
         <PageContainer className="max-w-4xl space-y-8 animate-in fade-in duration-500">
             {/* Control Bar (Hidden on Print) */}
-            <div className="print:hidden border-b pb-6 border-border">
+            <div data-section="reporte-diario.controles" className="print:hidden border-b pb-6 border-border">
                 <PageHeader
                     icon={BarChart2}
                     title="Reportes"
@@ -131,7 +131,7 @@ export default function DailyReportPage() {
             </div>
 
             {/* Simplified Summary Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
+            <div data-section="reporte-diario.resumen" className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
                 {/* Financial Summary */}
                 <div className="space-y-6">
                     <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Resumen Financiero</h2>
@@ -180,7 +180,7 @@ export default function DailyReportPage() {
                     <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Detalle por Artículo</h2>
                     <span className="text-[10px] font-mono text-muted-foreground uppercase">{itemCount} Items</span>
                 </div>
-                <div className="border border-border rounded-lg overflow-hidden print:border-black">
+                <div data-section="reporte-diario.tabla" className="border border-border rounded-lg overflow-hidden print:border-black">
                     <Table>
                         <TableHeader className="bg-muted/50 print:bg-transparent">
                             <TableRow className="border-b-border print:border-black">

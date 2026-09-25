@@ -108,7 +108,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent data-section="proveedores.formulario" className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>{provider ? 'Editar Proveedor' : 'Nuevo Proveedor'}</DialogTitle>
                 </DialogHeader>

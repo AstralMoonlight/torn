@@ -58,7 +58,7 @@ export default function SaaSAdminPage() {
                 </div>
 
                 {/* Modules Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div data-section="saas-admin.modulos" className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Tenants Module */}
                     <div className="bg-card p-8 rounded-2xl border border-border shadow-sm flex flex-col items-start gap-6 hover:border-primary/50 transition-all duration-300 group">
                         <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">

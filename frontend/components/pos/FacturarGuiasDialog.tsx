@@ -72,7 +72,7 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
 
     return (
         <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent data-section="historial.facturar-guias" className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
                         <FileText className="h-4 w-4" /> Facturar guías de despacho

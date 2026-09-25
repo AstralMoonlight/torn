@@ -357,7 +357,7 @@ export default function PriceListsPage() {
             />
 
             {/* Table */}
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div data-section="listas-precios.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/60 border-b border-border">
                         <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
@@ -445,7 +445,7 @@ export default function PriceListsPage() {
 
             {/* Create / Edit Modal */}
             <Dialog open={openModal} onOpenChange={setOpenModal}>
-                <DialogContent className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent data-section="listas-precios.formulario" className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
                             {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}

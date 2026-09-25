@@ -23,7 +23,7 @@ export default function MobileNav() {
     const pathname = usePathname()
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden border-t border-border bg-background/95 backdrop-blur-md print:hidden safe-bottom">
+        <nav data-section="menu-movil" className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden border-t border-border bg-background/95 backdrop-blur-md print:hidden safe-bottom">
             {tabs.map((tab) => {
                 const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
                 return (

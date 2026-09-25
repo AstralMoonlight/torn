@@ -126,7 +126,7 @@ export default function POSPage() {
     return (
         <div className="flex h-full flex-col lg:flex-row">
             {/* Left Panel: Search + Products */}
-            <div className="flex flex-1 flex-col p-3 md:p-4 gap-3 min-h-0">
+            <div data-section="pos.productos" className="flex flex-1 flex-col p-3 md:p-4 gap-3 min-h-0">
                 <ProductSearch onSearch={handleSearch} />
                 <ProductGrid products={filtered} loading={loading} variantDisplay={posVariantDisplay} />
             </div>
@@ -145,13 +145,13 @@ export default function POSPage() {
             </button>
 
             {/* Desktop: Cart Panel */}
-            <div className="hidden lg:block w-[380px] xl:w-[420px] border-l border-border">
+            <div data-section="pos.carrito" className="hidden lg:block w-[380px] xl:w-[420px] border-l border-border">
                 <CartPanel />
             </div>
 
             {/* Mobile: Cart Sheet */}
             {showMobileCart && (
-                <div className="lg:hidden fixed inset-0 z-50">
+                <div data-section="pos.carrito-movil" className="lg:hidden fixed inset-0 z-50">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileCart(false)} />
                     <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-card shadow-xl animate-in slide-in-from-bottom">
                         <div className="flex justify-center py-2">

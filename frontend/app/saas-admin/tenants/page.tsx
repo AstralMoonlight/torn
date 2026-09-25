@@ -494,7 +494,7 @@ export default function TenantsListPage() {
                     </Dialog>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
+                <div data-section="saas-admin.empresas.filtros" className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -518,7 +518,7 @@ export default function TenantsListPage() {
                 </div>
 
                 {/* Table */}
-                <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                <div data-section="saas-admin.empresas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <Table>
                         <TableHeader className="bg-muted/50 border-b border-border">
                             <TableRow>

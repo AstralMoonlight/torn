@@ -197,7 +197,7 @@ export default function HistorialPage() {
             />
 
             {/* Search */}
-            <div className="relative">
+            <div data-section="historial.buscador" className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Buscar por folio o RUT..."
@@ -208,7 +208,7 @@ export default function HistorialPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="historial.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted">
                         <TableRow className="border-b border-border">
@@ -294,7 +294,7 @@ export default function HistorialPage() {
 
             {/* Return Dialog */}
             <Dialog open={!!returnDialog} onOpenChange={() => setReturnDialog(null)}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent data-section="historial.nota-ajuste" className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
                             <RotateCcw className="h-4 w-4 text-destructive" />
