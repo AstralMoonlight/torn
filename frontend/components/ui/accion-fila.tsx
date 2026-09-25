@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 /**
  * Acción por fila de una tabla (editar, ver, eliminar): ícono suelto, mismo
  * tamaño y hover neutro en todas las tablas; rojo solo si `peligro`.
- * Inventario, con cinco acciones, usa un menú "⋯" en su lugar.
  */
 export function AccionFila({
     icon: Icon,

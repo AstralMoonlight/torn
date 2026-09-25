@@ -7,12 +7,12 @@ import {
     Package,
     AlertTriangle,
     XCircle,
-    MoreHorizontal,
     Pencil,
     Trash2,
     Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Badge } from '@/components/ui/badge'
 import {
     Table,
@@ -23,14 +23,6 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -129,7 +121,7 @@ export default function InventarioPage() {
             <PageHeader
                 icon={Package}
                 title="Inventario"
-                description={`${allProducts.length} productos`}
+                description="Gestiona tus productos, precios y stock."
                 actions={
                     <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs">
                         <Plus className="h-4 w-4" /> Nuevo producto
@@ -194,26 +186,10 @@ export default function InventarioPage() {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                    <span className="sr-only">Abrir menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEdit(p)}>
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    Editar
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => setToDelete(p)} className="text-destructive focus:text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Eliminar
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="flex justify-end gap-1">
+                                            <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(p)} />
+                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(p)} peligro />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
