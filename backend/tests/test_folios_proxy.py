@@ -28,7 +28,7 @@ def test_status_suma_los_caf_activos_por_tipo(client, monkeypatch):
     assert llamadas == [("GET", "/folios", 1)]
 
     por_tipo = {f["dte_type"]: f for f in resp.json()}
-    assert set(por_tipo) == {33, 34, 39, 41, 56, 61}
+    assert set(por_tipo) == {33, 34, 39, 41, 52, 56, 61}
     assert por_tipo[33] == {
         "dte_type": 33, "available": 12, "total": 20,
         "latest_folio_desde": 900, "latest_folio_hasta": 909,
