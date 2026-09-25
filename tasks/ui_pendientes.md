@@ -41,7 +41,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
     mandando el `print_formats` completo, como hace hoy `handleSaveSettings`.
   - `handleSaveSettings` también manda `iva_default_id`, pero en esta pestaña no
     hay dónde editarlo. Revisar si se puede dejar de mandar.
-  - Feedback: un toast discreto ("Guardado") o una marca junto a la opción. Si
+  - Feedback: una marca "Guardado" junto a la opción (sin toast, ver tarea de toasts). Si
     falla, volver a la opción anterior y mostrar el error.
   - Evitar que se pisen los cambios: si el usuario toca dos opciones seguidas,
     la segunda respuesta no debe revertir la primera. Mandar siempre el estado
@@ -72,6 +72,35 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   en `.github/workflows/ci.yml` que falle si `git grep "—"` encuentra algo.
   Después de reemplazar, correr los tests de backend y de dte-torn y
   revisar en pantalla los textos del frontend.
+
+- [ ] **Dejar de usar toasts; si hace falta un mensaje, usar `Alert` de shadcn.**
+  Hoy conviven dos sistemas de toast, y los dos están montados:
+  - **sonner**: `import { toast } from 'sonner'` en 28 archivos, unas 135 llamadas
+    (`toast.success`/`toast.error`). `<Toaster>` en `app/layout.tsx`. Los que más
+    tienen: `saas-admin/tenants/[id]` (12), `saas-admin/tenants` (11), `clientes`
+    (11), `compras` (10), `caja` (10), `personal` (9). También
+    `lib/store/cartStore.ts`, que es un store y no puede mostrar un Alert: tiene que
+    devolver el error al componente.
+  - **toast de shadcn/Radix**: solo en `app/configuracion/FoliosTab.tsx`
+    (`useToast`). `<Toaster />` en `components/layout/AppShell.tsx`.
+
+  `Alert` no está instalado (`components/ui/` solo tiene `alert-dialog.tsx`):
+  agregarlo con `npx shadcn@latest add alert` (regla 2 de `CLAUDE.md`).
+
+  Criterio para reemplazar cada llamada:
+  - error al guardar en un diálogo o formulario: `Alert variant="destructive"`
+    dentro del diálogo, sobre los botones, sin cerrarlo;
+  - error al cargar una página: `Alert` arriba del contenido, con botón Reintentar;
+  - éxito (creado, guardado, eliminado): casi siempre sobra, porque el resultado
+    ya se ve (el diálogo se cierra y aparece la fila). Si hace falta, un Alert
+    breve en la página o una marca junto al elemento;
+  - avisos del POS (6 archivos en `app/pos` y `components/pos`, unas 18 llamadas):
+    el POS ya está validado, así que confirmar con el usuario antes de tocarlo.
+
+  Al terminar, desinstalar `sonner` y `@radix-ui/react-toast`, borrar
+  `components/ui/toast.tsx`, `toaster.tsx` y `use-toast.ts`, y quitar los dos
+  `<Toaster>`. Actualizar `CLAUDE.md`: sacar Sonner de la tabla del stack y
+  agregar a la sección 5 la regla "no usar toasts; usar Alert".
 
 ## Prioridad alta
 
@@ -115,7 +144,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   corresponde oración: "Nuevo cliente", "Panel de control". Incluye el
   `Sidebar`, los `PageHeader`, los títulos de diálogo y los botones.
 - [ ] **Voz de los textos**: unificar tuteo (la mayoría usa "Gestiona",
-  "Crea"). Revisar descripciones y mensajes de toast.
+  "Crea"). Revisar descripciones y mensajes (los que hoy son toasts pasan a Alert, ver tarea de toasts).
 - [ ] **saas-admin con su propio contenedor**: `app/saas-admin/**` usa
   `max-w-5xl p-6 md:p-12` y encabezados propios. Evaluar usar `PageContainer`
   y `PageHeader` (el de detalle de empresa necesita el enlace "Volver" y los
