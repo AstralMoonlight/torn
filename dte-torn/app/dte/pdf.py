@@ -350,18 +350,22 @@ def _receptor(h: _Hoja) -> None:
     pares = [(k, v) for k, v in pares if v]
 
     ancho_col = (ANCHO - 2 * MARGEN) / 2
-    filas = (len(pares) + 1) // 2
-    alto = filas * 12 + 8
+    # Nada se corta: una razón social larga ocupa varias líneas y su fila crece.
+    celdas = []
+    for etiqueta, valor in pares:
+        ancho_etiqueta = c.stringWidth(f"{etiqueta}: ", "Helvetica-Bold", 8.5)
+        celdas.append((etiqueta, ancho_etiqueta, _lineas(valor, "Helvetica", 8.5, ancho_col - ancho_etiqueta - 8)))
+    altos = [max(len(l) for _, _, l in celdas[i:i + 2]) * 10 + 2 for i in range(0, len(celdas), 2)]
+    alto = sum(altos) + 8
     c.rect(MARGEN, h.y - alto, ANCHO - 2 * MARGEN, alto)
-    for i, (etiqueta, valor) in enumerate(pares):
+    for i, (etiqueta, ancho_etiqueta, lineas) in enumerate(celdas):
         x = MARGEN + 4 + (i % 2) * ancho_col
-        y = h.y - 13 - (i // 2) * 12
+        y = h.y - 13 - sum(altos[: i // 2])
         c.setFont("Helvetica-Bold", 8.5)
         c.drawString(x, y, f"{etiqueta}:")
-        ancho_etiqueta = c.stringWidth(f"{etiqueta}: ", "Helvetica-Bold", 8.5)
         c.setFont("Helvetica", 8.5)
-        recorte = _lineas(valor, "Helvetica", 8.5, ancho_col - ancho_etiqueta - 8)
-        c.drawString(x + ancho_etiqueta, y, recorte[0] if recorte else "")
+        for n, texto in enumerate(lineas):
+            c.drawString(x + ancho_etiqueta, y - n * 10, texto)
     h.y -= alto + 5 * mm
 
 

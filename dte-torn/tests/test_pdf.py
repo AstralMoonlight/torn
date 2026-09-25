@@ -176,3 +176,9 @@ def test_guia_de_traslado_interno_no_tiene_cedible(cert) -> None:
     assert b"CEDIBLE" not in texto
     ted = leer_dte(xml).ted
     assert zxingcpp.read_barcode(render_image(codigos_timbre(ted), scale=3)).bytes == ted
+
+
+def test_razon_social_larga_no_se_corta(cert) -> None:
+    receptor = RECEPTOR.model_copy(update={"razon_social": "FUNDACION EDUCACIONAL SANTA MAGDALENA SOFIA BARAT"})
+    texto = _texto_pdf(generar_pdf(_firmado(cert, receptor=receptor).xml, IMPRESION))
+    assert b"SOFIA BARAT" in texto
