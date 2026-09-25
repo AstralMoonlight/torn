@@ -67,6 +67,7 @@ const ESTADOS_SII: Record<string, { label: string; color: string }> = {
     RECHAZADO: { label: 'Rechazado', color: 'bg-destructive' },
     ERROR_VALIDACION: { label: 'Error', color: 'bg-destructive' },
     ANULADO: { label: 'Anulado', color: 'bg-muted-foreground' },
+    SIMULADO: { label: 'Prueba', color: 'bg-amber-600' },
 }
 
 function SiiBadge({ estado, glosa }: { estado: string | null; glosa: string | null }) {

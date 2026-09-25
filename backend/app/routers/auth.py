@@ -61,7 +61,8 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
             role_name=tu.role_name,
             is_active=tu.tenant.is_active,
             max_users=tu.tenant.max_users_override or tu.tenant.plan_max_users,
-            permissions=perms
+            permissions=perms,
+            sii_ambiente=tu.tenant.sii_ambiente,
         ))
         
     return results

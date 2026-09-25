@@ -21,6 +21,8 @@ export interface AvailableTenant {
     is_active: boolean
     max_users: number
     permissions?: Record<string, boolean>
+    /** Modo del emisor: CERT (maullín), PROD (palena) o DEV (Desarrollador, sin SII). */
+    sii_ambiente?: 'CERT' | 'PROD' | 'DEV'
 }
 
 interface SessionState {

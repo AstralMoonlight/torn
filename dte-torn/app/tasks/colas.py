@@ -234,18 +234,18 @@ async def _enviar(tenant_id: str, doc_id: str) -> str:
     ctx = contexto()
     tid, did = uuid.UUID(tenant_id), uuid.UUID(doc_id)
     async with tenant_session(tid) as s:
-        doc = (await s.execute(select(Document.estado, Document.tipo_dte).where(Document.id == did))).one()
+        doc = (await s.execute(select(Document.estado, Document.tipo_dte, Document.ambiente).where(Document.id == did))).one()
     async with control_session() as s:
-        tenant = (await s.execute(select(Tenant.rut_emisor, Tenant.ambiente).where(Tenant.id == tid))).one()
+        rut_emisor = (await s.execute(select(Tenant.rut_emisor).where(Tenant.id == tid))).scalar_one()
     if doc.estado not in (E.FIRMADO, E.VERIFICAR):
         return doc.estado
 
     canal = pipeline.canal_de(doc.tipo_dte)
-    abierto = await breaker_abierto(ctx.redis, tenant.ambiente, canal)
+    abierto = await breaker_abierto(ctx.redis, doc.ambiente, canal)
     if abierto:
         await posponer(tid, did, abierto)
         return doc.estado
-    cupo = await tomar_cupo(ctx.redis, tenant.rut_emisor)
+    cupo = await tomar_cupo(ctx.redis, rut_emisor)
     if cupo is None:
         await posponer(tid, did, ESPERA_SIN_CUPO_SEGUNDOS)
         return doc.estado
@@ -255,13 +255,13 @@ async def _enviar(tenant_id: str, doc_id: str) -> str:
             return await pipeline.verificar(ctx, tid, did)
         resultado = await pipeline.enviar(ctx, tid, did)
     finally:
-        await soltar_cupo(ctx.redis, tenant.rut_emisor, cupo)
+        await soltar_cupo(ctx.redis, rut_emisor, cupo)
 
     if resultado == E.ENVIADO:
-        await breaker_exito(ctx.redis, tenant.ambiente, canal)
+        await breaker_exito(ctx.redis, doc.ambiente, canal)
     elif resultado in (E.FIRMADO, E.VERIFICAR):
         # Volvió atrás (el SII no respondió) o quedó ambiguo: cuenta como fallo.
-        await breaker_fallo(ctx.redis, tenant.ambiente, canal)
+        await breaker_fallo(ctx.redis, doc.ambiente, canal)
     return resultado
 
 

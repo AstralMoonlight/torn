@@ -33,9 +33,11 @@ import {
     TableEmpty,
 } from '@/components/ui/table'
 
+type Ambiente = 'CERT' | 'PROD' | 'DEV'
+
 /** Datos del SII que se copian a dte-torn. Una empresa nueva parte en certificación. */
 const SII_VACIO = {
-    sii_ambiente: 'CERT' as 'CERT' | 'PROD',
+    sii_ambiente: 'CERT' as Ambiente,
     sii_resolucion_numero: 0,
     sii_resolucion_fecha: '',
     sii_oficina: '',
@@ -49,6 +51,8 @@ export default function TenantsListPage() {
     const [openModal, setOpenModal] = useState(false)
     const [editingTenantId, setEditingTenantId] = useState<number | null>(null)
     const [tenantToDelete, setTenantToDelete] = useState<number | null>(null)
+    const [ambienteOriginal, setAmbienteOriginal] = useState<Ambiente>('CERT')
+    const [confirmarProd, setConfirmarProd] = useState(false)
     const [tenantSearch, setTenantSearch] = useState('')
 
     const [formData, setFormData] = useState({
@@ -147,6 +151,7 @@ export default function TenantsListPage() {
 
     const openEditModal = (tenant: Tenant) => {
         setEditingTenantId(tenant.id)
+        setAmbienteOriginal(tenant.sii_ambiente)
         setFormData({
             name: tenant.name || '',
             rut: tenant.rut || '',
@@ -178,6 +183,15 @@ export default function TenantsListPage() {
             return
         }
 
+        // Pasar a producción se confirma aparte: desde ahí cada documento es tributariamente válido.
+        if (formData.sii_ambiente === 'PROD' && ambienteOriginal !== 'PROD') {
+            setConfirmarProd(true)
+            return
+        }
+        await guardarTenant()
+    }
+
+    const guardarTenant = async () => {
         setIsCreating(true)
         try {
             const payload = {
@@ -327,7 +341,7 @@ export default function TenantsListPage() {
                                     </div>
 
                                     {editingTenantId && (
-                                        <div className="space-y-4 p-4 bg-muted rounded-lg border border-border">
+                                        <div className="space-y-4 p-4 bg-muted rounded-lg border border-border md:col-span-2">
                                             <div>
                                                 <Label>Facturación electrónica (SII)</Label>
                                                 <p className="text-xs text-muted-foreground mt-1">
@@ -339,12 +353,13 @@ export default function TenantsListPage() {
                                                     <Label>Ambiente</Label>
                                                     <Select
                                                         value={formData.sii_ambiente}
-                                                        onValueChange={v => setFormData({ ...formData, sii_ambiente: v as 'CERT' | 'PROD' })}
+                                                        onValueChange={v => setFormData({ ...formData, sii_ambiente: v as Ambiente })}
                                                     >
                                                         <SelectTrigger>
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-card border-border">
+                                                            <SelectItem value="DEV">Desarrollador</SelectItem>
                                                             <SelectItem value="CERT">Certificación</SelectItem>
                                                             <SelectItem value="PROD">Producción</SelectItem>
                                                         </SelectContent>
@@ -377,6 +392,11 @@ export default function TenantsListPage() {
                                                     />
                                                 </div>
                                             </div>
+                                            {formData.sii_ambiente === 'DEV' && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Desarrollador: se emite con folios de prueba y no se envía nada al SII. Cada modo ve solo sus propias ventas.
+                                                </p>
+                                            )}
                                             {formData.sii_ambiente === 'PROD' && (
                                                 <p className="text-xs text-destructive flex items-center gap-1">
                                                     <AlertTriangle className="h-3.5 w-3.5" /> En producción cada documento emitido es tributariamente válido.
@@ -542,6 +562,14 @@ export default function TenantsListPage() {
                     description="Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado."
                     confirmLabel="Desactivar"
                     onConfirm={handleDeleteTenant}
+                />
+                <ConfirmDialog
+                    open={confirmarProd}
+                    onOpenChange={setConfirmarProd}
+                    title="¿Pasar la empresa a producción?"
+                    description="Desde ahora cada documento que emita se envía al SII real y es tributariamente válido. Las ventas de los otros modos dejan de verse (no se borran)."
+                    confirmLabel="Pasar a producción"
+                    onConfirm={guardarTenant}
                 />
 
         </PageContainer>

@@ -38,6 +38,8 @@ TIMBRE = {80: (14, 28), 57: (10, 30)}
 
 #: Firma del software al final del documento impreso.
 LEYENDA_PIE = "Factureando.cl: Hazla simple!"
+#: Va en el ticket de una venta emitida en modo Desarrollador (igual que en el PDF de dte-torn).
+LEYENDA_PRUEBA = "DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA"
 
 
 def _hijos(nodo) -> dict[str, str]:

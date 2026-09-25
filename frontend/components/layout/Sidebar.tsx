@@ -20,6 +20,7 @@ import {
     LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import DistintivoModo from '@/components/layout/DistintivoModo'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { useUIStore } from '@/lib/store/uiStore'
 import { Badge } from '@/components/ui/badge'
@@ -110,6 +111,7 @@ export default function Sidebar() {
                         <p className="text-xs uppercase tracking-widest text-muted-foreground leading-none">
                             punto de venta
                         </p>
+                        <DistintivoModo className="mt-1 w-fit" />
                     </div>
                 )}
             </div>

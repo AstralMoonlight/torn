@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dte.signer import hoy_chile
-from app.models import CAF, Document, EstadoCAF, EstadoDocumento
+from app.models import CAF, Ambiente, Document, EstadoCAF, EstadoDocumento
 
 #: Reintentos del SELECT ... FOR UPDATE cuando el CAF elegido se agota entre el
 #: snapshot y el lock. Ver `asignar_folio`.
@@ -76,7 +76,7 @@ def hash_payload(payload: dict) -> str:
 
 
 async def asignar_folio(
-    session: AsyncSession, tenant_id: uuid.UUID, tipo_dte: int
+    session: AsyncSession, tenant_id: uuid.UUID, tipo_dte: int, ambiente: str = Ambiente.CERT
 ) -> tuple[uuid.UUID, int]:
     """Toma el siguiente folio disponible, bloqueando el CAF.
 
@@ -87,6 +87,7 @@ async def asignar_folio(
         session: Sesión con `app.tenant_id` ya fijado.
         tenant_id: Tenant dueño del CAF (redundante con RLS, a propósito).
         tipo_dte: Código del documento (33, 39, 61...).
+        ambiente: Solo se usan los CAF de este ambiente.
 
     Returns:
         `(caf_id, folio)`.
@@ -102,6 +103,7 @@ async def asignar_folio(
             .where(
                 CAF.tenant_id == tenant_id,
                 CAF.tipo_dte == tipo_dte,
+                CAF.ambiente == ambiente,
                 CAF.estado == EstadoCAF.ACTIVO,
                 or_(CAF.fecha_vencimiento.is_(None), CAF.fecha_vencimiento >= hoy),
             )
@@ -124,7 +126,7 @@ async def asignar_folio(
             # después de soltarlo y, si la fila dejó de calzar, devuelve vacío
             # en vez de pasar a la siguiente. El reintento toma un snapshot
             # nuevo y encuentra el CAF que sigue.
-            if await _queda_algun_caf(session, tenant_id, tipo_dte, hoy):
+            if await _queda_algun_caf(session, tenant_id, tipo_dte, ambiente, hoy):
                 continue
             raise SinFoliosError(tipo_dte)
 
@@ -144,7 +146,7 @@ async def asignar_folio(
 
 
 async def _queda_algun_caf(
-    session: AsyncSession, tenant_id: uuid.UUID, tipo_dte: int, hoy: date
+    session: AsyncSession, tenant_id: uuid.UUID, tipo_dte: int, ambiente: str, hoy: date
 ) -> bool:
     """Indica si hay algún CAF activo, sin bloquearlo."""
     stmt = (
@@ -152,6 +154,7 @@ async def _queda_algun_caf(
         .where(
             CAF.tenant_id == tenant_id,
             CAF.tipo_dte == tipo_dte,
+            CAF.ambiente == ambiente,
             CAF.estado == EstadoCAF.ACTIVO,
             or_(CAF.fecha_vencimiento.is_(None), CAF.fecha_vencimiento >= hoy),
         )
@@ -177,6 +180,8 @@ class DatosEmision:
     monto_exento: int = 0
     monto_iva: int = 0
     monto_total: int = 0
+    #: El del tenant al emitir. Elige los CAF y queda grabado en el documento.
+    ambiente: str = Ambiente.CERT
 
 
 async def emitir_documento(
@@ -210,6 +215,7 @@ async def emitir_documento(
             tenant_id=tenant_id,
             external_id=datos.external_id,
             tipo_dte=datos.tipo_dte,
+            ambiente=datos.ambiente,
             estado=EstadoDocumento.PENDIENTE,
             payload=datos.payload,
             payload_hash=payload_hash,
@@ -241,7 +247,7 @@ async def emitir_documento(
         return existente, False
 
     # 2. Folio. Si esto levanta, el rollback se lleva también el documento.
-    caf_id, folio = await asignar_folio(session, tenant_id, datos.tipo_dte)
+    caf_id, folio = await asignar_folio(session, tenant_id, datos.tipo_dte, datos.ambiente)
 
     await session.execute(
         update(Document)

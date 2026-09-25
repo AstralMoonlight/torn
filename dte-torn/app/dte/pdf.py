@@ -90,6 +90,8 @@ MARGEN = 12 * mm
 
 #: Firma del software al pie de cada hoja.
 LEYENDA_PIE = "Factureando.cl: Hazla simple!"
+#: Cruzada sobre cada hoja de un documento de Desarrollador.
+LEYENDA_PRUEBA = "DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA"
 
 _NSX = {"s": NS}
 _TED = re.compile(rb"<TED[ >].*?</TED>", re.S)
@@ -266,12 +268,15 @@ class DatosImpresion:
     #: Copia cliente y copia cedible en el mismo PDF (una hoja cada una). Solo
     #: afecta a documentos cedibles; el resto sale con una hoja.
     con_cedible: bool = False
+    #: Documento de Desarrollador: cada hoja lleva `LEYENDA_PRUEBA` cruzada.
+    prueba: bool = False
 
 
 @dataclass
 class _Hoja:
     c: Canvas
     doc: Documento
+    prueba: bool = False
     y: float = 0.0
     pagina: int = 1
     columnas: list[tuple[str, float, str]] = field(default_factory=list)
@@ -392,14 +397,22 @@ def _cabecera_tabla(h: _Hoja) -> None:
     h.y -= 14
 
 
-def _cerrar_hoja(c: Canvas) -> None:
+def _cerrar_hoja(c: Canvas, prueba: bool = False) -> None:
     c.setFont("Helvetica-Oblique", 7)
     c.drawCentredString(ANCHO / 2, MARGEN / 2, LEYENDA_PIE)
+    if prueba:
+        c.saveState()
+        c.setFillColor(red, alpha=0.25)
+        c.setFont("Helvetica-Bold", 22)
+        c.translate(ANCHO / 2, ALTO / 2)
+        c.rotate(35)
+        c.drawCentredString(0, 0, LEYENDA_PRUEBA)
+        c.restoreState()
     c.showPage()
 
 
 def _nueva_pagina(h: _Hoja) -> None:
-    _cerrar_hoja(h.c)
+    _cerrar_hoja(h.c, h.prueba)
     h.pagina += 1
     h.c.setFont("Helvetica", 8)
     h.c.drawString(
@@ -574,11 +587,11 @@ def generar_pdf(xml: bytes, imp: DatosImpresion) -> bytes:
     copias = [False, True] if imp.con_cedible and cedible else [imp.cedible]
     for cedible in copias:
         copia = replace(imp, cedible=cedible)
-        h = _Hoja(c=c, doc=d)
+        h = _Hoja(c=c, doc=d, prueba=imp.prueba)
         _encabezado(h, copia)
         _receptor(h)
         _detalle(h)
         _pie(h, copia)
-        _cerrar_hoja(c)
+        _cerrar_hoja(c, imp.prueba)
     c.save()
     return salida.getvalue()

@@ -111,6 +111,7 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     sale.folio = emitido["folio"]
+    sale.modo = tenant.sii_ambiente
     _guardar_estado(sale, emitido)
     if Decimal(emitido["monto_total"]) != sale.monto_total:
         # No debería pasar: `totales_dte` replica el cálculo de dte-torn. El
@@ -124,7 +125,8 @@ TRASLADO_INTERNO = 5
 TRASLADOS_FACTURABLES = {1, 2, 3}
 
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
-ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION"}
+#: SIMULADO: emitido en modo Desarrollador, nunca va al SII.
+ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION", "SIMULADO"}
 
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
@@ -776,7 +778,9 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
     except dte_client.DteError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    if tenant.sii_resolucion_fecha is None:
+    prueba = sale.modo == "DEV"
+    # Un documento de prueba se imprime aunque la empresa no tenga resolución.
+    if tenant.sii_resolucion_fecha is None and not prueba:
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "La empresa no tiene fecha de resolución del SII: va impresa bajo el timbre.")
     doc = dte_impreso.leer_dte(xml)
@@ -784,8 +788,9 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
         doc=doc, papel_mm=papel_mm, timbre=dte_impreso.timbre_svg(doc["ted"], papel_mm),
         copias=([True] if cedible else [False, True]) if doc["tipo"] in dte_impreso.CEDIBLES else [False],
         leyenda=dte_impreso.LEYENDA_PIE,
+        prueba=prueba, leyenda_prueba=dte_impreso.LEYENDA_PRUEBA,
         oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,
-        resolucion_anio=tenant.sii_resolucion_fecha.year,
+        resolucion_anio=(tenant.sii_resolucion_fecha or get_now()).year,
         rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha,
     )
     return HTMLResponse(html)

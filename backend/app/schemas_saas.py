@@ -77,6 +77,8 @@ class AvailableTenant(BaseModel):
     is_active: bool = True
     max_users: int = 1
     permissions: Optional[dict] = {}
+    #: Modo del emisor (CERT, PROD o DEV), para que el cliente vea en qué modo emite.
+    sii_ambiente: str = "CERT"
 
 class TenantUserCreate(BaseModel):
     email: str
@@ -104,7 +106,7 @@ class TenantUpdate(BaseModel):
     giro: Optional[str] = None
     billing_day: Optional[int] = None
     economic_activities: Optional[list] = None
-    sii_ambiente: Optional[Literal["CERT", "PROD"]] = None
+    sii_ambiente: Optional[Literal["CERT", "PROD", "DEV"]] = None
     sii_resolucion_numero: Optional[int] = Field(default=None, ge=0)
     sii_resolucion_fecha: Optional[date] = None
     sii_oficina: Optional[str] = Field(default=None, max_length=60)

@@ -13,11 +13,13 @@ migrar antes a un driver asíncrono.
 
 from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, Header, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import event
+from sqlalchemy.orm import ORMExecuteState, Session, joinedload, with_loader_criteria
 from sqlalchemy.orm.attributes import set_committed_value
 
 from app.database import SessionLocal, engine
 from app.models.saas import SaaSUser, Tenant, TenantUser
+from app.models.sale import Sale
 from app.models.user import User
 from app.utils.schemas import safe_schema_name
 from jose import JWTError, jwt
@@ -155,10 +157,33 @@ def get_tenant_db(
     connection.execution_options(
         schema_translate_map={None: safe_schema_name(tenant.schema_name)}
     )
+    filtrar_por_modo(global_db, tenant.sii_ambiente)
 
     # No hay conexión propia que cerrar: el ciclo de vida de `connection` lo
     # controla `get_global_db`, que la libera al pool en su propio `finally`.
     yield global_db
+
+def filtrar_por_modo(session: Session, modo: str) -> None:
+    """Las ventas de otro modo del emisor (CERT, PROD, DEV) no existen para esta sesión.
+
+    Un solo punto en vez de un filtro en cada consulta: historial, reimpresión,
+    devoluciones, guías, reportes y dashboard ven solo las ventas del modo
+    actual, y una consulta nueva no puede olvidarlo. Stock, kardex y caja no se
+    separan (decidido para P2): la caja lo desactiva con
+    `.execution_options(todos_los_modos=True)`.
+    """
+    session.info["modo"] = modo
+    if not event.contains(session, "do_orm_execute", _solo_ventas_del_modo):
+        event.listen(session, "do_orm_execute", _solo_ventas_del_modo)
+
+
+def _solo_ventas_del_modo(estado: ORMExecuteState) -> None:
+    if estado.is_select and not estado.execution_options.get("todos_los_modos"):
+        modo = estado.session.info["modo"]
+        estado.statement = estado.statement.options(
+            with_loader_criteria(Sale, Sale.modo == modo, include_aliases=True)
+        )
+
 
 def get_current_local_user(
     current_user: Annotated[SaaSUser, Depends(get_current_global_user)],

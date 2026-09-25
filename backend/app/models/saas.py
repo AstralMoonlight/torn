@@ -60,7 +60,7 @@ class Tenant(Base):
     # Datos del SII que se copian a dte-torn (ver `dte_client.sincronizar_emisor`).
     # Solo los edita un superusuario: pasar a producción o cambiar la
     # resolución no es algo que la empresa haga sola.
-    sii_ambiente = Column(String(4), nullable=False, default="CERT", server_default="CERT", comment="CERT | PROD")
+    sii_ambiente = Column(String(4), nullable=False, default="CERT", server_default="CERT", comment="CERT | PROD | DEV (Desarrollador: emite sin el SII)")
     sii_resolucion_numero = Column(Integer, nullable=False, default=0, server_default="0")
     sii_resolucion_fecha = Column(Date, nullable=True)
     sii_oficina = Column(String(60), nullable=True, comment="Unidad del SII, p.ej. 'S.I.I. - CONCEPCION'")
