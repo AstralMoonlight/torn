@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { getTenantUsers, addTenantUser, getTenants, updateTenant, updateTenantUser, type TenantUser, type TenantUserCreate, type Tenant, type TenantUpdate, type TenantUserUpdate } from '@/services/saas'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
-import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { Store, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -211,29 +212,12 @@ export default function TenantDetailsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-6 md:p-12">
-            <div className="max-w-5xl mx-auto space-y-6">
-
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                        <Link href="/saas-admin/tenants" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver a Empresas
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Store className="h-6 w-6 text-primary shrink-0" />
-                            {tenant.name}
-                        </h1>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <span>RUT: {tenant.rut || '-'}</span>
-                            &bull;
-                            <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
-                            {tenant.max_users_override && <span>&bull; Máx Usr: {tenant.max_users_override}</span>}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
+        <PageContainer>
+                <PageHeader
+                    icon={Store}
+                    title={tenant.name}
+                    volver={{ href: '/saas-admin/tenants', label: 'Volver a Empresas' }}
+                    actions={<>
                         <Button
                             variant="outline"
                             className="bg-background hover:bg-accent border-border text-foreground w-full sm:w-auto cursor-pointer"
@@ -276,8 +260,15 @@ export default function TenantDetailsPage() {
                                 </form>
                             </DialogContent>
                         </Dialog>
+                    </>}
+                >
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-1">
+                        <span>RUT: {tenant.rut || '-'}</span>
+                        &bull;
+                        <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
+                        {tenant.max_users_override && <span>&bull; Máx Usr: {tenant.max_users_override}</span>}
                     </div>
-                </div>
+                </PageHeader>
 
                 <div className="grid grid-cols-1 gap-6">
                     {/* Formulario Asignación ARRIBA */}
@@ -503,7 +494,6 @@ export default function TenantDetailsPage() {
                     confirmLabel="Desactivar"
                     onConfirm={async () => { if (toDeactivate) await handleToggleUserStatus(toDeactivate) }}
                 />
-            </div>
-        </div>
+        </PageContainer>
     )
 }

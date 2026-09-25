@@ -5,14 +5,17 @@ import { cn } from '@/lib/utils'
 import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem, type EconomicActivity } from '@/services/saas'
 import { getApiErrorDetail, getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
-import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Building2, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { SearchInput } from '@/components/ui/search-input'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { avisar } from '@/lib/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { SearchInput } from '@/components/ui/search-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
@@ -219,28 +222,17 @@ export default function TenantsListPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-6 md:p-12">
-            <div className="max-w-5xl mx-auto space-y-6">
-
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                        <Link href="/saas-admin" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver al Panel
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Building2 className="h-6 w-6 text-primary shrink-0" />
-                            Gestión de Empresas
-                        </h1>
-                    </div>
-
-                    <Button
-                        onClick={openCreateModal}
-                        className="cursor-pointer shadow-sm shadow-primary/20"
-                    >
-                        <Plus className="h-4 w-4" /> Crear nuevo Tenant
-                    </Button>
+        <PageContainer>
+                <PageHeader
+                    icon={Building2}
+                    title="Gestión de Empresas"
+                    volver={{ href: '/saas-admin', label: 'Volver al panel' }}
+                    actions={
+                        <Button onClick={openCreateModal} className="shadow-sm shadow-primary/20">
+                            <Plus className="h-4 w-4" /> Crear nuevo Tenant
+                        </Button>
+                    }
+                />
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
                         <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
@@ -466,20 +458,15 @@ export default function TenantsListPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
 
-                <div data-section="saas-admin.empresas.filtros" className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-                    <SearchInput
-                        className="flex-1 w-full"
-                        placeholder="Buscar por nombre, RUT o esquema..."
-                        value={tenantSearch}
-                        onChange={e => setTenantSearch(e.target.value)}
-                        onClear={() => setTenantSearch('')}
-                    />
-                    <div className="text-sm text-muted-foreground font-medium">
-                        {filteredTenants.length} de {tenants.length} empresas
-                    </div>
-                </div>
+                <ListToolbar
+                    busqueda={tenantSearch}
+                    onBusqueda={setTenantSearch}
+                    placeholder="Buscar por nombre, RUT o esquema..."
+                    visibles={filteredTenants.length}
+                    total={tenants.length}
+                    unidad="empresas"
+                />
 
                 {/* Table */}
                 <div data-section="saas-admin.empresas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -573,7 +560,6 @@ export default function TenantsListPage() {
                     onConfirm={handleDeleteTenant}
                 />
 
-            </div>
-        </div >
+        </PageContainer>
     )
 }
