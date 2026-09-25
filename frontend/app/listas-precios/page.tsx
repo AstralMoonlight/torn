@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
     Table,
     TableBody,
@@ -18,6 +17,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -359,11 +359,11 @@ export default function PriceListsPage() {
             {/* Table */}
             <div data-section="listas-precios.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/60 border-b border-border">
+                    <TableHeader>
                         <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Nombre</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Descripción</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -392,19 +392,9 @@ export default function PriceListsPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {loading && Array(3).fill(0).map((_, i) => (
-                            <TableRow key={i} className="border-b border-border">
-                                <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-[300px]" /></TableCell>
-                                <TableCell />
-                            </TableRow>
-                        ))}
+                        {loading && <TableEmpty colSpan={3} loading />}
                         {!loading && priceLists.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">
-                                    No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={3}>No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.</TableEmpty>
                         )}
                         {!loading && priceLists.map(pl => (
                             <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">

@@ -23,6 +23,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     DropdownMenu,
@@ -151,25 +152,21 @@ export default function InventarioPage() {
             {/* Table */}
             <div data-section="inventario.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted">
+                    <TableHeader>
                         <TableRow className="border-b border-border">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SKU</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Producto</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Precio Neto</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Stock Total</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Variantes</TableHead>
-                            <TableHead className="w-[50px] text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>SKU</TableHead>
+                            <TableHead>Producto</TableHead>
+                            <TableHead className="text-right hidden sm:table-cell">Precio Neto</TableHead>
+                            <TableHead className="text-center">Stock Total</TableHead>
+                            <TableHead className="text-center hidden lg:table-cell">Variantes</TableHead>
+                            <TableHead className="w-[50px] text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Cargando...</TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={6} loading />
                         ) : filtered.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={6}>Sin resultados</TableEmpty>
                         ) : (
                             filtered.map((p) => (
                                 <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">

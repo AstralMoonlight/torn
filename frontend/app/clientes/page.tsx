@@ -8,6 +8,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     Dialog,
@@ -196,28 +197,20 @@ export default function CustomersPage() {
 
             <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/60">
-                        <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="w-[120px] text-xs uppercase tracking-wider text-muted-foreground font-medium">RUT</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Razón Social</TableHead>
-                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Giro</TableHead>
-                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Email</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[120px]">RUT</TableHead>
+                            <TableHead>Razón Social</TableHead>
+                            <TableHead className="hidden md:table-cell">Giro</TableHead>
+                            <TableHead className="hidden md:table-cell">Email</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={5} loading />
                         ) : filteredCustomers.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    No se encontraron clientes.
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={5}>No se encontraron clientes.</TableEmpty>
                         ) : (
                             filteredCustomers.map((customer) => (
                                 <TableRow key={customer.id} className="hover:bg-accent/50 transition-colors">

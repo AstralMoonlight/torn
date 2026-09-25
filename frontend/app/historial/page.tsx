@@ -35,6 +35,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import { formatCLP } from '@/lib/format'
 import { SelectOpciones } from '@/components/ui/select-opciones'
@@ -211,22 +212,22 @@ export default function HistorialPage() {
             {/* Table */}
             <div data-section="historial.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted">
+                    <TableHeader>
                         <TableRow className="border-b border-border">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Folio</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tipo</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SII</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell text-center">Hora</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Cliente</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>Folio</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>SII</TableHead>
+                            <TableHead className="hidden sm:table-cell text-center">Hora</TableHead>
+                            <TableHead className="hidden lg:table-cell">Cliente</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Cargando...</TableCell></TableRow>
+                            <TableEmpty colSpan={7} loading />
                         ) : filtered.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell></TableRow>
+                            <TableEmpty colSpan={7}>Sin resultados</TableEmpty>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>

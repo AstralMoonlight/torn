@@ -8,6 +8,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     Dialog,
@@ -133,26 +134,18 @@ export default function BrandsPage() {
 
             <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/60">
-                        <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="w-[100px] text-xs uppercase tracking-wider text-muted-foreground font-medium">ID</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Nombre</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[100px]">ID</TableHead>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={3} loading />
                         ) : filteredBrands.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                                    No se encontraron marcas.
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={3}>No se encontraron marcas.</TableEmpty>
                         ) : (
                             filteredBrands.map((brand) => (
                                 <TableRow key={brand.id} className="hover:bg-accent/50 transition-colors">

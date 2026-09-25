@@ -1,5 +1,7 @@
 import * as React from "react"
 
+import { Loader2 } from "lucide-react"
+
 import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<
@@ -20,7 +22,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("bg-muted/60 [&_tr]:border-b [&_tr]:hover:bg-transparent dark:[&_tr]:hover:bg-transparent", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -73,7 +75,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-11 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -92,6 +94,30 @@ const TableCell = React.forwardRef<
   />
 ))
 TableCell.displayName = "TableCell"
+
+/**
+ * Fila única para "cargando" y "sin resultados": antes cada página traía su
+ * propia versión (spinner, texto "Cargando...", skeletons) con alturas distintas.
+ */
+const TableEmpty = ({
+  colSpan,
+  loading,
+  children,
+}: {
+  colSpan: number
+  loading?: boolean
+  children?: React.ReactNode
+}) => (
+  <tr>
+    <td colSpan={colSpan} className="h-32 p-4 text-center text-sm text-muted-foreground">
+      {loading ? (
+        <Loader2 className="mx-auto h-6 w-6 animate-spin" aria-label="Cargando" />
+      ) : (
+        children
+      )}
+    </td>
+  </tr>
+)
 
 const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
@@ -114,4 +140,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  TableEmpty,
 }

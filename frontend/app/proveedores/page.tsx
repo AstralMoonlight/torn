@@ -13,9 +13,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { formatRut } from '@/lib/rut'
 import { getProviders, deleteProvider, type Provider } from '@/services/providers'
@@ -105,32 +105,20 @@ export default function ProvidersPage() {
                 <CardContent>
                     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-muted/60">
-                                <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">RUT</TableHead>
-                                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Razón Social</TableHead>
-                                    <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Giro</TableHead>
-                                    <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Email</TableHead>
-                                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>RUT</TableHead>
+                                    <TableHead>Razón Social</TableHead>
+                                    <TableHead className="hidden md:table-cell">Giro</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Email</TableHead>
+                                    <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                                            <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
-                                            <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
-                                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                                        </TableRow>
-                                    ))
+                                    <TableEmpty colSpan={5} loading />
                                 ) : filtered.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                                            No se encontraron proveedores.
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableEmpty colSpan={5}>No se encontraron proveedores.</TableEmpty>
                                 ) : (
                                     filtered.map((provider) => (
                                         <TableRow key={provider.id} className="hover:bg-accent/50 transition-colors">

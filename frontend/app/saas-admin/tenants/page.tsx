@@ -9,7 +9,6 @@ import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-reac
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -34,6 +33,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 
 /** Datos del SII que se copian a dte-torn. Una empresa nueva parte en certificación. */
@@ -520,34 +520,22 @@ export default function TenantsListPage() {
                 {/* Table */}
                 <div data-section="saas-admin.empresas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-muted/50 border-b border-border">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead className="font-medium uppercase">Empresa</TableHead>
-                                <TableHead className="font-medium uppercase">RUT</TableHead>
-                                <TableHead className="font-medium uppercase">Esquema BD</TableHead>
-                                <TableHead className="font-medium uppercase">Estado</TableHead>
-                                <TableHead className="font-medium uppercase text-right">Acciones</TableHead>
+                                <TableHead>Empresa</TableHead>
+                                <TableHead>RUT</TableHead>
+                                <TableHead>Esquema BD</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading && (
-                                Array(3).fill(0).map((_, i) => (
-                                    <TableRow key={i} className="border-b border-border/50 bg-card ">
-                                        <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                                        <TableCell />
-                                    </TableRow>
-                                ))
+                                <TableEmpty colSpan={5} loading />
                             )}
 
                             {!loading && filteredTenants.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                                        {tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}
-                                    </TableCell>
-                                </TableRow>
+                                <TableEmpty colSpan={5}>{tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}</TableEmpty>
                             )}
 
                             {!loading && filteredTenants.map((tenant) => (

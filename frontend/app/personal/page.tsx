@@ -23,7 +23,8 @@ import {
     TableCell,
     TableHead,
     TableHeader,
-    TableRow
+    TableRow,
+    TableEmpty
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -247,7 +248,7 @@ export default function PersonalPage() {
 
                     <Card className="border-border shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-muted/50">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[300px]">Nombre / Rol</TableHead>
                                     <TableHead>Email (Identificador)</TableHead>
@@ -258,11 +259,7 @@ export default function PersonalPage() {
                             </TableHeader>
                             <TableBody>
                                 {staff.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
-                                            No hay personal registrado. Comienza agregando uno nuevo.
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableEmpty colSpan={5}>No hay personal registrado. Comienza agregando uno nuevo.</TableEmpty>
                                 ) : (
                                     staff.map((user) => (
                                         <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
@@ -359,11 +356,11 @@ export default function PersonalPage() {
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
                                         <Table>
-                                            <TableHeader className="bg-muted/50">
+                                            <TableHeader>
                                                 <TableRow className="border-y border-border">
-                                                    <TableHead className="font-bold uppercase tracking-wider text-muted-foreground">Menú / Sección</TableHead>
+                                                    <TableHead>Menú / Sección</TableHead>
                                                     {roles.map(role => (
-                                                        <TableHead key={role.id} className="text-center font-bold uppercase tracking-wider text-muted-foreground">
+                                                        <TableHead key={role.id} className="text-center">
                                                             {role.name}
                                                         </TableHead>
                                                     ))}

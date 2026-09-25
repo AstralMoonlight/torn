@@ -360,13 +360,13 @@ export default function TenantDetailsPage() {
                                 <div className="p-8 text-center text-muted-foreground">Sin usuarios operativos registrados.</div>
                             ) : (
                                 <Table>
-                                    <TableHeader className="bg-muted/50 border-b border-border">
+                                    <TableHeader>
                                         <TableRow>
-                                            <TableHead className="font-medium uppercase">Global ID / Email</TableHead>
-                                            <TableHead className="font-medium uppercase">Nombre</TableHead>
-                                            <TableHead className="font-medium uppercase">Rol Local</TableHead>
-                                            <TableHead className="font-medium uppercase">Estado</TableHead>
-                                            <TableHead className="font-medium uppercase text-right">Acciones</TableHead>
+                                            <TableHead>Global ID / Email</TableHead>
+                                            <TableHead>Nombre</TableHead>
+                                            <TableHead>Rol Local</TableHead>
+                                            <TableHead>Estado</TableHead>
+                                            <TableHead className="text-right">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>

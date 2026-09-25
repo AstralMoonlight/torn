@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { getReport, ReportOut } from '@/services/stats'
 import { formatCLP, formatDate, getTodayChile } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Printer, Info, Wallet, BarChart2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -182,31 +182,20 @@ export default function DailyReportPage() {
                 </div>
                 <div data-section="reporte-diario.tabla" className="border border-border rounded-lg overflow-hidden print:border-black">
                     <Table>
-                        <TableHeader className="bg-muted/50 print:bg-transparent">
+                        <TableHeader className="print:bg-transparent">
                             <TableRow className="border-b-border print:border-black">
-                                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase py-3 print:text-black">Descripción Producto</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Cant.</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Venta (Neta)</TableHead>
-                                <TableHead className="text-right text-[11px] font-bold text-muted-foreground uppercase print:text-black">Utilidad</TableHead>
+                                <TableHead className="py-3 print:text-black">Descripción Producto</TableHead>
+                                <TableHead className="text-right print:text-black">Cant.</TableHead>
+                                <TableHead className="text-right print:text-black">Venta (Neta)</TableHead>
+                                <TableHead className="text-right print:text-black">Utilidad</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {/* Loading State for Table */}
                             {loading ? (
-                                Array(3).fill(0).map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-8 float-right" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-16 float-right" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-16 float-right" /></TableCell>
-                                    </TableRow>
-                                ))
+                                <TableEmpty colSpan={4} loading />
                             ) : itemCount === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground italic">
-                                        No se registran ventas para este periodo.
-                                    </TableCell>
-                                </TableRow>
+                                <TableEmpty colSpan={4}>No se registran ventas para este periodo.</TableEmpty>
                             ) : (
                                 report?.items.map((item) => (
                                     <TableRow key={item.product_id} className="border-b-border print:border-black">

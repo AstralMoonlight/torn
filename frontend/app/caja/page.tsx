@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { formatCLP } from '@/lib/format'
 import {
@@ -329,7 +329,7 @@ export default function CajaPage() {
                     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-muted/50">
+                                <TableHeader>
                                     <TableRow>
                                         <TableHead>Fecha/Hora Apertura</TableHead>
                                         <TableHead>Cajero</TableHead>
@@ -341,19 +341,9 @@ export default function CajaPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {loadingHistory ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando historial...
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
+                                        <TableEmpty colSpan={6} loading />
                                     ) : historySessions.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                                No hay turnos registrados
-                                            </TableCell>
-                                        </TableRow>
+                                        <TableEmpty colSpan={6}>No hay turnos registrados</TableEmpty>
                                     ) : (
                                         historySessions.map((session) => (
                                             <TableRow key={session.id}>

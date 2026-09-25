@@ -24,6 +24,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     Select,
@@ -372,7 +373,7 @@ export default function ComprasPage() {
                                 <CardContent className="p-0">
                                     <div className="max-h-[400px] overflow-y-auto">
                                         <Table>
-                                            <TableHeader className="bg-muted/80 backdrop-blur sticky top-0 z-10">
+                                            <TableHeader className="sticky top-0 z-10 backdrop-blur">
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
@@ -483,20 +484,20 @@ export default function ComprasPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-muted/60">
-                                    <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Fecha</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Documento</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Proveedor</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Documento</TableHead>
+                                        <TableHead>Proveedor</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loadingPurchases ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
+                                        <TableEmpty colSpan={5} loading />
                                     ) : purchases.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No hay compras registradas</TableCell></TableRow>
+                                        <TableEmpty colSpan={5}>No hay compras registradas</TableEmpty>
                                     ) : (
                                         purchases.map(p => (
                                             <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
