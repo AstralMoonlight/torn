@@ -47,9 +47,10 @@ recibo de mercaderías (`EnvioRecibos`, Ley 19.983). Un documento recibido puede
 
 ### P2. Modo del emisor: Desarrollador, Maullín, Palena
 
-Se elige en Configuración (`frontend/app/configuracion/page.tsx`). Hoy existe `public.tenants.sii_ambiente`
-(`CERT`|`PROD`). Solo se edita en `frontend/app/saas-admin/tenants/page.tsx` (superusuario) y se copia a
-dte-torn (`Tenant.ambiente`, enum `Ambiente` en `dte-torn/app/models.py`).
+Lo elige el superusuario en saas-admin (`frontend/app/saas-admin/tenants/page.tsx`), por empresa. **No va en
+la Configuración ni en el POS de los clientes** (decidido el 2026-09-25). Hoy ahí mismo se edita
+`public.tenants.sii_ambiente` (`CERT`|`PROD`), que se copia a dte-torn (`Tenant.ambiente`, enum `Ambiente`
+en `dte-torn/app/models.py`).
 
 - **Maullín** = `CERT`, y **Palena** = `PROD`. De Palena solo va la opción, con confirmación. El resto del
   paso a producción sigue postergado (ver B7 y B8).
@@ -67,7 +68,6 @@ mismo vale entre Maullín y Palena. No se borra nada: al volver al modo, siguen 
 - Qué más se separa por modo, aparte de historial y documentos. Una venta de prueba descuenta stock,
   registra kardex, entra a la caja y suma en los reportes y el dashboard. ¿Se separa todo eso, o solo se
   oculta el documento?
-- Quién cambia el modo. Hoy solo el superusuario.
 
 **Tareas:**
 - [ ] dte-torn: tercer valor de `Ambiente` que corta el pipeline antes de enviar, con tests.
@@ -75,8 +75,9 @@ mismo vale entre Maullín y Palena. No se borra nada: al volver al modo, siguen 
 - [ ] Backend: columna con el modo en `sales` (migración Alembic, que marca las ventas existentes como
       Maullín). Historial, reimpresión y reportes filtran por el modo actual del tenant.
 - [ ] dte-torn: `GET /documents` y `GET /folios` filtran por el ambiente del tenant.
-- [ ] Frontend: selector en Configuración (`SelectOpciones`), con confirmación al pasar a Palena. El modo
-      actual queda visible en algún lado (por ejemplo, un distintivo en el POS en Desarrollador).
+- [ ] Frontend: el selector de ambiente de saas-admin pasa a tres opciones, con confirmación al pasar a
+      Palena. Por decidir si el cliente ve algún aviso del modo (por ejemplo, un distintivo en el POS en
+      Desarrollador) aunque no pueda cambiarlo.
 
 ### P3. Descuentos por ítem y global
 
