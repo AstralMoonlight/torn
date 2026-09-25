@@ -15,7 +15,7 @@ Después, sin orden fijo todavía: lo demás de este archivo, la certificación 
 > P1 (intercambio y casilla de correo) se movió a [`intercambio.md`](intercambio.md): se ve al final,
 > cuando haya correo. P2 y P3 conservan su número.
 
-### P2. Modo del emisor: Desarrollador, CERT, PROD
+### P2. Modo del emisor: Desarrollador, CERT, PROD ✅ (2026-09-25)
 
 Lo elige el superusuario en saas-admin (`frontend/app/saas-admin/tenants/page.tsx`), por empresa. **No va en
 la Configuración ni en el POS de los clientes** (decidido el 2026-09-25). Hoy ahí mismo se edita
@@ -32,22 +32,36 @@ en `dte-torn/app/models.py`).
 su modo. Los de Desarrollador aparecen solo en Desarrollador y no se mezclan con los de CERT. Lo
 mismo vale entre CERT y PROD. No se borra nada: al volver al modo, siguen ahí.
 
-**Por decidir:**
-- Los folios en Desarrollador. El timbre necesita un CAF: ¿se usan los CAF de maullín, o un CAF de
-  prueba que nunca vaya al SII?
-- Qué más se separa por modo, aparte de historial y documentos. Una venta de prueba descuenta stock,
-  registra kardex, entra a la caja y suma en los reportes y el dashboard. ¿Se separa todo eso, o solo se
-  oculta el documento?
+**Decidido también (2026-09-25):**
+- Folios en Desarrollador: un **CAF de prueba propio** que dte-torn genera solo (llave propia, 100.000
+  folios, nunca va al SII). No gasta folios de maullín ni de palena y sirve aunque la empresa esté en PROD.
+- Una venta de Desarrollador **mueve todo** (stock, kardex, caja, crédito interno); lo que se separa es lo
+  visible: historial, reimpresión, devoluciones, guías por facturar, reportes y dashboard.
+- El cliente ve el modo: distintivo en la barra lateral y franja en el POS (Desarrollador y
+  Certificación), y el impreso de Desarrollador (carta y 57/80 mm) dice "DOCUMENTO DE PRUEBA - SIN VALIDEZ
+  TRIBUTARIA".
 
 **Tareas:**
-- [ ] dte-torn: tercer valor de `Ambiente` que corta el pipeline antes de enviar, con tests.
-- [ ] Backend: `sii_ambiente` acepta el modo nuevo (migración Alembic) y lo copia a dte-torn.
-- [ ] Backend: columna con el modo en `sales` (migración Alembic, que marca las ventas existentes como
-      CERT). Historial, reimpresión y reportes filtran por el modo actual del tenant.
-- [ ] dte-torn: `GET /documents` y `GET /folios` filtran por el ambiente del tenant.
-- [ ] Frontend: el selector de ambiente de saas-admin pasa a tres opciones, con confirmación al pasar a
-      PROD. Por decidir si el cliente ve algún aviso del modo (por ejemplo, un distintivo en el POS en
-      Desarrollador) aunque no pueda cambiarlo.
+- [x] dte-torn: `Ambiente.DEV`. El documento se firma y timbra y termina `SIMULADO`, sin encolarse.
+      Documentos y CAF guardan su ambiente (migración `0004`); el folio es único por ambiente. Envío,
+      verificación, consulta y breaker usan el ambiente del documento, no el del tenant.
+- [x] Backend: `sii_ambiente` acepta `DEV` y lo copia a dte-torn. No hizo falta migración en
+      `public.tenants`: la columna es `VARCHAR(4)` sin restricción.
+- [x] Backend: `sales.modo` (migración `f2a3b4c5d6e7`, las existentes quedan CERT). El filtro vive en un
+      solo lugar, `filtrar_por_modo` (`backend/app/dependencies/tenant.py`, `with_loader_criteria` en la
+      sesión del tenant); el cierre de caja lo desactiva con `todos_los_modos=True`.
+- [x] dte-torn: `GET /documents` y `GET /folios` filtran por el ambiente del tenant. `POST /cafs` en DEV da
+      409 (los folios de prueba se generan solos).
+- [x] Frontend: selector de saas-admin con tres opciones y confirmación al pasar a PROD; `DistintivoModo`.
+- Verificado de punta a punta en Docker con el tenant de demo: venta DEV `SIMULADO` con folio del CAF de
+  prueba, PDF carta y ticket con la leyenda, historial separado, y de vuelta en CERT la venta DEV da 404.
+
+**Notas:**
+- Desarrollador firma con el certificado de la empresa: sin certificado cargado, la venta queda en ERROR
+  igual que en CERT. El tenant de demo tiene uno de juguete (autofirmado) cargado para esto.
+- Un documento de prueba se imprime aunque la empresa no tenga fecha de resolución (va "Res. N° 0").
+- El distintivo toma el modo de `/auth/validate` (o de "Entrar al POS" en saas-admin): un cambio de modo
+  se ve al recargar.
 
 ### P3. Descuentos por ítem y global
 
@@ -92,11 +106,11 @@ Cambios de código de esta etapa (dte-torn):
 
 | Endpoint | Qué hace |
 |---|---|
-| `PUT /tenants/{id}` | Datos del emisor, ambiente (`CERT`/`PROD`) y resolución |
+| `PUT /tenants/{id}` | Datos del emisor, ambiente (`CERT`/`PROD`/`DEV`) y resolución |
 | `POST /certificates`, `GET /certificates/actual` | Carga y consulta el certificado |
 | `POST /cafs`, `GET /folios` | Carga CAF y muestra el stock por tipo |
 | `POST /documents`, `POST /boletas` | Emite (idempotente por `external_id`) |
-| `GET /documents?estado=&tipo_dte=&folio=` | Lista con estado |
+| `GET /documents?estado=&tipo_dte=&folio=` | Lista con estado, solo del ambiente actual (igual `GET /folios`) |
 | `GET /documents/{external_id}` | `estado`, `estado_sii` y `track_id` de un documento |
 | `GET /documents/{external_id}/xml` · `/pdf?cedible=&con_cedible=` | XML firmado y PDF carta |
 
