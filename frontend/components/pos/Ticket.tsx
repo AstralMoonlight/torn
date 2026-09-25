@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useCartStore, isExemptDte } from '@/lib/store/cartStore'
 import { Minus, Plus, Trash2, ScanBarcode, X, ArrowRight, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PriceListSelector from '@/components/pos/PriceListSelector'
 import { formatCLP } from '@/lib/format'
-import { cn } from '@/lib/utils'
 
 interface Props {
     /** Paso "vender": abre el cobro. Sin él (paso "cobrar") el ticket es solo lectura. */
@@ -16,13 +15,12 @@ interface Props {
 }
 
 /**
- * El ticket de la venta, como una boleta: una línea por producto con cantidad y
- * total. Tocar una línea la despliega para cambiar la cantidad o quitarla.
+ * El ticket de la venta: una tarjeta baja por producto con precio unitario,
+ * total, y controles de cantidad mientras se vende.
  * Documento, cliente y pago no viven acá: se eligen en el paso de cobro.
  */
 export default function Ticket({ onCobrar, onClose }: Props) {
     const { items, totalNeto, totalIva, totalFinal, tipoDte, removeItem, updateQuantity, clear, setTipoDte } = useCartStore()
-    const [abierta, setAbierta] = useState<number | null>(null)
     const editable = !!onCobrar
     const unidades = items.reduce((s, i) => s + i.quantity, 0)
 
@@ -47,11 +45,12 @@ export default function Ticket({ onCobrar, onClose }: Props) {
     return (
         <div data-section="pos.ticket" className="flex h-full min-h-0 w-full flex-1 flex-col bg-card">
             <div data-section="pos.ticket.encabezado" className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 shrink-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-center gap-2">
                     <h2 className="text-base font-semibold text-foreground">Ticket</h2>
                     {unidades > 0 && (
-                        <span className="text-sm text-muted-foreground font-tabular">
-                            {unidades} {unidades === 1 ? 'producto' : 'productos'}
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground font-tabular"
+                            aria-label={`${unidades} ${unidades === 1 ? 'producto' : 'productos'}`}>
+                            {unidades}
                         </span>
                     )}
                 </div>
@@ -79,51 +78,43 @@ export default function Ticket({ onCobrar, onClose }: Props) {
                         </p>
                     </div>
                 ) : (
-                    <ul className="divide-y divide-border">
+                    <ul className="space-y-1.5 p-2">
                         {items.map((item) => {
                             const id = item.product.id
-                            const desplegada = editable && abierta === id
                             return (
-                                <li key={id} className={cn(desplegada && 'bg-accent/40')}>
-                                    <button
-                                        type="button"
-                                        disabled={!editable}
-                                        onClick={() => setAbierta(desplegada ? null : id)}
-                                        aria-expanded={desplegada}
-                                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left enabled:hover:bg-accent/40 enabled:cursor-pointer focus-visible:outline-none focus-visible:bg-accent/60"
-                                    >
-                                        <span className="w-9 shrink-0 text-sm font-semibold text-foreground font-tabular">{item.quantity}×</span>
-                                        <span className="flex-1 truncate text-sm text-foreground">{item.product.full_name}</span>
-                                        <span className="shrink-0 text-sm font-medium text-foreground font-tabular">
+                                <li key={id} className="rounded-lg border border-border bg-background px-2.5 py-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="truncate text-sm font-medium text-foreground">{item.product.full_name}</p>
+                                        <p className="shrink-0 text-sm font-semibold text-foreground font-tabular">
                                             {formatCLP(item.precio_bruto * item.quantity)}
+                                        </p>
+                                    </div>
+                                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                                        <span className="truncate text-xs text-muted-foreground font-tabular">
+                                            {editable ? `${formatCLP(item.precio_bruto)} c/u` : `${item.quantity} × ${formatCLP(item.precio_bruto)}`}
+                                            {item.price_source === 'price_list' && ' · lista'}
                                         </span>
-                                    </button>
-                                    {desplegada && (
-                                        <div className="flex items-center justify-between gap-2 px-4 pb-3">
-                                            <span className="text-xs text-muted-foreground font-tabular">
-                                                {formatCLP(item.precio_bruto)} c/u
-                                                {item.price_source === 'price_list' && ' · precio de lista'}
-                                            </span>
-                                            <div className="flex items-center gap-1.5">
-                                                <Button variant="outline" size="icon" className="h-10 w-10"
+                                        {editable && (
+                                            <div className="flex shrink-0 items-center gap-1">
+                                                <Button variant="outline" size="icon" className="h-8 w-8"
                                                     onClick={() => updateQuantity(id, item.quantity - 1)}
-                                                    aria-label="Quitar una unidad">
-                                                    <Minus className="h-4 w-4" />
+                                                    aria-label={`Quitar una unidad de ${item.product.full_name}`}>
+                                                    <Minus className="h-3.5 w-3.5" />
                                                 </Button>
-                                                <span className="w-8 text-center text-base font-semibold font-tabular">{item.quantity}</span>
-                                                <Button variant="outline" size="icon" className="h-10 w-10"
+                                                <span className="w-7 text-center text-sm font-semibold font-tabular" aria-label="Cantidad">{item.quantity}</span>
+                                                <Button variant="outline" size="icon" className="h-8 w-8"
                                                     onClick={() => updateQuantity(id, item.quantity + 1)}
-                                                    aria-label="Agregar una unidad">
-                                                    <Plus className="h-4 w-4" />
+                                                    aria-label={`Agregar una unidad de ${item.product.full_name}`}>
+                                                    <Plus className="h-3.5 w-3.5" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="ml-1 h-10 w-10 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                    onClick={() => { removeItem(id); setAbierta(null) }}
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                    onClick={() => removeItem(id)}
                                                     aria-label={`Quitar ${item.product.full_name}`}>
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </li>
                             )
                         })}

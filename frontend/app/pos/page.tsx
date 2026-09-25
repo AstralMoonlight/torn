@@ -187,7 +187,7 @@ export default function POSPage() {
             )}
 
             {/* Escritorio: el carrito siempre visible a la derecha */}
-            <aside data-section="pos.carrito" className="hidden lg:flex w-[380px] xl:w-[420px] border-l border-border bg-card">
+            <aside data-section="pos.carrito" className="hidden lg:flex w-[320px] xl:w-[350px] border-l border-border bg-card">
                 <Ticket onCobrar={etapa === 'vender' ? irACobrar : undefined} />
             </aside>
 
