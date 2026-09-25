@@ -310,3 +310,6 @@ En la práctica esto significa:
 5. Los cambios de esquema de base de datos pasan por Alembic (`backend/alembic/versions/`), no por edición manual.
 6. Los mensajes de commit siguen Conventional Commits y describen solo cambios reales verificados en el diff.
 7. Nunca se versionan secretos: `.env` está en `.gitignore` y debe seguir así.
+8. No se usan `<select>` nativos: su lista la dibuja el navegador y no respeta estilos (ni el puntero de
+   mano en las opciones). Se usa `SelectOpciones` (`frontend/components/ui/select-opciones.tsx`) o el
+   `Select` de shadcn.

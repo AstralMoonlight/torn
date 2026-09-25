@@ -16,6 +16,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { formatCLP } from '@/lib/format'
+import { SelectOpciones } from '@/components/ui/select-opciones'
 
 interface Props {
     open: boolean
@@ -88,15 +89,9 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
                     <div className="space-y-3">
                         <div className="space-y-1.5">
                             <Label className="text-xs">Cliente</Label>
-                            <select
-                                value={customerId ?? ''}
-                                onChange={(e) => { setCustomerId(Number(e.target.value)); setSeleccion([]) }}
-                                className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                            >
-                                {clientes.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.razon_social} ({c.rut})</option>
-                                ))}
-                            </select>
+                            <SelectOpciones className="h-9 text-xs" value={customerId ?? ''}
+                                onChange={(v) => { setCustomerId(Number(v)); setSeleccion([]) }}
+                                opciones={clientes.map((c) => ({ value: c.id, label: `${c.razon_social} (${c.rut})` }))} />
                         </div>
 
                         <div className="max-h-56 space-y-1 overflow-auto rounded-md border border-border p-2">
@@ -115,26 +110,15 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Documento</Label>
-                                <select
-                                    value={tipoDte}
-                                    onChange={(e) => setTipoDte(Number(e.target.value))}
-                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                >
-                                    <option value={33}>Factura (33)</option>
-                                    <option value={34}>Factura Exenta (34)</option>
-                                </select>
+                                <SelectOpciones className="h-9 text-xs" value={tipoDte}
+                                    onChange={(v) => setTipoDte(Number(v))}
+                                    opciones={[{ value: 33, label: 'Factura (33)' }, { value: 34, label: 'Factura Exenta (34)' }]} />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Medio de pago</Label>
-                                <select
-                                    value={methodId}
-                                    onChange={(e) => setMethodId(Number(e.target.value))}
-                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                >
-                                    {methods.map((m) => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                </select>
+                                <SelectOpciones className="h-9 text-xs" value={methodId}
+                                    onChange={(v) => setMethodId(Number(v))}
+                                    opciones={methods.map((m) => ({ value: m.id, label: m.name }))} />
                             </div>
                         </div>
 

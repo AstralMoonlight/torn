@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCLP } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { SelectOpciones } from '@/components/ui/select-opciones'
 
 const GENERIC_RUT = '66666666-6'
 
@@ -65,6 +66,13 @@ const TIPOS_TRASLADO = [
     { value: 3, label: 'Consignación' },
     { value: 5, label: 'Traslado interno' },
     { value: 6, label: 'Otro traslado (no venta)' },
+] as const
+
+const TIPOS_DESPACHO = [
+    { value: '', label: 'Sin indicar' },
+    { value: 1, label: 'Por cuenta del cliente' },
+    { value: 2, label: 'Emisor a local del cliente' },
+    { value: 3, label: 'Emisor a otras instalaciones' },
 ] as const
 
 const REFERENCE_DOC_TYPES = [
@@ -338,22 +346,13 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="traslado">Tipo de traslado</Label>
-                                    <select id="traslado" value={guia.indTraslado}
-                                        onChange={(e) => setGuia({ ...guia, indTraslado: Number(e.target.value) })}
-                                        className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                                        {TIPOS_TRASLADO.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                    </select>
+                                    <SelectOpciones id="traslado" className="h-11" value={guia.indTraslado} opciones={TIPOS_TRASLADO}
+                                        onChange={(v) => setGuia({ ...guia, indTraslado: Number(v) })} />
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="despacho">Despacho</Label>
-                                    <select id="despacho" value={guia.tipoDespacho ?? ''}
-                                        onChange={(e) => setGuia({ ...guia, tipoDespacho: e.target.value ? Number(e.target.value) : null })}
-                                        className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                                        <option value="">Sin indicar</option>
-                                        <option value={1}>Por cuenta del cliente</option>
-                                        <option value={2}>Emisor a local del cliente</option>
-                                        <option value={3}>Emisor a otras instalaciones</option>
-                                    </select>
+                                    <SelectOpciones id="despacho" className="h-11" value={guia.tipoDespacho ?? ''} opciones={TIPOS_DESPACHO}
+                                        onChange={(v) => setGuia({ ...guia, tipoDespacho: v === '' ? null : Number(v) })} />
                                 </div>
                             </div>
                         )}
@@ -428,14 +427,12 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                             <div className="space-y-2">
                                 {pagos.map((p, idx) => (
                                     <div key={idx} className="flex items-center gap-2">
-                                        <select value={p.method.id} aria-label="Medio de pago"
-                                            onChange={(e) => {
-                                                const m = methods.find((x) => x.id === Number(e.target.value))
+                                        <SelectOpciones aria-label="Medio de pago" className="h-11 flex-1" value={p.method.id}
+                                            opciones={methods.map((m) => ({ value: m.id, label: m.name }))}
+                                            onChange={(v) => {
+                                                const m = methods.find((x) => x.id === v)
                                                 if (m) setPagos(pagos.map((q, i) => (i === idx ? { ...q, method: m } : q)))
-                                            }}
-                                            className="h-11 flex-1 rounded-lg border border-input bg-background px-3 text-sm">
-                                            {methods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                        </select>
+                                            }} />
                                         <Input type="number" inputMode="numeric" min={0} aria-label="Monto" value={p.amount || ''}
                                             onChange={(e) => setPagos(pagos.map((q, i) => (i === idx ? { ...q, amount: parseInt(e.target.value) || 0 } : q)))}
                                             className="h-11 w-36 text-right text-base font-tabular" />
@@ -525,10 +522,8 @@ function Referencias({ referencias, setReferencias }: {
         <div className="mt-3 space-y-2 rounded-lg border border-border p-3">
             {referencias.map((r, i) => (
                 <div key={i} className="grid grid-cols-[1fr_7rem_9rem_auto] gap-2">
-                    <select value={r.tipo_documento} aria-label="Tipo de documento" onChange={(e) => cambiar(i, 'tipo_documento', e.target.value)}
-                        className="h-10 rounded-lg border border-input bg-background px-2 text-sm">
-                        {REFERENCE_DOC_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <SelectOpciones aria-label="Tipo de documento" className="h-10" value={r.tipo_documento}
+                        opciones={REFERENCE_DOC_TYPES} onChange={(v) => cambiar(i, 'tipo_documento', String(v))} />
                     <Input value={r.folio} placeholder="Folio" aria-label="Folio" onChange={(e) => cambiar(i, 'folio', e.target.value)} className="h-10" />
                     <Input type="date" value={r.fecha} aria-label="Fecha" onChange={(e) => cambiar(i, 'fecha', e.target.value)} className="h-10" />
                     <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive" aria-label="Quitar referencia"
