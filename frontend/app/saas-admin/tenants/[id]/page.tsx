@@ -9,6 +9,7 @@ import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import {
@@ -217,8 +218,8 @@ export default function TenantDetailsPage() {
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Volver a Empresas
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Store className="h-8 w-8 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                            <Store className="h-6 w-6 text-primary shrink-0" />
                             {tenant.name}
                         </h1>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -252,14 +253,13 @@ export default function TenantDetailsPage() {
                                 </DialogHeader>
                                 <form onSubmit={handleSaveSettings} className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">Cupo Máximo de Usuarios (Override)</label>
+                                        <Label>Cupo Máximo de Usuarios (Override)</Label>
                                         <Input
                                             type="number"
                                             min="1"
                                             placeholder={`Predeterminado del Plan (${tenant.plan_max_users || 3})`}
                                             value={tenantOverride}
                                             onChange={e => setTenantOverride(e.target.value)}
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                         <p className="text-xs text-muted-foreground">Deja vacío para usar el límite por defecto ({tenant.plan_max_users || 3}) del plan SaaS.</p>
                                     </div>
@@ -303,7 +303,7 @@ export default function TenantDetailsPage() {
                                             type="email"
                                             required
                                             placeholder="usuario@empresa.cl *"
-                                            className="pl-9 h-10 border-border focus-visible:ring-ring"
+                                            className="pl-9 h-10"
                                             value={email}
                                             autoComplete="none"
                                             onChange={e => setEmail(e.target.value)}
@@ -316,7 +316,7 @@ export default function TenantDetailsPage() {
                                     <Input
                                         type="password"
                                         placeholder="Contraseña (si es nueva cuenta)"
-                                        className="h-10 border-border focus-visible:ring-ring"
+                                        className="h-10"
                                         value={password}
                                         autoComplete="new-password"
                                         onChange={e => setPassword(e.target.value)}
@@ -328,7 +328,7 @@ export default function TenantDetailsPage() {
                                     <Input
                                         type="text"
                                         placeholder="Nombre (opcional)"
-                                        className="h-10 border-border focus-visible:ring-ring"
+                                        className="h-10"
                                         value={fullName}
                                         onChange={e => setFullName(e.target.value)}
                                         disabled={isSubmitting || isAtLimit}
@@ -440,11 +440,11 @@ export default function TenantDetailsPage() {
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Usuario Global</label>
+                                <Label>Usuario Global</Label>
                                 <Input value={editingUser?.user.email || ''} disabled className="bg-muted" autoComplete="none" name="operator-email-edit" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Nuevo Rol Interno</label>
+                                <Label>Nuevo Rol Interno</Label>
                                 <Select value={editRole} onValueChange={setEditRole} disabled={isSubmitting}>
                                     <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
                                         <SelectValue placeholder="Selecciona Rol" />
@@ -457,18 +457,18 @@ export default function TenantDetailsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Nombre del Operador</label>
+                                <Label>Nombre del Operador</Label>
                                 <Input
                                     value={editFullName}
                                     onChange={e => setEditFullName(e.target.value)}
                                     placeholder="Nombre completo"
-                                    className="border-border focus-visible:ring-ring"
+                                   
                                     autoComplete="none"
                                     name="operator-name-edit"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground pointer-events-none">Cambiar Contraseña (Opcional)</label>
+                                <Label>Cambiar Contraseña (Opcional)</Label>
                                 <Input
                                     type="password"
                                     name="operator-password-edit"
@@ -476,7 +476,6 @@ export default function TenantDetailsPage() {
                                     value={editPassword}
                                     autoComplete="new-password"
                                     onChange={e => setEditPassword(e.target.value)}
-                                    className="border-border focus-visible:ring-ring"
                                 />
                                 <p className="text-[10px] text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
                             </div>

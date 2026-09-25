@@ -228,8 +228,8 @@ export default function TenantsListPage() {
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Volver al Panel
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Building2 className="h-8 w-8 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                            <Building2 className="h-6 w-6 text-primary shrink-0" />
                             Gestión de Empresas
                         </h1>
                     </div>
@@ -261,7 +261,6 @@ export default function TenantsListPage() {
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                             required
                                             autoFocus
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -271,7 +270,7 @@ export default function TenantsListPage() {
                                             value={formData.rut}
                                             onChange={handleRutChange}
                                             required
-                                            className={`border-border focus-visible:ring-ring font-mono ${!isRutValid ? 'border-destructive focus-visible:ring-destructive' : ''
+                                            className={`font-mono ${!isRutValid ? 'border-destructive focus-visible:ring-destructive' : ''
                                                 }`}
                                         />
                                         {!isRutValid && (
@@ -284,7 +283,6 @@ export default function TenantsListPage() {
                                             placeholder="Ej. VENTA AL POR MENOR DE PRODUCTOS FARMACEUTICOS..."
                                             value={formData.giro}
                                             onChange={e => setFormData({ ...formData, giro: e.target.value })}
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -293,7 +291,6 @@ export default function TenantsListPage() {
                                             placeholder="Ej. Av. Principal 123"
                                             value={formData.address}
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -303,7 +300,6 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.commune}
                                                 onChange={e => setFormData({ ...formData, commune: e.target.value })}
-                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -312,7 +308,6 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.city}
                                                 onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                     </div>
@@ -323,7 +318,7 @@ export default function TenantsListPage() {
                                             value={formData.billing_day.toString()}
                                             onValueChange={v => setFormData({ ...formData, billing_day: parseInt(v) })}
                                         >
-                                            <SelectTrigger className="border-border">
+                                            <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-border">
@@ -352,7 +347,7 @@ export default function TenantsListPage() {
                                                         value={formData.sii_ambiente}
                                                         onValueChange={v => setFormData({ ...formData, sii_ambiente: v as 'CERT' | 'PROD' })}
                                                     >
-                                                        <SelectTrigger className="border-border">
+                                                        <SelectTrigger>
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-card border-border">
@@ -368,7 +363,6 @@ export default function TenantsListPage() {
                                                         maxLength={60}
                                                         value={formData.sii_oficina}
                                                         onChange={e => setFormData({ ...formData, sii_oficina: e.target.value })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -378,7 +372,6 @@ export default function TenantsListPage() {
                                                         min={0}
                                                         value={formData.sii_resolucion_numero}
                                                         onChange={e => setFormData({ ...formData, sii_resolucion_numero: parseInt(e.target.value) || 0 })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -387,7 +380,6 @@ export default function TenantsListPage() {
                                                         type="date"
                                                         value={formData.sii_resolucion_fecha}
                                                         onChange={e => setFormData({ ...formData, sii_resolucion_fecha: e.target.value })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                             </div>
@@ -457,7 +449,7 @@ export default function TenantsListPage() {
                                 </div>
 
                                 <div className="pt-2 flex justify-end gap-3">
-                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border">
+                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>
                                         Cancelar
                                     </Button>
                                     <Button type="submit" disabled={isCreating || !isRutValid} className="cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">

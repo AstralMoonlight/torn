@@ -76,7 +76,7 @@ function PriceListItemRow({
                                 : Number(item.fixed_price)
                     }
                     onChange={e => onPriceChange(item.product_id, e.target.value)}
-                    className="w-24 h-7 text-sm text-right border-border focus-visible:ring-ring"
+                    className="w-24 h-7 text-sm text-right"
                 />
             </div>
             {onRemove && (
@@ -454,7 +454,6 @@ export default function PriceListsPage() {
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -464,7 +463,6 @@ export default function PriceListsPage() {
                                     value={formDescription}
                                     onChange={e => setFormDescription(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                         </div>
