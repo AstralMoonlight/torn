@@ -7,7 +7,8 @@ import { useUIStore } from '@/lib/store/uiStore'
 import { useBarcodeScanner } from '@/lib/hooks/useBarcodeScanner'
 import ProductSearch, { enfocarBusqueda } from '@/components/pos/ProductSearch'
 import ProductGrid from '@/components/pos/ProductGrid'
-import CartPanel from '@/components/pos/CartPanel'
+import Ticket from '@/components/pos/Ticket'
+import CobroPanel from '@/components/pos/CobroPanel'
 import { getProducts, getProductBySku, type Product } from '@/services/products'
 import { getApiErrorMessage } from '@/services/api'
 import { Landmark, AlertTriangle, ShoppingBag, ChevronUp } from 'lucide-react'
@@ -28,6 +29,9 @@ export default function POSPage() {
     const [query, setQuery] = useState('')
     const [brandId, setBrandId] = useState<number | null>(null)
     const [showMobileCart, setShowMobileCart] = useState(false)
+    // Dos pasos: armar el ticket y cobrarlo. El cobro reemplaza la zona de productos.
+    const [etapa, setEtapa] = useState<'vender' | 'cobrar'>('vender')
+    const irACobrar = () => { setShowMobileCart(false); setEtapa('cobrar') }
 
     useEffect(() => {
         getProducts()
@@ -79,17 +83,18 @@ export default function POSPage() {
     // F2: volver al buscador desde cualquier parte del POS.
     useEffect(() => {
         const alTeclear = (e: KeyboardEvent) => {
-            if (e.key !== 'F2') return
+            if (e.key !== 'F2' || etapa !== 'vender') return
             e.preventDefault()
             enfocarBusqueda()
         }
         window.addEventListener('keydown', alTeclear)
         return () => window.removeEventListener('keydown', alTeclear)
-    }, [])
+    }, [etapa])
 
     // Lector de código de barras (teclado "invisible").
     const handleBarcodeScan = useCallback(
         async (barcode: string) => {
+            if (etapa !== 'vender') return
             try {
                 const allProducts = products.flatMap((p) => (p.variants.length > 0 ? p.variants : [p]))
                 const found = allProducts.find((p) => p.codigo_barras === barcode || p.codigo_interno === barcode)
@@ -114,7 +119,7 @@ export default function POSPage() {
                 toast.error('Error al buscar producto')
             }
         },
-        [products, addItem]
+        [products, addItem, etapa]
     )
 
     useBarcodeScanner(handleBarcodeScan)
@@ -142,7 +147,12 @@ export default function POSPage() {
 
     return (
         <div className="flex h-full flex-col lg:flex-row bg-muted/40">
-            <section data-section="pos.productos" className="flex flex-1 flex-col gap-3 p-3 md:p-4 min-h-0">
+            {etapa === 'cobrar' ? (
+                <section className="flex flex-1 flex-col min-h-0 bg-card lg:bg-background">
+                    <CobroPanel onVolver={() => setEtapa('vender')} onTerminado={() => { setEtapa('vender'); setQuery('') }} />
+                </section>
+            ) : (
+                <section data-section="pos.productos" className="flex flex-1 flex-col gap-3 p-3 md:p-4 min-h-0">
                 <ProductSearch
                     value={query}
                     onChange={setQuery}
@@ -151,7 +161,7 @@ export default function POSPage() {
                 />
 
                 {brands.length > 1 && (
-                    <div data-section="pos.marcas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrar por marca">
+                    <div data-section="pos.marcas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrar por marca">
                         {[{ id: null, name: 'Todas' }, ...brands].map((b) => (
                             <button
                                 key={b.id ?? 'todas'}
@@ -174,14 +184,15 @@ export default function POSPage() {
 
                 <ProductGrid products={filtered} loading={loading} variantDisplay={posVariantDisplay} />
             </section>
+            )}
 
             {/* Escritorio: el carrito siempre visible a la derecha */}
-            <aside data-section="pos.carrito" className="hidden lg:flex w-[400px] xl:w-[440px] border-l border-border bg-card">
-                <CartPanel />
+            <aside data-section="pos.carrito" className="hidden lg:flex w-[380px] xl:w-[420px] border-l border-border bg-card">
+                <Ticket onCobrar={etapa === 'vender' ? irACobrar : undefined} />
             </aside>
 
             {/* Móvil: barra con el total que abre el carrito */}
-            {cartItems.length > 0 && !showMobileCart && (
+            {etapa === 'vender' && cartItems.length > 0 && !showMobileCart && (
                 <button
                     type="button"
                     data-section="pos.barra-movil"
@@ -206,7 +217,7 @@ export default function POSPage() {
                         <div className="flex justify-center py-2">
                             <div className="h-1 w-10 rounded-full bg-border" />
                         </div>
-                        <CartPanel onClose={() => setShowMobileCart(false)} />
+                        <Ticket onCobrar={irACobrar} onClose={() => setShowMobileCart(false)} />
                     </div>
                 </div>
             )}

@@ -31,7 +31,7 @@ export default function ProductSearch({ value, onChange, onEnter, resultados }: 
                 value={value}
                 aria-label="Buscar producto"
                 placeholder="Buscar por nombre, SKU o código de barras"
-                className="h-12 rounded-xl border-border bg-card pl-12 pr-32 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-search-cancel-button]:hidden"
+                className="h-12 rounded-xl border-border bg-card pl-12 pr-12 md:pr-32 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-search-cancel-button]:hidden"
                 onChange={(e) => onChange(e.target.value)}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter') onEnter()
