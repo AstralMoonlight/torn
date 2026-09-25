@@ -45,6 +45,13 @@ const TIPOS_TRASLADO = [
     { value: 6, label: 'Otro traslado (no venta)' },
 ] as const
 
+/** Documentos del menú "…". Se pueden elegir aunque no tengan folios: el botón de cobro avisa. */
+const DTE_EXTRA = [
+    { tipo: 34, label: 'Factura Exenta (34)', Icon: FileText },
+    { tipo: 41, label: 'Boleta Exenta (41)', Icon: Receipt },
+    { tipo: 52, label: 'Guía de Despacho (52)', Icon: FileStack },
+]
+
 function formatDateForInput(d: Date): string {
     return d.toISOString().slice(0, 10)
 }
@@ -243,7 +250,6 @@ export default function CartPanel({ onClose }: Props) {
                                             <TabsTrigger
                                                 value="39"
                                                 className="gap-1.5 text-xs"
-                                                disabled={!availableDtes.some((d) => d.dte_type === 39)}
                                             >
                                                 <Receipt className="h-3.5 w-3.5" /> Boleta
                                             </TabsTrigger>
@@ -251,7 +257,6 @@ export default function CartPanel({ onClose }: Props) {
                                             <TabsTrigger
                                                 value="33"
                                                 className="gap-1.5 text-xs"
-                                                disabled={!availableDtes.some((d) => d.dte_type === 33)}
                                             >
                                                 <FileText className="h-3.5 w-3.5" /> Factura
                                             </TabsTrigger>
@@ -262,31 +267,23 @@ export default function CartPanel({ onClose }: Props) {
                                                     <TabsTrigger
                                                         value={![33, 39].includes(tipoDte) ? tipoDte.toString() : 'extra'}
                                                         className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                                        disabled={!availableDtes.some((d) => ![33, 39].includes(d.dte_type))}
                                                     >
-                                                        {![33, 39].includes(tipoDte) && availableDtes.find((d) => d.dte_type === tipoDte) ? (
+                                                        {![33, 39].includes(tipoDte) ? (
                                                             tipoDte === 34 ? 'Exenta (34)' : tipoDte === 41 ? 'Bol. Exenta (41)' : tipoDte === 52 ? 'Guía (52)' : `DTE ${tipoDte}`
                                                         ) : (
                                                             '...'
                                                         )}
                                                     </TabsTrigger>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-44 text-xs">
-                                                    {availableDtes.find((d) => d.dte_type === 34) && (
-                                                        <DropdownMenuItem onClick={() => setTipoDte(34)} className="text-xs flex gap-2">
-                                                            <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Factura Exenta (34)
+                                                <DropdownMenuContent align="end" className="w-52 text-xs">
+                                                    {DTE_EXTRA.map(({ tipo, label, Icon }) => (
+                                                        <DropdownMenuItem key={tipo} onClick={() => setTipoDte(tipo)} className="text-xs flex gap-2">
+                                                            <Icon className="h-3.5 w-3.5 text-muted-foreground" /> {label}
+                                                            {!availableDtes.some((d) => d.dte_type === tipo) && (
+                                                                <span className="ml-auto text-[10px] text-muted-foreground">sin folios</span>
+                                                            )}
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    {availableDtes.find((d) => d.dte_type === 41) && (
-                                                        <DropdownMenuItem onClick={() => setTipoDte(41)} className="text-xs flex gap-2">
-                                                            <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    {availableDtes.find((d) => d.dte_type === 52) && (
-                                                        <DropdownMenuItem onClick={() => setTipoDte(52)} className="text-xs flex gap-2">
-                                                            <FileStack className="h-3.5 w-3.5 text-muted-foreground" /> Guía de Despacho (52)
-                                                        </DropdownMenuItem>
-                                                    )}
+                                                    ))}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TabsList>
@@ -342,11 +339,6 @@ export default function CartPanel({ onClose }: Props) {
                                         required
                                     />
                                 )}
-                            </div>
-                        )}
-                        {noFoliosAvailable && (
-                            <div className="p-2 bg-destructive/10 text-destructive text-xs rounded-md text-center font-medium border border-destructive/30">
-                                No hay folios de venta disponibles. Solicite folios al SII.
                             </div>
                         )}
 
