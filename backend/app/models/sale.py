@@ -57,6 +57,9 @@ class Sale(Base):
     # Guías de despacho (52): IndTraslado, y la factura que la cobró (NULL: pendiente).
     ind_traslado = Column(Integer, nullable=True)
     facturada_por_id = Column(Integer, ForeignKey("sales.id"), nullable=True)
+    # Modo del emisor al emitirla (CERT, PROD o DEV). Solo se ve en ese modo:
+    # ver `filtrar_por_modo` en app/dependencies/tenant.py.
+    modo = Column(String(4), nullable=False, default="CERT", server_default="CERT")
 
     # Relaciones
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")

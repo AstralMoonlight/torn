@@ -27,6 +27,7 @@ from app.dependencies.tenant import (
     get_current_local_user,
     get_current_tenant_user,
     get_global_db,
+    filtrar_por_modo,
     get_tenant_db,
     require_admin,
 )
@@ -98,11 +99,16 @@ def client(db_session, admin_local_user):
     )
     tenant_user = TenantUser(
         tenant_id=1, user_id=1, role_name="ADMINISTRADOR", is_active=True,
-        tenant=Tenant(id=1, name="Empresa Test", schema_name="tenant_test"),
+        tenant=Tenant(id=1, name="Empresa Test", schema_name="tenant_test", sii_ambiente="CERT"),
     )
 
+    def override_tenant_db():
+        # Como `get_tenant_db`: solo se ven las ventas del modo actual del emisor.
+        filtrar_por_modo(db_session, tenant_user.tenant.sii_ambiente)
+        yield db_session
+
     app.dependency_overrides[get_db] = override_db
-    app.dependency_overrides[get_tenant_db] = override_db
+    app.dependency_overrides[get_tenant_db] = override_tenant_db
     app.dependency_overrides[get_global_db] = override_db
     app.dependency_overrides[get_current_global_user] = lambda: global_user
     app.dependency_overrides[get_current_tenant_user] = lambda: tenant_user

@@ -30,7 +30,7 @@ XML = (b'<?xml version="1.0" encoding="ISO-8859-1"?>'
 
 TENANT = SimpleNamespace(id=1, dte_tenant_id=None, sii_oficina="S.I.I. - CONCEPCION",
                          sii_resolucion_numero=80, sii_resolucion_fecha=date(2014, 8, 22))
-VENTA = SimpleNamespace(tipo_dte=33, folio=7)
+VENTA = SimpleNamespace(tipo_dte=33, folio=7, modo="CERT")
 
 
 def test_leer_dte_toma_los_datos_y_el_ted_del_xml():
@@ -73,6 +73,14 @@ def test_ticket_de_factura_trae_copia_cliente_y_cedible(dte_torn):
     assert html.count('height="30mm"') == 2        # mismo alto de timbre en ambas copias
     assert html.count("ACUSE DE RECIBO") == 1
     assert html.count("Factureando.cl: Hazla simple!") == 2
+    assert "SIN VALIDEZ TRIBUTARIA" not in html
+
+
+def test_ticket_de_desarrollador_dice_que_es_de_prueba(dte_torn):
+    venta = SimpleNamespace(tipo_dte=33, folio=7, modo="DEV")
+    sin_resolucion = SimpleNamespace(**{**vars(TENANT), "sii_resolucion_fecha": None})
+    html = _impreso_dte(sin_resolucion, venta, 80, cedible=False).body.decode()
+    assert html.count("DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA") == 4  # arriba y abajo, en cada copia
 
 
 def test_solo_cedible(dte_torn):

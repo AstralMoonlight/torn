@@ -180,7 +180,7 @@ def close_session(
     total_sales_cash = db.query(func.coalesce(func.sum(SalePayment.amount), 0))\
         .join(Sale)\
         .join(PaymentMethod)\
-        .filter(*cash_sales_filter).scalar()
+        .filter(*cash_sales_filter)        .execution_options(todos_los_modos=True).scalar()
 
     # Note: This logic assumes all sales after open belong to this session.
     # In a multi-user environment, we need seller_id.
@@ -198,7 +198,7 @@ def close_session(
         .subquery()
     )
     total_vuelto = db.query(func.coalesce(func.sum(Sale.vuelto), 0))\
-        .filter(Sale.id.in_(db.query(cash_sale_ids.c.id))).scalar()
+        .filter(Sale.id.in_(db.query(cash_sale_ids.c.id)))        .execution_options(todos_los_modos=True).scalar()
 
     final_system = active_session.start_amount + total_sales_cash - total_vuelto
     
