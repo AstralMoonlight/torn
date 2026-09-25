@@ -63,6 +63,18 @@
     @apply border-border;
   }
 
+  /* Todo selector de opciones muestra la mano: <select> nativos, el disparador
+     de los Select de shadcn (role=combobox) y sus opciones. */
+  select:not(:disabled),
+  [role="combobox"]:not(:disabled),
+  [role="option"]:not([data-disabled]) {
+    cursor: pointer;
+  }
+  select:disabled,
+  [role="combobox"]:disabled {
+    cursor: not-allowed;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

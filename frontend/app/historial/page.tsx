@@ -37,6 +37,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { formatCLP } from '@/lib/format'
+import { SelectOpciones } from '@/components/ui/select-opciones'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 
 
@@ -309,29 +310,22 @@ export default function HistorialPage() {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Tipo de Documento *</Label>
-                                <select
-                                    value={returnDteType}
-                                    onChange={(e) => setReturnDteType(parseInt(e.target.value))}
-                                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs"
-                                >
-                                    {availableAdjustments.map((a) => (
-                                        <option key={a.dte_type} value={a.dte_type}>
-                                            {a.dte_type === 61 ? 'N. Crédito (61)' : a.dte_type === 56 ? 'N. Débito (56)' : a.dte_type === 111 ? 'ND Export. (111)' : `DTE ${a.dte_type}`}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SelectOpciones className="h-9 text-xs" value={returnDteType}
+                                    onChange={(v) => setReturnDteType(Number(v))}
+                                    opciones={availableAdjustments.map((a) => ({
+                                        value: a.dte_type,
+                                        label: a.dte_type === 61 ? 'N. Crédito (61)' : a.dte_type === 56 ? 'N. Débito (56)' : a.dte_type === 111 ? 'ND Export. (111)' : `DTE ${a.dte_type}`,
+                                    }))} />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Razón SII *</Label>
-                                <select
-                                    value={siiReasonCode}
-                                    onChange={(e) => setSiiReasonCode(parseInt(e.target.value))}
-                                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs truncate"
-                                >
-                                    <option value={1}>1 - Anula Documento</option>
-                                    <option value={2}>2 - Corrige Texto</option>
-                                    <option value={3}>3 - Corrige Monto</option>
-                                </select>
+                                <SelectOpciones className="h-9 text-xs" value={siiReasonCode}
+                                    onChange={(v) => setSiiReasonCode(Number(v))}
+                                    opciones={[
+                                        { value: 1, label: '1 - Anula Documento' },
+                                        { value: 2, label: '2 - Corrige Texto' },
+                                        { value: 3, label: '3 - Corrige Monto' },
+                                    ]} />
                             </div>
                         </div>
 
@@ -347,15 +341,9 @@ export default function HistorialPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-xs">Medio de devolución</Label>
-                            <select
-                                value={returnMethodId}
-                                onChange={(e) => setReturnMethodId(parseInt(e.target.value))}
-                                className="w-full h-9 rounded-md border border-input bg-background px-2 text-xs"
-                            >
-                                {methods.map((m) => (
-                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                            </select>
+                            <SelectOpciones className="h-9 text-xs" value={returnMethodId}
+                                onChange={(v) => setReturnMethodId(Number(v))}
+                                opciones={methods.map((m) => ({ value: m.id, label: m.name }))} />
                         </div>
 
                         {returnDialog && (
