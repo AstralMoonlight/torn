@@ -302,16 +302,18 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
         HTTPException(400): Si los montos no cuadran.
         HTTPException(409/422/503): Si dte-torn rechaza el documento o no responde.
     """
-    # 0. Validar Caja Abierta
+    # 0. Validar Caja Abierta (si la empresa usa control de caja)
     seller_id_to_use = local_user.id
-    
+    settings = db.query(SystemSettings).first()
+    control_caja = settings is None or settings.control_caja
+
     active_session = db.query(CashSession).filter(
         CashSession.user_id == seller_id_to_use,
         CashSession.status == "OPEN"
     ).first()
-    
+
     # La guía no se cobra (se cobra al facturarla), así que no pasa por caja.
-    if not active_session and sale_in.tipo_dte != GUIA_DESPACHO:
+    if control_caja and not active_session and sale_in.tipo_dte != GUIA_DESPACHO:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"El vendedor (ID {seller_id_to_use}) no tiene turno de caja abierto."

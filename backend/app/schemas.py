@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -115,10 +115,21 @@ class TaxOut(TaxBase):
 
 # ── Configuración (Settings) ─────────────────────────────────────────
 
+#: Paleta cerrada del color principal (los valores HSL viven en `frontend/lib/colores.ts`).
+ColorPrimario = Literal[
+    "azul", "indigo", "violeta", "purpura", "fucsia", "rosa", "frambuesa", "rojo",
+    "naranja", "ambar", "oliva", "lima", "verde", "esmeralda", "turquesa", "cian",
+    "celeste", "acero", "grafito", "cafe",
+]
+
+
 class SettingsBase(BaseModel):
     print_format: PrintFormat = "80mm"
     print_formats: Dict[str, PrintFormat] = Field(default_factory=dict)
     iva_default_id: Optional[int] = None
+    control_caja: bool = True
+    color_mode: Literal["empresa", "usuario"] = "empresa"
+    color_primario: ColorPrimario = "azul"
 
 class SettingsUpdate(SettingsBase):
     pass

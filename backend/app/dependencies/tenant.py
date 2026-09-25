@@ -183,9 +183,14 @@ def get_current_local_user(
     return local_user
 
 
+def es_admin(tenant_user: TenantUser) -> bool:
+    """Rol ADMINISTRADOR en la empresa, o superusuario del SaaS."""
+    return tenant_user.role_name == "ADMINISTRADOR" or bool(tenant_user.user and tenant_user.user.is_superuser)
+
+
 def require_admin(tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)]):
     """Dependencia para verificar que el usuario operativo tiene rol ADMINISTRADOR."""
-    if tenant_user.role_name != "ADMINISTRADOR" and not tenant_user.user.is_superuser:
+    if not es_admin(tenant_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: se requieren permisos de administrador de empresa."
