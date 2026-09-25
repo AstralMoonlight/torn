@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, Truck } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -63,8 +64,9 @@ export default function ProvidersPage() {
         setIsDialogOpen(true)
     }
 
+    const [toDelete, setToDelete] = useState<Provider | null>(null)
+
     const handleDelete = async (id: number) => {
-        if (!confirm('¿Estás seguro de desactivar este proveedor?')) return
         try {
             await deleteProvider(id)
             toast.success('Proveedor desactivado')
@@ -136,7 +138,7 @@ export default function ProvidersPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => handleDelete(provider.id)}
+                                                        onClick={() => setToDelete(provider)}
                                                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                         title="Desactivar"
                                                     >
@@ -158,6 +160,14 @@ export default function ProvidersPage() {
                 onOpenChange={setIsDialogOpen}
                 provider={editingProvider}
                 onSuccess={loadProviders}
+            />
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Desactivar proveedor?"
+                description={toDelete?.razon_social}
+                confirmLabel="Desactivar"
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete.id) }}
             />
         </PageContainer>
     )

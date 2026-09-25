@@ -24,6 +24,7 @@ import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Loader2, Globe } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 
@@ -159,9 +160,9 @@ export default function CustomersPage() {
         }
     }
 
-    const handleDelete = async (customer: Customer) => {
-        if (!confirm(`¿Eliminar cliente ${customer.razon_social}?`)) return
+    const [toDelete, setToDelete] = useState<Customer | null>(null)
 
+    const handleDelete = async (customer: Customer) => {
         try {
             await deleteCustomer(customer.rut)
             setCustomers(customers.filter(c => c.id !== customer.id))
@@ -233,7 +234,7 @@ export default function CustomersPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleDelete(customer)}
+                                                onClick={() => setToDelete(customer)}
                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Eliminar"
                                             >
@@ -301,6 +302,13 @@ export default function CustomersPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Eliminar cliente?"
+                description={toDelete?.razon_social}
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
+            />
         </PageContainer>
     )
 }

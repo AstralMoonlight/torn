@@ -25,6 +25,7 @@ import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/servi
 import { getApiErrorMessage } from '@/services/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, Loader2, Tags } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 
@@ -97,9 +98,9 @@ export default function BrandsPage() {
         }
     }
 
-    const handleDelete = async (brand: Brand) => {
-        if (!confirm(`¿Eliminar marca ${brand.name}?`)) return
+    const [toDelete, setToDelete] = useState<Brand | null>(null)
 
+    const handleDelete = async (brand: Brand) => {
         try {
             await deleteBrand(brand.id)
             setBrands(brands.filter(b => b.id !== brand.id))
@@ -158,7 +159,7 @@ export default function BrandsPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleDelete(brand)}
+                                                onClick={() => setToDelete(brand)}
                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Eliminar"
                                             >
@@ -199,6 +200,13 @@ export default function BrandsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Eliminar marca?"
+                description={toDelete?.name}
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
+            />
         </PageContainer>
     )
 }

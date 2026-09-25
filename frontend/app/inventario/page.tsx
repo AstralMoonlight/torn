@@ -32,6 +32,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ProductWizard from '@/components/inventory/ProductWizard'
@@ -82,9 +83,9 @@ export default function InventarioPage() {
         fetchProducts()
     }
 
-    const handleDelete = async (product: Product) => {
-        if (!confirm(`¿Estás seguro de eliminar "${product.full_name}"? Esto no se puede deshacer.`)) return
+    const [toDelete, setToDelete] = useState<Product | null>(null)
 
+    const handleDelete = async (product: Product) => {
         try {
             await deleteProduct(product.id)
             toast.success('Producto eliminado')
@@ -202,7 +203,7 @@ export default function InventarioPage() {
                                                     Editar
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="text-destructive focus:text-destructive">
+                                                <DropdownMenuItem onClick={() => setToDelete(p)} className="text-destructive focus:text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Eliminar
                                                 </DropdownMenuItem>
@@ -232,6 +233,13 @@ export default function InventarioPage() {
                     setEditDialogOpen(false)
                     if (refresh) loadProducts()
                 }}
+            />
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Eliminar producto?"
+                description={<>&quot;{toDelete?.full_name}&quot; se eliminará. Esta acción no se puede deshacer.</>}
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
             />
         </PageContainer>
     )

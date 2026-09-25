@@ -16,16 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
 import { validateRut, formatRut } from '@/lib/rut'
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Switch } from '@/components/ui/switch'
 import {
     Table,
@@ -51,7 +42,6 @@ export default function TenantsListPage() {
     const [isCreating, setIsCreating] = useState(false)
     const [openModal, setOpenModal] = useState(false)
     const [editingTenantId, setEditingTenantId] = useState<number | null>(null)
-    const [isDeleting, setIsDeleting] = useState(false)
     const [tenantToDelete, setTenantToDelete] = useState<number | null>(null)
     const [tenantSearch, setTenantSearch] = useState('')
 
@@ -208,16 +198,12 @@ export default function TenantsListPage() {
     const handleDeleteTenant = async () => {
         if (!tenantToDelete) return
 
-        setIsDeleting(true)
         try {
             await deleteTenant(tenantToDelete)
             toast.success("Empresa desactivada")
-            setTenantToDelete(null)
             fetchTenants()
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Error al desactivar empresa'))
-        } finally {
-            setIsDeleting(false)
         }
     }
 
@@ -583,31 +569,14 @@ export default function TenantsListPage() {
                         </TableBody>
                     </Table>
                 </div>
-
-                {/* Confirm Delete Dialog */}
-                <AlertDialog open={!!tenantToDelete} onOpenChange={(open: boolean) => !open && setTenantToDelete(null)}>
-                    <AlertDialogContent className="bg-card border-border">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                                <AlertTriangle className="h-5 w-5" />
-                                ¿Desactivar Empresa?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-muted-foreground">
-                                Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleDeleteTenant}
-                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                                disabled={isDeleting}
-                            >
-                                {isDeleting ? 'Desactivando...' : 'Sí, desactivar'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <ConfirmDialog
+                    open={!!tenantToDelete}
+                    onOpenChange={o => !o && setTenantToDelete(null)}
+                    title="¿Desactivar empresa?"
+                    description="Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado."
+                    confirmLabel="Desactivar"
+                    onConfirm={handleDeleteTenant}
+                />
 
             </div>
         </div >

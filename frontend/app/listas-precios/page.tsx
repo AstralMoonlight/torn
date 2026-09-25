@@ -21,7 +21,7 @@ import {
     TableEmpty,
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { getApiErrorMessage } from '@/services/api'
 import {
     getPriceLists, getPriceList, createPriceList, updatePriceList, deletePriceList,
@@ -99,7 +99,6 @@ export default function PriceListsPage() {
     const [priceLists, setPriceLists] = useState<PriceListRead[]>([])
     const [loading, setLoading] = useState(true)
     const [deleteId, setDeleteId] = useState<number | null>(null)
-    const [isDeleting, setIsDeleting] = useState(false)
 
     // Modal state
     const [openModal, setOpenModal] = useState(false)
@@ -278,16 +277,12 @@ export default function PriceListsPage() {
 
     const handleDelete = async () => {
         if (!deleteId) return
-        setIsDeleting(true)
         try {
             await deletePriceList(deleteId)
             toast.success('Lista eliminada')
-            setDeleteId(null)
             fetchLists()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Error al eliminar'))
-        } finally {
-            setIsDeleting(false)
         }
     }
 
@@ -721,28 +716,13 @@ export default function PriceListsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Delete Confirm */}
-            <AlertDialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-card border-border">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-destructive">¿Eliminar lista de precios?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground">
-                            Los clientes asignados quedarán sin lista de precios y se aplicará el precio base. Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                        >
-                            {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={o => !o && setDeleteId(null)}
+                title="¿Eliminar lista de precios?"
+                description="Los clientes asignados quedarán sin lista de precios y se aplicará el precio base. Esta acción no se puede deshacer."
+                onConfirm={handleDelete}
+            />
         </PageContainer>
     )
 }

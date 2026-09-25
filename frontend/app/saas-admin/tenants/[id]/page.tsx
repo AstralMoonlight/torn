@@ -23,6 +23,8 @@ import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessionStore } from '@/lib/store/sessionStore'
 
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
 export default function TenantDetailsPage() {
     const router = useRouter()
     const { id } = useParams()
@@ -150,9 +152,10 @@ export default function TenantDetailsPage() {
         }
     }
 
-    const handleToggleUserStatus = async (tu: TenantUser) => {
-        if (!confirm(`¿Estás seguro de ${tu.is_active ? 'desactivar' : 'reactivar'} a este usuario de la empresa?`)) return
+    // Desactivar pide confirmación; reactivar es inocuo y va directo.
+    const [toDeactivate, setToDeactivate] = useState<TenantUser | null>(null)
 
+    const handleToggleUserStatus = async (tu: TenantUser) => {
         // Check limit if reactivating
         if (!tu.is_active && isAtLimit) {
             toast.error("No se puede reactivar. Límite de usuarios alcanzado.")
@@ -405,7 +408,7 @@ export default function TenantDetailsPage() {
                                                         >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-primary hover:text-primary hover:bg-primary/10'}`} onClick={() => handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
+                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-primary hover:text-primary hover:bg-primary/10'}`} onClick={() => tu.is_active ? setToDeactivate(tu) : handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
                                                             {tu.is_active ? <Trash2 className="h-4 w-4" /> : <ShieldPlus className="h-4 w-4" />}
                                                         </Button>
                                                     </div>
@@ -486,6 +489,14 @@ export default function TenantDetailsPage() {
                         </div>
                     </DialogContent>
                 </Dialog>
+                <ConfirmDialog
+                    open={!!toDeactivate}
+                    onOpenChange={o => !o && setToDeactivate(null)}
+                    title="¿Desactivar usuario?"
+                    description={`${toDeactivate?.user.email} ya no podrá entrar a esta empresa.`}
+                    confirmLabel="Desactivar"
+                    onConfirm={async () => { if (toDeactivate) await handleToggleUserStatus(toDeactivate) }}
+                />
             </div>
         </div>
     )
