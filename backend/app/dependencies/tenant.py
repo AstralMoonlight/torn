@@ -14,6 +14,7 @@ migrar antes a un driver asíncrono.
 from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.database import SessionLocal, engine
 from app.models.saas import SaaSUser, Tenant, TenantUser
@@ -97,7 +98,14 @@ def get_current_tenant_user(
     # Si es superusuario pero no tiene registro explícito, creamos uno mockeado para salir al paso o permitimos
     if not tenant_user and current_user.is_superuser:
         # Mock de admin para el superusuario
+        tenant = global_db.get(Tenant, x_tenant_id)
+        if tenant is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada.")
         tenant_user = TenantUser(tenant_id=x_tenant_id, user_id=current_user.id, role_name="ADMINISTRADOR")
+        # Sin eventos ni cascada: asignar `.tenant` normal lo metería en la sesión
+        # (backref Tenant.users) y se insertaría al primer commit.
+        set_committed_value(tenant_user, "tenant", tenant)
+        set_committed_value(tenant_user, "user", current_user)
         
     return tenant_user
 
