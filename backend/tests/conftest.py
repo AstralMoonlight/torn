@@ -135,7 +135,7 @@ class FakeDte:
             for i in documento["items"]
         ]
         _, _, _, total = totales_dte(documento["tipo_dte"], lineas)
-        return {"folio": self._folios[documento["tipo_dte"]], "monto_total": int(total)}
+        return {"folio": self._folios[documento["tipo_dte"]], "monto_total": int(total), "estado": "FIRMADO"}
 
 
 @pytest.fixture(autouse=True)

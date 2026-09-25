@@ -365,6 +365,8 @@ class SaleOut(BaseModel):
     created_at: datetime
     related_sale_id: Optional[int] = None
     referencias: Optional[List[DocumentReferenceOut]] = None
+    dte_estado: Optional[str] = None
+    dte_glosa: Optional[str] = None
 
     customer: CustomerOut
     details: List[SaleDetailOut]

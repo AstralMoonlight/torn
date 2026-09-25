@@ -2,7 +2,7 @@
 
 import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
 import { useEffect, useState, Fragment } from 'react'
-import { getSales, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
+import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +54,20 @@ function DteBadge({ tipo }: { tipo: number }) {
     return <Badge className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
 }
 
+const ESTADOS_SII: Record<string, { label: string; color: string }> = {
+    ACEPTADO: { label: 'Aceptado', color: 'bg-emerald-600' },
+    REPAROS: { label: 'Con reparos', color: 'bg-amber-500' },
+    RECHAZADO: { label: 'Rechazado', color: 'bg-destructive' },
+    ERROR_VALIDACION: { label: 'Error', color: 'bg-destructive' },
+    ANULADO: { label: 'Anulado', color: 'bg-muted-foreground' },
+}
+
+function SiiBadge({ estado, glosa }: { estado: string | null; glosa: string | null }) {
+    if (!estado) return <span className="text-xs text-muted-foreground">—</span>
+    const info = ESTADOS_SII[estado] || { label: 'En proceso', color: 'bg-sky-600' }
+    return <Badge title={glosa || estado} className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
+}
+
 export default function HistorialPage() {
     const [sales, setSales] = useState<SaleOut[]>([])
     const [loading, setLoading] = useState(true)
@@ -69,12 +83,17 @@ export default function HistorialPage() {
 
     useEffect(() => {
         Promise.all([
-            getSales(),
+            // Si dte-torn no responde, el historial se muestra igual con el último estado conocido.
+            actualizarEstadosDte().catch(() => null).then(() => getSales()),
             getPaymentMethods(),
             getFoliosStatus(),
         ])
             .then(([s, m, f]) => {
                 setSales(s)
+                const rechazadas = s.filter(v => v.dte_estado === 'RECHAZADO' || v.dte_estado === 'ERROR_VALIDACION')
+                if (rechazadas.length > 0) {
+                    toast.error(`El SII rechazó ${rechazadas.length} documento(s): folio ${rechazadas.map(v => v.folio).join(', ')}`)
+                }
                 setMethods(m)
                 if (m.length > 0) setReturnMethodId(m[0].id)
 
@@ -186,6 +205,7 @@ export default function HistorialPage() {
                         <TableRow className="border-b border-border">
                             <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Folio</TableHead>
                             <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tipo</TableHead>
+                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SII</TableHead>
                             <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell text-center">Hora</TableHead>
                             <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Cliente</TableHead>
                             <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
@@ -194,14 +214,14 @@ export default function HistorialPage() {
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Cargando...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Cargando...</TableCell></TableRow>
                         ) : filtered.length === 0 ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell></TableRow>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>
                                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell colSpan={6} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
+                                        <TableCell colSpan={7} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
                                             {date}
                                         </TableCell>
                                     </TableRow>
@@ -212,6 +232,9 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <DteBadge tipo={sale.tipo_dte} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <SiiBadge estado={sale.dte_estado} glosa={sale.dte_glosa} />
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}

@@ -50,6 +50,10 @@ class Sale(Base):
     audit_metadata = Column(JSON, nullable=True)
     # Referencias a documentos previos (OC, Guía, etc.) para Factura Electrónica SII
     referencias = Column(JSON, nullable=True, comment="Lista de {tipo_documento, folio, fecha}")
+    # Estado del documento en dte-torn (ACEPTADO, RECHAZADO, ENVIADO, ...). NULL: venta
+    # anterior a la integración. Se refresca con POST /sales/dte-estados.
+    dte_estado = Column(String(20), nullable=True)
+    dte_glosa = Column(String(500), nullable=True, comment="Glosa del SII o último error de dte-torn")
 
     # Relaciones
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")

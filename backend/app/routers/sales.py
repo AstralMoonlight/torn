@@ -100,10 +100,21 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     sale.folio = emitido["folio"]
+    _guardar_estado(sale, emitido)
     if Decimal(emitido["monto_total"]) != sale.monto_total:
         # No debería pasar: `totales_dte` replica el cálculo de dte-torn. El
         # documento ya está emitido, así que la venta se guarda igual.
         log.error("Venta %s: total cobrado %s, total del DTE %s", sale.id, sale.monto_total, emitido["monto_total"])
+
+
+#: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
+ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION"}
+
+
+def _guardar_estado(sale: Sale, doc: dict) -> None:
+    sale.dte_estado = doc["estado"]
+    glosa = doc.get("glosa_sii") or doc.get("ultimo_error")
+    sale.dte_glosa = glosa[:500] if glosa else None
 
 
 def _referencias_dte(referencias) -> list:
@@ -142,6 +153,36 @@ def list_sales(
         .all()
     )
     return sales
+
+
+@router.post("/dte-estados", summary="Actualizar estado SII",
+             description="Consulta a dte-torn las ventas cuyo estado todavía puede cambiar.")
+def actualizar_estados_dte(
+    db: Session = Depends(get_tenant_db),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Refresca `dte_estado` de las ventas pendientes. Devuelve cuántas cambiaron."""
+    # ponytail: una llamada por venta pendiente; casi siempre son pocas porque el
+    # SII responde en minutos. Si crece, pedir a dte-torn un listado por external_id.
+    pendientes = (
+        db.query(Sale)
+        .filter(Sale.dte_estado.isnot(None), Sale.dte_estado.notin_(ESTADOS_DTE_FINALES))
+        .limit(100)
+        .all()
+    )
+    cambiadas = 0
+    for sale in pendientes:
+        try:
+            doc = dte_client.request("GET", f"/documents/venta-{sale.id}", tenant_user.tenant).json()
+        except dte_client.DteError as exc:
+            if exc.status_code == 404:
+                continue
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        if doc["estado"] != sale.dte_estado:
+            cambiadas += 1
+        _guardar_estado(sale, doc)
+    db.commit()
+    return {"pendientes": len(pendientes), "cambiadas": cambiadas}
 
 
 @router.post("/", response_model=SaleOut, status_code=status.HTTP_201_CREATED,

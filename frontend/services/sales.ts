@@ -73,6 +73,9 @@ export interface SaleOut {
     descripcion: string | null
     created_at: string
     related_sale_id: number | null
+    /** Estado en dte-torn (ACEPTADO, REPAROS, RECHAZADO, ENVIADO...). null: venta anterior a la integración. */
+    dte_estado: string | null
+    dte_glosa: string | null
     customer: CustomerOut
     details: SaleDetailOut[]
 }
@@ -100,6 +103,12 @@ export async function createSale(sale: SaleCreate): Promise<SaleOut> {
 
 export async function getSales(skip = 0, limit = 50): Promise<SaleOut[]> {
     const { data } = await api.get<SaleOut[]>('/sales/', { params: { skip, limit } })
+    return data
+}
+
+/** Pide a dte-torn el estado de las ventas que todavía esperan respuesta del SII. */
+export async function actualizarEstadosDte(): Promise<{ pendientes: number; cambiadas: number }> {
+    const { data } = await api.post('/sales/dte-estados')
     return data
 }
 

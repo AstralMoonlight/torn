@@ -71,6 +71,29 @@ class TestEmisionEnDte:
         assert fake_dte.documentos[0]["external_id"] != fake_dte.documentos[1]["external_id"]
         assert fake_dte.documentos[0]["receptor"]["rut"] == "12345678-5"
 
+    def test_estado_sii_se_guarda_y_se_refresca(self, client, entorno_venta, monkeypatch):
+        db = entorno_venta
+        prod = Product(codigo_interno="P-E", nombre="Producto", precio_neto=1000)
+        db.add(prod)
+        db.commit()
+        venta = _vender(client, prod.id, 33, 1190).json()
+        assert venta["dte_estado"] == "FIRMADO"
+
+        consultas = []
+
+        def request(method, path, tenant=None, actor=None, **kwargs):
+            consultas.append(path)
+            return type("R", (), {"json": lambda self: {
+                "estado": "RECHAZADO", "glosa_sii": "Firma invalida", "ultimo_error": None}})()
+
+        monkeypatch.setattr(dte_client, "request", request)
+        assert client.post("/sales/dte-estados").json() == {"pendientes": 1, "cambiadas": 1}
+        assert consultas == [f"/documents/venta-{venta['id']}"]
+        venta = client.get("/sales/").json()[0]
+        assert (venta["dte_estado"], venta["dte_glosa"]) == ("RECHAZADO", "Firma invalida")
+        # Terminal: no se vuelve a consultar.
+        assert client.post("/sales/dte-estados").json() == {"pendientes": 0, "cambiadas": 0}
+
     @pytest.mark.parametrize("error, codigo", [
         (dte_client.DteError(409, "Sin folios disponibles para el tipo 33"), 409),
         (dte_client.DteNoDisponible("no respondió"), 503),

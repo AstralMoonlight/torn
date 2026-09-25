@@ -55,7 +55,10 @@ Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verifi
 
 ### A. Correcto frente al SII (lo primero)
 
-1. **Estado SII de cada venta.** El backend guarda solo `Sale.folio`. Nunca se entera de si el SII aceptó,
+1. ✅ **Estado SII de cada venta.** Hecho: `Sale.dte_estado`/`dte_glosa` (migración `c9d0e1f2a3b4`), se
+   guardan al emitir y `POST /sales/dte-estados` refresca los no terminales; el historial los muestra en la
+   columna SII y avisa los rechazados. Pendiente: verlo pasar de FIRMADO a ACEPTADO con una venta real en
+   maullin. Antes: el backend guardaba solo `Sale.folio`. Nunca se entera de si el SII aceptó,
    aceptó con reparos o rechazó. Falta:
    - Backend: guardar `estado`, `estado_sii` y `track_id` (migración Alembic). Consultar
      `GET /documents/{external_id}` después de emitir y en segundo plano, o con un botón "actualizar".
