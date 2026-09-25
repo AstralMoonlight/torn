@@ -174,8 +174,8 @@ export default function CajaPage() {
                 description="Abre y cierra turnos de caja, y audita el historial."
             />
 
-            <Tabs defaultValue="gestion" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
+            <Tabs defaultValue="gestion" className="space-y-6">
+                <TabsList>
                     <TabsTrigger value="gestion" className="gap-2">
                         <Landmark className="h-4 w-4" /> Gestión Diaria
                     </TabsTrigger>

@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
@@ -468,31 +469,20 @@ export default function PriceListsPage() {
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-1 border-b border-border">
-                            {([
-                                ['products', 'Productos', Package],
-                                ...(editingId === 'base' ? [] : [['customers', 'Clientes', Users]])
-                            ] as [Tab, string, typeof Package][]).map(([key, label, Icon]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setActiveTab(key as Tab)}
-                                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key
-                                        ? 'border-primary text-primary'
-                                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                                        }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {label}
-                                    {key === 'products' && draftItems.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{draftItems.length}</Badge>
-                                    }
-                                    {key === 'customers' && selectedCustomerIds.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{selectedCustomerIds.length}</Badge>
-                                    }
-                                </button>
-                            ))}
-                        </div>
+                        <Tabs value={activeTab} onValueChange={v => setActiveTab(v as Tab)}>
+                            <TabsList>
+                                <TabsTrigger value="products" className="gap-2">
+                                    <Package className="h-4 w-4" /> Productos
+                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{draftItems.length}</Badge>}
+                                </TabsTrigger>
+                                {editingId !== 'base' && (
+                                    <TabsTrigger value="customers" className="gap-2">
+                                        <Users className="h-4 w-4" /> Clientes
+                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedCustomerIds.length}</Badge>}
+                                    </TabsTrigger>
+                                )}
+                            </TabsList>
+                        </Tabs>
 
                         {/* Products Tab */}
                         {activeTab === 'products' && (

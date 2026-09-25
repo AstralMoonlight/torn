@@ -117,8 +117,8 @@ export default function ConfigurationPage() {
                 description="Administra las preferencias generales y parámetros del sistema."
             />
 
-            <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+            <Tabs defaultValue="general" className="space-y-6">
+                <TabsList>
                     <TabsTrigger value="general" className="gap-2">
                         <Settings className="h-4 w-4" /> General
                     </TabsTrigger>

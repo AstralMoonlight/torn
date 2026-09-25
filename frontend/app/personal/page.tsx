@@ -229,7 +229,7 @@ export default function PersonalPage() {
             />
 
             <Tabs defaultValue="list" className="space-y-6">
-                <TabsList className="bg-muted">
+                <TabsList>
                     <TabsTrigger value="list" className="gap-2">
                         <Users className="h-4 w-4" /> Personal
                     </TabsTrigger>
@@ -303,7 +303,7 @@ export default function PersonalPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)} title="Editar">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
                                                 </div>

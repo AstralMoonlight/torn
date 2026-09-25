@@ -231,8 +231,8 @@ export default function ComprasPage() {
                 description="Registre compras y actualice stock de productos."
             />
 
-            <Tabs defaultValue="nuevo" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6">
+            <Tabs defaultValue="nuevo" className="space-y-6">
+                <TabsList>
                     <TabsTrigger value="nuevo" className="gap-2">
                         <Plus className="h-4 w-4" /> Nuevo Ingreso
                     </TabsTrigger>
@@ -429,6 +429,7 @@ export default function ComprasPage() {
                                                                     size="icon"
                                                                     className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                     onClick={() => removeItem(index)}
+                                                                    title="Quitar"
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
@@ -566,14 +567,9 @@ export default function ComprasPage() {
                                     {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}
-                                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition shadow-sm"
-                            >
-                                <Printer className="h-3.5 w-3.5" />
-                                Imprimir
-                            </button>
+                            <Button size="sm" onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}>
+                                <Printer className="h-4 w-4" /> Imprimir
+                            </Button>
                         </div>
                     </DialogHeader>
                     {selectedPurchase && (
