@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { useCartStore } from '@/lib/store/cartStore'
-import { useUIStore } from '@/lib/store/uiStore'
+import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useBarcodeScanner } from '@/lib/hooks/useBarcodeScanner'
 import ProductSearch, { enfocarBusqueda } from '@/components/pos/ProductSearch'
 import ProductGrid from '@/components/pos/ProductGrid'
@@ -16,10 +16,12 @@ import { Button } from '@/components/ui/button'
 import { formatCLP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import Aviso from '@/components/layout/Aviso'
+import { useControlCaja } from '@/lib/store/settingsStore'
 
 export default function POSPage() {
     const sessionStatus = useSessionStore((s) => s.status)
+    const controlCaja = useControlCaja()
     const addItem = useCartStore((s) => s.addItem)
     const cartItems = useCartStore((s) => s.items)
     const totalFinal = useCartStore((s) => s.totalFinal)
@@ -38,7 +40,7 @@ export default function POSPage() {
             .then(setProducts)
             .catch((error) => {
                 console.error(error)
-                toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
+                avisar(getApiErrorMessage(error, 'Error al cargar productos'))
             })
             .finally(() => setLoading(false))
     }, [])
@@ -73,7 +75,7 @@ export default function POSPage() {
         const [unico, ...resto] = filtered
         if (!unico || resto.length > 0 || (posVariantDisplay === 'grouped' && unico.variants.length > 0)) return
         if (unico.controla_stock && parseFloat(unico.stock_actual) <= 0) {
-            toast.error(`Sin stock: ${unico.full_name}`)
+            avisar(`Sin stock: ${unico.full_name}`)
             return
         }
         addItem(unico)
@@ -101,22 +103,20 @@ export default function POSPage() {
 
                 if (found) {
                     if (found.controla_stock && parseFloat(found.stock_actual) <= 0) {
-                        toast.error(`Sin stock: ${found.nombre}`)
+                        avisar(`Sin stock: ${found.nombre}`)
                         return
                     }
                     addItem(found)
-                    toast.success(`Agregado: ${found.nombre}`, { duration: 1500 })
                 } else {
                     try {
                         const product = await getProductBySku(barcode)
                         addItem(product)
-                        toast.success(`Agregado: ${product.nombre}`, { duration: 1500 })
                     } catch {
-                        toast.error(`Producto no encontrado: ${barcode}`)
+                        avisar(`Producto no encontrado: ${barcode}`)
                     }
                 }
             } catch {
-                toast.error('Error al buscar producto')
+                avisar('Error al buscar producto')
             }
         },
         [products, addItem, etapa]
@@ -124,9 +124,12 @@ export default function POSPage() {
 
     useBarcodeScanner(handleBarcodeScan)
 
+    // Un aviso del POS ("Sin stock", "no encontrado") deja de importar al cambiar el ticket.
+    useEffect(() => { useUIStore.getState().cerrarAviso() }, [cartItems.length])
+
     const unidades = cartItems.reduce((s, i) => s + i.quantity, 0)
 
-    if (sessionStatus !== 'OPEN') {
+    if (controlCaja && sessionStatus !== 'OPEN') {
         return (
             <div data-section="pos.caja-cerrada" className="flex h-full items-center justify-center p-6">
                 <div className="text-center space-y-4 max-w-md mx-auto">
@@ -149,10 +152,12 @@ export default function POSPage() {
         <div className="flex h-full flex-col lg:flex-row bg-muted/40">
             {etapa === 'cobrar' ? (
                 <section className="flex flex-1 flex-col min-h-0 bg-card lg:bg-background">
+                    <Aviso className="m-3 mb-0 w-auto md:mx-6" />
                     <CobroPanel onVolver={() => setEtapa('vender')} onTerminado={() => { setEtapa('vender'); setQuery('') }} />
                 </section>
             ) : (
                 <section data-section="pos.productos" className="flex flex-1 flex-col gap-3 p-3 md:p-4 min-h-0">
+                <Aviso />
                 <ProductSearch
                     value={query}
                     onChange={setQuery}

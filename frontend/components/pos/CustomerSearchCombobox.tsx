@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog'
 import { searchCustomers, createCustomer, Customer, type CustomerCreate } from '@/services/customers'
 import CustomerForm from '@/components/customers/CustomerForm'
-import { toast } from 'sonner'
 import {
     Loader2,
     Search,
@@ -178,14 +177,10 @@ export default function CustomerSearchCombobox({
 
     // ── Customer creation handler ────────────────────────────────
     const handleCreateSuccess = async (data: CustomerCreate) => {
-        try {
-            const newCustomer = await createCustomer(data)
-            selectCustomer(newCustomer)
-            setCreateOpen(false)
-            toast.success('Cliente creado y seleccionado')
-        } catch {
-            toast.error('Error al crear cliente')
-        }
+        // Si falla, CustomerForm muestra el error dentro del diálogo.
+        const newCustomer = await createCustomer(data)
+        selectCustomer(newCustomer)
+        setCreateOpen(false)
     }
 
     const triggerToneClass = value

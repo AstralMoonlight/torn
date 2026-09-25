@@ -16,10 +16,10 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatRut } from '@/lib/rut'
 import { getProviders, deleteProvider, type Provider } from '@/services/providers'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import ProviderDialog from '@/components/providers/ProviderDialog'
 
 export default function ProvidersPage() {
@@ -37,7 +37,7 @@ export default function ProvidersPage() {
             setProviders(data)
             setFiltered(data)
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al cargar proveedores'))
+            avisar(getApiErrorMessage(error, 'Error al cargar proveedores'), { reintentar: loadProviders })
         } finally {
             setLoading(false)
         }
@@ -68,10 +68,9 @@ export default function ProvidersPage() {
     const handleDelete = async (id: number) => {
         try {
             await deleteProvider(id)
-            toast.success('Proveedor desactivado')
             loadProviders()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al desactivar proveedor'))
+            avisar(getApiErrorDetail(error, 'No se pudo desactivar el proveedor.'))
         }
     }
 

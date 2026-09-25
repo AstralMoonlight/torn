@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import {
@@ -82,12 +83,14 @@ export default function HistorialPage() {
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [returnMethodId, setReturnMethodId] = useState<number>(0)
     const [submittingReturn, setSubmittingReturn] = useState(false)
+    const [errorReturn, setErrorReturn] = useState<string | null>(null)
     const [availableAdjustments, setAvailableAdjustments] = useState<FolioStockOut[]>([])
     const [returnDteType, setReturnDteType] = useState<number>(61)
     const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
     const [facturarOpen, setFacturarOpen] = useState(false)
 
-    useEffect(() => {
+    const cargar = () => {
+        setLoading(true)
         Promise.all([
             // Si dte-torn no responde, el historial se muestra igual con el último estado conocido.
             actualizarEstadosDte().catch(() => null).then(() => getSales()),
@@ -98,7 +101,7 @@ export default function HistorialPage() {
                 setSales(s)
                 const rechazadas = s.filter(v => v.dte_estado === 'RECHAZADO' || v.dte_estado === 'ERROR_VALIDACION')
                 if (rechazadas.length > 0) {
-                    toast.error(`El SII rechazó ${rechazadas.length} documento(s): folio ${rechazadas.map(v => v.folio).join(', ')}`)
+                    avisar(`El SII rechazó ${rechazadas.length} documento(s): folio ${rechazadas.map(v => v.folio).join(', ')}`)
                 }
                 setMethods(m)
                 if (m.length > 0) setReturnMethodId(m[0].id)
@@ -110,9 +113,11 @@ export default function HistorialPage() {
                     setReturnDteType(nc ? 61 : adjs[0].dte_type)
                 }
             })
-            .catch(() => toast.error('Error cargando historial'))
+            .catch(() => avisar('No se pudo cargar el historial.', { reintentar: cargar }))
             .finally(() => setLoading(false))
-    }, [])
+    }
+
+    useEffect(cargar, [])
 
     const filtered = search.trim()
         ? sales.filter((s) =>
@@ -138,8 +143,9 @@ export default function HistorialPage() {
     })
 
     const handleReturn = async () => {
+        setErrorReturn(null)
         if (!returnDialog || !returnReason.trim()) {
-            toast.error('Ingresa un motivo')
+            setErrorReturn('Ingresa un motivo.')
             return
         }
         setSubmittingReturn(true)
@@ -155,15 +161,13 @@ export default function HistorialPage() {
                 reason: returnReason,
                 return_method_id: returnMethodId,
             })
-            toast.success('Documento de Ajuste emitido')
             setReturnDialog(null)
             setReturnReason('')
             // Refresh sales
             const freshSales = await getSales()
             setSales(freshSales)
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al crear NC')
+            setErrorReturn(getApiErrorDetail(err, 'No se pudo emitir el documento de ajuste.'))
         } finally {
             setSubmittingReturn(false)
         }
@@ -181,7 +185,7 @@ export default function HistorialPage() {
             window.open(blobUrl, '_blank')
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
         } catch (err) {
-            toast.error(getApiErrorDetail(err, 'No se pudo cargar el documento.'))
+            avisar(getApiErrorDetail(err, 'No se pudo cargar el documento.'))
         }
     }
 
@@ -287,7 +291,7 @@ export default function HistorialPage() {
             </div>
 
             {/* Return Dialog */}
-            <Dialog open={!!returnDialog} onOpenChange={() => setReturnDialog(null)}>
+            <Dialog open={!!returnDialog} onOpenChange={() => { setReturnDialog(null); setErrorReturn(null) }}>
                 <DialogContent data-section="historial.nota-ajuste" className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
@@ -355,6 +359,7 @@ export default function HistorialPage() {
                         )}
                     </div>
 
+                    <AlertaError mensaje={errorReturn} />
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button variant="outline" onClick={() => setReturnDialog(null)} className="text-xs">
                             Cancelar

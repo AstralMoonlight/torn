@@ -9,7 +9,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    /* --primario-claro/oscuro los pone lib/colores.ts (color elegido en Configuración). */
+    --primary: var(--primario-claro, 221 83% 55%);
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -21,7 +22,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: var(--primario-claro, 221 83% 55%);
     --radius: 0.5rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -37,7 +38,7 @@
     --card-foreground: 0 0% 97%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 97%;
-    --primary: 217.2 91.2% 59.8%;
+    --primary: var(--primario-oscuro, 221 83% 61.5%);
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 0 0% 16%;
     --secondary-foreground: 0 0% 97%;
@@ -49,7 +50,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 18%;
     --input: 0 0% 13%;
-    --ring: 217.2 91.2% 59.8%;
+    --ring: var(--primario-oscuro, 221 83% 61.5%);
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;

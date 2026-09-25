@@ -34,7 +34,9 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { avisar } from '@/lib/store/uiStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     Dialog,
@@ -42,13 +44,12 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from '@/components/ui/dialog'
 import { type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
 import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type Purchase, type PurchaseCreate } from '@/services/purchases'
-import { getApiErrorMessage, fetchBlobUrl } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail, fetchBlobUrl } from '@/services/api'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 import PageContainer from '@/components/layout/PageContainer'
@@ -78,18 +79,21 @@ export default function ComprasPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearching, setIsSearching] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const [errorIngreso, setErrorIngreso] = useState<string | null>(null)
+    const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
 
     // Purchase Detail Modal
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
     const verPdfCompra = async (purchaseId: number) => {
+        setErrorDetalle(null)
         try {
             const blobUrl = await fetchBlobUrl(getPurchasePdfPath(purchaseId))
             window.open(blobUrl, '_blank')
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'No se pudo cargar el documento.'))
+            setErrorDetalle(getApiErrorMessage(err, 'No se pudo cargar el documento.'))
         }
     }
 
@@ -108,7 +112,7 @@ export default function ComprasPage() {
                 setProducts(leafProducts)
                 setPurchases(purchaseData)
             })
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error al cargar datos')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error al cargar datos'), { reintentar: loadInitialData }))
     }
 
     const refreshPurchases = async () => {
@@ -117,7 +121,7 @@ export default function ComprasPage() {
             const data = await getPurchases()
             setPurchases(data)
         } catch {
-            toast.error('Error al actualizar historial')
+            avisar('No se pudo actualizar el historial de compras.', { reintentar: refreshPurchases })
         } finally {
             setLoadingPurchases(false)
         }
@@ -135,7 +139,7 @@ export default function ComprasPage() {
     const addItem = (product: Product) => {
         const existing = items.find(i => i.product.id === product.id)
         if (existing) {
-            toast.info(`${product.full_name} ya está en la lista`)
+            avisar(`${product.full_name} ya está en la lista`, { tipo: 'info' })
             return
         }
 
@@ -171,12 +175,13 @@ export default function ComprasPage() {
     const totalFinal = totalNeto + totalIva
 
     const handleSave = async () => {
+        setErrorIngreso(null)
         if (!selectedProvider) {
-            toast.error('Seleccione un proveedor')
+            setErrorIngreso('Selecciona un proveedor.')
             return
         }
         if (items.length === 0) {
-            toast.error('Agregue al menos un producto')
+            setErrorIngreso('Agrega al menos un producto.')
             return
         }
 
@@ -196,7 +201,6 @@ export default function ComprasPage() {
             }
 
             await createPurchase(payload)
-            toast.success('Ingreso de mercadería registrado con éxito')
 
             // Reset form
             setItems([])
@@ -205,7 +209,7 @@ export default function ComprasPage() {
             setSelectedProvider(null)
             refreshPurchases()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al registrar compra'))
+            setErrorIngreso(getApiErrorDetail(error, 'No se pudo registrar la compra.'))
         } finally {
             setSubmitting(false)
         }
@@ -215,11 +219,9 @@ export default function ComprasPage() {
         if (!deleteId) return
         try {
             await deletePurchase(deleteId)
-            toast.success('Compra eliminada y stock revertido')
-            setDeleteId(null)
             refreshPurchases()
-        } catch {
-            toast.error('Error al eliminar compra')
+        } catch (err) {
+            avisar(getApiErrorDetail(err, 'No se pudo eliminar la compra.'))
         }
     }
 
@@ -462,6 +464,7 @@ export default function ComprasPage() {
                                             </div>
                                         </div>
 
+                                        <AlertaError mensaje={errorIngreso} className="w-full" />
                                         <Button
                                             className="w-full h-12 text-lg font-bold gap-2"
                                             size="lg"
@@ -557,7 +560,7 @@ export default function ComprasPage() {
             </Tabs>
 
             {/* Purchase Detail Modal */}
-            <Dialog open={!!selectedPurchase} onOpenChange={() => setSelectedPurchase(null)}>
+            <Dialog open={!!selectedPurchase} onOpenChange={() => { setSelectedPurchase(null); setErrorDetalle(null) }}>
                 <DialogContent data-section="compras.detalle" className="max-w-3xl overflow-y-auto max-h-[90vh]">
                     <DialogHeader>
                         <div className="flex items-center justify-between pr-8">
@@ -572,6 +575,7 @@ export default function ComprasPage() {
                             </Button>
                         </div>
                     </DialogHeader>
+                    <AlertaError mensaje={errorDetalle} />
                     {selectedPurchase && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
@@ -628,23 +632,14 @@ export default function ComprasPage() {
             </Dialog>
 
             {/* Delete Confirmation */}
-            <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>¿Está seguro de eliminar esta compra?</DialogTitle>
-                        <DialogDescription>
-                            Esta acción revertirá el stock de todos los productos incluidos en este documento.
-                            No se puede deshacer.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
-                        <Button onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                            Eliminar definitivamente
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={(o) => !o && setDeleteId(null)}
+                title="¿Eliminar esta compra?"
+                description="Se revierte el stock de todos los productos del documento. No se puede deshacer."
+                confirmLabel="Eliminar definitivamente"
+                onConfirm={handleDelete}
+            />
 
             {/* Click outside search logic */}
             {isSearching && (

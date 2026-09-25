@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { type User, createUser, updateUser } from '@/services/users'
 import { type Role } from '@/services/roles'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
 import { Loader2, Plus, Pencil, AlertTriangle } from 'lucide-react'
 import { getApiErrorDetail } from '@/services/api'
 import {
@@ -40,6 +40,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [roleId, setRoleId] = useState<string>('')
+    const [error, setError] = useState<string | null>(null)
 
     const isOwner = user?.is_owner ?? false
 
@@ -55,21 +56,21 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                 setRoleId('')
             }
             setPassword('')
+            setError(null)
         }
     }, [open, user])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
 
         if (!user && !canActivateMore) {
-            toast.error('Límite de usuarios alcanzado', {
-                description: 'No puedes crear más usuarios activos. Desactiva alguno primero o sube de plan.'
-            })
+            setError('Límite de usuarios alcanzado: desactiva alguno o sube de plan para crear más.')
             return
         }
 
         if (!isOwner && !roleId) {
-            toast.error('Debes seleccionar un rol')
+            setError('Debes seleccionar un rol.')
             return
         }
 
@@ -82,7 +83,6 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     role_id: isOwner ? undefined : parseInt(roleId),
                     password: password || undefined
                 })
-                toast.success('Usuario actualizado')
             } else {
                 await createUser({
                     full_name: name,
@@ -90,12 +90,11 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     role_id: parseInt(roleId),
                     password
                 })
-                toast.success('Usuario creado')
             }
             onSuccess()
             onClose()
         } catch (error) {
-            toast.error(getApiErrorDetail(error, 'Error al guardar usuario'))
+            setError(getApiErrorDetail(error, 'No se pudo guardar el usuario.'))
         } finally {
             setLoading(false)
         }
@@ -189,6 +188,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                         </div>
                     )}
 
+                    <AlertaError mensaje={error} />
                     <DialogFooter className="pt-4">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
                             Cancelar

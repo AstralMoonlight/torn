@@ -13,7 +13,7 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                 setSummary(summ)
                 setTopRanking(top)
             })
-            .catch(() => toast.error('Error cargando datos del dashboard'))
+            .catch(() => avisar('No se pudieron cargar los datos del dashboard.', { reintentar: () => window.location.reload() }))
             .finally(() => setLoading(false))
     }, [])
 

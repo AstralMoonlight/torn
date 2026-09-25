@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import {
     getPriceLists, getPriceList, createPriceList, updatePriceList, deletePriceList,
     assignProducts, assignCustomers,
@@ -104,6 +105,7 @@ export default function PriceListsPage() {
     // Modal state
     const [openModal, setOpenModal] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<number | 'base' | null>(null)
     const [activeTab, setActiveTab] = useState<Tab>('products')
     const [isGrossMode, setIsGrossMode] = useState(false)
@@ -129,7 +131,7 @@ export default function PriceListsPage() {
         setLoading(true)
         getPriceLists()
             .then(setPriceLists)
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error cargando las listas de precios')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error cargando las listas de precios'), { reintentar: fetchLists }))
             .finally(() => setLoading(false))
     }, [])
 
@@ -237,8 +239,9 @@ export default function PriceListsPage() {
     // ── Save ───────────────────────────────────────────────────────────────
 
     const handleSave = async () => {
+        setErrorGuardar(null)
         if (!formName.trim()) {
-            toast.error('El nombre de la lista es obligatorio.')
+            setErrorGuardar('El nombre de la lista es obligatorio.')
             return
         }
         setIsSaving(true)
@@ -252,7 +255,6 @@ export default function PriceListsPage() {
                 await Promise.all(changed.map(item =>
                     updateProduct(item.product_id, { precio_neto: String(item.fixed_price) })
                 ))
-                toast.success('Precios base actualizados correctamente')
             } else {
                 let listId = editingId
                 if (listId) {
@@ -263,12 +265,11 @@ export default function PriceListsPage() {
                 }
                 await assignProducts(listId!, draftItems.map(i => ({ product_id: i.product_id, fixed_price: Number(i.fixed_price) })))
                 await assignCustomers(listId!, selectedCustomerIds)
-                toast.success(editingId ? 'Lista actualizada' : 'Lista creada correctamente')
             }
             setOpenModal(false)
             fetchLists()
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error guardando los cambios'))
+            setErrorGuardar(getApiErrorDetail(err, 'No se pudieron guardar los cambios.'))
         } finally {
             setIsSaving(false)
         }
@@ -280,10 +281,9 @@ export default function PriceListsPage() {
         if (!deleteId) return
         try {
             await deletePriceList(deleteId)
-            toast.success('Lista eliminada')
             fetchLists()
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error al eliminar'))
+            avisar(getApiErrorDetail(err, 'No se pudo eliminar la lista.'))
         }
     }
 
@@ -431,7 +431,7 @@ export default function PriceListsPage() {
             </div>
 
             {/* Create / Edit Modal */}
-            <Dialog open={openModal} onOpenChange={setOpenModal}>
+            <Dialog open={openModal} onOpenChange={(o) => { setOpenModal(o); setErrorGuardar(null) }}>
                 <DialogContent data-section="listas-precios.formulario" className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
@@ -689,6 +689,7 @@ export default function PriceListsPage() {
                         )}
                     </div>
 
+                    <AlertaError mensaje={errorGuardar} />
                     <DialogFooter className="border-t border-border pt-4">
                         <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border cursor-pointer">
                             Cancelar

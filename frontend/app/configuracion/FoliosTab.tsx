@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import api, { getApiErrorDetail } from "@/services/api";
-import { useToast } from "@/components/ui/use-toast";
+import { AlertaError } from "@/components/ui/alerta-error";
+import { avisar } from "@/lib/store/uiStore";
 
 type FolioStock = {
     dte_type: number;
@@ -57,7 +58,8 @@ export default function FoliosTab() {
     const [password, setPassword] = useState("");
 
     const cafInput = useRef<HTMLInputElement>(null);
-    const { toast } = useToast();
+    const [errorCaf, setErrorCaf] = useState<string | null>(null);
+    const [errorCert, setErrorCert] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -69,32 +71,27 @@ export default function FoliosTab() {
             setStocks(resStocks.data);
             setCertificado(resCert.data);
         } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: getApiErrorDetail(error, "No se pudo cargar la información de folios."),
-            });
+            avisar(getApiErrorDetail(error, "No se pudo cargar la información de folios."), { reintentar: fetchData });
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, []);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    const subir = async (ruta: string, form: FormData, exito: string) => {
+    /** Sube el archivo y devuelve el error, o `null` si salió bien. */
+    const subir = async (ruta: string, form: FormData): Promise<string | null> => {
         setSubiendo(true);
         try {
             // El cliente manda JSON por defecto, y con ese Content-Type axios
             // convierte el FormData a JSON: hay que pedir multipart explícito.
             await api.post(ruta, form, { headers: { "Content-Type": "multipart/form-data" } });
-            toast({ title: exito });
             fetchData();
-            return true;
+            return null;
         } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: getApiErrorDetail(error, "No se pudo cargar el archivo.") });
-            return false;
+            return getApiErrorDetail(error, "No se pudo cargar el archivo.");
         } finally {
             setSubiendo(false);
         }
@@ -106,7 +103,7 @@ export default function FoliosTab() {
         if (!file) return;
         const form = new FormData();
         form.append("file", file);
-        await subir("/folios/upload", form, "CAF cargado");
+        setErrorCaf(await subir("/folios/upload", form));
     };
 
     const handleCertificado = async () => {
@@ -114,7 +111,9 @@ export default function FoliosTab() {
         const form = new FormData();
         form.append("file", pfx);
         form.append("password", password);
-        if (await subir("/folios/certificate", form, "Certificado cargado")) {
+        const error = await subir("/folios/certificate", form);
+        setErrorCert(error);
+        if (!error) {
             setCertOpen(false);
             setPfx(null);
             setPassword("");
@@ -136,6 +135,8 @@ export default function FoliosTab() {
                     Cargar CAF
                 </Button>
             </div>
+
+            <AlertaError mensaje={errorCaf} />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {loading ? (
@@ -209,7 +210,7 @@ export default function FoliosTab() {
                             Con él se firman los documentos. Se guarda cifrado.
                         </CardDescription>
                     </div>
-                    <Dialog open={certOpen} onOpenChange={setCertOpen}>
+                    <Dialog open={certOpen} onOpenChange={(o) => { setCertOpen(o); setErrorCert(null); }}>
                         <DialogTrigger asChild>
                             <Button variant="secondary">
                                 <KeyRound className="h-4 w-4" />
@@ -231,6 +232,7 @@ export default function FoliosTab() {
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
+                            <AlertaError mensaje={errorCert} />
                             <DialogFooter>
                                 <Button variant="secondary" onClick={() => setCertOpen(false)} disabled={subiendo}>
                                     Cancelar

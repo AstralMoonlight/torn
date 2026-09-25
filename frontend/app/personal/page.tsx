@@ -35,7 +35,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select"
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getUsers, updateUser, type User } from '@/services/users'
 import PageContainer from '@/components/layout/PageContainer'
@@ -90,7 +90,7 @@ export default function PersonalPage() {
             // In a real multi-tenant app, the API already filters by tenant
             setStaff(data)
         } catch {
-            toast.error('Error al cargar personal')
+            avisar('No se pudo cargar el personal.', { reintentar: fetchStaff })
         } finally {
             setStaffLoading(false)
         }
@@ -101,7 +101,7 @@ export default function PersonalPage() {
             const rolesData = await roleService.getRoles()
             setRoles(rolesData.filter(r => r.name !== 'CLIENTE'))
         } catch {
-            toast.error('Error al cargar roles')
+            avisar('No se pudieron cargar los roles.', { reintentar: fetchRoles })
         }
     }, [])
 
@@ -130,18 +130,15 @@ export default function PersonalPage() {
 
     const handleToggleStatus = async (user: User) => {
         if (!user.is_active && !canActivateMore) {
-            toast.error('Límite de usuarios alcanzado', {
-                description: `Tu plan permite hasta ${maxUsers} usuarios activos (incluyendo al administrador principal).`
-            })
+            avisar(`Límite de usuarios alcanzado: tu plan permite hasta ${maxUsers} usuarios activos (incluyendo al administrador principal).`)
             return
         }
 
         try {
             await updateUser(user.id, { is_active: !user.is_active })
-            toast.success(user.is_active ? 'Usuario desactivado' : 'Usuario activado')
             fetchStaff()
         } catch {
-            toast.error('No se pudo cambiar el estado del usuario')
+            avisar('No se pudo cambiar el estado del usuario.')
         }
     }
 
@@ -168,9 +165,9 @@ export default function PersonalPage() {
                     roleService.updateRole(role.id, { permissions: role.permissions })
                 )
             )
-            toast.success('Permisos actualizados correctamente')
+            avisar('Permisos guardados.', { tipo: 'info' })
         } catch {
-            toast.error('Error al guardar permisos')
+            avisar('No se pudieron guardar los permisos.')
         } finally {
             setSavingRoles(false)
         }
@@ -190,9 +187,8 @@ export default function PersonalPage() {
                     role_obj: { ...u.role_obj!, name: newRole?.name || '' }
                 }
             }))
-            toast.success('Rol actualizado')
         } catch {
-            toast.error('Error al actualizar rol')
+            avisar('No se pudo cambiar el rol.')
         } finally {
             setUpdatingUserId(null)
         }

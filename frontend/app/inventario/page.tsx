@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getProducts, type Product } from '@/services/products'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import {
     Package,
     AlertTriangle,
@@ -38,7 +38,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
 import { deleteProduct } from '@/services/products'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
 
 
@@ -71,7 +71,7 @@ export default function InventarioPage() {
             .then(setProducts)
             .catch((error) => {
                 console.error(error)
-                toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
+                avisar(getApiErrorMessage(error, 'Error al cargar productos'), { reintentar: loadProducts })
             })
             .finally(() => setLoading(false))
     }
@@ -88,11 +88,10 @@ export default function InventarioPage() {
     const handleDelete = async (product: Product) => {
         try {
             await deleteProduct(product.id)
-            toast.success('Producto eliminado')
             loadProducts()
         } catch (error) {
             console.error(error)
-            toast.error('Error al eliminar producto')
+            avisar(getApiErrorDetail(error, 'No se pudo eliminar el producto.'))
         }
     }
 

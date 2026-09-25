@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { createProduct, createProductWithVariants } from '@/services/products'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
 import {
     Loader2,
     Plus,
@@ -75,6 +75,7 @@ export default function ProductWizard({ open, onClose }: Props) {
     // Step 2: Variants list
     const [variants, setVariants] = useState<VariantRow[]>([])
     const [creating, setCreating] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Load brands and taxes
     useEffect(() => {
@@ -102,6 +103,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
     // ── Create simple product (no variants) ──
     const handleCreateSimple = async () => {
+        setError(null)
         setCreating(true)
         try {
             await createProduct({
@@ -116,12 +118,10 @@ export default function ProductWizard({ open, onClose }: Props) {
                 brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
                 tax_id: selectedTax ? parseInt(selectedTax) : undefined,
             })
-            toast.success(`✓ ${baseName} creado`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al crear producto')
+            setError(getApiErrorDetail(err, 'No se pudo crear el producto.'))
         } finally {
             setCreating(false)
         }
@@ -132,10 +132,11 @@ export default function ProductWizard({ open, onClose }: Props) {
         // Validate all variants have name and price
         const invalid = variants.some(v => !v.nombre.trim() || !v.precio.trim())
         if (invalid) {
-            toast.error('Cada variante necesita Nombre y Precio')
+            setError('Cada variante necesita nombre y precio.')
             return
         }
 
+        setError(null)
         setCreating(true)
         try {
             await createProductWithVariants({
@@ -154,12 +155,10 @@ export default function ProductWizard({ open, onClose }: Props) {
                     descripcion: v.descripcion || undefined,
                 })),
             })
-            toast.success(`✓ ${baseName} creado con ${variants.length} variantes`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al crear producto')
+            setError(getApiErrorDetail(err, 'No se pudo crear el producto.'))
         } finally {
             setCreating(false)
         }
@@ -178,6 +177,7 @@ export default function ProductWizard({ open, onClose }: Props) {
         setNewBrandName('')
         setControlStock(true)
         setVariants([])
+        setError(null)
     }
 
     const handleCreateBrand = async () => {
@@ -188,10 +188,9 @@ export default function ProductWizard({ open, onClose }: Props) {
             setSelectedBrand(brand.id.toString())
             setIsCreatingBrand(false)
             setNewBrandName('')
-            toast.success('Marca creada')
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al crear marca')
+        } catch (err) {
+            console.error(err)
+            setError(getApiErrorDetail(err, 'No se pudo crear la marca.'))
         }
     }
 
@@ -470,6 +469,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                 <Separator />
 
+                <AlertaError mensaje={error} />
                 <DialogFooter className="flex-col sm:flex-row gap-2">
                     {step > 1 && (
                         <Button type="button" variant="outline" onClick={() => setStep(1)} className="text-xs">

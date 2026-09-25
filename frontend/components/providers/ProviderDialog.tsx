@@ -21,10 +21,11 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { Loader2 } from 'lucide-react'
 import { cleanRut, formatRut, validateRut } from '@/lib/rut'
 import { createProvider, updateProvider, type Provider } from '@/services/providers'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorDetail } from '@/services/api'
 
 const providerSchema = z.object({
     rut: z.string().min(1, 'RUT es requerido').refine(validateRut, 'RUT inválido'),
@@ -42,7 +43,7 @@ interface Props {
     open: boolean
     onOpenChange: (open: boolean) => void
     provider?: Provider | null
-    onSuccess: () => void
+    onSuccess: (guardado: Provider) => void
 }
 
 export default function ProviderDialog({ open, onOpenChange, provider, onSuccess }: Props) {
@@ -92,17 +93,13 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                 rut: cleanRut(values.rut),
             }
 
-            if (provider) {
-                await updateProvider(provider.id, payload)
-                toast.success('Proveedor actualizado')
-            } else {
-                await createProvider(payload)
-                toast.success('Proveedor creado')
-            }
-            onSuccess()
+            const guardado = provider
+                ? await updateProvider(provider.id, payload)
+                : await createProvider(payload)
+            onSuccess(guardado)
             onOpenChange(false)
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al guardar proveedor'))
+            form.setError('root', { message: getApiErrorDetail(error, 'No se pudo guardar el proveedor.') })
         }
     }
 
@@ -219,11 +216,16 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                             />
                         </div>
 
+                        <AlertaError mensaje={form.formState.errors.root?.message} />
+
                         <DialogFooter className="pt-4">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
                                 Cancelar
                             </Button>
-                            <Button type="submit">Guardar</Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Guardar
+                            </Button>
                         </DialogFooter>
                     </form>
                 </Form>

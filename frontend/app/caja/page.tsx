@@ -11,7 +11,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { avisar } from '@/lib/store/uiStore'
+import { useControlCaja } from '@/lib/store/settingsStore'
 import { formatCLP } from '@/lib/format'
 import {
     Landmark,
@@ -34,6 +37,10 @@ export default function CajaPage() {
     const [efectivoContado, setEfectivoContado] = useState('')
     const [opening, setOpening] = useState(false)
     const [closing, setClosing] = useState(false)
+    const [errorApertura, setErrorApertura] = useState<string | null>(null)
+    const [errorCierre, setErrorCierre] = useState<string | null>(null)
+    const [forzar, setForzar] = useState<number | null>(null)
+    const controlCaja = useControlCaja()
     const [closeResult, setCloseResult] = useState<{
         final_cash_system: number
         final_cash_declared: number
@@ -50,7 +57,7 @@ export default function CajaPage() {
             const data = await getAllSessions()
             setHistorySessions(data)
         } catch {
-            toast.error('Error al cargar historial')
+            avisar('No se pudo cargar el historial de turnos.', { reintentar: loadHistory })
         } finally {
             setLoadingHistory(false)
         }
@@ -73,14 +80,15 @@ export default function CajaPage() {
 
     const handleOpen = async () => {
         const monto = parseFloat(montoInicial)
+        setErrorApertura(null)
 
         if (!user?.id) {
-            toast.error('No hay usuario identificado')
+            setErrorApertura('No hay usuario identificado.')
             return
         }
 
         if (!monto || monto < 0) {
-            toast.error('Ingresa un monto válido')
+            setErrorApertura('Ingresa un monto válido.')
             return
         }
         setOpening(true)
@@ -88,63 +96,31 @@ export default function CajaPage() {
             const session = await openSession(monto, user.id, false)
             setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
-            toast.success('¡Caja abierta correctamente!')
         } catch (err) {
-            if (getApiErrorStatus(err) === 409) {
-                toast.custom((t) => (
-                    <div className="bg-card p-4 rounded-lg shadow-lg border border-border max-w-sm">
-                        <h3 className="font-bold text-foreground mb-2">¡Caja ya abierta!</h3>
-                        <p className="text-sm text-muted-foreground dark:text-muted-foreground mb-4">
-                            Ya tienes una caja abierta en otro dispositivo.
-                            ¿Deseas cerrarla forzosamente y abrir una nueva aquí?
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toast.dismiss(t)}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                    toast.dismiss(t)
-                                    forceOpenSession(monto, user.id)
-                                }}
-                            >
-                                Cerrar anterior y Abrir
-                            </Button>
-                        </div>
-                    </div>
-                ), { duration: Infinity })
-            } else {
-                toast.error(getApiErrorDetail(err, 'Error al abrir caja'))
-            }
+            if (getApiErrorStatus(err) === 409) setForzar(monto)
+            else setErrorApertura(getApiErrorDetail(err, 'No se pudo abrir la caja.'))
         } finally {
             setOpening(false)
         }
     }
 
-    const forceOpenSession = async (monto: number, sellerId: number) => {
-        setOpening(true)
+    // Ya había un turno abierto en otro dispositivo: se cierra y se abre uno aquí.
+    const forceOpenSession = async (monto: number) => {
+        if (!user?.id) return
         try {
-            const session = await openSession(monto, sellerId, true)
-            setSession(session.id, monto, session.start_time, sellerId)
+            const session = await openSession(monto, user.id, true)
+            setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
-            toast.success('Sesión anterior cerrada y nueva caja abierta')
-        } catch {
-            toast.error('Error al forzar apertura de caja')
-        } finally {
-            setOpening(false)
+        } catch (err) {
+            setErrorApertura(getApiErrorDetail(err, 'No se pudo forzar la apertura de caja.'))
         }
     }
 
     const handleClose = async () => {
         const declared = parseFloat(efectivoContado)
+        setErrorCierre(null)
         if (isNaN(declared) || declared < 0) {
-            toast.error('Ingresa el efectivo contado')
+            setErrorCierre('Ingresa el efectivo contado.')
             return
         }
         setClosing(true)
@@ -157,14 +133,15 @@ export default function CajaPage() {
             })
             clearSession()
             setEfectivoContado('')
-            toast.success('Caja cerrada correctamente')
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al cerrar caja')
+            setErrorCierre(getApiErrorDetail(err, 'No se pudo cerrar la caja.'))
         } finally {
             setClosing(false)
         }
     }
+
+    // Sin control de caja, AppShell saca al usuario de esta página.
+    if (!controlCaja) return null
 
     return (
         <PageContainer className="max-w-4xl">
@@ -184,7 +161,7 @@ export default function CajaPage() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent data-section="caja.gestion" value="gestion" className="space-y-4 max-w-2xl">
+                <TabsContent data-section="caja.gestion" value="gestion" className="space-y-4">
                     {/* User Info Card */}
                     <div className="rounded-xl border border-border bg-card p-4 flex shadow-sm items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
@@ -246,6 +223,8 @@ export default function CajaPage() {
                                 />
                             </div>
 
+                            <AlertaError mensaje={errorApertura} />
+
                             <Button
                                 size="lg"
                                 className="w-full gap-2 text-sm"
@@ -275,6 +254,8 @@ export default function CajaPage() {
                                     min={0}
                                 />
                             </div>
+
+                            <AlertaError mensaje={errorCierre} />
 
                             <Button
                                 size="lg"
@@ -399,6 +380,14 @@ export default function CajaPage() {
                     </div>
                 </TabsContent>
             </Tabs>
+            <ConfirmDialog
+                open={forzar !== null}
+                onOpenChange={(o) => !o && setForzar(null)}
+                title="Ya tienes una caja abierta"
+                description="Hay un turno abierto a tu nombre en otro dispositivo. ¿Lo cierras y abres uno nuevo aquí?"
+                confirmLabel="Cerrar anterior y abrir"
+                onConfirm={async () => { if (forzar !== null) await forceOpenSession(forzar) }}
+            />
         </PageContainer>
     )
 }

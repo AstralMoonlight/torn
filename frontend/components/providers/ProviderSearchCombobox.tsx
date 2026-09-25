@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { searchProviders, Provider } from '@/services/providers'
 import ProviderDialog from '@/components/providers/ProviderDialog'
-import { toast } from 'sonner'
 import {
     Loader2,
     Search,
@@ -177,9 +176,9 @@ export default function ProviderSearchCombobox({
     }
 
     // ── Provider creation handler ────────────────────────────────
-    const handleCreateSuccess = () => {
+    const handleCreateSuccess = (creado: Provider) => {
         setCreateOpen(false)
-        toast.success('Proveedor creado. Por favor búscalo de nuevo.')
+        selectProvider(creado)
     }
 
     // ── RENDER: Selected state (chip) ────────────────────────────

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { getPriceLists, type PriceListRead } from '@/services/price_lists'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useHydrated } from '@/lib/hooks/useHydrated'
@@ -15,7 +15,7 @@ export default function PriceListSelector() {
     useEffect(() => {
         getPriceLists()
             .then(setLists)
-            .catch(() => toast.error('Error cargando listas de precios'))
+            .catch(() => avisar('No se pudieron cargar las listas de precios.'))
     }, [])
 
     const handleValueChange = (val: string) => {

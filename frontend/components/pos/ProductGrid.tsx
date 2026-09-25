@@ -12,7 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +50,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
             return
         }
         if (product.controla_stock && parseFloat(product.stock_actual) <= 0) {
-            toast.error(`Sin stock: ${product.full_name}`)
+            avisar(`Sin stock: ${product.full_name}`)
             return
         }
         addItem(product)

@@ -23,18 +23,20 @@ export const PRINT_FORMAT_OPTIONS: { value: PrintFormat; label: string }[] = [
     { value: 'carta', label: 'Carta / A4' },
 ]
 
+/** 'empresa': el administrador fija el color; 'usuario': cada uno elige el suyo. */
+export type ColorMode = 'empresa' | 'usuario'
+
 export interface SystemSettings {
     id: number
     print_format: PrintFormat
     print_formats: Record<string, PrintFormat>
     iva_default_id: number | null
+    control_caja: boolean
+    color_mode: ColorMode
+    color_primario: string
 }
 
-export interface SettingsUpdate {
-    print_format?: PrintFormat
-    print_formats?: Record<string, PrintFormat>
-    iva_default_id?: number | null
-}
+export type SettingsUpdate = Partial<Omit<SystemSettings, 'id'>>
 
 /**
  * Tipos de documento con formato de impresión configurable por separado.

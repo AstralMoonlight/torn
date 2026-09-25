@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
 import { Loader2, Lock, Store } from 'lucide-react'
 
 export default function LoginPage() {
@@ -18,11 +18,13 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
         if (!email || !password) {
-            toast.error('Ingresa email y contraseña')
+            setError('Ingresa email y contraseña.')
             return
         }
 
@@ -30,8 +32,6 @@ export default function LoginPage() {
         try {
             const data = await login(email, password)
             setAuth(data.access_token, data.user, data.available_tenants)
-
-            toast.success(`Bienvenido, ${data.user.full_name || data.user.email}`)
 
             // Si es superadmin, siempre al panel de administración
             if (data.user.is_superuser) {
@@ -46,7 +46,7 @@ export default function LoginPage() {
             }
 
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Credenciales incorrectas'))
+            setError(getApiErrorMessage(err, 'Credenciales incorrectas'))
         } finally {
             setLoading(false)
         }
@@ -96,6 +96,8 @@ export default function LoginPage() {
                             </div>
                         </div>
                     </div>
+
+                    <AlertaError mensaje={error} />
 
                     <Button
                         type="submit"

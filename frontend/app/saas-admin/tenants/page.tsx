@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
@@ -40,6 +41,7 @@ export default function TenantsListPage() {
     const [tenants, setTenants] = useState<Tenant[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreating, setIsCreating] = useState(false)
+    const [errorModal, setErrorModal] = useState<string | null>(null)
     const [openModal, setOpenModal] = useState(false)
     const [editingTenantId, setEditingTenantId] = useState<number | null>(null)
     const [tenantToDelete, setTenantToDelete] = useState<number | null>(null)
@@ -107,7 +109,7 @@ export default function TenantsListPage() {
                 .then(setActecoResults)
                 .catch((err) => {
                     setActecoResults([])
-                    toast.error(getApiErrorMessage(err, 'Error al buscar actividades económicas'))
+                    setErrorModal(getApiErrorMessage(err, 'Error al buscar actividades económicas'))
                 })
                 .finally(() => setActecoSearchLoading(false))
         }, 300)
@@ -118,7 +120,7 @@ export default function TenantsListPage() {
         setLoading(true)
         getTenants()
             .then(setTenants)
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error cargando las empresas')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error cargando las empresas'), { reintentar: fetchTenants }))
             .finally(() => setLoading(false))
     }
 
@@ -135,6 +137,7 @@ export default function TenantsListPage() {
             economic_activities: [],
             ...SII_VACIO,
         })
+        setErrorModal(null)
         setOpenModal(true)
     }
 
@@ -154,18 +157,20 @@ export default function TenantsListPage() {
             sii_resolucion_fecha: tenant.sii_resolucion_fecha || '',
             sii_oficina: tenant.sii_oficina || '',
         })
+        setErrorModal(null)
         setOpenModal(true)
     }
 
     const handleSaveTenant = async (e: React.FormEvent) => {
         e.preventDefault()
+        setErrorModal(null)
         if (!formData.name || !formData.rut) {
-            toast.error("El nombre y RUT son requeridos")
+            setErrorModal("El nombre y el RUT son obligatorios.")
             return
         }
 
         if (!validateRut(formData.rut)) {
-            toast.error("El formato del RUT ingresado no es válido")
+            setErrorModal("El RUT ingresado no es válido.")
             return
         }
 
@@ -180,16 +185,14 @@ export default function TenantsListPage() {
 
             if (editingTenantId) {
                 await updateTenant(editingTenantId, payload)
-                toast.success("Empresa actualizada con éxito")
             } else {
                 await createTenant(payload)
-                toast.success("Empresa creada con éxito")
             }
 
             setOpenModal(false)
             fetchTenants()
         } catch (error) {
-            toast.error(getApiErrorDetail(error, editingTenantId ? 'Error al actualizar' : 'Error al provisionar'))
+            setErrorModal(getApiErrorDetail(error, editingTenantId ? 'No se pudo actualizar la empresa.' : 'No se pudo provisionar la empresa.'))
         } finally {
             setIsCreating(false)
         }
@@ -200,10 +203,9 @@ export default function TenantsListPage() {
 
         try {
             await deleteTenant(tenantToDelete)
-            toast.success("Empresa desactivada")
             fetchTenants()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al desactivar empresa'))
+            avisar(getApiErrorDetail(error, 'No se pudo desactivar la empresa.'))
         }
     }
 
@@ -211,9 +213,8 @@ export default function TenantsListPage() {
         try {
             await updateTenant(tenant.id, { is_active: newStatus })
             setTenants(prev => prev.map(t => t.id === tenant.id ? { ...t, is_active: newStatus } : t))
-            toast.success(`Empresa ${newStatus ? 'activada' : 'desactivada'}`)
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al cambiar estado'))
+            avisar(getApiErrorDetail(error, 'No se pudo cambiar el estado de la empresa.'))
         }
     }
 
@@ -447,6 +448,8 @@ export default function TenantsListPage() {
                                         ))}
                                     </div>
                                 </div>
+
+                                <AlertaError mensaje={errorModal} />
 
                                 <div className="pt-2 flex justify-end gap-3">
                                     <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>

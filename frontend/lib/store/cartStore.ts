@@ -7,7 +7,7 @@ import type { Customer } from '@/services/customers'
 import type { DocumentReference } from '@/services/sales'
 import { resolvePrice, type PriceListRead } from '@/services/price_lists'
 import { precioBruto, productTaxRate, totalesDte } from '@/lib/taxes'
-import { toast } from 'sonner'
+import { avisar } from './uiStore'
 
 export interface CartItem {
     product: Product
@@ -240,7 +240,7 @@ async function recalculatePrices(
         set({ items: newItems, ...recalcTotals(newItems, state.tipoDte) })
     } catch (err) {
         console.error('Failed to recalculate prices', err)
-        toast.error('Error al recalcular precios de la lista')
+        avisar('No se pudieron recalcular los precios con la lista elegida.')
     } finally {
         set({ isRecalculating: false })
     }

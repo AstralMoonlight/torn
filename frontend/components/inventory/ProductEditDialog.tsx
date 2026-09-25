@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { getApiErrorDetail } from '@/services/api'
 import { Loader2, Package, RefreshCw } from 'lucide-react'
 import { Product, updateProduct } from '@/services/products'
 import { getBrands, Brand } from '@/services/brands'
@@ -27,6 +28,7 @@ interface Props {
 
 export default function ProductEditDialog({ open, product, onClose }: Props) {
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [baseName, setBaseName] = useState('')
     const [baseSku, setBaseSku] = useState('')
     const [baseDescription, setBaseDescription] = useState('')
@@ -70,6 +72,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
 
     const handleSave = async () => {
         if (!product) return
+        setError(null)
         setLoading(true)
         try {
             // 1. Save main product info (General)
@@ -106,11 +109,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 }
             }
 
-            toast.success('Producto actualizado correctamente')
             onClose(true)
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al actualizar producto')
+        } catch (err) {
+            console.error(err)
+            setError(getApiErrorDetail(err, 'No se pudo actualizar el producto.'))
         } finally {
             setLoading(false)
         }
@@ -121,7 +123,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
     const isParent = product.variants && product.variants.length > 0
 
     return (
-        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+        <Dialog open={open} onOpenChange={(val) => { if (!val) { setError(null); onClose() } }}>
             <DialogContent data-section="inventario.editar-producto" className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -346,6 +348,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         )}
                     </TabsContent>
                 </Tabs>
+                <AlertaError mensaje={error} />
             </DialogContent>
         </Dialog>
     )

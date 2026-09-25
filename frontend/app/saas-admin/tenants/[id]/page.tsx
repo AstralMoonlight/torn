@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getTenantUsers, addTenantUser, getTenants, updateTenant, updateTenantUser, type TenantUser, type TenantUserCreate, type Tenant, type TenantUpdate, type TenantUserUpdate } from '@/services/saas'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
 import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
 import Link from 'next/link'
@@ -20,7 +20,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessionStore } from '@/lib/store/sessionStore'
 
@@ -46,6 +47,9 @@ export default function TenantDetailsPage() {
 
     // Form state - Settings
     const [openSettings, setOpenSettings] = useState(false)
+    const [errorAjustes, setErrorAjustes] = useState<string | null>(null)
+    const [errorAsignar, setErrorAsignar] = useState<string | null>(null)
+    const [errorEditar, setErrorEditar] = useState<string | null>(null)
     const [tenantOverride, setTenantOverride] = useState('')
 
     // Form state - Edit User
@@ -67,7 +71,7 @@ export default function TenantDetailsPage() {
                 setUsers(uData)
             }
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error cargando detalles del inquilino'))
+            avisar(getApiErrorMessage(err, 'Error cargando detalles del inquilino'), { reintentar: loadData })
         } finally {
             setLoading(false)
         }
@@ -83,8 +87,9 @@ export default function TenantDetailsPage() {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (isAtLimit) return toast.error("Límite de usuarios alcanzado para esta empresa.")
-        if (!email || !role) return toast.error("El email y rol son obligatorios")
+        setErrorAsignar(null)
+        if (isAtLimit) return setErrorAsignar("Límite de usuarios alcanzado para esta empresa.")
+        if (!email || !role) return setErrorAsignar("El email y el rol son obligatorios.")
 
         setIsSubmitting(true)
         const payload: TenantUserCreate = {
@@ -95,8 +100,7 @@ export default function TenantDetailsPage() {
         }
 
         try {
-            const newUser = await addTenantUser(tenantId, payload)
-            toast.success(`Usuario ${newUser.user.email} asignado exitosamente`)
+            await addTenantUser(tenantId, payload)
             const currentUsers = await getTenantUsers(tenantId)
             setUsers(currentUsers)
             setEmail('')
@@ -104,7 +108,7 @@ export default function TenantDetailsPage() {
             setFullName('')
             setRole('VENDEDOR')
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al asignar usuario (¿Límite excedido?)'))
+            setErrorAsignar(getApiErrorDetail(error, 'No se pudo asignar el usuario (¿límite excedido?).'))
         } finally {
             setIsSubmitting(false)
         }
@@ -114,6 +118,7 @@ export default function TenantDetailsPage() {
         e.preventDefault()
         if (!tenant) return
 
+        setErrorAjustes(null)
         setIsSubmitting(true)
         const updates: TenantUpdate = {
             max_users_override: tenantOverride ? parseInt(tenantOverride) : null
@@ -121,11 +126,10 @@ export default function TenantDetailsPage() {
 
         try {
             await updateTenant(tenantId, updates)
-            toast.success("Empresa actualizada con éxito")
             setOpenSettings(false)
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error al actualizar la empresa"))
+            setErrorAjustes(getApiErrorDetail(error, "No se pudo actualizar la empresa."))
         } finally {
             setIsSubmitting(false)
         }
@@ -133,6 +137,7 @@ export default function TenantDetailsPage() {
 
     const handleSaveUserEdit = async () => {
         if (!editingUser) return
+        setErrorEditar(null)
         setIsSubmitting(true)
         try {
             const updates: TenantUserUpdate = {
@@ -142,12 +147,11 @@ export default function TenantDetailsPage() {
             if (editPassword) updates.password = editPassword
 
             await updateTenantUser(tenantId, editingUser.user_id, updates)
-            toast.success("Usuario actualizado con éxito")
             setEditingUser(null)
             setEditPassword('')
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error modificando al usuario"))
+            setErrorEditar(getApiErrorDetail(error, "No se pudo modificar el usuario."))
         } finally {
             setIsSubmitting(false)
         }
@@ -159,16 +163,15 @@ export default function TenantDetailsPage() {
     const handleToggleUserStatus = async (tu: TenantUser) => {
         // Check limit if reactivating
         if (!tu.is_active && isAtLimit) {
-            toast.error("No se puede reactivar. Límite de usuarios alcanzado.")
+            avisar("No se puede reactivar: límite de usuarios alcanzado.")
             return
         }
 
         try {
             await updateTenantUser(tenantId, tu.user_id, { is_active: !tu.is_active })
-            toast.success("Estado del usuario actualizado")
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error modificando estado"))
+            avisar(getApiErrorDetail(error, "No se pudo cambiar el estado del usuario."))
         }
     }
 
@@ -238,7 +241,7 @@ export default function TenantDetailsPage() {
                         >
                             <Store className="h-4 w-4" /> Entrar al POS
                         </Button>
-                        <Dialog open={openSettings} onOpenChange={setOpenSettings}>
+                        <Dialog open={openSettings} onOpenChange={(o) => { setOpenSettings(o); setErrorAjustes(null) }}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer">
                                     <Settings className="h-4 w-4" /> Límites de Usuarios
@@ -263,6 +266,7 @@ export default function TenantDetailsPage() {
                                         />
                                         <p className="text-xs text-muted-foreground">Deja vacío para usar el límite por defecto ({tenant.plan_max_users || 3}) del plan SaaS.</p>
                                     </div>
+                                    <AlertaError mensaje={errorAjustes} />
                                     <div className="pt-2 flex justify-end gap-3">
                                         <Button type="button" variant="outline" onClick={() => setOpenSettings(false)} className="border-border cursor-pointer">Cancelar</Button>
                                         <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
@@ -354,6 +358,7 @@ export default function TenantDetailsPage() {
                                 </div>
                             </div>
                         </form>
+                        <AlertaError mensaje={errorAsignar} />
                     </div>
 
                     {/* Lista de Usuarios */}
@@ -426,6 +431,7 @@ export default function TenantDetailsPage() {
                 <Dialog open={!!editingUser} onOpenChange={(open) => {
                     if (!open) {
                         setEditingUser(null);
+                        setErrorEditar(null);
                         setEditRole('');
                         setEditPassword('');
                         setEditFullName('');
@@ -479,6 +485,7 @@ export default function TenantDetailsPage() {
                                 />
                                 <p className="text-[10px] text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
                             </div>
+                            <AlertaError mensaje={errorEditar} />
                             <div className="pt-2 flex justify-end gap-3">
                                 <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="cursor-pointer">Cancelar</Button>
                                 <Button type="button" onClick={handleSaveUserEdit} disabled={isSubmitting} className="cursor-pointer">

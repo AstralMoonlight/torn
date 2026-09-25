@@ -24,6 +24,8 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { useUIStore } from '@/lib/store/uiStore'
 import { Badge } from '@/components/ui/badge'
 import ThemeToggle from './ThemeToggle'
+import SelectorColor from './SelectorColor'
+import { useControlCaja } from '@/lib/store/settingsStore'
 import { LogoutConfirmModal } from './LogoutConfirmModal'
 
 const navGroups = [
@@ -76,6 +78,7 @@ export default function Sidebar() {
     const toggle = useUIStore((s) => s.toggleSidebar)
     const availableTenants = useSessionStore((s) => s.availableTenants)
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
+    const controlCaja = useControlCaja()
 
     const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
     // El rol y los permisos son del vínculo tenant-usuario (AvailableTenant),
@@ -117,6 +120,7 @@ export default function Sidebar() {
                     // Filter items based on dynamic permissions
                     const filteredItems = group.items.filter(item => {
                         if (item.permissionKey === '__SUPERADMIN__') return isSuperadmin
+                        if (item.href === '/caja' && !controlCaja) return false
                         if (isAdmin) return true
                         return permissions[item.permissionKey] === true
                     })
@@ -180,6 +184,7 @@ export default function Sidebar() {
                 )}
 
                 {/* Cash Status */}
+                {controlCaja && (
                 <div className={cn(
                     'flex items-center px-3 py-2',
                     collapsed ? 'justify-center' : 'justify-between'
@@ -200,13 +205,17 @@ export default function Sidebar() {
                             : (status === 'OPEN' ? '● Abierta' : '○ Cerrada')}
                     </Badge>
                 </div>
+                )}
 
                 {/* Theme + Logout + Collapse */}
                 <div className={cn(
                     'flex items-center border-t border-border px-2 py-1.5',
                     collapsed ? 'flex-col justify-center gap-2' : 'flex-row justify-between'
                 )}>
-                    <ThemeToggle />
+                    <div className={cn('flex items-center gap-1', collapsed && 'flex-col gap-2')}>
+                        <ThemeToggle />
+                        <SelectorColor />
+                    </div>
 
                     <LogoutConfirmModal>
                         <button
