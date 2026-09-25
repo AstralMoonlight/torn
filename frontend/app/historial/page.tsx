@@ -4,6 +4,7 @@ import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
 import { useEffect, useState, Fragment } from 'react'
 import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -265,25 +266,9 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                        title="Ver PDF"
-                                                        onClick={() => verPdf(sale.id)}
-                                                    >
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </Button>
+                                                    <AccionFila icon={ExternalLink} label="Ver PDF" onClick={() => verPdf(sale.id)} />
                                                     {![52, 56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => setReturnDialog(sale)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            title="Generar Nota (Ajuste)"
-                                                        >
-                                                            <RotateCcw className="h-4 w-4" />
-                                                        </Button>
+                                                        <AccionFila icon={RotateCcw} label="Generar Nota (Ajuste)" onClick={() => setReturnDialog(sale)} peligro />
                                                     )}
                                                 </div>
                                             </TableCell>

@@ -9,6 +9,7 @@ import { Store, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucid
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -390,23 +391,15 @@ export default function TenantDetailsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            title="Editar Rol"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary cursor-pointer"
-                                                            onClick={() => {
+                                                        <AccionFila icon={Edit} label="Editar Rol" onClick={() => {
                                                                 setEditingUser(tu)
                                                                 setEditRole(tu.role_name)
                                                                 setEditPassword('')
                                                                 setEditFullName(tu.user.full_name || '')
-                                                            }}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-primary hover:text-primary hover:bg-primary/10'}`} onClick={() => tu.is_active ? setToDeactivate(tu) : handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
-                                                            {tu.is_active ? <Trash2 className="h-4 w-4" /> : <ShieldPlus className="h-4 w-4" />}
-                                                        </Button>
+                                                            }} />
+                                                        {tu.is_active
+                                                            ? <AccionFila icon={Trash2} label="Desactivar" onClick={() => setToDeactivate(tu)} peligro />
+                                                            : <AccionFila icon={ShieldPlus} label="Reactivar" onClick={() => handleToggleUserStatus(tu)} />}
                                                     </div>
                                                 </TableCell>
                                             </TableRow>

@@ -9,6 +9,7 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
@@ -390,15 +391,7 @@ export default function PriceListsPage() {
                                     Precios por defecto de todos los productos del sistema.
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                        onClick={openEditBase}
-                                        title="Editar Precios Base"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
+                                    <AccionFila icon={Pencil} label="Editar Precios Base" onClick={openEditBase} />
                                 </TableCell>
                             </TableRow>
                         )}
@@ -419,22 +412,8 @@ export default function PriceListsPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost" size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                            onClick={() => openEdit(pl.id)}
-                                            title="Editar"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost" size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                            onClick={() => setDeleteId(pl.id)}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <AccionFila icon={Pencil} label="Editar" onClick={() => openEdit(pl.id)} />
+                                        <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(pl.id)} peligro />
                                     </div>
                                 </TableCell>
                             </TableRow>

@@ -7,6 +7,7 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import {
     Table,
     TableBody,
@@ -125,24 +126,8 @@ export default function ProvidersPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleEdit(provider)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                title="Editar"
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setToDelete(provider)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                title="Desactivar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Edit2} label="Editar" onClick={() => handleEdit(provider)} />
+                                            <AccionFila icon={Trash2} label="Desactivar" onClick={() => setToDelete(provider)} peligro />
                                         </div>
                                     </TableCell>
                                 </TableRow>

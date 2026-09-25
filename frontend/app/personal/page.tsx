@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import {
     Users,
     ShieldCheck,
@@ -307,9 +308,7 @@ export default function PersonalPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)} title="Editar">
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
+                                                    <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(user)} />
                                                 </div>
                                             </TableCell>
                                         </TableRow>

@@ -21,6 +21,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { AlertaError } from '@/components/ui/alerta-error'
@@ -151,24 +152,8 @@ export default function BrandsPage() {
                                     <TableCell className="font-medium">{brand.name}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleOpenEdit(brand)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                title="Editar"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setToDelete(brand)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Pencil} label="Editar" onClick={() => handleOpenEdit(brand)} />
+                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(brand)} peligro />
                                         </div>
                                     </TableCell>
                                 </TableRow>

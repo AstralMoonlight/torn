@@ -12,6 +12,7 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { avisar } from '@/lib/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -516,26 +517,9 @@ export default function TenantsListPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => openEditModal(tenant)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                                title="Editar datos"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Pencil} label="Editar datos" onClick={() => openEditModal(tenant)} />
 
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setTenantToDelete(tenant.id)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                                disabled={!tenant.is_active}
-                                                title="Desactivar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Trash2} label="Desactivar" onClick={() => setTenantToDelete(tenant.id)} peligro disabled={!tenant.is_active} />
 
                                             <div className="w-px h-4 bg-border mx-1" />
 

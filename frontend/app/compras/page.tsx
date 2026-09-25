@@ -13,6 +13,7 @@ import {
     Printer
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -426,15 +427,7 @@ export default function ComprasPage() {
                                                                 {formatCLP(item.cantidad * item.precio_costo)}
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                    onClick={() => removeItem(index)}
-                                                                    title="Quitar"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
+                                                                <AccionFila icon={Trash2} label="Quitar" onClick={() => removeItem(index)} peligro />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))
@@ -520,33 +513,9 @@ export default function ComprasPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                            title="Imprimir Comprobante"
-                                                            onClick={() => verPdfCompra(p.id)}
-                                                        >
-                                                            <Printer className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                            onClick={() => setSelectedPurchase(p)}
-                                                            title="Ver Detalle"
-                                                        >
-                                                            <Search className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => setDeleteId(p.id)}
-                                                            title="Eliminar"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <AccionFila icon={Printer} label="Imprimir Comprobante" onClick={() => verPdfCompra(p.id)} />
+                                                        <AccionFila icon={Search} label="Ver Detalle" onClick={() => setSelectedPurchase(p)} />
+                                                        <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(p.id)} peligro />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
