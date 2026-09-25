@@ -37,6 +37,7 @@ from app.dte.caf import CafInvalidoError, RangoSolapadoError, asegurar_caf_prueb
 from app.dte.folios import DatosEmision, PayloadDistintoError, SinFoliosError, emitir_documento, folios_disponibles
 from app.dte.pdf import DatosImpresion, generar_pdf
 from app.dte.rut import validar_rut
+from app.dte.signer import hoy_chile
 from app.models import CAF, Ambiente, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, Envio, Tenant
 from app.tasks import colas
 
@@ -456,18 +457,23 @@ async def descargar_pdf(
     `cedible=true`: solo la copia cedible. `con_cedible=true`: copia cliente y
     cedible en dos hojas (facturas; el resto sale con una)."""
     doc = await _buscar(tenant.id, external_id)
-    if tenant.resolucion_fecha is None:
-        raise HTTPException(409, "El emisor no tiene fecha de resolución del SII: va impresa bajo el timbre")
+    prueba = doc.ambiente == Ambiente.DEV
+    resolucion_fecha = tenant.resolucion_fecha
+    if resolucion_fecha is None:
+        if not prueba:
+            raise HTTPException(409, "El emisor no tiene fecha de resolución del SII: va impresa bajo el timbre")
+        # Un documento de prueba se imprime aunque la empresa no tenga resolución.
+        resolucion_fecha = hoy_chile()
     xml = await _xml_firmado(tenant.id, doc, ctx, actor, "DESCARGA_PDF")
     pdf = generar_pdf(
         xml,
         DatosImpresion(
             resolucion_numero=tenant.resolucion_numero,
-            resolucion_fecha=tenant.resolucion_fecha,
+            resolucion_fecha=resolucion_fecha,
             oficina_sii=tenant.oficina_sii,
             cedible=cedible,
             con_cedible=con_cedible,
-            prueba=doc.ambiente == Ambiente.DEV,
+            prueba=prueba,
         ),
     )
     sufijo = "_cedible" if cedible else ""

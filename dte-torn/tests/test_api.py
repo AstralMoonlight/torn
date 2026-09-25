@@ -192,14 +192,16 @@ async def test_un_tenant_no_ve_los_documentos_de_otro(api) -> None:
     assert (await api.get("/documents?tipo_dte=33&folio=2", headers=h)).json() == []
 
 
-async def _cambiar_ambiente(api, h, ambiente: str, rut: str = RUT) -> None:
-    r = await api.put(f"/tenants/{h['X-Tenant-Id']}", json={**EMISOR, "rut_emisor": rut, "ambiente": ambiente}, headers=CLAVE)
+async def _cambiar_ambiente(api, h, ambiente: str, rut: str = RUT, **cambios) -> None:
+    datos = {**EMISOR, "rut_emisor": rut, "ambiente": ambiente, **cambios}
+    r = await api.put(f"/tenants/{h['X-Tenant-Id']}", json=datos, headers=CLAVE)
     assert r.status_code == 200, r.text
 
 
 async def test_desarrollador_emite_con_folios_de_prueba_y_sin_sii(api) -> None:
     h = await _alta(api)
-    await _cambiar_ambiente(api, h, "DEV")
+    # Sin resolución del SII: una empresa de pruebas puede no tenerla.
+    await _cambiar_ambiente(api, h, "DEV", resolucion_fecha=None)
 
     r = await api.post("/documents", json=FACTURA, headers=h)
     assert r.status_code == 201, r.text

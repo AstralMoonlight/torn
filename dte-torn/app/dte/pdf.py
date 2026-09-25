@@ -403,7 +403,7 @@ def _cerrar_hoja(c: Canvas, prueba: bool = False) -> None:
     if prueba:
         c.saveState()
         c.setFillColor(red, alpha=0.25)
-        c.setFont("Helvetica-Bold", 30)
+        c.setFont("Helvetica-Bold", 22)
         c.translate(ANCHO / 2, ALTO / 2)
         c.rotate(35)
         c.drawCentredString(0, 0, LEYENDA_PRUEBA)
