@@ -57,15 +57,24 @@ dte-torn (`Tenant.ambiente`, enum `Ambiente` en `dte-torn/app/models.py`).
   se emite igual, con firma, timbre, XML y PDF. Queda en un estado propio, distinto de ACEPTADO. Sirve para
   pruebas internas.
 
+**Decidido (2026-09-25):** cada venta guarda el modo con que se emitió, y los documentos solo se ven en
+su modo. Los de Desarrollador aparecen solo en Desarrollador y no se mezclan con los de Maullín. Lo
+mismo vale entre Maullín y Palena. No se borra nada: al volver al modo, siguen ahí.
+
 **Por decidir:**
 - Los folios en Desarrollador. El timbre necesita un CAF: ¿se usan los CAF de maullín, o un CAF de
   prueba que nunca vaya al SII?
-- Qué pasa con los documentos de Desarrollador al cambiar a Maullín o a Palena: ¿se ocultan o se borran?
+- Qué más se separa por modo, aparte de historial y documentos. Una venta de prueba descuenta stock,
+  registra kardex, entra a la caja y suma en los reportes y el dashboard. ¿Se separa todo eso, o solo se
+  oculta el documento?
 - Quién cambia el modo. Hoy solo el superusuario.
 
 **Tareas:**
 - [ ] dte-torn: tercer valor de `Ambiente` que corta el pipeline antes de enviar, con tests.
 - [ ] Backend: `sii_ambiente` acepta el modo nuevo (migración Alembic) y lo copia a dte-torn.
+- [ ] Backend: columna con el modo en `sales` (migración Alembic, que marca las ventas existentes como
+      Maullín). Historial, reimpresión y reportes filtran por el modo actual del tenant.
+- [ ] dte-torn: `GET /documents` y `GET /folios` filtran por el ambiente del tenant.
 - [ ] Frontend: selector en Configuración (`SelectOpciones`), con confirmación al pasar a Palena. El modo
       actual queda visible en algún lado (por ejemplo, un distintivo en el POS en Desarrollador).
 
