@@ -1,7 +1,7 @@
 # Pendientes de UI/UX (fuera del POS)
 
-> **Estado (2026-09-25):** todas hechas en la rama `feat/ui-pendientes`, pendiente
-> de revisión y merge. Decisiones tomadas con el usuario:
+> **Estado (2026-09-25):** **finalizado.** Todo hecho y mergeado (rama `feat/ui-pendientes`);
+> el usuario aprobó la paleta nueva de colores. Nada pendiente. Decisiones tomadas con el usuario:
 > - Control de caja: solo lo cambia el administrador. `/caja` con el control
 >   apagado: al abrir el sitio por esa URL se va al dashboard; si ya se estaba
 >   dentro, se vuelve a la página anterior; en los dos casos con un aviso. No se
@@ -180,9 +180,8 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
     Cada valor es el más claro (en tema claro) o el más oscuro (en tema oscuro)
     que todavía cumple 4.6:1, un margen sobre 4.5. `--ring` usa el mismo valor
     que `--primary`. El azul actual (`221.2 83.2% 53.3%`) queda casi igual.
-    Falta verlos en pantalla: los amarillos y verdes salen oscuros en tema claro
-    (es lo que exige el contraste), y hay que revisar `bg-primary/10` con
-    `text-primary` (chips, íconos de encabezado), donde el contraste baja un poco.
+    Aprobado por el usuario el 2026-09-25: los amarillos y verdes salen oscuros en
+    tema claro (es lo que exige el contraste), incluido `bg-primary/10` con `text-primary`.
   - Colores que no siguen al tema y hay que pasar a `hsl(var(--primary))`:
     - `components/dashboard/DashboardCharts.tsx`: barra `#3b82f6`, borde del
       tooltip `#e2e8f0` y la paleta del gráfico de torta;

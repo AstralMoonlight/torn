@@ -1,7 +1,88 @@
 # Alinear backend y frontend con dte-torn
 
-Estado al 2026-09-24. Esta etapa va **después** de la certificación de boletas (orden acordado:
-certificación de factura → boletas → esta alineación → seguridad → servidor y release).
+Estado al 2026-09-25. La certificación de factura está cerrada del lado de Torn: todo declarado y
+muestras enviadas, **esperando la validación del SII**.
+
+**Orden (actualizado 2026-09-25 por el usuario):** primero las tres prioridades de la sección 0.
+Después, sin orden fijo todavía: lo demás de este archivo, la certificación de boletas y
+[autocompletar por RUT](autocompletar_rut_sii.md). Al final, seguridad → servidor y release.
+
+---
+
+## 0. Prioridades
+
+### P1. Intercambio: XML a los clientes y acuse de recibo
+
+Antes estaba fuera de esta etapa. No existe nada: no hay correo (ni SMTP ni IMAP) en el repo, ni
+formatos de respuesta en dte-torn. Son dos partes:
+
+**a) Enviar el XML a la casilla del cliente.** Cuando el SII acepta un 33, 34, 52, 56 o 61, se manda el
+`EnvioDTE` (sobre dirigido al RUT del cliente) a su correo de intercambio. Las boletas no pasan por
+intercambio. La venta registra si se envió y cuándo, y el historial permite reenviarlo.
+
+**b) Recibir los DTE de proveedores y responder.** Una casilla recibe el `EnvioDTE` del proveedor.
+Torn valida la firma y que el receptor seamos nosotros, guarda el documento y responde con el acuse
+(`RespuestaDTE`: recepción del envío y resultado por documento). Si aplica, responde también con el
+recibo de mercaderías (`EnvioRecibos`, Ley 19.983). Un documento recibido puede llenar una compra
+(`backend/app/models/purchase.py`).
+
+**Por decidir:**
+- El correo de intercambio del cliente. `customers.email` existe, pero es uno solo. ¿Se usa ese, o un
+  campo aparte? El SII publica un listado de contribuyentes electrónicos con su correo de intercambio.
+  Hay que ver su formato y si se carga como las nóminas de [autocompletar por RUT](autocompletar_rut_sii.md).
+- El servicio de correo, para enviar y recibir.
+- El reparto entre servicios: el XML y la firma en dte-torn, y los clientes, las compras y la UI en el backend.
+- Si la aceptación o el reclamo con efecto legal va por el Registro de Aceptación o Reclamo del SII, y no
+  solo por el XML. Hay que confirmarlo en el instructivo.
+
+**Tareas:**
+- [ ] Bajar del SII los XSD y el instructivo de intercambio (`RespuestaDTE`, `EnvioRecibos`), igual que se
+      hizo con los libros (source-driven-development).
+- [ ] Decidir el correo del cliente y el servicio de correo.
+- [ ] dte-torn: sobre `EnvioDTE` para el receptor y su envío al correo tras la aceptación del SII, con reintentos.
+- [ ] Backend y frontend: estado del envío en la venta y botón de reenviar en el historial.
+- [ ] Recepción: leer la casilla, validar y guardar los documentos recibidos.
+- [ ] Respuestas firmadas (`RespuestaDTE`, `EnvioRecibos`), validadas contra el XSD, enviadas al proveedor.
+- [ ] Frontend: bandeja de documentos recibidos con aceptar / reclamar.
+
+### P2. Modo del emisor: Desarrollador, Maullín, Palena
+
+Se elige en Configuración (`frontend/app/configuracion/page.tsx`). Hoy existe `public.tenants.sii_ambiente`
+(`CERT`|`PROD`). Solo se edita en `frontend/app/saas-admin/tenants/page.tsx` (superusuario) y se copia a
+dte-torn (`Tenant.ambiente`, enum `Ambiente` en `dte-torn/app/models.py`).
+
+- **Maullín** = `CERT`, y **Palena** = `PROD`. De Palena solo va la opción, con confirmación. El resto del
+  paso a producción sigue postergado (ver B7 y B8).
+- **Desarrollador** (nuevo): dte-torn no habla con el SII (ni token, ni envío, ni consulta), pero la venta
+  se emite igual, con firma, timbre, XML y PDF. Queda en un estado propio, distinto de ACEPTADO. Sirve para
+  pruebas internas.
+
+**Por decidir:**
+- Los folios en Desarrollador. El timbre necesita un CAF: ¿se usan los CAF de maullín, o un CAF de
+  prueba que nunca vaya al SII?
+- Qué pasa con los documentos de Desarrollador al cambiar a Maullín o a Palena: ¿se ocultan o se borran?
+- Quién cambia el modo. Hoy solo el superusuario.
+
+**Tareas:**
+- [ ] dte-torn: tercer valor de `Ambiente` que corta el pipeline antes de enviar, con tests.
+- [ ] Backend: `sii_ambiente` acepta el modo nuevo (migración Alembic) y lo copia a dte-torn.
+- [ ] Frontend: selector en Configuración (`SelectOpciones`), con confirmación al pasar a Palena. El modo
+      actual queda visible en algún lado (por ejemplo, un distintivo en el POS en Desarrollador).
+
+### P3. Descuentos por ítem y global
+
+Hoy el backend acepta un `descuento` por línea en pesos (`backend/app/schemas.py:307`, validado en
+`backend/app/routers/sales.py:407`) y lo manda a dte-torn. Pero el POS no lo ofrece: no hay descuento en
+`frontend/components/pos` ni en el carrito. El descuento global no existe en el backend, y dte-torn
+acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porcentaje (`descuento_pct`).
+
+**Tareas:**
+- [ ] Test de contrato de los totales (D12): los tres cálculos con los mismos casos, incluidos los
+      descuentos. Va primero, porque los descuentos tocan los tres.
+- [ ] POS: descuento por ítem en $ o %.
+- [ ] Backend y POS: descuento global en $ o %, enviado como `descuentos_globales`.
+- [ ] El impreso (carta, 57 y 80 mm) muestra los descuentos por línea y el global, como pidió el set de pruebas.
+- [ ] Por decidir: quién puede aplicar descuentos y con qué tope.
 
 ---
 
@@ -14,8 +95,8 @@ certificación de factura → boletas → esta alineación → seguridad → ser
 | Set guía de despacho | SOK | 0260086000 |
 | Libros de ventas, compras y guías | LOK / SOK | 0260088990 · 0260084758 · 0260086522 |
 | Simulación: 24 documentos reales de Bsale (17×33, 34, 2×52, 3×61, 56) | EPR 24/24, aprobada | 0260198860 |
-| Muestras impresas: 28 del set + 7 de simulación | Enviadas, **en revisión del SII** | reemplazo de simulación: 0260200310 |
-| Declaración de cumplimiento (representante legal) | Pendiente | - |
+| Muestras impresas: 28 del set + 7 de simulación | Enviadas en la declaración, **esperando validación del SII** | reemplazo de simulación: 0260200310 |
+| Declaración de cumplimiento (representante legal) | Pendiente, tras la validación | - |
 
 Cambios de código de esta etapa (dte-torn):
 
@@ -49,54 +130,41 @@ tiene estos campos:
 
 ---
 
-## 3. Brechas: lo que dte-torn ya sabe hacer y el backend o el frontend no usan
+## 3. Brechas: lo demás (después de las prioridades)
 
-Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verificación.
+Cada una se trabaja como un issue: commit, tests y verificación.
 
-### A. Correcto frente al SII (lo primero)
+### A. Correcto frente al SII
 
-1. ✅ **Estado SII de cada venta.** Hecho: `Sale.dte_estado`/`dte_glosa` (migración `c9d0e1f2a3b4`), se
-   guardan al emitir y `POST /sales/dte-estados` refresca los no terminales; el historial los muestra en la
-   columna SII y avisa los rechazados. Pendiente: verlo pasar de FIRMADO a ACEPTADO con una venta real en
-   maullin. Antes: el backend guardaba solo `Sale.folio`. Nunca se entera de si el SII aceptó,
-   aceptó con reparos o rechazó. Falta:
-   - Backend: guardar `estado`, `estado_sii` y `track_id` (migración Alembic). Consultar
-     `GET /documents/{external_id}` después de emitir y en segundo plano, o con un botón "actualizar".
-   - Frontend: mostrar el estado en historial, reporte diario y detalle de venta. Alertar los rechazados.
-2. ✅ **`razon` en las referencias.** Hecho: la devolución manda su motivo (truncado a 90) y `SaleCreate` acepta `razon`. Antes: `_referencias_dte` (`backend/app/routers/sales.py:111`) envía `codigo` pero
-   no `razon`. El manual de muestras exige imprimir el motivo. Hay que pasar la razón que ya pide el
-   formulario de devolución.
-3. ✅ **Guía de despacho (52).** Hecho: el POS la emite con tipo de traslado y despacho; descuenta stock,
-   no pasa por caja ni se cobra. Traslado interno (5) va al propio emisor y no se factura. Historial →
-   "Facturar guías" arma una 33/34 con las líneas y precios de las guías (mismo cliente, hasta 40),
-   las referencia con tipo 52, cobra con un medio de pago y no vuelve a mover stock
-   (`sales.ind_traslado`, `sales.facturada_por_id`, migración `d0e1f2a3b4c5`). Pendiente: emitir una
-   real en maullin (JCB no tiene CAF 52 vigentes). Antes: El POS no la puede emitir: dte-torn rechaza una 52 sin `ind_traslado`, y el
-   backend no lo envía. Falta:
-   - Frontend: tipo de traslado (venta, traslado interno, etc.) y tipo de despacho en el checkout.
-   - Backend: enviarlos. En traslado interno, el receptor es el propio emisor.
-   - Definir si la guía descuenta stock y si después se factura. La factura referencia la guía con tipo 52.
+1. ✅ **Estado SII de cada venta.** `Sale.dte_estado`/`dte_glosa` (migración `c9d0e1f2a3b4`) se guardan al
+   emitir, y `POST /sales/dte-estados` refresca los que no son terminales. El historial los muestra en la
+   columna SII y avisa los rechazados. **Pendiente:** verlo pasar de FIRMADO a ACEPTADO con una venta real
+   en maullín.
+2. ✅ **`razon` en las referencias.** La devolución manda su motivo (truncado a 90) y `SaleCreate` acepta `razon`.
+3. ✅ **Guía de despacho (52).** El POS la emite con tipo de traslado y de despacho. Descuenta stock, no pasa
+   por caja y no se cobra. El traslado interno (5) va al propio emisor y no se factura. En el historial,
+   "Facturar guías" arma una 33/34 con las líneas y precios de las guías (mismo cliente, hasta 40), las
+   referencia con tipo 52, cobra con un medio de pago y no vuelve a mover stock (`sales.ind_traslado`,
+   `sales.facturada_por_id`, migración `d0e1f2a3b4c5`). **Pendiente:** emitir una real en maullín (JCB no
+   tiene CAF 52 vigentes).
 4. **NC que corrige texto (código 2).** Hoy la devolución solo reingresa stock. Falta un flujo de NC sin
    montos, con el detalle en la forma "donde dice… debe decir…", como pide el manual. Sirve, por ejemplo,
    para corregir el giro o la dirección del cliente.
 5. **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
    `fecha_vencimiento`. Hoy no se envían.
 
-### B. Paso a producción
+### B. Paso a producción (postergado por el usuario, salvo el selector de P2)
 
-6. **Ambiente y resolución.** `public.tenants.sii_ambiente` / `sii_resolucion_*` ya se copian a dte-torn.
-   Para JCB en producción corresponde **Res. 80 del 22-08-2014**, la que imprime Bsale. El número 0 de 2020
-   es el de certificación. Falta:
-   - Una pantalla (superusuario) para pasar a PROD con confirmación.
-   - Un control: con PROD no se aceptan CAF de maullin.
-7. **CAF de producción.** Se piden en palena, no en maullin. La pantalla de Folios (`FoliosTab.tsx`) debería
-   mostrar el ambiente del CAF y alertar si no coincide con el del emisor.
+6. → Pasó a **P2** (modo del emisor). Para JCB en producción corresponde la **Res. 80 del 22-08-2014**, la
+   que imprime Bsale. El número 0 de 2020 es el de certificación.
+7. **CAF de producción.** Se piden en palena, no en maullín. La pantalla de Folios (`FoliosTab.tsx`) debería
+   mostrar el ambiente del CAF y alertar si no coincide con el del emisor. Con PROD no se aceptan CAF de maullín.
 8. **Convivencia con Bsale.** No emitir el mismo tipo de documento en ambos sistemas a la vez: son rangos de
    folio distintos, pero el SII los ve todos. Hay que documentar la fecha de corte por tipo.
 
 ### C. Mejoras de uso
 
-9. **Descuento global y descuento %.** dte-torn los soporta y el POS no.
+9. → Pasó a **P3** (descuentos).
 10. **Reimpresión.** Revisar que la reimpresión de cedible (`_impreso_dte`) y el ticket 57/80 mm
     (`backend/app/services/dte_impreso.py`) no corten la razón social, como pasaba en el PDF carta.
 11. **Stock de folios.** Mostrar la alerta de pocos folios (`DTE_FOLIO_UMBRAL_ALERTA`) en el dashboard.
@@ -104,16 +172,14 @@ Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verifi
 ### D. Deuda técnica que toca esta etapa
 
 12. **Totales triplicados.** `calcular_totales` (dte-torn), `totales_dte` (backend) y `totalesDte`
-    (frontend). La opción mínima: un test de contrato que compare los tres con los mismos casos. La
-    opción mayor: que el backend use el `monto_total` que devuelve dte-torn como fuente de verdad.
+    (frontend). El test de contrato se adelanta como primera tarea de **P3**. La opción mayor sigue abierta:
+    que el backend use el `monto_total` que devuelve dte-torn como fuente de verdad.
 13. **Tablas DTE locales.** Correr `backend/scripts/migrate_retiro_dte_local.py --aplicar` una vez
     confirmado que todos los CAF vigentes están en dte-torn.
 
 ### Fuera de esta etapa
 
-- **Boletas (39/41):** su propia certificación. Es la etapa anterior a esta.
-- **Recepción de DTE de proveedores y acuse de recibo** (intercambio): el SII no lo exigió en esta
-  certificación. Lo necesita quien reciba facturas electrónicas de compra. Evaluar después de la release.
+- **Boletas (39/41):** su propia certificación.
 - **Libros de compra/venta:** los reemplaza el RCV del SII. Solo se usaron en la certificación.
 
 ---
@@ -121,9 +187,10 @@ Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verifi
 ## 4. Cómo verificar que quedó alineado
 
 - Suite del backend (`cd backend && pytest -q`), con `FakeDte` actualizado a los campos nuevos (estado,
-  razón, traslado).
+  razón, traslado, descuentos, modo).
 - Suite de dte-torn en Docker (ver `tasks/todo.md`).
 - `cd frontend && npm run build` sin errores de tipos.
-- En maullin, con CAF de prueba, emitir desde el POS real una venta por cada tipo: 33, 34, 52 venta,
+- En maullín, con CAF de prueba, emitir desde el POS real una venta por cada tipo: 33, 34, 52 venta,
   52 traslado interno, 61 devolución, 61 corrige texto y 56. Cada una tiene que quedar ACEPTADO, con el
-  estado visible en el historial y el PDF con referencia y motivo.
+  estado visible en el historial, el PDF con referencia y motivo, y el XML llegado a la casilla del cliente.
+- En Desarrollador, la misma venta se emite sin ninguna llamada al SII.

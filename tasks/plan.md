@@ -3,6 +3,9 @@
 Fecha: 2026-09-24. Archivo del SII: `setDePruebas/SIISetDePruebas763989569.txt` (fuera de git).
 Tareas detalladas en [`tasks/todo.md`](todo.md).
 
+> **Estado (2026-09-25): terminado.** Los 6 sets, la simulación y las muestras están declarados; se espera la
+> validación del SII. Las preguntas abiertas de abajo quedaron respondidas en T9 (ver `todo.md`).
+
 ## Objetivo
 
 Enviar y declarar los 6 sets pedidos para DISTRIBUIDORA JCB SPA, cada uno en su propio envío,

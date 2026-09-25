@@ -1,5 +1,9 @@
 # Tareas: set de pruebas SII completo
 
+> **Estado (2026-09-25):** todo declarado y muestras enviadas en la declaración. **Esperando la validación
+> del SII.** Lo que queda es su respuesta y, después, la declaración de cumplimiento del representante legal.
+> Lo siguiente está en [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md) (prioridades).
+
 Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 `cd dte-torn && docker compose --profile test run --rm tests` (291 en verde al 2026-09-24; la imagen no monta el código: agregar `-v "$(pwd -W)/app:/srv/app" -v "$(pwd -W)/tests:/srv/tests"` o reconstruir).
 **U** = lo hace el usuario en maullin (crea cosas en el SII). **T** = código.
@@ -18,7 +22,7 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 **Aceptación:**
 - [x] `revisar-set` muestra los 8 casos con totales que cuadran a mano
 - [x] Envío único: EPR, 8 aceptados, 0 reparos - track 0260080046 (24-09-2026). CAF en `dte-torn/folios/`: 33 71-74, 61 69-71, 56 60
-- [ ] Usuario declara el avance con el track ID
+- [x] Usuario declara el avance con el track ID
 **Dependencias:** U1 · **Archivos:** ninguno (solo `.env`) · **Tamaño:** XS
 
 ---
@@ -53,7 +57,7 @@ contra `DTE_v10.xsd` y sin IVA ni tasa.
 
 ### T4: Enviar y declarar el set de exenta
 - [x] Máximos 34 ≥ 3 y 56 ≥ 2 (U2); pedir CAF 34×3, 61×3, 56×2 - el SII los dio directo: 34 101-103, 61 72-74, 56 61-62
-- [x] Envío único EPR 8 aceptados 0 reparos - track 0260081142 (24-09-2026); falta que el usuario declare
+- [x] Envío único EPR 8 aceptados 0 reparos - track 0260081142 (24-09-2026); declarado con el reenvío 0260088718
 **Dependencias:** T3, U2 · **Tamaño:** XS
 
 ### Checkpoint A
@@ -92,12 +96,13 @@ solo si el traslado es venta. En el traslado interno "el ejemplar cedible es ino
 
 ### T8: Subir máximo del 52, enviar y declarar
 - [x] `certificacion enviar` emite una prueba con un CAF 52
-- [ ] Emisiones de prueba de 52 hasta máximo ≥ 3 (U)
+- [x] ~~Emisiones de prueba de 52 hasta máximo ≥ 3 (U)~~ no hizo falta: el SII dio los 3 folios directo
 - [x] CAF 52×3 (106-108); envío único EPR 3 aceptados 0 reparos - track 0260086000 (24-09-2026)
 **Dependencias:** T6, T7
 
 ### Checkpoint B
-- [ ] Suite verde · revisión del diff de fase 3 · guía enviada sin reparos
+- [x] Guía enviada sin reparos (SOK)
+- [ ] Revisión del diff de fase 3 (no se hizo; ya no bloquea porque el SII aceptó el envío)
 
 ---
 
@@ -132,12 +137,13 @@ retención total, entrega gratuita como IVA no recuperable (código a confirmar)
 
 ### T13: Modo `libros` en el script, enviar y declarar
 - [x] `certificacion libro` (`DTE_LIBRO=ventas|compras`) sube el libro, espera el estado y muestra el track. Falta guías.
-- [ ] Los 3 aceptados; usuario declara cada uno
+- [x] Los 3 aceptados; usuario declara cada uno (ventas reenviado como 0260088990)
   - 2026-09-24: libro de ventas declarado con 0260084694 → **SRH "No Tiene un SET Basico Aprobado"**. Cada libro se declara recién cuando su set de origen está APROBADO (ventas ← básico, guías ← guía). Reenviar el libro de ventas (nuevo track) cuando el básico salga aprobado.
 **Dependencias:** T10, T11, T12
 
 ### Checkpoint C
-- [ ] Suite verde · revisión del diff de fase 4 · 6 sets declarados
+- [x] 6 sets declarados
+- [ ] Revisión del diff de fase 4 (no se hizo; ya no bloquea porque el SII aceptó el envío)
 
 ---
 
@@ -149,24 +155,24 @@ impreso, las cifras llevan punto como separador de miles, y se generan tributari
 (no de 61/56). También hay que confirmar la unidad "S.I.I. - CONCEPCION" y el tamaño del timbre en el
 instructivo de formato.
 **Aceptación:**
-- [ ] `certificacion muestras` genera los PDF de los 3 sets en `setDePruebas/muestras/`
-- [ ] Revisión visual del usuario
+- [x] `certificacion muestras` genera los PDF de los 3 sets en `setDePruebas/muestras/`
+- [x] Revisión visual del usuario; 28 muestras del set enviadas en la declaración, esperando validación del SII
 **Dependencias:** Checkpoint C · **Archivos:** `app/dte/pdf.py`, `app/scripts/certificacion.py`, `tests/test_pdf.py` · **Tamaño:** S
 
 ---
 
-## Tabla para declarar todo junto (24-09-2026, segundo intento)
+## Tabla declarada (24-09-2026, segundo intento)
 
 Básico y exenta se reenviaron (DTE_SET_INTENTO=2) tras el SRH por "Los Valores de la Linea 1 del
 Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 
 | Set | N° Envío | Fecha | Estado |
 |---|---|---|---|
-| SET BASICO | 0260088892 | 24-09-2026 | reenviado, EPR 8/8 |
+| SET BASICO | 0260088892 | 24-09-2026 | SOK |
 | SET GUIA DE DESPACHO | 0260086000 | 24-09-2026 | SOK |
-| SET FACTURA EXENTA | 0260088718 | 24-09-2026 | reenviado, EPR 8/8 |
+| SET FACTURA EXENTA | 0260088718 | 24-09-2026 | SOK |
 | LIBRO DE VENTAS | 0260088990 | 24-09-2026 | LOK (docs del intento 2) |
-| LIBRO DE COMPRAS | 0260084758 | 24-09-2026 | LOK, sin resultado de revisión aún |
+| LIBRO DE COMPRAS | 0260084758 | 24-09-2026 | LOK |
 | LIBRO DE GUIAS | 0260086522 | 24-09-2026 | SOK |
 
 ---
@@ -175,7 +181,7 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 
 - [x] `setDePruebas/simulacion.txt` (gitignored): 24 documentos con clientes, productos y precios reales de Bsale (facturas 1648-1667). 17×33, 1×34 exenta, 2×52 y 3×61. La NC que anula apunta a la exenta, porque JCB no tiene productos exentos. 1×56.
 - [x] Envío único EPR, 24 aceptados, 0 reparos - **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
-- [ ] Usuario declara el avance con el track ID
-- [ ] Siguiente etapa: intercambio de información (acuse de recibo y aceptación/rechazo en XML a `SII_dte_intercambio@sii.cl`): no existe en dte-torn
-- [ ] Muestras impresas: todos los del set de pruebas + 10 de la simulación que cubran todos los tipos
+- [x] Usuario declara el avance con el track ID
+- [ ] ~~Intercambio de información~~: el SII no lo exigió en esta certificación. Ahora es la prioridad P1 de [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md)
+- [x] Muestras impresas: las del set de pruebas + 7 de la simulación (reemplazo 0260200310), enviadas; esperando validación del SII
 - 2026-09-24: las muestras de la simulación 0260198860 no pasan el validador ("Fecha Firma del TED debe ser mayor o igual a la fecha del documento"): FchEmis 25-09 por UTC (fix 248851b). Se emitió un envío de reemplazo con 1 documento por tipo, EPR 5/5, **track 0260200310** (33 F97, 34 F108, 52 F111, 61 F84, 56 F67). Sus PDF están en `setDePruebas/subir_sii_simulacion/`.
