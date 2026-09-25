@@ -190,3 +190,49 @@ async def test_un_tenant_no_ve_los_documentos_de_otro(api) -> None:
     [doc] = (await api.get("/documents?tipo_dte=33&folio=1", headers=h)).json()
     assert doc["external_id"] == "venta-1"
     assert (await api.get("/documents?tipo_dte=33&folio=2", headers=h)).json() == []
+
+
+async def _cambiar_ambiente(api, h, ambiente: str, rut: str = RUT) -> None:
+    r = await api.put(f"/tenants/{h['X-Tenant-Id']}", json={**EMISOR, "rut_emisor": rut, "ambiente": ambiente}, headers=CLAVE)
+    assert r.status_code == 200, r.text
+
+
+async def test_desarrollador_emite_con_folios_de_prueba_y_sin_sii(api) -> None:
+    h = await _alta(api)
+    await _cambiar_ambiente(api, h, "DEV")
+
+    r = await api.post("/documents", json=FACTURA, headers=h)
+    assert r.status_code == 201, r.text
+    doc = r.json()
+    # CAF de prueba generado solo: folio 1 aunque el CAF de maullín también parte en 1.
+    assert (doc["folio"], doc["estado"], doc["ambiente"]) == (1, "SIMULADO", "DEV")
+    assert doc["ted"].startswith("<TED")
+    assert api.encolados == []  # nada va a la cola de envío
+    assert await _disponibles(api, h) == 99_999
+
+    pdf = await api.get("/documents/venta-1/pdf", headers=h)
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+    caf = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, tipo_dte=33, desde=50, hasta=60))})
+    assert caf.status_code == 409
+
+
+async def test_cada_ambiente_ve_sus_documentos_y_sus_folios(api) -> None:
+    h = await _alta(api)
+    assert (await api.post("/documents", json=FACTURA, headers=h)).json()["ambiente"] == "CERT"
+
+    await _cambiar_ambiente(api, h, "DEV")
+    await api.post("/documents", json={**FACTURA, "external_id": "venta-2"}, headers=h)
+    assert [d["external_id"] for d in (await api.get("/documents", headers=h)).json()] == ["venta-2"]
+
+    await _cambiar_ambiente(api, h, "CERT")
+    assert [d["external_id"] for d in (await api.get("/documents", headers=h)).json()] == ["venta-1"]
+    assert await _disponibles(api, h) == 9  # el CAF de prueba no se mezcla con el de maullín
+    # Por external_id se encuentra igual: el backend reimprime ventas de otro modo.
+    assert (await api.get("/documents/venta-2", headers=h)).json()["estado"] == "SIMULADO"
+
+
+def test_un_documento_de_desarrollador_no_llega_al_sii() -> None:
+    ctx = pipeline.Contexto(http=None, redis=None, almacen=None)
+    with pytest.raises(ValueError):
+        ctx.sii("DEV")

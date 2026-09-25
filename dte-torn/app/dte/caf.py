@@ -19,16 +19,17 @@ import base64
 import uuid
 from dataclasses import dataclass
 from datetime import date
+from xml.sax.saxutils import escape
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from lxml import etree
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import aad, abrir, sellar, version_actual
 from app.dte.rut import normalizar_rut
-from app.models import CAF, AuditLog, EstadoCAF, Tenant
+from app.models import CAF, Ambiente, AuditLog, EstadoCAF, Tenant
 
 OPERACION_CARGA = "CARGA_CAF"
 
@@ -198,6 +199,8 @@ async def guardar_caf(
     que depende del tipo de documento, y adivinarla acá sería inventar un dato
     tributario. Sin ella, el CAF no vence.
 
+    El CAF queda en el ambiente actual del tenant: sus folios son de ese ambiente.
+
     Raises:
         CafDeOtroEmisorError: El RUT del CAF no es el del tenant.
         RangoSolapadoError: El rango se cruza con otro CAF ya cargado.
@@ -218,6 +221,7 @@ async def guardar_caf(
         await session.execute(
             select(CAF.id).where(
                 CAF.tenant_id == tenant_id,
+                CAF.ambiente == tenant.ambiente,
                 CAF.tipo_dte == caf.tipo_dte,
                 # Dos rangos se cruzan salvo que uno termine antes de que el
                 # otro empiece.
@@ -238,6 +242,7 @@ async def guardar_caf(
         id=caf_id,
         tenant_id=tenant_id,
         tipo_dte=caf.tipo_dte,
+        ambiente=tenant.ambiente,
         folio_desde=caf.folio_desde,
         folio_hasta=caf.folio_hasta,
         # El puntero sin estrenar es `desde - 1`: el primer folio que se emite
@@ -291,3 +296,76 @@ async def abrir_caf(session: AsyncSession, caf_id: uuid.UUID, tenant_id: uuid.UU
         fila.key_version,
     )
     return parsear_caf(xml)
+
+
+# ------------------------------------------------------ CAF de Desarrollador --
+
+#: Folios de cada CAF de prueba. Al agotarse se genera el siguiente rango.
+FOLIOS_CAF_PRUEBA = 100_000
+ACTOR_CAF_PRUEBA = "desarrollador"
+
+
+def caf_de_prueba(rut: str, razon_social: str, tipo_dte: int, desde: int, hasta: int) -> bytes:
+    """Un CAF con la estructura del SII y una llave propia, para Desarrollador.
+
+    Timbra igual que uno real, pero el SII nunca lo autorizó: `<FRMA>` es un
+    relleno, así que un documento timbrado con él no pasaría por el SII.
+    """
+    from app.dte.signer import hoy_chile  # signer importa este módulo
+
+    llave = rsa.generate_private_key(public_exponent=65537, key_size=1024)
+    numeros = llave.public_key().public_numbers()
+
+    def b64(n: int) -> str:
+        return base64.b64encode(n.to_bytes((n.bit_length() + 7) // 8, "big")).decode("ascii")
+
+    sk = llave.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()
+    ).decode("ascii")
+    pk = llave.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode("ascii")
+    frma = base64.b64encode(b"CAF de prueba de Torn: no lo autorizo el SII").decode("ascii")
+    xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
+<AUTORIZACION>
+<CAF version="1.0">
+<DA>
+<RE>{rut}</RE>
+<RS>{escape(razon_social[:40])}</RS>
+<TD>{tipo_dte}</TD>
+<RNG><D>{desde}</D><H>{hasta}</H></RNG>
+<FA>{hoy_chile().isoformat()}</FA>
+<RSAPK><M>{b64(numeros.n)}</M><E>{b64(numeros.e)}</E></RSAPK>
+<IDK>100</IDK>
+</DA>
+<FRMA algoritmo="SHA1withRSA">{frma}</FRMA>
+</CAF>
+<RSASK>{sk}</RSASK>
+<RSAPUBK>{pk}</RSAPUBK>
+</AUTORIZACION>
+"""
+    return xml.encode("ISO-8859-1", errors="xmlcharrefreplace")
+
+
+async def asegurar_caf_prueba(session: AsyncSession, tenant: Tenant, tipo_dte: int) -> None:
+    """Deja un CAF de prueba con folios para `tipo_dte`, si el tenant no tiene.
+
+    Solo para Desarrollador. Debe correr en la transacción que después asigna
+    el folio: el lock serializa a dos emisiones que no encuentren CAF a la vez,
+    para que no generen dos rangos que se crucen.
+    """
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:clave))"),
+        {"clave": f"caf-prueba:{tenant.id}:{tipo_dte}"},
+    )
+    del_tipo = and_(CAF.tenant_id == tenant.id, CAF.ambiente == Ambiente.DEV, CAF.tipo_dte == tipo_dte)
+    hay = (
+        await session.execute(select(CAF.id).where(del_tipo, CAF.estado == EstadoCAF.ACTIVO).limit(1))
+    ).scalar_one_or_none()
+    if hay is not None:
+        return
+    ultimo = (await session.execute(select(func.max(CAF.folio_hasta)).where(del_tipo))).scalar_one() or 0
+    xml = caf_de_prueba(
+        tenant.rut_emisor, tenant.razon_social, tipo_dte, ultimo + 1, ultimo + FOLIOS_CAF_PRUEBA
+    )
+    await guardar_caf(session, tenant.id, xml, subido_por=ACTOR_CAF_PRUEBA)

@@ -33,11 +33,11 @@ from app.core.config import get_settings
 from app.db import control_session, tenant_session
 from app.dte import pipeline
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, calcular_totales, construir_dte
-from app.dte.caf import CafInvalidoError, RangoSolapadoError, guardar_caf
+from app.dte.caf import CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba, guardar_caf
 from app.dte.folios import DatosEmision, PayloadDistintoError, SinFoliosError, emitir_documento, folios_disponibles
 from app.dte.pdf import DatosImpresion, generar_pdf
 from app.dte.rut import validar_rut
-from app.models import CAF, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, Envio, Tenant
+from app.models import CAF, Ambiente, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, Envio, Tenant
 from app.tasks import colas
 
 E = EstadoDocumento
@@ -99,7 +99,8 @@ class TenantIn(BaseModel):
     ciudad: str | None = Field(default=None, max_length=100)
     telefono: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=150)
-    ambiente: Literal["CERT", "PROD"] = "CERT"
+    #: DEV (Desarrollador): se emite y timbra con folios de prueba, sin el SII.
+    ambiente: Literal["CERT", "PROD", "DEV"] = "CERT"
     resolucion_numero: int = Field(default=0, ge=0)
     resolucion_fecha: date | None = None
     oficina_sii: str | None = Field(default=None, max_length=60)
@@ -217,7 +218,12 @@ async def subir_caf(
     actor: Actor = None,
 ) -> CafOut:
     """Carga manual de un CAF (#22). También es la salida de emergencia si la
-    solicitud automática al SII falla."""
+    solicitud automática al SII falla.
+
+    Queda en el ambiente actual del tenant. En Desarrollador no se cargan: los
+    folios de prueba se generan solos."""
+    if tenant.ambiente == Ambiente.DEV:
+        raise HTTPException(409, "En modo Desarrollador los folios son de prueba y se generan solos")
     xml = await _leer_archivo(archivo)
     try:
         async with tenant_session(tenant.id) as s:
@@ -237,9 +243,10 @@ class StockFolios(BaseModel):
 
 @router.get("/folios", response_model=list[StockFolios])
 async def stock_folios(tenant: TenantDep) -> list[StockFolios]:
-    """Folios disponibles por tipo de documento, con sus CAF."""
+    """Folios disponibles por tipo de documento, con sus CAF del ambiente actual."""
+    consulta = select(CAF).where(CAF.ambiente == tenant.ambiente).order_by(CAF.tipo_dte, CAF.folio_desde)
     async with tenant_session(tenant.id) as s:
-        cafs = (await s.execute(select(CAF).order_by(CAF.tipo_dte, CAF.folio_desde))).scalars().all()
+        cafs = (await s.execute(consulta)).scalars().all()
     por_tipo: dict[int, list[CafOut]] = {}
     for caf in cafs:
         por_tipo.setdefault(caf.tipo_dte, []).append(_caf_out(caf))
@@ -260,6 +267,7 @@ class DocumentoOut(BaseModel):
     tipo_dte: int
     folio: int | None
     estado: str
+    ambiente: str
     fecha_emision: date
     receptor_rut: str | None
     monto_neto: int
@@ -282,7 +290,7 @@ async def _documento_out(tenant_id: uuid.UUID, doc: Document) -> DocumentoOut:
             track = (await s.execute(select(Envio.track_id).where(Envio.id == doc.envio_id))).scalar_one_or_none()
     return DocumentoOut(
         id=doc.id, external_id=doc.external_id, tipo_dte=doc.tipo_dte, folio=doc.folio, estado=doc.estado,
-        fecha_emision=doc.fecha_emision, receptor_rut=doc.receptor_rut,
+        ambiente=doc.ambiente, fecha_emision=doc.fecha_emision, receptor_rut=doc.receptor_rut,
         monto_neto=doc.monto_neto, monto_exento=doc.monto_exento, monto_iva=doc.monto_iva,
         monto_total=doc.monto_total, ted=doc.ted_barcode, track_id=track, estado_sii=doc.estado_sii,
         glosa_sii=doc.glosa_sii, ultimo_error=doc.last_error, creado_en=doc.created_at,
@@ -308,6 +316,8 @@ async def _emitir(tenant: Tenant, entrada: DocumentoIn, ctx: pipeline.Contexto, 
 
     try:
         async with tenant_session(tenant.id) as s:
+            if tenant.ambiente == Ambiente.DEV:
+                await asegurar_caf_prueba(s, tenant, datos.tipo_dte)
             doc, creado = await emitir_documento(
                 s,
                 tenant.id,
@@ -320,6 +330,7 @@ async def _emitir(tenant: Tenant, entrada: DocumentoIn, ctx: pipeline.Contexto, 
                     receptor_razon_social=datos.receptor.razon_social if datos.receptor else None,
                     monto_neto=totales.neto, monto_exento=totales.exento,
                     monto_iva=totales.iva, monto_total=totales.total,
+                    ambiente=tenant.ambiente,
                 ),
             )
     except SinFoliosError as exc:
@@ -379,8 +390,8 @@ async def listar(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[DocumentoOut]:
-    """Documentos del tenant, los más nuevos primero."""
-    consulta = select(Document).order_by(Document.created_at.desc()).limit(limit).offset(offset)
+    """Documentos del tenant en su ambiente actual, los más nuevos primero."""
+    consulta = select(Document).where(Document.ambiente == tenant.ambiente).order_by(Document.created_at.desc()).limit(limit).offset(offset)
     if estado:
         consulta = consulta.where(Document.estado == estado)
     if tipo_dte:
@@ -456,6 +467,7 @@ async def descargar_pdf(
             oficina_sii=tenant.oficina_sii,
             cedible=cedible,
             con_cedible=con_cedible,
+            prueba=doc.ambiente == Ambiente.DEV,
         ),
     )
     sufijo = "_cedible" if cedible else ""

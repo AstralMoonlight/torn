@@ -57,7 +57,7 @@ from app.dte.sii_client import (
     SiiNoDisponibleError,
     SiiRechazoError,
 )
-from app.models import AuditLog, DeadLetter, Document, Envio, EstadoDocumento, EstadoEnvio, Tenant
+from app.models import Ambiente, AuditLog, DeadLetter, Document, Envio, EstadoDocumento, EstadoEnvio, Tenant
 
 E = EstadoDocumento
 
@@ -98,6 +98,9 @@ class Contexto:
     ejecutor: Executor | None = None
 
     def sii(self, ambiente: str) -> ClienteSii:
+        if ambiente == Ambiente.DEV:
+            # Defensa: un documento de Desarrollador termina SIMULADO al firmarse.
+            raise ValueError("Un documento de Desarrollador no va al SII")
         return ClienteSii(self.http, self.redis, ambiente, self.ttl_token)
 
 
@@ -227,6 +230,8 @@ async def _en_ejecutor(ctx: Contexto, funcion: Callable[..., Any], *args: Any) -
 async def firmar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
     """PENDIENTE → FIRMADO: construye, timbra, firma y guarda el XML en S3.
 
+    En Desarrollador termina en SIMULADO: tiene XML, timbre y PDF, y no se envía.
+
     Cada firma deja una fila `FIRMA` en `audit_log`, con éxito o sin él.
 
     Returns:
@@ -271,13 +276,14 @@ async def firmar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
             )
         return await _fallar(tenant_id, doc_id, E.PENDIENTE, "firma", exc)
 
+    final = E.SIMULADO if doc.ambiente == Ambiente.DEV else E.FIRMADO
     async with tenant_session(tenant_id) as s:
         confirmado = (
             await s.execute(
                 update(Document)
                 .where(Document.id == doc_id, Document.estado == E.FIRMANDO)
                 .values(
-                    estado=E.FIRMADO,
+                    estado=final,
                     xml_key=clave,
                     xml_sha256=firmado.sha256,
                     xml_bytes=len(firmado.xml),
@@ -285,7 +291,7 @@ async def firmar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
                     # Los intentos cuentan por paso: el envío parte de cero.
                     intentos=0,
                     last_error=None,
-                    next_action_at=_ahora(),
+                    next_action_at=None if final == E.SIMULADO else _ahora(),
                 )
                 .returning(Document.id)
             )
@@ -304,7 +310,7 @@ async def firmar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
     # Si no se confirmó, alguien movió el documento mientras se firmaba (la
     # reconciliación lo devolvió a PENDIENTE). El XML subido queda huérfano y
     # sin referencia: no se envió, así que no se "regeneró" nada que exista.
-    return E.FIRMADO if confirmado else await _estado(tenant_id, doc_id)
+    return final if confirmado else await _estado(tenant_id, doc_id)
 
 
 async def _estado(tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
@@ -364,7 +370,7 @@ async def enviar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
         # exactamente lo que se mandó.
         await ctx.almacen.guardar(clave, sobre)
 
-        track = await ctx.sii(tenant.ambiente).enviar(
+        track = await ctx.sii(doc.ambiente).enviar(
             canal, tenant_id, cert, tenant.rut_emisor, sobre, f"{envio_id}.xml"
         )
     except SiiNoDisponibleError as exc:
@@ -465,7 +471,7 @@ async def verificar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
     try:
         # El receptor sale del payload, que es la fuente de verdad del documento.
         receptor = DatosDocumento.model_validate(doc.payload).receptor
-        respuesta = await ctx.sii(tenant.ambiente).consultar_documento(
+        respuesta = await ctx.sii(doc.ambiente).consultar_documento(
             tenant_id, cert, tenant.rut_emisor, receptor.rut, doc.tipo_dte,
             doc.folio, doc.fecha_emision, doc.monto_total,
         )
@@ -547,7 +553,7 @@ async def consultar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
         )
 
     try:
-        estado = await ctx.sii(tenant.ambiente).consultar(
+        estado = await ctx.sii(doc.ambiente).consultar(
             canal_de(doc.tipo_dte), tenant_id, cert, tenant.rut_emisor, envio.track_id
         )
     except SiiError as exc:

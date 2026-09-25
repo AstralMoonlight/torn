@@ -57,6 +57,8 @@ class EstadoDocumento(StrEnum):
     ANULADO = "ANULADO"              # folio que nunca se usará
     ERROR = "ERROR"                  # reintentable, en dead_letters
     ERROR_VALIDACION = "ERROR_VALIDACION"
+    #: Emitido en Desarrollador: firmado y timbrado, pero nunca va al SII.
+    SIMULADO = "SIMULADO"
 
 
 #: Estados de los que no se sale. `ERROR` no está: es reintentable.
@@ -67,6 +69,7 @@ ESTADOS_TERMINALES = frozenset(
         EstadoDocumento.RECHAZADO,
         EstadoDocumento.ANULADO,
         EstadoDocumento.ERROR_VALIDACION,
+        EstadoDocumento.SIMULADO,
     }
 )
 
@@ -111,6 +114,9 @@ class Ambiente(StrEnum):
 
     CERT = "CERT"
     PROD = "PROD"
+    #: Desarrollador: se emite con firma y timbre (de un CAF de prueba que genera
+    #: el propio servicio), pero no se habla con el SII.
+    DEV = "DEV"
 
 
 # ----------------------------------------------------------------- mixins ----
@@ -219,6 +225,8 @@ class CAF(TenantMixin, Base):
 
     id: Mapped[uuid.UUID] = _pk()
     tipo_dte: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    #: Ambiente cuyos documentos timbra. Cada ambiente tiene sus propios folios.
+    ambiente: Mapped[str] = mapped_column(String(4), nullable=False, default=Ambiente.CERT)
     folio_desde: Mapped[int] = mapped_column(Integer, nullable=False)
     folio_hasta: Mapped[int] = mapped_column(Integer, nullable=False)
     #: Puntero. Arranca en `folio_desde - 1`, no en 0: un CAF de 1000-1100 debe
@@ -243,7 +251,7 @@ class CAF(TenantMixin, Base):
             name="ck_cafs_puntero_en_rango",
         ),
         # El SELECT ... FOR UPDATE de la asignación entra por acá.
-        Index("ix_cafs_disponibles", "tenant_id", "tipo_dte", "estado", "folio_desde"),
+        Index("ix_cafs_disponibles", "tenant_id", "ambiente", "tipo_dte", "estado", "folio_desde"),
     )
 
 
@@ -292,6 +300,9 @@ class Document(TenantMixin, Base):
     #: Clave de idempotencia que entrega el llamador (id de venta, típicamente).
     external_id: Mapped[str] = mapped_column(String(100), nullable=False)
     tipo_dte: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    #: Ambiente del tenant al emitirlo. Fija a qué SII va (o si no va) aunque el
+    #: tenant cambie de ambiente después.
+    ambiente: Mapped[str] = mapped_column(String(4), nullable=False, default=Ambiente.CERT)
     folio: Mapped[int | None] = mapped_column(Integer)
     caf_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("cafs.id"))
 
@@ -343,13 +354,13 @@ class Document(TenantMixin, Base):
         UniqueConstraint("tenant_id", "external_id", name="uq_documents_external_id"),
         # Respaldo duro contra folio duplicado: si la lógica falla, falla la BD
         # antes de que salga un documento repetido.
-        UniqueConstraint("tenant_id", "tipo_dte", "folio", name="uq_documents_folio"),
+        UniqueConstraint("tenant_id", "ambiente", "tipo_dte", "folio", name="uq_documents_folio"),
         Index(
             "ix_documents_pendientes",
             "estado",
             "next_action_at",
             postgresql_where=text(
-                "estado NOT IN ('ACEPTADO','REPAROS','RECHAZADO','ANULADO','ERROR_VALIDACION')"
+                "estado NOT IN ('ACEPTADO','REPAROS','RECHAZADO','ANULADO','ERROR_VALIDACION','SIMULADO')"
             ),
         ),
     )

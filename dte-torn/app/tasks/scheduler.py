@@ -29,7 +29,7 @@ from sqlalchemy import case, func, or_, select, update
 from app.core.config import get_settings
 from app.db import control_session, tenant_session
 from app.dte.signer import ZONA_CHILE
-from app.models import CAF, Certificate, Document, EstadoCAF, EstadoDocumento, Tenant
+from app.models import CAF, Ambiente, Certificate, Document, EstadoCAF, EstadoDocumento, Tenant
 from app.tasks import colas
 
 E = EstadoDocumento
@@ -124,7 +124,10 @@ async def vigilar() -> dict[str, dict]:
                         select(
                             CAF.tipo_dte,
                             func.sum(case((CAF.estado == EstadoCAF.ACTIVO, CAF.folio_hasta - CAF.ultimo_folio_usado), else_=0)),
-                        ).group_by(CAF.tipo_dte)
+                        )
+                        # Los CAF de prueba de Desarrollador se regeneran solos.
+                        .where(CAF.ambiente != Ambiente.DEV)
+                        .group_by(CAF.tipo_dte)
                     )
                 ).all()
             )

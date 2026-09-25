@@ -31,7 +31,7 @@ aprovisionamiento por Alembic que ya dio problemas.
 | id | uuid PK | |
 | rut_emisor | text UNIQUE | `76123456-7` |
 | razon_social, giro, acteco, direccion, comuna, ciudad | text | van en `<Emisor>` |
-| ambiente | enum CERT / PROD | endpoints y RUT distintos |
+| ambiente | enum CERT / PROD / DEV | endpoints y RUT distintos; DEV (Desarrollador) firma y timbra con un CAF de prueba propio y no habla con el SII |
 | resolucion_numero, resolucion_fecha | int / date | van en el CAF y en la carátula del envío |
 | oficina_sii | text NULL | unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`); migración `0003` |
 | activo | bool | |
@@ -69,6 +69,7 @@ desde el día uno porque rotar sin esa columna es una migración bajo fuego.
 |---|---|---|
 | id | uuid PK | |
 | tenant_id, tipo_dte | uuid, smallint | |
+| ambiente | text | el del tenant al cargarlo; cada ambiente tiene sus folios (migración `0004`) |
 | folio_desde, folio_hasta | int | |
 | ultimo_folio_usado | int | puntero; arranca en `folio_desde - 1` |
 | xml_cifrado, nonce, key_version | bytea | el CAF **completo**, byte a byte |
@@ -108,7 +109,9 @@ originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 Índices y constraints:
 
 - `UNIQUE (tenant_id, external_id)` - respaldo duro de la idempotencia.
-- `UNIQUE (tenant_id, tipo_dte, folio)` - respaldo duro contra folio duplicado.
+- `UNIQUE (tenant_id, ambiente, tipo_dte, folio)` - respaldo duro contra folio duplicado. `documents.ambiente`
+  es el del tenant al emitir: fija a qué SII va aunque el tenant cambie de ambiente, y `GET /documents` y
+  `GET /folios` muestran solo los del ambiente actual.
 - `(estado, next_action_at) WHERE estado NOT IN (terminales)` - el barrido del
   scheduler.
 
@@ -201,7 +204,11 @@ servicio + header `X-Tenant-Id`, igual que el backend Torn. (A confirmar.)
                                                    vuelve al estado previo)
 ```
 
-Terminales: `ACEPTADO`, `REPAROS`, `RECHAZADO`, `ANULADO`, `ERROR_VALIDACION`.
+Terminales: `ACEPTADO`, `REPAROS`, `RECHAZADO`, `ANULADO`, `ERROR_VALIDACION`, `SIMULADO`.
+
+**`SIMULADO`**: un documento de Desarrollador termina acá al firmarse, con XML, timbre y PDF (que lleva
+cruzado "DOCUMENTO DE PRUEBA - SIN VALIDEZ TRIBUTARIA"). Nunca se encola para envío. Sus folios salen de un
+CAF de prueba que el servicio genera solo (`asegurar_caf_prueba`), de 100.000 folios.
 
 **`VERIFICAR`** (agregado tras un caso real en certificación): la subida salió y
 el SII no respondió, así que pudo haber recibido el sobre. No se reenvía: el paso
@@ -290,7 +297,7 @@ desechable:
 
 ```sql
 SELECT id, estado FROM documents
- WHERE estado NOT IN ('ACEPTADO','REPAROS','RECHAZADO','ANULADO','ERROR_VALIDACION')
+ WHERE estado NOT IN ('ACEPTADO','REPAROS','RECHAZADO','ANULADO','ERROR_VALIDACION','SIMULADO')
    AND next_action_at <= now()
  LIMIT 500;
 ```
