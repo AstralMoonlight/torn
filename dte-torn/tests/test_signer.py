@@ -382,3 +382,27 @@ def test_guia_de_despacho_se_timbra_y_firma(cert) -> None:
     assert b"<MNT>580286</MNT>" in dd  # 145 x 3.363 = 487.635 + IVA 92.651
     llave = serialization.load_pem_private_key(caf52.llave_ted_pem, password=None)
     llave.public_key().verify(frmt, dd, padding.PKCS1v15(), hashes.SHA1())
+
+
+def test_documento_con_fecha_posterior_al_timbre_no_se_firma(cert, caf33) -> None:
+    # 23-09 a las 23:30 en Chile ya es 24-09 en UTC: el documento del 24 no se puede timbrar el 23.
+    noche = datetime(2026, 9, 24, 2, 30, tzinfo=timezone.utc)
+    dte = construir_dte(EMISOR, DatosDocumento(
+        tipo_dte=33, fecha_emision=date(2026, 9, 24), receptor=RECEPTOR,
+        items=[Item(nombre="Gasa", precio=Decimal("1000"))],
+    ), 1000)
+    with pytest.raises(FirmaInvalidaError, match="posterior"):
+        firmar_dte(dte, caf33, cert, noche)
+    assert firmar_dte(_factura(), caf33, cert, noche)  # el del 23 sí
+
+
+def test_hoy_chile_no_es_la_fecha_utc(monkeypatch) -> None:
+    import app.dte.signer as signer
+
+    class Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 9, 25, 1, 34, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(signer, "datetime", Reloj)
+    assert signer.hoy_chile() == date(2026, 9, 24)

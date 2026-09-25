@@ -22,7 +22,7 @@ import base64
 import hashlib
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
@@ -38,6 +38,12 @@ from app.dte.builder import DECLARACION, NS, XSI, serializar
 from app.dte.caf import CafParseado
 
 ZONA_CHILE = ZoneInfo("America/Santiago")
+
+
+def hoy_chile() -> date:
+    """La fecha de hoy en Chile. Los contenedores corren en UTC: `date.today()`
+    da mañana desde las 20-21 h, y el SII rechaza un timbre anterior al documento."""
+    return datetime.now(ZONA_CHILE).date()
 
 #: `<RSR>` es obligatorio y de al menos un carácter, pero una boleta a
 #: consumidor final no tiene razón social de receptor. Es texto libre: una boleta
@@ -238,6 +244,12 @@ def firmar_dte(
             f"El folio {folio} tipo {tipo_dte} no pertenece al CAF "
             f"{caf.tipo_dte} {caf.folio_desde}-{caf.folio_hasta}"
         )
+
+    fecha = documento.findtext(f".//{{{NS}}}FchEmis")
+    if fecha and date.fromisoformat(fecha) > momento.astimezone(ZONA_CHILE).date():
+        # El SII lo marca en las muestras impresas: "Fecha Firma del TED debe ser
+        # mayor o igual a la fecha del documento".
+        raise FirmaInvalidaError(f"La fecha del documento ({fecha}) es posterior a la del timbre ({momento:%Y-%m-%d})")
 
     ted = timbrar(documento, caf, momento)
     tmst = etree.SubElement(documento, f"{{{NS}}}TmstFirma")

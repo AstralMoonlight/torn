@@ -65,7 +65,7 @@ from app.dte.builder import BOLETAS, GUIA_DESPACHO, DatosDocumento, Item, Recept
 from app.dte.caf import guardar_caf, parsear_caf
 from app.dte.folios import DatosEmision, emitir_documento
 from app.dte.set_pruebas import VENTA
-from app.dte.signer import ZONA_CHILE
+from app.dte.signer import ZONA_CHILE, hoy_chile
 from app.dte.sii_client import Canal, ClienteSii, SiiError, crear_http
 from app.models import CAF, Certificate, Document, Envio, Tenant
 
@@ -314,7 +314,7 @@ async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
         base = DatosDocumento.model_validate(anulado.payload)
         datos = DatosDocumento(
             tipo_dte=tipo_dte,
-            fecha_emision=date.today(),
+            fecha_emision=hoy_chile(),
             receptor=base.receptor,
             items=base.items,
             descuentos_globales=base.descuentos_globales,
@@ -334,7 +334,7 @@ async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
         base = DatosDocumento.model_validate(guia.payload)
         datos = DatosDocumento(
             tipo_dte=33,
-            fecha_emision=date.today(),
+            fecha_emision=hoy_chile(),
             receptor=base.receptor,
             items=base.items,
             referencias=[
@@ -345,7 +345,7 @@ async def _emitir_prueba(tenant_id: uuid.UUID, tipo_dte: int) -> uuid.UUID:
     else:
         datos = DatosDocumento(
             tipo_dte=tipo_dte,
-            fecha_emision=date.today(),
+            fecha_emision=hoy_chile(),
             receptor=None if tipo_dte in BOLETAS else _RECEPTOR_PRUEBA,
             items=[Item(nombre="Prueba de certificacion dte-torn", precio=Decimal("1190" if tipo_dte in BOLETAS else "1000"))],
             ind_traslado=VENTA if tipo_dte == GUIA_DESPACHO else None,
@@ -441,7 +441,7 @@ async def _folios_libres(tenant_id: uuid.UUID) -> dict[int, int]:
         cafs = (await s.execute(select(CAF).where(CAF.estado == "ACTIVO"))).scalars().all()
     libres: dict[int, int] = {}
     for c in cafs:
-        if c.fecha_vencimiento is None or c.fecha_vencimiento >= date.today():
+        if c.fecha_vencimiento is None or c.fecha_vencimiento >= hoy_chile():
             libres[c.tipo_dte] = libres.get(c.tipo_dte, 0) + folios_disponibles(c)
     return libres
 
@@ -517,7 +517,7 @@ async def modo_set() -> int:
             if doc is None:
                 lineas, global_pct = resueltos[caso.id]
                 datos = armar_documento(
-                    set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios, emisor_como_receptor
+                    set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, hoy_chile(), folios, emisor_como_receptor
                 )
                 t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
                 async with tenant_session(tenant_id) as sesion:
@@ -980,7 +980,7 @@ def modo_revisar_set() -> int:
         lineas, global_pct = resueltos[caso.id]
         # Solo se muestran montos: el receptor real del traslado interno lo pone `set`.
         datos = armar_documento(
-            set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, date.today(), folios, _RECEPTOR_PRUEBA
+            set_, caso, lineas, global_pct, _RECEPTOR_PRUEBA, hoy_chile(), folios, _RECEPTOR_PRUEBA
         )
         folios[caso.id] = (caso.tipo_dte, 0)
         print(f"CASO {caso.id} - {nombres[caso.tipo_dte]}")

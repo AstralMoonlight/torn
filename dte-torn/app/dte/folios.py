@@ -25,6 +25,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.dte.signer import hoy_chile
 from app.models import CAF, Document, EstadoCAF, EstadoDocumento
 
 #: Reintentos del SELECT ... FOR UPDATE cuando el CAF elegido se agota entre el
@@ -93,7 +94,7 @@ async def asignar_folio(
     Raises:
         SinFoliosError: No hay CAF vigente con folios.
     """
-    hoy = date.today()
+    hoy = hoy_chile()
 
     for _ in range(_MAX_REINTENTOS_LOCK):
         stmt = (
