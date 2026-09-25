@@ -13,7 +13,6 @@ import {
     Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Table,
@@ -35,6 +34,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
 import { deleteProduct } from '@/services/products'
@@ -137,8 +137,14 @@ export default function InventarioPage() {
                 }
             />
 
-            {/* Search */}
-            <SearchInput data-section="inventario.buscador" placeholder="Buscar por nombre, SKU o código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <ListToolbar
+                busqueda={search}
+                onBusqueda={setSearch}
+                placeholder="Buscar por nombre, SKU o código de barras..."
+                visibles={filtered.length}
+                total={allProducts.length}
+                unidad="productos"
+            />
 
             {/* Table */}
             <div data-section="inventario.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

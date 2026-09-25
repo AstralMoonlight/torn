@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } f
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -99,6 +100,7 @@ function PriceListItemRow({
 
 export default function PriceListsPage() {
     const [priceLists, setPriceLists] = useState<PriceListRead[]>([])
+    const [busqueda, setBusqueda] = useState('')
     const [loading, setLoading] = useState(true)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
@@ -340,6 +342,8 @@ export default function PriceListsPage() {
 
     // ── Render ────────────────────────────────────────────────────────────
 
+    const listasVisibles = priceLists.filter(pl => pl.name.toLowerCase().includes(busqueda.trim().toLowerCase()))
+
     return (
         <PageContainer>
             <PageHeader
@@ -351,6 +355,15 @@ export default function PriceListsPage() {
                         <Plus className="h-4 w-4" /> Nueva Lista
                     </Button>
                 }
+            />
+
+            <ListToolbar
+                busqueda={busqueda}
+                onBusqueda={setBusqueda}
+                placeholder="Buscar lista por nombre..."
+                visibles={listasVisibles.length}
+                total={priceLists.length}
+                unidad="listas"
             />
 
             {/* Table */}
@@ -390,10 +403,10 @@ export default function PriceListsPage() {
                             </TableRow>
                         )}
                         {loading && <TableEmpty colSpan={3} loading />}
-                        {!loading && priceLists.length === 0 && (
-                            <TableEmpty colSpan={3}>No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.</TableEmpty>
+                        {!loading && listasVisibles.length === 0 && (
+                            <TableEmpty colSpan={3}>{priceLists.length === 0 ? 'No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.' : 'Ninguna lista coincide con la búsqueda.'}</TableEmpty>
                         )}
-                        {!loading && priceLists.map(pl => (
+                        {!loading && listasVisibles.map(pl => (
                             <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">
                                 <TableCell className="font-medium text-foreground">
                                     <div className="flex items-center gap-2">

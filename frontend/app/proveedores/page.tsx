@@ -5,8 +5,8 @@ import { Plus, Edit2, Trash2, Truck } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
-import { SearchInput } from '@/components/ui/search-input'
 import {
     Table,
     TableBody,
@@ -87,7 +87,14 @@ export default function ProvidersPage() {
                 }
             />
 
-            <SearchInput data-section="proveedores.buscador" className="max-w-sm" placeholder="Buscar por Nombre o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <ListToolbar
+                busqueda={search}
+                onBusqueda={setSearch}
+                placeholder="Buscar por nombre o RUT..."
+                visibles={filtered.length}
+                total={providers.length}
+                unidad="proveedores"
+            />
 
             <div data-section="proveedores.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>

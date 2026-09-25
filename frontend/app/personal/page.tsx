@@ -26,7 +26,6 @@ import {
     TableEmpty
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { SearchInput } from '@/components/ui/search-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
@@ -40,6 +39,7 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { getUsers, updateUser, type User } from '@/services/users'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { roleService, type Role } from '@/services/roles'
 import UserDialog from '@/components/users/UserDialog'
 import { Switch } from '@/components/ui/switch'
@@ -235,11 +235,19 @@ export default function PersonalPage() {
                 </TabsList>
 
                 <TabsContent data-section="personal.usuarios" value="list" className="space-y-4">
-                    <div className="flex justify-end">
-                        <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
-                            <Plus className="h-4 w-4" /> Nuevo Personal
-                        </Button>
-                    </div>
+                    <ListToolbar
+                        busqueda={rolesSearchTerm}
+                        onBusqueda={setRolesSearchTerm}
+                        placeholder="Buscar por nombre o RUT..."
+                        visibles={filteredRolesUsers.length}
+                        total={staff.length}
+                        unidad="usuarios"
+                        acciones={
+                            <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
+                                <Plus className="h-4 w-4" /> Nuevo Personal
+                            </Button>
+                        }
+                    />
 
                     <Card className="border-border shadow-sm overflow-hidden">
                         <Table>
@@ -253,10 +261,10 @@ export default function PersonalPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {staff.length === 0 ? (
-                                    <TableEmpty colSpan={5}>No hay personal registrado. Comienza agregando uno nuevo.</TableEmpty>
+                                {filteredRolesUsers.length === 0 ? (
+                                    <TableEmpty colSpan={5}>{staff.length === 0 ? 'No hay personal registrado. Comienza agregando uno nuevo.' : 'Nadie coincide con la búsqueda.'}</TableEmpty>
                                 ) : (
-                                    staff.map((user) => (
+                                    filteredRolesUsers.map((user) => (
                                         <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
@@ -313,17 +321,22 @@ export default function PersonalPage() {
                 </TabsContent>
 
                 <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <SearchInput className="max-w-xs w-full" placeholder="Buscar usuario..." value={rolesSearchTerm} onChange={(e) => setRolesSearchTerm(e.target.value)} />
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={loadAll} disabled={savingRoles}>
-                                <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar
+                    <ListToolbar
+                        busqueda={rolesSearchTerm}
+                        onBusqueda={setRolesSearchTerm}
+                        placeholder="Buscar por nombre o RUT..."
+                        visibles={filteredRolesUsers.length}
+                        total={staff.length}
+                        unidad="usuarios"
+                        acciones={<>
+                            <Button variant="outline" onClick={loadAll} disabled={savingRoles}>
+                                <RefreshCw className={cn("h-4 w-4", staffLoading && "animate-spin")} /> Recargar
                             </Button>
-                            <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
+                            <Button onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
                                 <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
                             </Button>
-                        </div>
-                    </div>
+                        </>}
+                    />
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Matrix Table */}

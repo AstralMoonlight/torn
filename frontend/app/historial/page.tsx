@@ -5,7 +5,6 @@ import { useEffect, useState, Fragment } from 'react'
 import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Dialog,
@@ -21,6 +20,7 @@ import { AlertaError } from '@/components/ui/alerta-error'
 import { avisar } from '@/lib/store/uiStore'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import {
     History,
     RotateCcw,
@@ -194,16 +194,22 @@ export default function HistorialPage() {
             <PageHeader
                 icon={History}
                 title="Historial de Ventas"
-                description={`${sales.length} documentos`}
-                actions={
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setFacturarOpen(true)}>
+                description="Revisa, reimprime y anula los documentos emitidos."
+            />
+
+            <ListToolbar
+                busqueda={search}
+                onBusqueda={setSearch}
+                placeholder="Buscar por folio o cliente..."
+                visibles={filtered.length}
+                total={sales.length}
+                unidad="documentos"
+                acciones={
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFacturarOpen(true)}>
                         <FileText className="h-4 w-4" /> Facturar guías
                     </Button>
                 }
             />
-
-            {/* Search */}
-            <SearchInput data-section="historial.buscador" placeholder="Buscar por folio o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
             <div data-section="historial.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

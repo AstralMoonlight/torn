@@ -17,7 +17,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { SearchInput } from '@/components/ui/search-input'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { avisar } from '@/lib/store/uiStore'
@@ -26,6 +25,7 @@ import CustomerForm from '@/components/customers/CustomerForm'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 
 export default function CustomersPage() {
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -114,7 +114,14 @@ export default function CustomersPage() {
                 }
             />
 
-            <SearchInput data-section="clientes.buscador" className="max-w-sm" placeholder="Buscar por RUT o Nombre..." value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <ListToolbar
+                busqueda={filter}
+                onBusqueda={setFilter}
+                placeholder="Buscar por RUT o nombre..."
+                visibles={filteredCustomers.length}
+                total={customers.length}
+                unidad="clientes"
+            />
 
             <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>

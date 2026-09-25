@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { SearchInput } from '@/components/ui/search-input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/services/brands'
@@ -32,6 +31,7 @@ import { Pencil, Trash2, Plus, Loader2, Tags } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 
 const brandSchema = z.object({ name: z.string().trim().min(1, 'El nombre es obligatorio') })
 type BrandFormValues = z.infer<typeof brandSchema>
@@ -121,7 +121,14 @@ export default function BrandsPage() {
                 }
             />
 
-            <SearchInput data-section="marcas.buscador" className="max-w-sm" placeholder="Buscar marca..." value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <ListToolbar
+                busqueda={filter}
+                onBusqueda={setFilter}
+                placeholder="Buscar marca..."
+                visibles={filteredBrands.length}
+                total={brands.length}
+                unidad="marcas"
+            />
 
             <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
