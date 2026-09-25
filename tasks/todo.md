@@ -178,3 +178,4 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 - [ ] Usuario declara el avance con el track ID
 - [ ] Siguiente etapa: intercambio de información (acuse de recibo y aceptación/rechazo en XML a `SII_dte_intercambio@sii.cl`): no existe en dte-torn
 - [ ] Muestras impresas: todos los del set de pruebas + 10 de la simulación que cubran todos los tipos
+- 2026-09-24: las muestras de la simulación 0260198860 no pasan el validador ("Fecha Firma del TED debe ser mayor o igual a la fecha del documento"): FchEmis 25-09 por UTC (fix 248851b). Se emitió un envío de reemplazo con 1 documento por tipo, EPR 5/5, **track 0260200310** (33 F97, 34 F108, 52 F111, 61 F84, 56 F67). Sus PDF están en `setDePruebas/subir_sii_simulacion/`.
