@@ -130,7 +130,7 @@ Torn/
 │   └── lib/              # utils.ts, rut.ts, store (Zustand)
 ├── database/         # Datos auxiliares para poblar la BD (actecos_sii.json) - ignorado por git
 ├── info/             # Documentación estable (DEVELOPER_GUIDE.md, INFORME_TECNICO.md)
-├── tasks/            # Trabajo en curso: planes y listas de tareas (plan.md, todo.md, ui_pendientes.md)
+├── tasks/            # Trabajo en curso: planes y listas de tareas (plan.md, todo.md, ui_pendientes_finalizado.md)
 ├── Dockerfile.backend / Dockerfile.frontend / docker-compose.yml   # en la raíz: orquestan ambos servicios
 └── README.md / CLAUDE.md / package.json (shim raíz)
 ```
