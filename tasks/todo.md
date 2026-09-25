@@ -168,3 +168,13 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 | LIBRO DE VENTAS | 0260088990 | 24-09-2026 | LOK (docs del intento 2) |
 | LIBRO DE COMPRAS | 0260084758 | 24-09-2026 | LOK, sin resultado de revisión aún |
 | LIBRO DE GUIAS | 0260086522 | 24-09-2026 | SOK |
+
+---
+
+## Fase 6: Simulación
+
+- [x] `setDePruebas/simulacion.txt` (gitignored): 24 documentos con clientes, productos y precios reales de Bsale (facturas 1648-1667). 17×33, 1×34 exenta, 2×52 y 3×61. La NC que anula apunta a la exenta, porque JCB no tiene productos exentos. 1×56.
+- [x] Envío único EPR, 24 aceptados, 0 reparos — **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
+- [ ] Usuario declara el avance con el track ID
+- [ ] Siguiente etapa: intercambio de información (acuse de recibo y aceptación/rechazo en XML a `SII_dte_intercambio@sii.cl`): no existe en dte-torn
+- [ ] Muestras impresas: todos los del set de pruebas + 10 de la simulación que cubran todos los tipos
