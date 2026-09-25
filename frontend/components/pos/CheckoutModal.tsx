@@ -12,19 +12,12 @@ import {
     DialogFooter,
     DialogDescription,
 } from '@/components/ui/dialog'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createSale, getPaymentMethods, getSalePdfPath, getFoliosStatus, type PaymentMethod, type DocumentReference, type FolioStockOut } from '@/services/sales'
+import { createSale, getPaymentMethods, getSalePdfPath, type PaymentMethod } from '@/services/sales'
 import { toast } from 'sonner'
 import {
     Loader2,
@@ -32,14 +25,8 @@ import {
     Plus,
     Trash2,
     Banknote,
-    Receipt,
-    FileText,
     Printer,
-    ChevronDown,
-    ChevronRight,
-    FileStack,
 } from 'lucide-react'
-import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
 import { formatCLP } from '@/lib/format'
 
 
@@ -91,58 +78,28 @@ interface Props {
 
 const GENERIC_RUT = '66666666-6'
 
-/** Tipos de documento de referencia más usados (SII Chile). */
-const REFERENCE_DOC_TYPES = [
-    { value: '801', label: '801 - Orden de Compra' },
-    { value: '52', label: '52 - Guía de Despacho Electrónica' },
-    { value: 'HES', label: 'HES - Hoja de Estado de Pago' },
-    { value: '802', label: '802 - Nota de Pedido' },
-    { value: '46', label: '46 - Factura de Compra' },
-] as const
-
-/** IndTraslado del SII que ofrece el POS. 5: el receptor es la propia empresa. */
-const TIPOS_TRASLADO = [
-    { value: 1, label: 'Venta (se factura después)' },
-    { value: 2, label: 'Venta por efectuar' },
-    { value: 3, label: 'Consignación' },
-    { value: 5, label: 'Traslado interno' },
-    { value: 6, label: 'Otro traslado (no venta)' },
-] as const
-
-const NOMBRE_DTE: Record<number, string> = {
-    33: 'Factura', 34: 'Exenta', 39: 'Boleta', 41: 'Boleta Exenta', 52: 'Guía',
-}
-
-function formatDateForInput(d: Date): string {
-    return d.toISOString().slice(0, 10)
+const DTE_LABELS: Record<number, string> = {
+    33: 'Factura',
+    34: 'Factura Exenta',
+    39: 'Boleta',
+    41: 'Boleta Exenta',
+    52: 'Guía de Despacho',
 }
 
 export default function CheckoutModal({ open, onClose }: Props) {
-    const { items, totalFinal, clear, customer, setCustomer, setTipoDte } = useCartStore()
+    // Tipo de documento, cliente y referencias ya se deciden en el panel del
+    // carrito (CartPanel.tsx) antes de llegar a este modal — acá sólo se
+    // resuelve el pago. Evita el vaivén de tener que volver atrás en medio
+    // de un formulario de pago a medio llenar para corregir algo de eso.
+    const { items, totalFinal, clear, customer, tipoDte, referencias, setReferencias, guia } = useCartStore()
     const { userId } = useSessionStore()
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [payments, setPayments] = useState<PaymentLine[]>([])
-    const [dteType, setDteType] = useState<number>(39)
-    const [availableDtes, setAvailableDtes] = useState<FolioStockOut[]>([])
-
-    // Customer State is now managed by cartStore to allow auto-switching lists
-
-
-    // El carro recalcula el IVA según el DTE elegido: un documento exento no
-    // lleva impuesto, y el total mostrado debe coincidir con el que cobra el
-    // backend (app/utils/taxes.py).
-    useEffect(() => {
-        setTipoDte(dteType)
-    }, [dteType, setTipoDte])
 
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
     const [lastFolio, setLastFolio] = useState<number | null>(null)
     const [lastSaleId, setLastSaleId] = useState<number | null>(null)
-    const [refsSectionOpen, setRefsSectionOpen] = useState(false)
-    const [referencias, setReferencias] = useState<DocumentReference[]>([])
-    const [indTraslado, setIndTraslado] = useState<number>(1)
-    const [tipoDespacho, setTipoDespacho] = useState<number | null>(null)
 
     // totalFinal puede cambiar mientras el modal ya está abierto (recálculo
     // async de precio de lista, IVA según el tipo de DTE, etc.). El efecto de
@@ -161,31 +118,16 @@ export default function CheckoutModal({ open, onClose }: Props) {
     // Load payment methods on open (sólo al abrir, no en cada cambio de total)
     useEffect(() => {
         if (open) {
-            Promise.all([
-                getPaymentMethods(),
-                getFoliosStatus()
-            ])
-                .then(([m, f]) => {
+            getPaymentMethods()
+                .then((m) => {
                     setMethods(m)
                     const cash = m.find((pm) => pm.code === 'EFECTIVO')
                     if (cash) setPayments([{ method: cash, amount: roundCash(totalFinalRef.current) }])
-
-                    const validDtes = f.filter(d => d.available > 0)
-                    setAvailableDtes(validDtes)
-                    if (validDtes.length > 0) {
-                        const boleta = validDtes.find(d => d.dte_type === 39)
-                        setDteType(boleta ? 39 : validDtes[0].dte_type)
-                    }
                 })
-                .catch(() => toast.error('Error cargando datos de caja'))
+                .catch(() => toast.error('Error cargando medios de pago'))
             setSuccess(false)
             setLastFolio(null)
             setLastSaleId(null)
-            setDteType(39)
-            setReferencias([])
-            setRefsSectionOpen(false)
-            setIndTraslado(1)
-            setTipoDespacho(null)
         }
     }, [open])
 
@@ -195,18 +137,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
         setSuccess(false)
         setLastFolio(null)
         setLastSaleId(null)
-        setReferencias([])
         onClose()
-    }
-
-    const addReferencia = () => {
-        setReferencias((prev) => [...prev, { tipo_documento: '801', folio: '', fecha: formatDateForInput(new Date()) }])
-    }
-    const removeReferencia = (index: number) => {
-        setReferencias((prev) => prev.filter((_, i) => i !== index))
-    }
-    const updateReferencia = (index: number, field: keyof DocumentReference, value: string) => {
-        setReferencias((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
     }
 
     const handlePrint = async () => {
@@ -328,31 +259,32 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const suggestedBills = useMemo(() => getSuggestedBills(totalFinal), [totalFinal])
 
     // Determine effective RUT
-    const isBoleta = [39, 41].includes(dteType)
-    // La guía descuenta stock pero no se cobra: se cobra al facturarla (Historial).
-    const isGuia = dteType === 52
-    const trasladoInterno = isGuia && indTraslado === 5
+    const isBoleta = [39, 41].includes(tipoDte)
+    // La guía no se cobra: se cobra al facturarla (Historial).
+    const isGuia = tipoDte === 52
+    const trasladoInterno = isGuia && guia.indTraslado === 5
     const effectiveRut = customer?.rut || (isBoleta || trasladoInterno ? GENERIC_RUT : '')
 
-    // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
-    const canSubmit = (isBoleta || trasladoInterno || !!customer) && availableDtes.length > 0
-        && (isGuia || (remaining <= 0 && !changeExceedsCash))
+    // El tipo de documento y el cliente ya se validaron en CartPanel antes de
+    // poder abrir este modal (ver `canCheckout` ahí) — acá sólo falta que el
+    // pago cierre.
+    const canSubmit = (isBoleta || trasladoInterno || !!customer) && (isGuia || (remaining <= 0 && !changeExceedsCash))
 
     const handleSubmit = async () => {
         setSubmitting(true)
         try {
             const sale = await createSale({
                 rut_cliente: effectiveRut,
-                tipo_dte: dteType,
+                tipo_dte: tipoDte,
                 items: items.map((i) => ({
                     product_id: i.product.id,
                     cantidad: i.quantity,
                 })),
+                ...(isGuia ? { ind_traslado: guia.indTraslado, tipo_despacho: guia.tipoDespacho ?? undefined } : {}),
                 payments: isGuia ? [] : payments.map((p) => ({
                     payment_method_id: p.method.id,
                     amount: p.amount,
                 })),
-                ...(isGuia ? { ind_traslado: indTraslado, tipo_despacho: tipoDespacho ?? undefined } : {}),
                 seller_id: userId || undefined,
                 ...(isBoleta ? {} : { referencias: referencias.filter((r) => r.folio.trim() && r.fecha) }),
             })
@@ -360,6 +292,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setSuccess(true)
             setLastFolio(sale.folio)
             setLastSaleId(sale.id)
+            setReferencias([])
             toast.success(`¡Venta registrada! Folio #${sale.folio}`, { duration: 5000 })
 
             // No auto-open, user must click print or finish
@@ -399,12 +332,14 @@ export default function CheckoutModal({ open, onClose }: Props) {
                 <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => success && e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle className="text-xl">
-                            {success ? '✅ Venta Exitosa' : 'Cobrar'}
+                            {success ? '✅ Venta Exitosa' : `Cobrar ${DTE_LABELS[tipoDte] || ''}`}
                         </DialogTitle>
                         <DialogDescription>
                             {success
                                 ? `Folio #${lastFolio} registrado correctamente.`
-                                : `Total: ${formatCLP(totalFinal)}`}
+                                : customer
+                                    ? `${customer.razon_social} — Total: ${formatCLP(totalFinal)}`
+                                    : `Total: ${formatCLP(totalFinal)}`}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -441,207 +376,12 @@ export default function CheckoutModal({ open, onClose }: Props) {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {/* DTE Type Toggle */}
-                            {availableDtes.length > 0 ? (
-                                <Tabs value={dteType.toString()} onValueChange={(v) => setDteType(Number(v))}>
-                                    <TabsList className="grid w-full grid-cols-3">
-                                        <TabsTrigger
-                                            value="39"
-                                            className="gap-1.5 text-xs"
-                                            disabled={!availableDtes.some(d => d.dte_type === 39)}
-                                        >
-                                            <Receipt className="h-3.5 w-3.5" /> Boleta
-                                        </TabsTrigger>
-
-                                        <TabsTrigger
-                                            value="33"
-                                            className="gap-1.5 text-xs"
-                                            disabled={!availableDtes.some(d => d.dte_type === 33)}
-                                        >
-                                            <FileText className="h-3.5 w-3.5" /> Factura
-                                        </TabsTrigger>
-
-                                        {/* Dropdown Menu para los DTEs extra o seleccionados fuera de 33/39 */}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <TabsTrigger
-                                                    value={![33, 39].includes(dteType) ? dteType.toString() : "extra"}
-                                                    className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                                    disabled={!availableDtes.some(d => ![33, 39].includes(d.dte_type))}
-                                                >
-                                                    {![33, 39].includes(dteType) && availableDtes.find(d => d.dte_type === dteType) ? (
-                                                        availableDtes.find(d => d.dte_type === dteType)?.dte_type === 34 ? 'Factura Exenta (34)' :
-                                                            availableDtes.find(d => d.dte_type === dteType)?.dte_type === 41 ? 'Boleta Exenta (41)' :
-                                                                dteType === 52 ? 'Guía (52)' :
-                                                                `DTE ${dteType}`
-                                                    ) : (
-                                                        "..."
-                                                    )}
-                                                </TabsTrigger>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-40 text-xs">
-                                                {availableDtes.find(d => d.dte_type === 34) && (
-                                                    <DropdownMenuItem onClick={() => setDteType(34)} className="text-xs flex gap-2">
-                                                        <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Factura Exenta (34)
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {availableDtes.find(d => d.dte_type === 41) && (
-                                                    <DropdownMenuItem onClick={() => setDteType(41)} className="text-xs flex gap-2">
-                                                        <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {availableDtes.find(d => d.dte_type === 52) && (
-                                                    <DropdownMenuItem onClick={() => setDteType(52)} className="text-xs flex gap-2">
-                                                        <FileStack className="h-3.5 w-3.5 text-muted-foreground" /> Guía de Despacho (52)
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TabsList>
-                                </Tabs>
-                            ) : (
-                                <div className="p-3 bg-destructive/10 text-destructive text-xs rounded-md text-center font-medium border border-destructive/30">
-                                    No hay folios de venta disponibles. Solicite folios al SII.
-                                </div>
-                            )}
-
-                            {isGuia && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs">Tipo de traslado *</Label>
-                                        <select
-                                            value={indTraslado}
-                                            onChange={(e) => setIndTraslado(Number(e.target.value))}
-                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                        >
-                                            {TIPOS_TRASLADO.map((t) => (
-                                                <option key={t.value} value={t.value}>{t.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs">Despacho</Label>
-                                        <select
-                                            value={tipoDespacho ?? ''}
-                                            onChange={(e) => setTipoDespacho(e.target.value ? Number(e.target.value) : null)}
-                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                        >
-                                            <option value="">Sin indicar</option>
-                                            <option value={1}>Por cuenta del cliente</option>
-                                            <option value={2}>Emisor a local del cliente</option>
-                                            <option value={3}>Emisor a otras instalaciones</option>
-                                        </select>
-                                    </div>
-                                    <p className="col-span-2 text-[10px] text-muted-foreground">
-                                        La guía descuenta stock y no se cobra.
-                                        {indTraslado === 5 ? ' En traslado interno el receptor es la propia empresa.' : ' Se cobra al facturarla desde Historial.'}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Customer Section — Smart Autocomplete */}
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between items-center">
-                                    <Label className="text-xs">Cliente {isBoleta ? '(Opcional)' : '(Requerido)'}</Label>
-                                    {isBoleta && !customer && (
-                                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                            Por defecto: Cliente Genérico
-                                        </span>
-                                    )}
-                                </div>
-
-                                <CustomerSearchCombobox
-                                    value={customer}
-                                    onChange={async (c) => {
-                                        if (c && c.price_list_id) {
-                                            try {
-                                                const { getPriceList } = await import('@/services/price_lists')
-                                                const list = await getPriceList(c.price_list_id)
-                                                setCustomer(c, list)
-                                                toast.success(`Lista aplicada: ${list.name}`)
-                                            } catch {
-                                                setCustomer(c)
-                                            }
-                                        } else {
-                                            setCustomer(c)
-                                            if (c) toast.info('Cliente sin lista especial (Precio Base)')
-                                        }
-                                    }}
-                                    required={!isBoleta}
-                                    placeholder={isBoleta ? 'Buscar cliente (opcional)…' : 'Buscar cliente por Nombre o RUT…'}
-                                />
-                            </div>
-
-                            {/* Referencias (solo Factura) */}
-                            {!isBoleta && (
-                                <div className="space-y-1.5 rounded-lg border border-border bg-muted/50 overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setRefsSectionOpen((o) => !o)}
-                                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <FileStack className="h-3.5 w-3.5 text-muted-foreground" />
-                                            Referencias (OC, Guía, etc.)
-                                            {referencias.length > 0 && (
-                                                <Badge variant="secondary" className="text-[10px]">{referencias.length}</Badge>
-                                            )}
-                                        </span>
-                                        {refsSectionOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                                    </button>
-                                    {refsSectionOpen && (
-                                        <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border">
-                                            <p className="text-[10px] text-muted-foreground pt-2">Opcional. Documentos previos que respaldan la factura.</p>
-                                            {referencias.map((ref, idx) => (
-                                                <div key={idx} className="grid grid-cols-[1fr 1fr auto] gap-1.5 items-end">
-                                                    <div className="space-y-0.5">
-                                                        <Label className="text-[10px] text-muted-foreground">Tipo</Label>
-                                                        <select
-                                                            value={ref.tipo_documento}
-                                                            onChange={(e) => updateReferencia(idx, 'tipo_documento', e.target.value)}
-                                                            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                                        >
-                                                            {REFERENCE_DOC_TYPES.map((opt) => (
-                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-0.5">
-                                                        <Label className="text-[10px] text-muted-foreground">Folio</Label>
-                                                        <Input
-                                                            value={ref.folio}
-                                                            onChange={(e) => updateReferencia(idx, 'folio', e.target.value)}
-                                                            placeholder="Nº"
-                                                            className="h-8 text-xs"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-0.5">
-                                                        <div className="space-y-0.5">
-                                                            <Label className="text-[10px] text-muted-foreground">Fecha</Label>
-                                                            <Input
-                                                                type="date"
-                                                                value={ref.fecha}
-                                                                onChange={(e) => updateReferencia(idx, 'fecha', e.target.value)}
-                                                                className="h-8 w-[110px] text-xs"
-                                                            />
-                                                        </div>
-                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive shrink-0" onClick={() => removeReferencia(idx)}>
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <Button type="button" variant="outline" size="sm" onClick={addReferencia} className="h-7 text-[11px] gap-1 w-full">
-                                                <Plus className="h-3 w-3" /> Añadir referencia
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {!isGuia && (<>
-                            <Separator />
-
+                            {isGuia ? (
+                                <p className="text-sm text-muted-foreground">
+                                    La guía descuenta el stock y no se cobra.
+                                    {trasladoInterno ? ' Traslado interno: el receptor es la propia empresa.' : ' Se cobra al facturarla desde Historial.'}
+                                </p>
+                            ) : (<>
                             {/* Payment Methods */}
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
@@ -712,12 +452,6 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                         {formatCLP(totalPaid)}
                                     </span>
                                 </div>
-                                {roundingAdjustment !== 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Redondeo</span>
-                                        <span className="text-foreground">{formatCLP(roundingAdjustment)}</span>
-                                    </div>
-                                )}
                                 {remaining > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-destructive">Faltante</span>
@@ -752,7 +486,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 className="gap-2 text-xs"
                             >
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                {`Emitir ${NOMBRE_DTE[dteType] ?? `DTE ${dteType}`}`}
+                                {`Emitir ${DTE_LABELS[tipoDte] || 'Documento'}`}
                             </Button>
                         </DialogFooter>
                     )}

@@ -16,16 +16,18 @@ import {
     Loader2,
     Search,
     User as UserIcon,
+    UserCheck,
     Plus,
-    X,
-    CheckCircle2,
+    ChevronDown,
+    ChevronRight,
 } from 'lucide-react'
 
 interface Props {
     value: Customer | null
     onChange: (customer: Customer | null) => void
     required?: boolean
-    placeholder?: string
+    /** Ícono h-9 w-9 (default) vs. barra completa — ver comentario donde se usa el trigger. */
+    compact?: boolean
 }
 
 /**
@@ -53,19 +55,27 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     )
 }
 
+const SEARCH_PLACEHOLDER = 'Buscar por Nombre o RUT…'
+
 export default function CustomerSearchCombobox({
     value,
     onChange,
-    placeholder = 'Buscar por Nombre o RUT…',
+    required = false,
+    compact = true,
 }: Props) {
+    // Panel inline (no modal): se expande en el flujo normal del documento,
+    // empujando lo que viene después en vez de taparlo — el dropdown
+    // absoluto que tenía antes sí tapaba Referencias/Totales, y abrir un
+    // Dialog para elegir cliente en cada venta resultó ser demasiada
+    // ventana emergente. Sólo "Crear nuevo cliente" (formulario largo, poco
+    // frecuente) se queda como Dialog más abajo.
+    const [expanded, setExpanded] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Customer[]>([])
-    const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(-1)
     const [createOpen, setCreateOpen] = useState(false)
 
-    const containerRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
     const listRef = useRef<HTMLDivElement>(null)
@@ -74,7 +84,6 @@ export default function CustomerSearchCombobox({
     const performSearch = useCallback(async (q: string) => {
         if (q.length < 2) {
             setResults([])
-            setIsOpen(false)
             return
         }
 
@@ -82,7 +91,6 @@ export default function CustomerSearchCombobox({
         try {
             const data = await searchCustomers(q)
             setResults(data)
-            setIsOpen(true)
             setHighlightedIndex(-1)
         } catch {
             setResults([])
@@ -98,7 +106,6 @@ export default function CustomerSearchCombobox({
 
             if (val.length < 2) {
                 setResults([])
-                setIsOpen(false)
                 return
             }
 
@@ -115,16 +122,15 @@ export default function CustomerSearchCombobox({
         return () => clearTimeout(debounceRef.current)
     }, [])
 
-    // ── Close dropdown on click outside ──────────────────────────
+    // ── Reset search state each time the panel expands, autofocus ─
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setIsOpen(false)
-            }
+        if (expanded && !value) {
+            setQuery('')
+            setResults([])
+            setHighlightedIndex(-1)
+            setTimeout(() => inputRef.current?.focus(), 50)
         }
-        document.addEventListener('mousedown', handler)
-        return () => document.removeEventListener('mousedown', handler)
-    }, [])
+    }, [expanded, value])
 
     // ── Scroll highlighted item into view ────────────────────────
     useEffect(() => {
@@ -137,14 +143,6 @@ export default function CustomerSearchCombobox({
     // ── Keyboard navigation ──────────────────────────────────────
     const totalItems = results.length + 1 // +1 for "Crear nuevo" row
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (!isOpen && e.key !== 'Escape') {
-            // If dropdown closed and user presses down, trigger search
-            if (e.key === 'ArrowDown' && query.length >= 2) {
-                performSearch(query)
-            }
-            return
-        }
-
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
@@ -160,13 +158,12 @@ export default function CustomerSearchCombobox({
                     selectCustomer(results[highlightedIndex])
                 } else if (highlightedIndex === results.length) {
                     // "Crear nuevo" row
-                    setIsOpen(false)
+                    setExpanded(false)
                     setCreateOpen(true)
                 }
                 break
             case 'Escape':
-                e.preventDefault()
-                setIsOpen(false)
+                setExpanded(false)
                 break
         }
     }
@@ -176,13 +173,7 @@ export default function CustomerSearchCombobox({
         onChange(c)
         setQuery('')
         setResults([])
-        setIsOpen(false)
-    }
-
-    const clearCustomer = () => {
-        onChange(null)
-        setQuery('')
-        setTimeout(() => inputRef.current?.focus(), 50)
+        setExpanded(false)
     }
 
     // ── Customer creation handler ────────────────────────────────
@@ -197,144 +188,149 @@ export default function CustomerSearchCombobox({
         }
     }
 
-    // ── RENDER: Selected state (chip) ────────────────────────────
-    if (value) {
-        return (
-            <>
-                <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-primary truncate">
-                            {value.razon_social}
-                        </p>
-                        <p className="text-[11px] font-mono text-primary/80">
-                            {value.rut}
-                        </p>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-primary hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
-                        onClick={clearCustomer}
-                        type="button"
-                    >
-                        <X className="h-3.5 w-3.5" />
-                    </Button>
-                </div>
+    const triggerToneClass = value
+        ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+        : required
+            ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
+            : 'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
 
-                {/* Stacked create dialog (in case we need it later) */}
-                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                    <DialogContent className="sm:max-w-lg z-[100]">
-                        <DialogHeader>
-                            <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
-                        </DialogHeader>
-                        <CustomerForm
-                            onSubmit={handleCreateSuccess}
-                            onCancel={() => setCreateOpen(false)}
-                        />
-                    </DialogContent>
-                </Dialog>
-            </>
-        )
-    }
-
-    // ── RENDER: Search state ─────────────────────────────────────
     return (
         <>
-            <div ref={containerRef} className="relative">
-                {/* Search input */}
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                    <Input
-                        ref={inputRef}
-                        placeholder={placeholder}
-                        value={query}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onFocus={() => {
-                            if (query.length >= 2 && results.length > 0) setIsOpen(true)
-                        }}
-                        className="pl-8 pr-8 h-9 text-sm"
-                        autoComplete="off"
-                    />
-                    {loading && (
-                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            {compact ? (
+                <button
+                    type="button"
+                    onClick={() => setExpanded((o) => !o)}
+                    title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
+                    className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${triggerToneClass}`}
+                >
+                    {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
+                </button>
+            ) : (
+                // Factura necesita más datos del cliente que Boleta, así que en vez del
+                // ícono compacto ocupa toda la barra del carrito para que sea evidente
+                // que hay que completarlo.
+                <button
+                    type="button"
+                    onClick={() => setExpanded((o) => !o)}
+                    className={`flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm transition-colors ${triggerToneClass}`}
+                >
+                    {value ? <UserCheck className="h-3.5 w-3.5 shrink-0" /> : <UserIcon className="h-3.5 w-3.5 shrink-0" />}
+                    <span className="truncate flex-1 text-left">
+                        {value ? `${value.razon_social} — ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
+                    </span>
+                    {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />}
+                </button>
+            )}
+
+            {expanded && (
+                <div className={`${compact ? 'basis-full w-full' : ''} rounded-lg border border-border bg-muted/50 overflow-hidden`}>
+                    {value ? (
+                        // ── Ya hay un cliente elegido: mostrarlo y ofrecer cambiar/quitar ──
+                        <div className="p-2.5 space-y-2">
+                            <div className="flex items-center gap-2.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-2">
+                                <UserCheck className="h-4 w-4 text-primary shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-primary truncate">{value.razon_social}</p>
+                                    <p className="text-[10px] font-mono text-primary/80">{value.rut}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-1.5">
+                                <Button type="button" size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => onChange(null)}>
+                                    Cambiar cliente
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 h-7 text-xs text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                        onChange(null)
+                                        setExpanded(false)
+                                    }}
+                                >
+                                    Quitar cliente
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        // ── Búsqueda ──
+                        <>
+                            <div className="relative border-b border-border">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    ref={inputRef}
+                                    placeholder={SEARCH_PLACEHOLDER}
+                                    value={query}
+                                    onChange={(e) => handleInputChange(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="h-9 rounded-none border-0 pl-8 pr-8 text-xs bg-transparent focus-visible:ring-0"
+                                    autoComplete="off"
+                                />
+                                {loading && (
+                                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                )}
+                            </div>
+
+                            <div ref={listRef} className="max-h-48 overflow-y-auto">
+                                {query.length < 2 && (
+                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                        Escribe al menos 2 caracteres para buscar.
+                                    </div>
+                                )}
+
+                                {query.length >= 2 && results.length === 0 && !loading && (
+                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                        No se encontraron clientes para &ldquo;{query}&rdquo;
+                                    </div>
+                                )}
+
+                                {results.map((customer, idx) => (
+                                    <button
+                                        key={customer.id}
+                                        data-combobox-item
+                                        onClick={() => selectCustomer(customer)}
+                                        onMouseEnter={() => setHighlightedIndex(idx)}
+                                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer border-t border-border first:border-t-0 ${idx === highlightedIndex ? 'bg-muted' : 'hover:bg-accent/50'
+                                            }`}
+                                    >
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shrink-0">
+                                            <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs truncate text-foreground">
+                                                <HighlightedText text={customer.razon_social} query={query} />
+                                            </p>
+                                            <p className="text-[10px] font-mono text-muted-foreground">
+                                                <HighlightedText text={customer.rut} query={query} />
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+
+                                {/* "Crear nuevo" — always visible */}
+                                <button
+                                    data-combobox-item
+                                    onClick={() => {
+                                        setExpanded(false)
+                                        setCreateOpen(true)
+                                    }}
+                                    onMouseEnter={() => setHighlightedIndex(results.length)}
+                                    className={`flex w-full items-center gap-2 px-3 py-2 text-left border-t border-border transition-colors cursor-pointer ${highlightedIndex === results.length ? 'bg-muted' : 'hover:bg-accent/50'
+                                        }`}
+                                >
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-background shrink-0">
+                                        <Plus className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                    <span className="text-[11px] font-medium text-foreground">
+                                        Crear nuevo cliente
+                                    </span>
+                                </button>
+                            </div>
+                        </>
                     )}
                 </div>
+            )}
 
-                {/* Dropdown */}
-                {isOpen && (
-                    <div
-                        ref={listRef}
-                        className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
-                    >
-                        {/* Results */}
-                        <div className="max-h-[200px] overflow-y-auto">
-                            {results.length === 0 && !loading && (
-                                <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                                    <UserIcon className="h-5 w-5 mx-auto mb-1 opacity-40" />
-                                    No se encontraron clientes para &ldquo;{query}&rdquo;
-                                </div>
-                            )}
-
-                            {results.map((customer, idx) => (
-                                <button
-                                    key={customer.id}
-                                    data-combobox-item
-                                    onClick={() => selectCustomer(customer)}
-                                    onMouseEnter={() => setHighlightedIndex(idx)}
-                                    className={`
-                                        flex w-full items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer
-                                        ${idx === highlightedIndex
-                                            ? 'bg-muted'
-                                            : 'hover:bg-accent/50'
-                                        }
-                                        ${idx > 0 ? 'border-t border-border' : ''}
-                                    `}
-                                >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
-                                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate text-foreground">
-                                            <HighlightedText text={customer.razon_social} query={query} />
-                                        </p>
-                                        <p className="text-[11px] font-mono text-muted-foreground dark:text-muted-foreground">
-                                            <HighlightedText text={customer.rut} query={query} />
-                                        </p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* "Crear nuevo" — always visible */}
-                        <button
-                            data-combobox-item
-                            onClick={() => {
-                                setIsOpen(false)
-                                setCreateOpen(true)
-                            }}
-                            onMouseEnter={() => setHighlightedIndex(results.length)}
-                            className={`
-                                flex w-full items-center gap-2 px-3 py-2.5 text-left border-t border-border transition-colors cursor-pointer
-                                ${highlightedIndex === results.length
-                                    ? 'bg-muted'
-                                    : 'hover:bg-accent/50'
-                                }
-                            `}
-                        >
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted shrink-0">
-                                <Plus className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                            <span className="text-xs font-medium text-foreground">
-                                Crear nuevo cliente
-                            </span>
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Stacked Create Customer Dialog */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogContent className="sm:max-w-lg z-[100]">
                     <DialogHeader>

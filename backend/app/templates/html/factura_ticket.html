@@ -262,12 +262,6 @@
             <span>TOTAL:</span>
             <span>{{ sale.monto_total | clp }}</span>
         </div>
-        {% if sale.ajuste_redondeo %}
-        <div class="total-row">
-            <span>REDONDEO:</span>
-            <span>{{ sale.ajuste_redondeo | clp }}</span>
-        </div>
-        {% endif %}
         {% if sale.vuelto %}
         <div class="total-row">
             <span>VUELTO:</span>
