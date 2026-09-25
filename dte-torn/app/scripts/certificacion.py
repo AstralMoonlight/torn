@@ -33,7 +33,7 @@ Variables (en `.env`; la clave nunca en el comando ni en un chat):
     DTE_EMISOR_CIUDAD         ciudad (opcional)
     DTE_EMISOR_OFICINA_SII    unidad del SII bajo el recuadro del PDF (`S.I.I. - CONCEPCION`)
     DTE_SET                   archivo del set de pruebas del SII (`set`, `revisar-set`, `muestras`)
-    DTE_SET_NOMBRE            set a usar del archivo (por defecto `SET BASICO`; p. ej. `SET FACTURA EXENTA`)
+    DTE_SET_NOMBRE            set a usar del archivo (por defecto `SET BASICO`; p. ej. `SET FACTURA EXENTA`, `SET DE SIMULACION`)
     DTE_SET_INTENTO           2, 3...: reenvía un set rechazado con folios nuevos (`set`, `muestras`, `libro`)
 
 Uso:
@@ -984,6 +984,9 @@ def modo_revisar_set() -> int:
         )
         folios[caso.id] = (caso.tipo_dte, 0)
         print(f"CASO {caso.id} - {nombres[caso.tipo_dte]}")
+        if caso.receptor:
+            r = caso.receptor
+            print(f"  receptor: {r.rut} {r.razon_social} ({r.giro}), {r.direccion}, {r.comuna}")
         if caso.ind_traslado:
             print(f"  traslado: {traslados.get(caso.ind_traslado, caso.ind_traslado)}"
                   + (f", despacho {despachos[caso.tipo_despacho]}" if caso.tipo_despacho else ""))

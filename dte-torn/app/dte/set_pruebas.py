@@ -40,6 +40,10 @@ TIPOS = {
     "NOTA DE CREDITO ELECTRONICA": 61,
 }
 
+#: Set propio de la etapa de simulación: el SII no lo entrega ni le da número de
+#: atención, y sus documentos no referencian al set (son la operación real).
+SIMULACION = "SET DE SIMULACION"
+
 #: CodRef: 1 anula, 2 corrige texto, 3 corrige montos.
 ANULA, CORRIGE_TEXTO, CORRIGE_MONTOS = 1, 2, 3
 
@@ -100,6 +104,8 @@ class Caso:
     razon: str | None = None
     ind_traslado: int | None = None
     tipo_despacho: int | None = None
+    #: Línea `RECEPTOR` (simulación); sin ella, el de su referencia o el por defecto.
+    receptor: Receptor | None = None
 
     @property
     def codigo_referencia(self) -> int | None:
@@ -118,6 +124,7 @@ class Caso:
 class SetPruebas:
     numero_atencion: str
     casos: list[Caso]
+    simulacion: bool = False
 
     def caso(self, id_: str) -> Caso:
         for c in self.casos:
@@ -153,8 +160,9 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
         SetInvalidoError: No se encontró el set, el número de atención o ningún caso.
     """
     texto = _seccion(texto, nombre)
+    simulacion = nombre == SIMULACION
     atencion = _ATENCION.search(texto)
-    if not atencion:
+    if not atencion and not simulacion:
         raise SetInvalidoError("No se encontró el número de atención del set")
 
     casos: list[Caso] = []
@@ -180,6 +188,15 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
             if nombre not in TIPOS:
                 raise SetInvalidoError(f"Caso {actual.id}: documento no soportado: {nombre!r}")
             actual.tipo_dte = TIPOS[nombre]
+        elif clave == "RECEPTOR":
+            # RUT, razón social, giro, dirección, comuna y, opcional, ciudad.
+            if len(partes) < 6:
+                raise SetInvalidoError(f"Caso {actual.id}: RECEPTOR necesita RUT, razón social, giro, dirección y comuna")
+            rut, razon, giro, direccion, comuna, *ciudad = partes[1:]
+            actual.receptor = Receptor(
+                rut=rut, razon_social=razon, giro=giro, direccion=direccion, comuna=comuna,
+                ciudad=ciudad[0] if ciudad else None,
+            )
         elif clave == "RAZON REFERENCIA":
             actual.razon = " ".join(partes[1:])
         elif clave == "REFERENCIA":
@@ -226,7 +243,14 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
     for c in casos:
         if c.tipo_dte is None:
             raise SetInvalidoError(f"Caso {c.id}: no dice qué documento es")
-    return SetPruebas(numero_atencion=atencion.group(1), casos=casos)
+    receptores = {}
+    for c in casos:
+        # Una nota sin RECEPTOR propio va a quien recibió el documento que modifica.
+        c.receptor = c.receptor or receptores.get(c.referencia)
+        receptores[c.id] = c.receptor
+    return SetPruebas(
+        numero_atencion=atencion.group(1) if atencion else "simulacion", casos=casos, simulacion=simulacion
+    )
 
 
 def resolver_lineas(set_: SetPruebas) -> dict[str, tuple[list[Linea], Decimal | None]]:
@@ -299,6 +323,7 @@ def armar_documento(
         emisor_como_receptor: Los datos del emisor. En una guía de traslado
             interno el SII exige que el receptor coincida con el emisor.
     """
+    receptor = caso.receptor or receptor
     if caso.ind_traslado == TRASLADO_INTERNO:
         if emisor_como_receptor is None:
             raise SetInvalidoError(f"Caso {caso.id}: el traslado interno necesita los datos del emisor como receptor")
@@ -306,7 +331,9 @@ def armar_documento(
     # Todo documento del set se identifica con una referencia de tipo SET cuya
     # razón es el número de caso. ponytail: FolioRef "0" es la convención más
     # difundida para esta referencia; a confirmar con el primer set enviado.
-    referencias = [Referencia(tipo_doc="SET", folio="0", fecha=fecha, razon=f"CASO {caso.id}")]
+    referencias = (
+        [] if set_.simulacion else [Referencia(tipo_doc="SET", folio="0", fecha=fecha, razon=f"CASO {caso.id}")]
+    )
     if caso.referencia:
         if caso.referencia not in folios:
             raise SetInvalidoError(

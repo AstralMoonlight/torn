@@ -621,3 +621,54 @@ def test_guia_totales_y_esquema(caso: str, esquema) -> None:
     )
     arbol = etree.fromstring(firmado.xml)
     assert esquema.validate(arbol), "\n".join(str(e) for e in esquema.error_log)
+
+
+# ------------------------------------------------------- set de simulación --
+
+#: Formato propio (no lo entrega el SII): como el set, más un `RECEPTOR` por caso.
+SET_SIMULACION = "\r\n".join(
+    [
+        "SET DE SIMULACION",
+        "",
+        "CASO 1-1",
+        "==============",
+        "DOCUMENTO\tFACTURA ELECTRONICA",
+        "RECEPTOR\t76713217-4\tAlimentos Dulcesur SPA\tFABRICA DE GALLETAS\tMAIPU 2131\tCONCEPCION\tCONCEPCION",
+        "",
+        "ITEM\t\t\t\t\tCANTIDAD\t\tPRECIO UNITARIO",
+        "GASA NO TEJIDA 7,5CM\t\t\t\t1\t\t4453,78",
+        "GASA NO TEJIDA 5X5 CM\t\t\t\t1\t\t4033,61",
+        "",
+        "CASO 1-2",
+        "==============",
+        "DOCUMENTO\tNOTA DE CREDITO ELECTRONICA",
+        "REFERENCIA\tFACTURA ELECTRONICA CORRESPONDIENTE A CASO 1-1",
+        "RAZON REFERENCIA\tDEVOLUCION DE MERCADERIAS",
+        "",
+        "ITEM\t\t\t\t\tCANTIDAD",
+        "GASA NO TEJIDA 5X5 CM\t\t\t\t1",
+    ]
+)
+
+
+def test_simulacion_receptor_por_caso_y_sin_referencia_al_set() -> None:
+    set_ = parsear_set(SET_SIMULACION, "SET DE SIMULACION")
+    assert set_.simulacion and set_.numero_atencion == "simulacion"
+    resueltos = resolver_lineas(set_)
+    factura = armar_documento(set_, set_.casos[0], *resueltos["1-1"], RECEPTOR, FECHA, {})
+    nc = armar_documento(set_, set_.casos[1], *resueltos["1-2"], RECEPTOR, FECHA, {"1-1": (33, 80)})
+
+    assert factura.receptor.razon_social == "Alimentos Dulcesur SPA"
+    assert (factura.receptor.giro, factura.receptor.comuna) == ("FABRICA DE GALLETAS", "CONCEPCION")
+    assert factura.referencias == []
+    # La nota sin RECEPTOR propio va al receptor de su factura.
+    assert nc.receptor == factura.receptor
+    assert [(r.tipo_doc, r.folio) for r in nc.referencias] == [("33", "80")]
+    # 4453,78 + 4033,61 = 8487,39 → líneas 4454 + 4034; IVA 19% de 8488 = 1612,72 → 1613
+    t = calcular_totales(33, factura.items, [])
+    assert (t.neto, t.iva, t.total) == (8488, 1613, 10101)
+
+
+def test_receptor_con_columnas_de_menos() -> None:
+    with pytest.raises(SetInvalidoError, match="RECEPTOR"):
+        parsear_set(SET_SIMULACION.replace("\tCONCEPCION\tCONCEPCION", "", 1), "SET DE SIMULACION")
