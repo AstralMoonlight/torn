@@ -1,12 +1,28 @@
 # Pendientes de UI/UX (fuera del POS)
 
+> **Estado (2026-09-25):** todas hechas en la rama `feat/ui-pendientes`, pendiente
+> de revisión y merge. Decisiones tomadas con el usuario:
+> - Control de caja: solo lo cambia el administrador. `/caja` con el control
+>   apagado: al abrir el sitio por esa URL se va al dashboard; si ya se estaba
+>   dentro, se vuelve a la página anterior; en los dos casos con un aviso. No se
+>   puede apagar con turnos abiertos (409). Los reportes no usan el turno
+>   (el campo `caja` de `/reports/dashboard` no lo lee el frontend).
+> - Vista del POS (variantes): en `localStorage`, por navegador.
+> - Toasts: también se quitaron del POS; sus avisos van en un `Alert` dentro de
+>   su propia zona y se borran al cambiar el ticket.
+> - Color: la paleta de la tabla, con Lima más chillón (`84 81% 44%` / `84 81% 50%`)
+>   aunque baje el contraste. En modo "libre por usuario" se elige en el pie
+>   del menú lateral (no existe en el menú móvil).
+> - Acciones por fila: íconos sueltos en todas las tablas (Inventario incluido).
+> - Letra mínima de 12 px, también en el POS.
+
 Surgen de la revisión de uniformidad del 2026-09-25 (rama `feat/ui-uniformidad`,
 ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`,
 `SearchInput`, `ConfirmDialog`, pestañas y espaciado de botones iguales.
 
 ## Funcionalidad
 
-- [ ] **Opción "Control de caja" en Configuración.** Hay negocios que no usan
+- [x] **Opción "Control de caja" en Configuración.** Hay negocios que no usan
   turnos de caja. Si la opción está apagada: se oculta Caja del menú y el POS
   vende sin pedir que se abra caja.
   - Guardarla por empresa en el backend, no en `uiStore` (hoy ahí vive
@@ -29,7 +45,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   - Tests: una venta sin turno pasa con el control apagado y sigue dando 409 con
     el control encendido.
 
-- [ ] **Configuración > General se guarda sola al elegir cada opción.** Hoy el
+- [x] **Configuración > General se guarda sola al elegir cada opción.** Hoy el
   botón "Guardar Cambios" queda al final de la tarjeta, la gente no lo ve y se
   va sin guardar. Además, en la misma tarjeta, "Vista del Terminal POS - Variantes" ya
   aplica al instante (va a `uiStore`) y los formatos de impresión no: dos
@@ -52,28 +68,26 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
     Configuración. Los formularios con varios campos (emisor, impuestos nuevos)
     siguen con botón.
 
-- [ ] **Eliminar el guion largo "-" de todo el proyecto.** Usar "-" normal o
-  reescribir la frase (coma, dos puntos, paréntesis). Hay 106 usos en archivos
-  versionados (`git grep -c "-"`):
+- [x] **Eliminar el guion largo (U+2014) de todo el proyecto.** Usar "-" normal o
+  reescribir la frase (coma, dos puntos, paréntesis). Había 106 usos en archivos
+  versionados:
   - texto que ve el usuario: `frontend/app` (13), `frontend/components` (7),
     `frontend/lib` (1) y las plantillas de impresión de `backend/app/templates/html/`
-    (por ejemplo `customer.giro or '-'` como relleno de campo vacío, y el pie
-    "Documento generado por Torn - ...");
+    (por ejemplo el relleno de campo vacío de `customer.giro` y el pie
+    "Documento generado por Torn ...");
   - comentarios y docstrings: `backend/`, `dte-torn/app`, `dte-torn/tests`;
   - documentación: `dte-torn/DESIGN.md` (19), `dte-torn/README.md`, `CLAUDE.md`,
     `tasks/*.md`, `.env.example`, `dte-torn/Dockerfile`.
 
-  **Excepción:** `dte-torn/app/dte/builder.py:336` (`texto_sii`) convierte a propósito
-  "-" en "-" antes de mandar el texto al SII, y `dte-torn/tests/test_builder.py`
-  (líneas 299 y 310) lo prueba. Ahí el carácter no se borra: se escribe como
-  `"-"` para que el código siga igual y el grep quede limpio.
+  **Excepción:** `dte-torn/app/dte/builder.py` (`texto_sii`) convierte a propósito
+  el guion largo en "-" antes de mandar el texto al SII, y
+  `dte-torn/tests/test_builder.py` lo prueba. Ahí el carácter no se borra: se
+  escribe como escape `\u2014` para que el código siga igual y el grep quede limpio.
 
-  Para que no vuelva: agregar la regla a la sección 5 de `CLAUDE.md` y un paso
-  en `.github/workflows/ci.yml` que falle si `git grep "-"` encuentra algo.
-  Después de reemplazar, correr los tests de backend y de dte-torn y
-  revisar en pantalla los textos del frontend.
+  Para que no vuelva: regla en la sección 5 de `CLAUDE.md` y un paso en
+  `.github/workflows/ci.yml` que falle si `git grep` lo encuentra.
 
-- [ ] **Dejar de usar toasts; si hace falta un mensaje, usar `Alert` de shadcn.**
+- [x] **Dejar de usar toasts; si hace falta un mensaje, usar `Alert` de shadcn.**
   Hoy conviven dos sistemas de toast, y los dos están montados:
   - **sonner**: `import { toast } from 'sonner'` en 28 archivos, unas 135 llamadas
     (`toast.success`/`toast.error`). `<Toaster>` en `app/layout.tsx`. Los que más
@@ -102,7 +116,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   `<Toaster>`. Actualizar `CLAUDE.md`: sacar Sonner de la tabla del stack y
   agregar a la sección 5 la regla "no usar toasts; usar Alert".
 
-- [ ] **Color principal seleccionable en Configuración.** Hoy es azul fijo.
+- [x] **Color principal seleccionable en Configuración.** Hoy es azul fijo.
   Como todo pasa por variables CSS, el cambio es chico:
   - `frontend/app/globals.css` define `--primary`, `--primary-foreground` y
     `--ring` como tripletas HSL, en claro (líneas 12, 13 y 24) y en oscuro
@@ -181,7 +195,7 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
 
 ## Prioridad alta
 
-- [ ] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
+- [x] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
   `cursor: pointer` a `button`, `[role=button]`, `select`, `[role=combobox]` y
   `[role=option]`, pero en la práctica hay elementos clickeables que siguen con la flecha.
   Revisar:
@@ -193,11 +207,11 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   - que los deshabilitados muestren `not-allowed` y no la mano;
   - probarlo en la imagen Docker (`docker compose build frontend`): el
     contenedor no monta el código y puede estar mostrando un build viejo.
-- [ ] **Gestión de Caja queda cargada a la izquierda.** `app/caja/page.tsx`: el
+- [x] **Gestión de Caja queda cargada a la izquierda.** `app/caja/page.tsx`: el
   `TabsContent` "gestion" tiene `max-w-2xl` sin `mx-auto`, así que queda pegado
   a la izquierda dentro del `PageContainer` (`max-w-4xl`). Centrarlo, o decidir
   un ancho único para la página y quitar el `max-w-2xl`.
-- [ ] **Plantilla única para las vistas de listado** (Inventario/Productos,
+- [x] **Plantilla única para las vistas de listado** (Inventario/Productos,
   Marcas, Clientes, Proveedores, Historial, Personal, Listas de precios,
   Empresas). Hoy todas usan `SearchInput`, pero cada una lo pone con otro ancho
   y en otro lugar:
@@ -213,16 +227,16 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
 
 ## Prioridad media
 
-- [ ] **Acciones por fila**: Inventario usa un menú "⋯" (`DropdownMenu`) y las
+- [x] **Acciones por fila**: Inventario usa un menú "⋯" (`DropdownMenu`) y las
   demás tablas usan íconos sueltos (lápiz/basurero) con colores de hover
   distintos. Elegir uno de los dos y aplicarlo en todas las tablas.
-- [ ] **Mayúsculas en títulos y botones**: hay mezcla de "Title Case" ("Nuevo
+- [x] **Mayúsculas en títulos y botones**: hay mezcla de "Title Case" ("Nuevo
   Cliente", "Panel de Control", "Historial de Ventas") y oración. En español
   corresponde oración: "Nuevo cliente", "Panel de control". Incluye el
   `Sidebar`, los `PageHeader`, los títulos de diálogo y los botones.
-- [ ] **Voz de los textos**: unificar tuteo (la mayoría usa "Gestiona",
+- [x] **Voz de los textos**: unificar tuteo (la mayoría usa "Gestiona",
   "Crea"). Revisar descripciones y mensajes (los que hoy son toasts pasan a Alert, ver tarea de toasts).
-- [ ] **saas-admin con su propio contenedor**: `app/saas-admin/**` usa
+- [x] **saas-admin con su propio contenedor**: `app/saas-admin/**` usa
   `max-w-5xl p-6 md:p-12` y encabezados propios. Evaluar usar `PageContainer`
   y `PageHeader` (el de detalle de empresa necesita el enlace "Volver" y los
   datos del tenant, así que quizás `PageHeader` debería aceptar contenido
@@ -230,12 +244,12 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
 
 ## Prioridad baja
 
-- [ ] **Tablas editables de variantes** en `components/inventory/ProductWizard.tsx`
+- [x] **Tablas editables de variantes** en `components/inventory/ProductWizard.tsx`
   y `ProductEditDialog.tsx`: siguen siendo `<table>` a mano con letra de
   10–11 px. Pasarlas a `Table` con una variante compacta, sin perder densidad.
-- [ ] **Formularios**: casi todos usan `useState` a mano, aunque React Hook Form,
+- [x] **Formularios**: casi todos usan `useState` a mano, aunque React Hook Form,
   Zod y el `Form` de shadcn (`components/ui/form.tsx`) están instalados. Migrar
   empezando por los diálogos simples (Marca, Cliente, Proveedor) para tener
   validación y errores junto al campo iguales en todas partes.
-- [ ] **Tamaños de letra menores a 12 px** (`text-[10px]`, `text-[11px]`)
+- [x] **Tamaños de letra menores a 12 px** (`text-[10px]`, `text-[11px]`)
   repartidos en páginas y diálogos: revisar si son necesarios, por legibilidad.

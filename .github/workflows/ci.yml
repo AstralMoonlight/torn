@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Regla 9 de CLAUDE.md. El carácter (U+2014) se arma con printf para que
+      # Regla 9 de CLAUDE.md. El carácter (U+2014) va como bytes UTF-8 para que
       # este archivo tampoco lo contenga.
       - name: Buscar guion largo
         run: |
-          if git grep -n "$(printf '\u2014')"; then
+          if git grep -n $'\xe2\x80\x94'; then
             echo "Usa '-' en vez del guion largo (U+2014): ver la regla 9 de CLAUDE.md."
             exit 1
           fi
