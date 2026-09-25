@@ -11,6 +11,8 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -393,71 +395,69 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 No hay variantes aún. Agrega la primera.
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                    <thead>
-                                        <tr className="border-b border-border">
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Nombre *</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">SKU</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Cód. barras</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Precio *</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Descripción</th>
-                                            <th className="w-8"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
+                            <div className="rounded-md border border-border overflow-hidden">
+                                <Table compacta>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nombre *</TableHead>
+                                            <TableHead>SKU</TableHead>
+                                            <TableHead>Cód. barras</TableHead>
+                                            <TableHead>Precio *</TableHead>
+                                            <TableHead>Descripción</TableHead>
+                                            <TableHead className="w-10"><span className="sr-only">Quitar</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {variants.map((v, i) => (
-                                            <tr key={i}>
-                                                <td className="py-1.5 pr-1">
+                                            <TableRow key={i}>
+                                                <TableCell>
                                                     <Input
                                                         value={v.nombre}
                                                         onChange={(e) => updateVariant(i, 'nombre', e.target.value)}
                                                         placeholder="Talla 42"
-                                                        className="h-7 w-28 text-[11px]"
+                                                        className="h-8 w-28 text-xs"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.sku}
                                                         onChange={(e) => updateVariant(i, 'sku', e.target.value.toUpperCase())}
                                                         placeholder="Auto"
-                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                        className="h-8 w-24 text-xs font-mono"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.barcode}
                                                         onChange={(e) => updateVariant(i, 'barcode', e.target.value)}
                                                         placeholder="Auto"
-                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                        className="h-8 w-24 text-xs font-mono"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         type="number"
                                                         value={v.precio}
                                                         onChange={(e) => updateVariant(i, 'precio', e.target.value)}
                                                         placeholder="0"
-                                                        className="h-7 w-20 text-[11px] font-tabular"
+                                                        className="h-8 w-20 text-xs font-tabular"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.descripcion}
                                                         onChange={(e) => updateVariant(i, 'descripcion', e.target.value)}
                                                         placeholder="Opcional"
-                                                        className="h-7 w-28 text-[11px]"
+                                                        className="h-8 w-28 text-xs"
                                                     />
-                                                </td>
-                                                <td className="py-1.5">
-                                                    <button type="button" onClick={() => removeVariant(i)} title="Quitar variante" className="text-destructive hover:text-destructive/80">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <AccionFila icon={Trash2} label="Quitar variante" onClick={() => removeVariant(i)} peligro />
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
 

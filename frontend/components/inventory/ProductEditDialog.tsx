@@ -9,6 +9,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -224,19 +225,19 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         {isParent ? (
                             <>
                                 <div className="rounded-md border border-border overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Variante / SKU</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Precio neto</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Stock</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Código de barras</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
+                                    <Table compacta>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Variante / SKU</TableHead>
+                                                <TableHead>Precio neto</TableHead>
+                                                <TableHead>Stock</TableHead>
+                                                <TableHead>Código de barras</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
                                             {variants.map((v, i) => (
-                                                <tr key={v.id}>
-                                                    <td className="px-3 py-2">
+                                                <TableRow key={v.id}>
+                                                    <TableCell>
                                                         <Input
                                                             value={v.nombre}
                                                             onChange={(e) => {
@@ -244,7 +245,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, nombre: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-7 text-xs mb-1"
+                                                            className="h-8 text-xs mb-1"
                                                         />
                                                         <Input
                                                             value={v.codigo_interno}
@@ -253,10 +254,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, codigo_interno: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-7 text-xs font-mono w-32"
+                                                            className="h-8 text-xs font-mono w-32"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             type="number"
                                                             value={v.precio_neto.toString()}
@@ -265,10 +266,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, precio_neto: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-8 w-24 text-right font-tabular"
+                                                            className="h-8 w-24 text-xs text-right font-tabular"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             type="number"
                                                             value={v.stock_actual.toString()}
@@ -277,10 +278,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, stock_actual: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-8 w-20 text-center font-tabular"
+                                                            className="h-8 w-20 text-xs text-center font-tabular"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             value={v.codigo_barras || ''}
                                                             onChange={(e) => {
@@ -291,11 +292,11 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                             placeholder="EAN-13"
                                                             className="h-8 w-32 font-mono text-xs"
                                                         />
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                                 <div className="flex justify-end pt-4">
                                     <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 ">
