@@ -45,22 +45,22 @@ recibo de mercaderías (`EnvioRecibos`, Ley 19.983). Un documento recibido puede
 - [ ] Respuestas firmadas (`RespuestaDTE`, `EnvioRecibos`), validadas contra el XSD, enviadas al proveedor.
 - [ ] Frontend: bandeja de documentos recibidos con aceptar / reclamar.
 
-### P2. Modo del emisor: Desarrollador, Maullín, Palena
+### P2. Modo del emisor: Desarrollador, CERT, PROD
 
 Lo elige el superusuario en saas-admin (`frontend/app/saas-admin/tenants/page.tsx`), por empresa. **No va en
 la Configuración ni en el POS de los clientes** (decidido el 2026-09-25). Hoy ahí mismo se edita
 `public.tenants.sii_ambiente` (`CERT`|`PROD`), que se copia a dte-torn (`Tenant.ambiente`, enum `Ambiente`
 en `dte-torn/app/models.py`).
 
-- **Maullín** = `CERT`, y **Palena** = `PROD`. De Palena solo va la opción, con confirmación. El resto del
-  paso a producción sigue postergado (ver B7 y B8).
+- **CERT** (servidor maullín del SII) y **PROD** (servidor palena): los valores que ya existen. De PROD
+  solo va la opción, con confirmación. El resto del paso a producción sigue postergado (ver B7 y B8).
 - **Desarrollador** (nuevo): dte-torn no habla con el SII (ni token, ni envío, ni consulta), pero la venta
   se emite igual, con firma, timbre, XML y PDF. Queda en un estado propio, distinto de ACEPTADO. Sirve para
   pruebas internas.
 
 **Decidido (2026-09-25):** cada venta guarda el modo con que se emitió, y los documentos solo se ven en
-su modo. Los de Desarrollador aparecen solo en Desarrollador y no se mezclan con los de Maullín. Lo
-mismo vale entre Maullín y Palena. No se borra nada: al volver al modo, siguen ahí.
+su modo. Los de Desarrollador aparecen solo en Desarrollador y no se mezclan con los de CERT. Lo
+mismo vale entre CERT y PROD. No se borra nada: al volver al modo, siguen ahí.
 
 **Por decidir:**
 - Los folios en Desarrollador. El timbre necesita un CAF: ¿se usan los CAF de maullín, o un CAF de
@@ -73,10 +73,10 @@ mismo vale entre Maullín y Palena. No se borra nada: al volver al modo, siguen 
 - [ ] dte-torn: tercer valor de `Ambiente` que corta el pipeline antes de enviar, con tests.
 - [ ] Backend: `sii_ambiente` acepta el modo nuevo (migración Alembic) y lo copia a dte-torn.
 - [ ] Backend: columna con el modo en `sales` (migración Alembic, que marca las ventas existentes como
-      Maullín). Historial, reimpresión y reportes filtran por el modo actual del tenant.
+      CERT). Historial, reimpresión y reportes filtran por el modo actual del tenant.
 - [ ] dte-torn: `GET /documents` y `GET /folios` filtran por el ambiente del tenant.
 - [ ] Frontend: el selector de ambiente de saas-admin pasa a tres opciones, con confirmación al pasar a
-      Palena. Por decidir si el cliente ve algún aviso del modo (por ejemplo, un distintivo en el POS en
+      PROD. Por decidir si el cliente ve algún aviso del modo (por ejemplo, un distintivo en el POS en
       Desarrollador) aunque no pueda cambiarlo.
 
 ### P3. Descuentos por ítem y global
