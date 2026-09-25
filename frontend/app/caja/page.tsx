@@ -147,17 +147,17 @@ export default function CajaPage() {
         <PageContainer className="max-w-4xl">
             <PageHeader
                 icon={Landmark}
-                title="Gestión de Caja"
+                title="Gestión de caja"
                 description="Abre y cierra turnos de caja, y audita el historial."
             />
 
             <Tabs defaultValue="gestion" className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="gestion" className="gap-2">
-                        <Landmark className="h-4 w-4" /> Gestión Diaria
+                        <Landmark className="h-4 w-4" /> Gestión diaria
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="gap-2" onClick={loadHistory}>
-                        <History className="h-4 w-4" /> Historial de Turnos
+                        <History className="h-4 w-4" /> Historial de turnos
                     </TabsTrigger>
                 </TabsList>
 
@@ -180,7 +180,7 @@ export default function CajaPage() {
                     {/* Status Card */}
                     <div className="rounded-xl border border-border bg-card p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-foreground">Estado Actual</span>
+                            <span className="text-sm font-medium text-foreground">Estado actual</span>
                             <Badge
                                 variant={status === 'OPEN' ? 'default' : 'destructive'}
                                 className={''}
@@ -207,12 +207,12 @@ export default function CajaPage() {
                         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                             <div className="flex items-center gap-2">
                                 <DoorOpen className="h-5 w-5 text-primary" />
-                                <h2 className="text-base font-bold text-foreground">Abrir Turno</h2>
+                                <h2 className="text-base font-bold text-foreground">Abrir turno</h2>
                             </div>
                             <p className="text-xs text-muted-foreground">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Monto Inicial ($)</Label>
+                                <Label className="text-xs">Monto inicial ($)</Label>
                                 <Input
                                     type="number"
                                     placeholder="50000"
@@ -232,19 +232,19 @@ export default function CajaPage() {
                                 disabled={opening}
                             >
                                 {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
-                                Abrir Caja
+                                Abrir caja
                             </Button>
                         </div>
                     ) : (
                         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                             <div className="flex items-center gap-2">
                                 <DoorClosed className="h-5 w-5 text-destructive" />
-                                <h2 className="text-base font-bold text-foreground">Cerrar Turno (Arqueo Ciego)</h2>
+                                <h2 className="text-base font-bold text-foreground">Cerrar turno (arqueo ciego)</h2>
                             </div>
                             <p className="text-xs text-muted-foreground">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Efectivo Contado ($)</Label>
+                                <Label className="text-xs">Efectivo contado ($)</Label>
                                 <Input
                                     type="number"
                                     placeholder="Cuánto hay en la caja..."
@@ -265,7 +265,7 @@ export default function CajaPage() {
                                 disabled={closing}
                             >
                                 {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorClosed className="h-4 w-4" />}
-                                Cerrar Caja
+                                Cerrar caja
                             </Button>
                         </div>
                     )}
@@ -275,7 +275,7 @@ export default function CajaPage() {
                         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                             <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
                                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                                Resultado del Arqueo
+                                Resultado del arqueo
                             </h3>
                             <Separator />
                             <div className="space-y-1.5 text-sm font-tabular">
@@ -312,10 +312,10 @@ export default function CajaPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Fecha/Hora Apertura</TableHead>
+                                        <TableHead>Fecha/hora de apertura</TableHead>
                                         <TableHead>Cajero</TableHead>
-                                        <TableHead className="text-right">Fondo Inicial</TableHead>
-                                        <TableHead className="text-right">A Cierre (Sistema)</TableHead>
+                                        <TableHead className="text-right">Fondo inicial</TableHead>
+                                        <TableHead className="text-right">Al cierre (sistema)</TableHead>
                                         <TableHead className="text-right">Diferencia</TableHead>
                                         <TableHead className="text-center">Estado</TableHead>
                                     </TableRow>

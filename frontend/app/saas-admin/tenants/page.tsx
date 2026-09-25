@@ -226,11 +226,11 @@ export default function TenantsListPage() {
         <PageContainer>
                 <PageHeader
                     icon={Building2}
-                    title="Gestión de Empresas"
+                    title="Gestión de empresas"
                     volver={{ href: '/saas-admin', label: 'Volver al panel' }}
                     actions={
                         <Button onClick={openCreateModal} className="shadow-sm shadow-primary/20">
-                            <Plus className="h-4 w-4" /> Crear nuevo Tenant
+                            <Plus className="h-4 w-4" /> Crear nuevo tenant
                         </Button>
                     }
                 />
@@ -239,7 +239,7 @@ export default function TenantsListPage() {
                         <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-xl">
-                                    {editingTenantId ? 'Editar Empresa' : 'Crear nuevo Tenant'}
+                                    {editingTenantId ? 'Editar empresa' : 'Crear nuevo tenant'}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground">
                                     {editingTenantId ? 'Actualiza los datos de facturación y configuración de la empresa.' : 'Ingresa los datos para provisionar una nueva instancia separada para tu cliente.'}
@@ -248,7 +248,7 @@ export default function TenantsListPage() {
                             <form onSubmit={handleSaveTenant} className="space-y-6 py-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Nombre de la Empresa</Label>
+                                        <Label>Nombre de la empresa</Label>
                                         <Input
                                             placeholder="Ej. Comercializadora SpA"
                                             value={formData.name}
@@ -258,7 +258,7 @@ export default function TenantsListPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>RUT Empresa</Label>
+                                        <Label>RUT de la empresa</Label>
                                         <Input
                                             placeholder="Ej. 76.543.210-K"
                                             value={formData.rut}
@@ -272,7 +272,7 @@ export default function TenantsListPage() {
                                         )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
-                                        <Label>Giro Comercial</Label>
+                                        <Label>Giro comercial</Label>
                                         <Input
                                             placeholder="Ej. VENTA AL POR MENOR DE PRODUCTOS FARMACEUTICOS..."
                                             value={formData.giro}
@@ -280,7 +280,7 @@ export default function TenantsListPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Dirección Casa Matriz</Label>
+                                        <Label>Dirección casa matriz</Label>
                                         <Input
                                             placeholder="Ej. Av. Principal 123"
                                             value={formData.address}
@@ -307,7 +307,7 @@ export default function TenantsListPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Día de Pago Mensual</Label>
+                                        <Label>Día de pago mensual</Label>
                                         <Select
                                             value={formData.billing_day.toString()}
                                             onValueChange={v => setFormData({ ...formData, billing_day: parseInt(v) })}
@@ -329,7 +329,7 @@ export default function TenantsListPage() {
                                     {editingTenantId && (
                                         <div className="space-y-4 p-4 bg-muted rounded-lg border border-border">
                                             <div>
-                                                <Label>Facturación Electrónica (SII)</Label>
+                                                <Label>Facturación electrónica (SII)</Label>
                                                 <p className="text-[10px] text-muted-foreground mt-1">
                                                     Resolución y ambiente con que el SII autorizó a la empresa. Van impresos bajo el timbre.
                                                 </p>
@@ -360,7 +360,7 @@ export default function TenantsListPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label>N° Resolución</Label>
+                                                    <Label>N° de resolución</Label>
                                                     <Input
                                                         type="number"
                                                         min={0}
@@ -369,7 +369,7 @@ export default function TenantsListPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label>Fecha Resolución</Label>
+                                                    <Label>Fecha de resolución</Label>
                                                     <Input
                                                         type="date"
                                                         value={formData.sii_resolucion_fecha}
@@ -389,7 +389,7 @@ export default function TenantsListPage() {
                                 <div className="space-y-3 p-4 bg-muted rounded-lg border border-border">
                                     <div className="flex items-center justify-between">
                                         <Label className="flex items-center gap-2">
-                                            Actividades Económicas (ACTECO)
+                                            Actividades económicas (ACTECO)
                                             <Info className="h-3 w-3 text-muted-foreground" />
                                         </Label>
                                         <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
@@ -452,7 +452,7 @@ export default function TenantsListPage() {
                                         {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
-                                            : (editingTenantId ? 'Guardar Cambios' : 'Crear e Inicializar')
+                                            : (editingTenantId ? 'Guardar cambios' : 'Crear e inicializar')
                                         }
                                     </Button>
                                 </div>

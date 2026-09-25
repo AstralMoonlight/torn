@@ -132,7 +132,7 @@ export default function InventarioPage() {
                 description={`${allProducts.length} productos`}
                 actions={
                     <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs">
-                        <Plus className="h-4 w-4" /> Nuevo Producto
+                        <Plus className="h-4 w-4" /> Nuevo producto
                     </Button>
                 }
             />
@@ -153,8 +153,8 @@ export default function InventarioPage() {
                         <TableRow className="border-b border-border">
                             <TableHead>SKU</TableHead>
                             <TableHead>Producto</TableHead>
-                            <TableHead className="text-right hidden sm:table-cell">Precio Neto</TableHead>
-                            <TableHead className="text-center">Stock Total</TableHead>
+                            <TableHead className="text-right hidden sm:table-cell">Precio neto</TableHead>
+                            <TableHead className="text-center">Stock total</TableHead>
                             <TableHead className="text-center hidden lg:table-cell">Variantes</TableHead>
                             <TableHead className="w-[50px] text-right">Acciones</TableHead>
                         </TableRow>

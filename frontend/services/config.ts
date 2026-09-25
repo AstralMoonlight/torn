@@ -51,7 +51,7 @@ export const DOCUMENT_PRINT_TYPES: { key: string; label: string }[] = [
     { key: '41', label: 'Boleta Exenta' },
     { key: '56', label: 'Nota de Débito' },
     { key: '61', label: 'Nota de Crédito' },
-    { key: 'purchase', label: 'Compras (Comprobante Proveedor)' },
+    { key: 'purchase', label: 'Compras (comprobante de proveedor)' },
 ]
 
 export async function getTaxes(): Promise<Tax[]> {

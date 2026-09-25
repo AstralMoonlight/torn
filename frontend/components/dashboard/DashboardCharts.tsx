@@ -39,7 +39,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
         <div data-section="dashboard.graficos" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sales by Hour */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por Hora</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por hora</h3>
                 {salesData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -74,7 +74,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
 
             {/* Payment Methods Pie */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de Pago</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de pago</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">

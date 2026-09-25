@@ -59,7 +59,7 @@ export default function SelectTenantPage() {
     // CASO A: No hay ninguna empresa asociada (ni activa ni inactiva)
     if (availableTenants.length === 0) {
         if (user?.is_superuser) {
-            return <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground font-medium italic">Redirigiendo a Panel Global...</div>
+            return <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground font-medium italic">Redirigiendo al panel global...</div>
         }
 
         return (
@@ -69,14 +69,14 @@ export default function SelectTenantPage() {
                         <Building2 className="w-10 h-10" />
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Sin Empresas</h2>
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Sin empresas</h2>
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             No posees ninguna empresa asignada actualmente. Contacta al administrador para obtener acceso.
                         </p>
                     </div>
                     <LogoutConfirmModal>
                         <Button variant="outline" className="w-full h-11 cursor-pointer">
-                            <LogOut className="h-4 w-4" /> Cerrar Sesión
+                            <LogOut className="h-4 w-4" /> Cerrar sesión
                         </Button>
                     </LogoutConfirmModal>
                 </div>
@@ -140,7 +140,7 @@ export default function SelectTenantPage() {
                         <Building2 className="w-6 h-6" />
                     </div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                        Selecciona tu Empresa
+                        Selecciona tu empresa
                     </h1>
                     <p className="text-sm text-muted-foreground">
                         Elige la organización con la que deseas operar hoy:
@@ -185,7 +185,7 @@ export default function SelectTenantPage() {
                 <div className="pt-4 text-center">
                     <LogoutConfirmModal>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-muted-foreground cursor-pointer">
-                            <LogOut className="h-4 w-4" /> Cambiar de Usuario
+                            <LogOut className="h-4 w-4" /> Cambiar de usuario
                         </Button>
                     </LogoutConfirmModal>
                 </div>

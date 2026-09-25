@@ -41,7 +41,7 @@ const navGroups = [
         label: 'Inventario',
         items: [
             { href: '/inventario', label: 'Productos', icon: Package, permissionKey: 'Productos' },
-            { href: '/listas-precios', label: 'Listas de Precios', icon: Tags, permissionKey: 'Productos' },
+            { href: '/listas-precios', label: 'Listas de precios', icon: Tags, permissionKey: 'Productos' },
             { href: '/marcas', label: 'Marcas', icon: Tags, permissionKey: 'Marcas' },
             { href: '/compras', label: 'Compras', icon: ShoppingBag, permissionKey: 'Compras' },
         ]
@@ -58,14 +58,14 @@ const navGroups = [
         label: 'Auditoría',
         items: [
             { href: '/historial', label: 'Historial', icon: History, permissionKey: 'Historial' },
-            { href: '/reporte-diario', label: 'Reportes de Ventas', icon: BarChart3, permissionKey: 'Reportes de Ventas' },
+            { href: '/reporte-diario', label: 'Reportes de ventas', icon: BarChart3, permissionKey: 'Reportes de Ventas' },
         ]
     },
     {
         label: 'Sistema',
         items: [
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
-            { href: '/saas-admin', label: 'Terminal SaaS Global', icon: Globe, permissionKey: '__SUPERADMIN__' },
+            { href: '/saas-admin', label: 'Terminal SaaS global', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
     }
 ]
@@ -220,7 +220,7 @@ export default function Sidebar() {
                     <LogoutConfirmModal>
                         <button
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
-                            title="Cerrar Sesión"
+                            title="Cerrar sesión"
                         >
                             <LogOut className="h-4 w-4" />
                         </button>

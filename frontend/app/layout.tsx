@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Torn POS — Sistema de Ventas',
-  description: 'Punto de Venta Profesional — Torn',
+  title: 'Torn POS - Sistema de ventas',
+  description: 'Punto de venta profesional - Torn',
 }
 
 const COLOR_SCRIPT = `try{var p=location.pathname.split('/')[1];if(['login','select-tenant','saas-admin'].indexOf(p)<0){var c=JSON.parse(localStorage.getItem('torn-color'));if(c){var s=document.documentElement.style;s.setProperty('--primario-claro',c.claro);s.setProperty('--primario-oscuro',c.oscuro)}}}catch(e){}`

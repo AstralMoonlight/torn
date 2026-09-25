@@ -36,11 +36,11 @@ export default function PriceListSelector() {
             <Tag className="h-4 w-4 text-muted-foreground" />
             <Select value={priceList ? priceList.id.toString() : 'base'} onValueChange={handleValueChange}>
                 <SelectTrigger className="h-8 w-full border-border text-xs">
-                    <SelectValue placeholder="Precio Base" />
+                    <SelectValue placeholder="Precio base" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="base" className="font-medium">
-                        Precio Base
+                        Precio base
                     </SelectItem>
                     {lists.map(list => (
                         <SelectItem key={list.id} value={list.id.toString()} className="text-primary">

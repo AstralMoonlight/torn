@@ -204,7 +204,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg">
                         <Package className="h-5 w-5 text-primary" />
-                        Nuevo Producto
+                        Nuevo producto
                     </DialogTitle>
                     <DialogDescription>
                         {step === 1 && 'Datos del producto base'}
@@ -249,7 +249,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs">Código de Barras <span className="text-muted-foreground">(opcional)</span></Label>
+                                <Label className="text-xs">Código de barras <span className="text-muted-foreground">(opcional)</span></Label>
                                 <div className="relative">
                                     <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
@@ -261,7 +261,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Precio Neto</Label>
+                                <Label className="text-xs">Precio neto</Label>
                                 <Input
                                     type="number"
                                     placeholder="50000"
@@ -374,7 +374,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                         {/* Hint for optional fields */}
                         <div className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
                             <Barcode className="inline h-3 w-3 mr-1" />
-                            Los campos SKU y Código de Barras se generan automáticamente si no los ingresas.
+                            Los campos SKU y código de barras se generan automáticamente si no los ingresas.
                         </div>
                     </div>
                 )}
@@ -399,7 +399,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                         <tr className="border-b border-border">
                                             <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Nombre *</th>
                                             <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">SKU</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Cód. Barras</th>
+                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Cód. barras</th>
                                             <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Precio *</th>
                                             <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Descripción</th>
                                             <th className="w-8"></th>
@@ -462,7 +462,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                         )}
 
                         <Button variant="outline" size="sm" onClick={addVariant} className="text-xs gap-1 h-7">
-                            <Plus className="h-3 w-3" /> Agregar Variante
+                            <Plus className="h-3 w-3" /> Agregar variante
                         </Button>
                     </div>
                 )}
@@ -496,7 +496,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 disabled={!canProceedStep1}
                                 className="text-xs gap-1"
                             >
-                                Con Variantes →
+                                Con variantes →
                             </Button>
                         </div>
                     )}

@@ -217,7 +217,7 @@ export default function TenantDetailsPage() {
                 <PageHeader
                     icon={Store}
                     title={tenant.name}
-                    volver={{ href: '/saas-admin/tenants', label: 'Volver a Empresas' }}
+                    volver={{ href: '/saas-admin/tenants', label: 'Volver a empresas' }}
                     actions={<>
                         <Button
                             variant="outline"
@@ -229,23 +229,23 @@ export default function TenantDetailsPage() {
                         <Dialog open={openSettings} onOpenChange={(o) => { setOpenSettings(o); setErrorAjustes(null) }}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer">
-                                    <Settings className="h-4 w-4" /> Límites de Usuarios
+                                    <Settings className="h-4 w-4" /> Límites de usuarios
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle className="text-xl">Ajustar Cupos</DialogTitle>
+                                    <DialogTitle className="text-xl">Ajustar cupos</DialogTitle>
                                     <DialogDescription className="text-muted-foreground">
                                         Modifica el límite de usuarios permitidos para esta empresa.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleSaveSettings} className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label>Cupo Máximo de Usuarios (Override)</Label>
+                                        <Label>Cupo máximo de usuarios (override)</Label>
                                         <Input
                                             type="number"
                                             min="1"
-                                            placeholder={`Predeterminado del Plan (${tenant.plan_max_users || 3})`}
+                                            placeholder={`Predeterminado del plan (${tenant.plan_max_users || 3})`}
                                             value={tenantOverride}
                                             onChange={e => setTenantOverride(e.target.value)}
                                         />
@@ -255,7 +255,7 @@ export default function TenantDetailsPage() {
                                     <div className="pt-2 flex justify-end gap-3">
                                         <Button type="button" variant="outline" onClick={() => setOpenSettings(false)} className="border-border cursor-pointer">Cancelar</Button>
                                         <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-                                            Guardar Cambios
+                                            Guardar cambios
                                         </Button>
                                     </div>
                                 </form>
@@ -267,7 +267,7 @@ export default function TenantDetailsPage() {
                         <span>RUT: {tenant.rut || '-'}</span>
                         &bull;
                         <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
-                        {tenant.max_users_override && <span>&bull; Máx Usr: {tenant.max_users_override}</span>}
+                        {tenant.max_users_override && <span>&bull; Máx. usuarios: {tenant.max_users_override}</span>}
                     </div>
                 </PageHeader>
 
@@ -277,7 +277,7 @@ export default function TenantDetailsPage() {
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                                 <ShieldPlus className="h-5 w-5 text-primary" />
-                                Vincular Operador
+                                Vincular operador
                             </h2>
                             <div className={`text-sm ${isAtLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                                 Cupos: {users.filter(u => u.is_active).length} / {maxUsersLimit}
@@ -287,7 +287,7 @@ export default function TenantDetailsPage() {
                         <form onSubmit={handleAddUser} autoComplete="off" className={`bg-card p-6 rounded-xl border ${isAtLimit ? 'border-destructive/30 opacity-80' : 'border-border'} shadow-sm`}>
                             {isAtLimit && (
                                 <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
-                                    Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la Configuración SaaS.
+                                    Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la configuración SaaS.
                                 </div>
                             )}
 
@@ -334,10 +334,10 @@ export default function TenantDetailsPage() {
                                 <div className="flex-1 space-y-2">
                                     <Select value={role} onValueChange={setRole} disabled={isSubmitting || isAtLimit}>
                                         <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
-                                            <SelectValue placeholder="Selecciona Rol" />
+                                            <SelectValue placeholder="Selecciona un rol" />
                                         </SelectTrigger>
                                         <SelectContent className="border-border bg-card cursor-pointer">
-                                            <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
+                                            <SelectItem value="ADMINISTRADOR">Administrador local</SelectItem>
                                             <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                             <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
                                         </SelectContent>
@@ -362,9 +362,9 @@ export default function TenantDetailsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Global ID / Email</TableHead>
+                                            <TableHead>ID global / email</TableHead>
                                             <TableHead>Nombre</TableHead>
-                                            <TableHead>Rol Local</TableHead>
+                                            <TableHead>Rol local</TableHead>
                                             <TableHead>Estado</TableHead>
                                             <TableHead className="text-right">Acciones</TableHead>
                                         </TableRow>
@@ -391,7 +391,7 @@ export default function TenantDetailsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <AccionFila icon={Edit} label="Editar Rol" onClick={() => {
+                                                        <AccionFila icon={Edit} label="Editar rol" onClick={() => {
                                                                 setEditingUser(tu)
                                                                 setEditRole(tu.role_name)
                                                                 setEditPassword('')
@@ -423,31 +423,31 @@ export default function TenantDetailsPage() {
                 }}>
                     <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="text-xl">Editar Operador</DialogTitle>
+                            <DialogTitle className="text-xl">Editar operador</DialogTitle>
                             <DialogDescription className="text-muted-foreground">
                                 Actualiza los permisos o la información del usuario vinculado.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label>Usuario Global</Label>
+                                <Label>Usuario global</Label>
                                 <Input value={editingUser?.user.email || ''} disabled className="bg-muted" autoComplete="none" name="operator-email-edit" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Nuevo Rol Interno</Label>
+                                <Label>Nuevo rol interno</Label>
                                 <Select value={editRole} onValueChange={setEditRole} disabled={isSubmitting}>
                                     <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
-                                        <SelectValue placeholder="Selecciona Rol" />
+                                        <SelectValue placeholder="Selecciona un rol" />
                                     </SelectTrigger>
                                     <SelectContent className="border-border bg-card cursor-pointer">
-                                        <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
+                                        <SelectItem value="ADMINISTRADOR">Administrador local</SelectItem>
                                         <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                         <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Nombre del Operador</Label>
+                                <Label>Nombre del operador</Label>
                                 <Input
                                     value={editFullName}
                                     onChange={e => setEditFullName(e.target.value)}
@@ -458,7 +458,7 @@ export default function TenantDetailsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Cambiar Contraseña (Opcional)</Label>
+                                <Label>Cambiar contraseña (opcional)</Label>
                                 <Input
                                     type="password"
                                     name="operator-password-edit"
@@ -473,7 +473,7 @@ export default function TenantDetailsPage() {
                             <div className="pt-2 flex justify-end gap-3">
                                 <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="cursor-pointer">Cancelar</Button>
                                 <Button type="button" onClick={handleSaveUserEdit} disabled={isSubmitting} className="cursor-pointer">
-                                    Guardar Cambios
+                                    Guardar cambios
                                 </Button>
                             </div>
                         </div>

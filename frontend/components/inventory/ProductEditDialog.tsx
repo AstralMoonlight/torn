@@ -128,7 +128,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-primary" />
-                        Editar Producto: {product?.full_name || baseName}
+                        Editar producto: {product?.full_name || baseName}
                     </DialogTitle>
                     <DialogDescription>
                         SKU: {baseSku}
@@ -137,9 +137,9 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
 
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="general">Información General</TabsTrigger>
+                        <TabsTrigger value="general">Información general</TabsTrigger>
                         <TabsTrigger value="variants">
-                            {isParent ? `Variantes (${variants.length})` : 'Precio y Stock'}
+                            {isParent ? `Variantes (${variants.length})` : 'Precio y stock'}
                         </TabsTrigger>
                     </TabsList>
 
@@ -147,14 +147,14 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                     <TabsContent value="general" className="space-y-4 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Nombre del Producto</Label>
+                                <Label>Nombre del producto</Label>
                                 <Input
                                     value={baseName}
                                     onChange={(e) => setBaseName(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>SKU Base</Label>
+                                <Label>SKU base</Label>
                                 <Input
                                     value={baseSku}
                                     onChange={(e) => setBaseSku(e.target.value)}
@@ -168,7 +168,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         <SelectValue placeholder="Seleccionar marca" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin Marca</SelectItem>
+                                        <SelectItem value="0">Sin marca</SelectItem>
                                         {brands.map(b => (
                                             <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                                         ))}
@@ -183,17 +183,17 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         onChange={(e) => setControlStock(e.target.checked)}
                                         className="w-4 h-4"
                                     />
-                                    <span className="text-sm font-medium">Controlar Stock Globalmente</span>
+                                    <span className="text-sm font-medium">Controlar stock globalmente</span>
                                 </label>
                             </div>
                             <div className="space-y-2">
-                                <Label>Impuesto Aplicado</Label>
+                                <Label>Impuesto aplicado</Label>
                                 <Select value={selectedTax} onValueChange={setSelectedTax}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Seleccionar impuesto" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin Impuesto (0%)</SelectItem>
+                                        <SelectItem value="0">Sin impuesto (0%)</SelectItem>
                                         {taxes.map(t => (
                                             <SelectItem key={t.id} value={t.id.toString()}>
                                                 {t.name} ({(t.rate * 100).toFixed(0)}%)
@@ -214,7 +214,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         <div className="flex justify-end pt-4">
                             <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Guardar Cambios
+                                Guardar cambios
                             </Button>
                         </div>
                     </TabsContent>
@@ -228,9 +228,9 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         <thead className="bg-muted">
                                             <tr>
                                                 <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Variante / SKU</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Precio Neto</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Precio neto</th>
                                                 <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Stock</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Código Barras</th>
+                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Código de barras</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
@@ -301,16 +301,16 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Guardar Todas las Variantes
+                                        Guardar todas las variantes
                                     </Button>
                                 </div>
                             </>
                         ) : (
                             <div className="bg-muted p-6 rounded-lg border border-border">
-                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de Inventario (Producto Simple)</h3>
+                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de inventario (producto simple)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
-                                        <Label>Precio Neto</Label>
+                                        <Label>Precio neto</Label>
                                         <Input
                                             type="number"
                                             value={simplePrice.toString()}
@@ -319,7 +319,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Stock Actual</Label>
+                                        <Label>Stock actual</Label>
                                         <Input
                                             type="number"
                                             value={simpleStock.toString()}
@@ -328,7 +328,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Código de Barras</Label>
+                                        <Label>Código de barras</Label>
                                         <Input
                                             value={simpleBarcode}
                                             onChange={(e) => setSimpleBarcode(e.target.value)}
@@ -341,7 +341,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Guardar Todo
+                                        Guardar todo
                                     </Button>
                                 </div>
                             </div>

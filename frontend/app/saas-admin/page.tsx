@@ -33,7 +33,7 @@ export default function SaaSAdminPage() {
         <PageContainer>
                 <PageHeader
                     icon={ShieldAlert}
-                    title="Panel Superadministrador"
+                    title="Panel de superadministrador"
                     description={`Bienvenido, ${user.full_name || user.email}`}
                     actions={<>
                         <ThemeToggle />
@@ -43,7 +43,7 @@ export default function SaaSAdminPage() {
                         <LogoutConfirmModal>
                             <Button variant="outline" className="gap-2 text-destructive hover:bg-destructive/10">
                                 <LogOut className="h-4 w-4" />
-                                Cerrar Sesión
+                                Cerrar sesión
                             </Button>
                         </LogoutConfirmModal>
                     </>}
@@ -57,13 +57,13 @@ export default function SaaSAdminPage() {
                             <Building className="h-7 w-7" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-foreground mb-2">Empresas (Tenants)</h2>
+                            <h2 className="text-xl font-semibold text-foreground mb-2">Empresas (tenants)</h2>
                             <p className="text-sm text-muted-foreground leading-relaxed">
                                 Gestiona las instancias, esquemas provisionados, RUT y límites de usuarios de forma centralizada.
                             </p>
                         </div>
                         <Button className="mt-auto w-full cursor-pointer shadow-sm shadow-primary/20 py-6 text-base" onClick={() => router.push('/saas-admin/tenants')}>
-                            Ver Todas las Empresas
+                            Ver todas las empresas
                         </Button>
                     </div>
 
@@ -73,7 +73,7 @@ export default function SaaSAdminPage() {
                             <Users className="h-7 w-7" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-foreground mb-2">Usuarios Globales</h2>
+                            <h2 className="text-xl font-semibold text-foreground mb-2">Usuarios globales</h2>
                             <p className="text-sm text-muted-foreground leading-relaxed">
                                 Administra cuentas SaaS físicas y los permisos transversales para el acceso al panel global.
                             </p>

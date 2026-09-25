@@ -124,7 +124,7 @@ export default function FoliosTab() {
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-xl font-semibold tracking-tight">Gestión de Folios (CAF)</h2>
+                    <h2 className="text-xl font-semibold tracking-tight">Gestión de folios (CAF)</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                         Descarga el CAF desde el sitio del SII y cárgalo aquí.
                     </p>
@@ -165,7 +165,7 @@ export default function FoliosTab() {
                                                 {stock.available}
                                             </p>
                                             <p className="text-sm text-muted-foreground mt-1">
-                                                Folios Disponibles
+                                                Folios disponibles
                                             </p>
                                         </div>
 
@@ -186,7 +186,7 @@ export default function FoliosTab() {
                                     {stock.total > 0 && (
                                         <div className="flex flex-col gap-1 mt-4">
                                             <p className="text-xs text-muted-foreground">
-                                                Rango Actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
+                                                Rango actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
                                             </p>
                                             {stock.fecha_vencimiento && (
                                                 <p className="text-xs text-muted-foreground font-medium">
@@ -205,7 +205,7 @@ export default function FoliosTab() {
             <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                     <div>
-                        <CardTitle>Certificado Digital</CardTitle>
+                        <CardTitle>Certificado digital</CardTitle>
                         <CardDescription>
                             Con él se firman los documentos. Se guarda cifrado.
                         </CardDescription>
@@ -219,7 +219,7 @@ export default function FoliosTab() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md">
                             <DialogHeader>
-                                <DialogTitle>Cargar Certificado Digital</DialogTitle>
+                                <DialogTitle>Cargar certificado digital</DialogTitle>
                                 <DialogDescription>Archivo .pfx o .p12 de la empresa y su contraseña.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">

@@ -110,7 +110,7 @@ export default function CustomersPage() {
                 description="Gestiona tus clientes y contribuyentes."
                 actions={
                     <Button onClick={handleOpenCreate}>
-                        <Plus className="h-4 w-4" /> Nuevo Cliente
+                        <Plus className="h-4 w-4" /> Nuevo cliente
                     </Button>
                 }
             />
@@ -129,7 +129,7 @@ export default function CustomersPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[120px]">RUT</TableHead>
-                            <TableHead>Razón Social</TableHead>
+                            <TableHead>Razón social</TableHead>
                             <TableHead className="hidden md:table-cell">Giro</TableHead>
                             <TableHead className="hidden md:table-cell">Email</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
@@ -172,7 +172,7 @@ export default function CustomersPage() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent data-section="clientes.formulario" className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>{editingCustomer ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
+                        <DialogTitle>{editingCustomer ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
                     </DialogHeader>
                     <CustomerForm
                         initialData={initialData}

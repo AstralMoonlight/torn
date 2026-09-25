@@ -117,7 +117,7 @@ export default function BrandsPage() {
                 description="Gestiona las marcas de tus productos."
                 actions={
                     <Button onClick={handleOpenCreate}>
-                        <Plus className="h-4 w-4" /> Nueva Marca
+                        <Plus className="h-4 w-4" /> Nueva marca
                     </Button>
                 }
             />
@@ -166,7 +166,7 @@ export default function BrandsPage() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent data-section="marcas.formulario">
                     <DialogHeader>
-                        <DialogTitle>{editingBrand ? 'Editar Marca' : 'Nueva Marca'}</DialogTitle>
+                        <DialogTitle>{editingBrand ? 'Editar marca' : 'Nueva marca'}</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 py-4">

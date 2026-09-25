@@ -108,12 +108,12 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                         {user ? (
                             <>
                                 <Pencil className="h-5 w-5 text-primary" />
-                                {isOwner ? 'Editar Mi Perfil (Admin)' : 'Editar Personal'}
+                                {isOwner ? 'Editar mi perfil (admin)' : 'Editar personal'}
                             </>
                         ) : (
                             <>
                                 <Plus className="h-5 w-5 text-primary" />
-                                Nuevo Personal
+                                Nuevo personal
                             </>
                         )}
                     </DialogTitle>
@@ -125,7 +125,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Nombre Completo</Label>
+                        <Label htmlFor="name">Nombre completo</Label>
                         <Input
                             id="name"
                             value={name}
@@ -148,7 +148,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="password">
-                            {user ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña'}
+                            {user ? 'Nueva contraseña (déjala en blanco para no cambiarla)' : 'Contraseña'}
                         </Label>
                         <Input
                             id="password"
@@ -195,7 +195,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                         </Button>
                         <Button type="submit" disabled={loading} className="">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            {user ? 'Guardar Cambios' : 'Crear Personal'}
+                            {user ? 'Guardar cambios' : 'Crear personal'}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -54,7 +54,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     )
 }
 
-const SEARCH_PLACEHOLDER = 'Buscar por Nombre o RUT…'
+const SEARCH_PLACEHOLDER = 'Buscar por nombre o RUT…'
 
 export default function CustomerSearchCombobox({
     value,
@@ -329,7 +329,7 @@ export default function CustomerSearchCombobox({
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogContent className="sm:max-w-lg z-[100]">
                     <DialogHeader>
-                        <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
+                        <DialogTitle>Nuevo cliente rápido</DialogTitle>
                     </DialogHeader>
                     <CustomerForm
                         onSubmit={handleCreateSuccess}

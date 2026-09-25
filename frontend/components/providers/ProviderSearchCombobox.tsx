@@ -48,7 +48,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 export default function ProviderSearchCombobox({
     value,
     onChange,
-    placeholder = 'Buscar proveedor por Razón Social o RUT…',
+    placeholder = 'Buscar proveedor por razón social o RUT…',
 }: Props) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Provider[]>([])

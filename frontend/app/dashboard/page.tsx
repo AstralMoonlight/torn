@@ -132,7 +132,7 @@ export default function DashboardPage() {
         <PageContainer>
             <PageHeader
                 icon={BarChart3}
-                title="Panel de Control"
+                title="Panel de control"
                 description="Resumen operativo y financiero"
                 actions={
                     <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
@@ -162,13 +162,13 @@ export default function DashboardPage() {
                     color="green"
                 />
                 <KPICard
-                    title="Ticket Promedio"
+                    title="Ticket promedio"
                     value={formatCLP(currentStats.sales_count > 0 ? currentStats.sales_total / currentStats.sales_count : 0)}
                     icon={TrendingUp}
                     color="blue"
                 />
                 <KPICard
-                    title="IVA Por Pagar"
+                    title="IVA por pagar"
                     value={formatCLP(currentStats.sales_tax)}
                     subtitle="Registrado en las ventas"
                     icon={Receipt}
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                         <CardTitle className="text-sm font-bold flex items-center justify-between">
                             <span className="flex items-center gap-2">
                                 <ShoppingCart className="h-4 w-4 text-primary" />
-                                Más Vendidos (Cantidad)
+                                Más vendidos (cantidad)
                             </span>
                             <Badge variant="outline" className="text-[10px] uppercase">Últimos 30 días</Badge>
                         </CardTitle>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                         <CardTitle className="text-sm font-bold flex items-center justify-between">
                             <span className="flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4 text-primary" />
-                                Más Rentables (Ranking Utilidad)
+                                Más rentables (ranking de utilidad)
                             </span>
                         </CardTitle>
                     </CardHeader>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-bold text-primary">{formatCLP(p.total_margin)}</p>
-                                    <p className="text-[9px] text-muted-foreground">Utilidad Total</p>
+                                    <p className="text-[9px] text-muted-foreground">Utilidad total</p>
                                 </div>
                             </div>
                         ))}

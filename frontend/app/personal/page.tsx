@@ -213,7 +213,7 @@ export default function PersonalPage() {
         <PageContainer>
             <PageHeader
                 icon={Users}
-                title="Gestión de Personal"
+                title="Gestión de personal"
                 description="Controla el acceso, roles y cupos de los trabajadores de tu empresa."
                 actions={
                     <Badge variant="outline" className="h-9 px-3 gap-1.5">
@@ -231,7 +231,7 @@ export default function PersonalPage() {
                         <Users className="h-4 w-4" /> Personal
                     </TabsTrigger>
                     <TabsTrigger value="roles" className="gap-2">
-                        <ShieldCheck className="h-4 w-4" /> Roles y Permisos
+                        <ShieldCheck className="h-4 w-4" /> Roles y permisos
                     </TabsTrigger>
                 </TabsList>
 
@@ -245,7 +245,7 @@ export default function PersonalPage() {
                         unidad="usuarios"
                         acciones={
                             <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
-                                <Plus className="h-4 w-4" /> Nuevo Personal
+                                <Plus className="h-4 w-4" /> Nuevo personal
                             </Button>
                         }
                     />
@@ -254,8 +254,8 @@ export default function PersonalPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[300px]">Nombre / Rol</TableHead>
-                                    <TableHead>Email (Identificador)</TableHead>
+                                    <TableHead className="w-[300px]">Nombre / rol</TableHead>
+                                    <TableHead>Email (identificador)</TableHead>
                                     <TableHead>Identificación (RUT)</TableHead>
                                     <TableHead>Estado</TableHead>
                                     <TableHead className="text-right">Acciones</TableHead>
@@ -332,7 +332,7 @@ export default function PersonalPage() {
                                 <RefreshCw className={cn("h-4 w-4", staffLoading && "animate-spin")} /> Recargar
                             </Button>
                             <Button onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
-                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
+                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar permisos'}
                             </Button>
                         </>}
                     />
@@ -347,7 +347,7 @@ export default function PersonalPage() {
                                             <ShieldCheck className="h-5 w-5 text-primary" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-lg">Configuración de Accesos</CardTitle>
+                                            <CardTitle className="text-lg">Configuración de accesos</CardTitle>
                                             <CardDescription className="text-xs">Define la visibilidad del menú por rol.</CardDescription>
                                         </div>
                                     </div>
@@ -357,7 +357,7 @@ export default function PersonalPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="border-y border-border">
-                                                    <TableHead>Menú / Sección</TableHead>
+                                                    <TableHead>Menú / sección</TableHead>
                                                     {roles.map(role => (
                                                         <TableHead key={role.id} className="text-center">
                                                             {role.name}
@@ -401,7 +401,7 @@ export default function PersonalPage() {
                             <Card className="border-border sticky top-20">
                                 <CardHeader className="py-4">
                                     <CardTitle className="text-lg flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-primary" /> Asignación Rápida
+                                        <Users className="h-5 w-5 text-primary" /> Asignación rápida
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="px-2 space-y-1">
@@ -420,7 +420,7 @@ export default function PersonalPage() {
                                                     disabled={updatingUserId === user.id}
                                                 >
                                                     <SelectTrigger className="h-8 w-[120px] text-xs">
-                                                        <SelectValue placeholder="Sin Rol" />
+                                                        <SelectValue placeholder="Sin rol" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {roles.map(r => (

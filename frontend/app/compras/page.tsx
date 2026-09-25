@@ -230,17 +230,17 @@ export default function ComprasPage() {
         <PageContainer>
             <PageHeader
                 icon={ShoppingBag}
-                title="Ingreso de Mercadería"
+                title="Ingreso de mercadería"
                 description="Registra compras y actualiza el stock de productos."
             />
 
             <Tabs defaultValue="nuevo" className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="nuevo" className="gap-2">
-                        <Plus className="h-4 w-4" /> Nuevo Ingreso
+                        <Plus className="h-4 w-4" /> Nuevo ingreso
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="gap-2" onClick={refreshPurchases}>
-                        <Clock className="h-4 w-4" /> Historial / Gestión
+                        <Clock className="h-4 w-4" /> Historial / gestión
                     </TabsTrigger>
                 </TabsList>
 
@@ -250,7 +250,7 @@ export default function ComprasPage() {
                         <Card className="lg:col-span-1 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
-                                    <FileText className="h-4 w-4" /> Datos del Documento
+                                    <FileText className="h-4 w-4" /> Datos del documento
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -272,7 +272,7 @@ export default function ComprasPage() {
                                             <SelectContent>
                                                 <SelectItem value="FACTURA">Factura</SelectItem>
                                                 <SelectItem value="BOLETA">Boleta</SelectItem>
-                                                <SelectItem value="SIN_DOCUMENTO">Sin Docto.</SelectItem>
+                                                <SelectItem value="SIN_DOCUMENTO">Sin docto.</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -287,7 +287,7 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha Compra</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha de compra</Label>
                                     <div className="relative">
                                         <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -367,7 +367,7 @@ export default function ComprasPage() {
                             <Card className="shadow-sm overflow-hidden">
                                 <CardHeader className="bg-muted/50 flex flex-row items-center justify-between">
                                     <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                        <Package className="h-4 w-4" /> Ítems a Ingresar
+                                        <Package className="h-4 w-4" /> Ítems a ingresar
                                     </CardTitle>
                                     <Badge variant="secondary" className="font-tabular">
                                         {items.length} productos
@@ -380,7 +380,7 @@ export default function ComprasPage() {
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
-                                                    <TableHead className="w-32 text-right">Costo Unitario</TableHead>
+                                                    <TableHead className="w-32 text-right">Costo unitario</TableHead>
                                                     <TableHead className="w-32 text-right">Subtotal</TableHead>
                                                     <TableHead className="w-12"></TableHead>
                                                 </TableRow>
@@ -441,7 +441,7 @@ export default function ComprasPage() {
                                     <CardFooter className="bg-muted/50 p-6 flex flex-col gap-4">
                                         <div className="w-full space-y-2">
                                             <div className="flex justify-between text-sm text-muted-foreground">
-                                                <span>Subtotal Neto</span>
+                                                <span>Subtotal neto</span>
                                                 <span>{formatCLP(totalNeto)}</span>
                                             </div>
                                             {tipoDoc === 'FACTURA' && (
@@ -464,7 +464,7 @@ export default function ComprasPage() {
                                             onClick={handleSave}
                                             disabled={submitting}
                                         >
-                                            {submitting ? 'Registrando...' : 'Finalizar Ingreso'}
+                                            {submitting ? 'Registrando...' : 'Finalizar ingreso'}
                                             {!submitting && <Plus className="h-5 w-5" />}
                                         </Button>
                                     </CardFooter>
@@ -477,7 +477,7 @@ export default function ComprasPage() {
                 <TabsContent data-section="compras.historial" value="historial" className="space-y-4">
                     <Card>
                         <CardHeader className="py-4">
-                            <CardTitle className="text-base">Historial de Compras</CardTitle>
+                            <CardTitle className="text-base">Historial de compras</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
@@ -513,8 +513,8 @@ export default function ComprasPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        <AccionFila icon={Printer} label="Imprimir Comprobante" onClick={() => verPdfCompra(p.id)} />
-                                                        <AccionFila icon={Search} label="Ver Detalle" onClick={() => setSelectedPurchase(p)} />
+                                                        <AccionFila icon={Printer} label="Imprimir comprobante" onClick={() => verPdfCompra(p.id)} />
+                                                        <AccionFila icon={Search} label="Ver detalle" onClick={() => setSelectedPurchase(p)} />
                                                         <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(p.id)} peligro />
                                                     </div>
                                                 </TableCell>
@@ -534,7 +534,7 @@ export default function ComprasPage() {
                     <DialogHeader>
                         <div className="flex items-center justify-between pr-8">
                             <div>
-                                <DialogTitle>Detalle de Compra #{selectedPurchase?.id}</DialogTitle>
+                                <DialogTitle>Detalle de compra #{selectedPurchase?.id}</DialogTitle>
                                 <DialogDescription>
                                     {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
@@ -549,11 +549,11 @@ export default function ComprasPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha Compra</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha de compra</p>
                                     <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto Total</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto total</p>
                                     <p className="font-bold text-foreground text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
@@ -570,7 +570,7 @@ export default function ComprasPage() {
                                         <TableRow>
                                             <TableHead>Producto</TableHead>
                                             <TableHead className="text-center">Cantidad</TableHead>
-                                            <TableHead className="text-right">Costo Unit.</TableHead>
+                                            <TableHead className="text-right">Costo unit.</TableHead>
                                             <TableHead className="text-right">Subtotal</TableHead>
                                         </TableRow>
                                     </TableHeader>

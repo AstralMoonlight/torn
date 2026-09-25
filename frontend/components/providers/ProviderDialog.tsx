@@ -29,7 +29,7 @@ import { getApiErrorDetail } from '@/services/api'
 
 const providerSchema = z.object({
     rut: z.string().min(1, 'RUT es requerido').refine(validateRut, 'RUT inválido'),
-    razon_social: z.string().min(1, 'Nombre/Razón Social es requerido'),
+    razon_social: z.string().min(1, 'La razón social es obligatoria'),
     giro: z.string().optional().default(''),
     direccion: z.string().optional().default(''),
     email: z.string().email('Email inválido').optional().or(z.literal('')).default(''),
@@ -107,7 +107,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent data-section="proveedores.formulario" className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>{provider ? 'Editar Proveedor' : 'Nuevo Proveedor'}</DialogTitle>
+                    <DialogTitle>{provider ? 'Editar proveedor' : 'Nuevo proveedor'}</DialogTitle>
                 </DialogHeader>
 
                 <Form {...form}>
@@ -135,7 +135,7 @@ export default function ProviderDialog({ open, onOpenChange, provider, onSuccess
                                 name="razon_social"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Razón Social</FormLabel>
+                                        <FormLabel>Razón social</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Distribuidora S.A." {...field} value={field.value || ''} />
                                         </FormControl>

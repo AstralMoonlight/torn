@@ -83,7 +83,7 @@ export default function ProvidersPage() {
                 description="Gestión de empresas y entidades suministradoras."
                 actions={
                     <Button onClick={() => { setEditingProvider(null); setIsDialogOpen(true) }} className="gap-2">
-                        <Plus className="h-4 w-4" /> Nuevo Proveedor
+                        <Plus className="h-4 w-4" /> Nuevo proveedor
                     </Button>
                 }
             />
@@ -102,7 +102,7 @@ export default function ProvidersPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>RUT</TableHead>
-                            <TableHead>Razón Social</TableHead>
+                            <TableHead>Razón social</TableHead>
                             <TableHead className="hidden md:table-cell">Giro</TableHead>
                             <TableHead className="hidden lg:table-cell">Email</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>

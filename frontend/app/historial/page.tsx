@@ -194,7 +194,7 @@ export default function HistorialPage() {
         <PageContainer>
             <PageHeader
                 icon={History}
-                title="Historial de Ventas"
+                title="Historial de ventas"
                 description="Revisa, reimprime y anula los documentos emitidos."
             />
 
@@ -268,7 +268,7 @@ export default function HistorialPage() {
                                                 <div className="flex justify-end gap-1">
                                                     <AccionFila icon={ExternalLink} label="Ver PDF" onClick={() => verPdf(sale.id)} />
                                                     {![52, 56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
-                                                        <AccionFila icon={RotateCcw} label="Generar Nota (Ajuste)" onClick={() => setReturnDialog(sale)} peligro />
+                                                        <AccionFila icon={RotateCcw} label="Generar nota (ajuste)" onClick={() => setReturnDialog(sale)} peligro />
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -287,7 +287,7 @@ export default function HistorialPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
                             <RotateCcw className="h-4 w-4 text-destructive" />
-                            Generar Nota de Ajuste
+                            Generar nota de ajuste
                         </DialogTitle>
                         <DialogDescription>
                             Folio #{returnDialog?.folio} — {formatCLP(parseFloat(String(returnDialog?.monto_total || 0)))}
@@ -297,7 +297,7 @@ export default function HistorialPage() {
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs">Tipo de Documento *</Label>
+                                <Label className="text-xs">Tipo de documento *</Label>
                                 <SelectOpciones className="h-9 text-xs" value={returnDteType}
                                     onChange={(v) => setReturnDteType(Number(v))}
                                     opciones={availableAdjustments.map((a) => ({

@@ -180,8 +180,8 @@ export default function PriceListsPage() {
 
     const openEditBase = async () => {
         setEditingId('base')
-        setFormName('Precio Base (Catálogo General)')
-        setFormDescription('Precios por defecto de todos los productos (Netos).')
+        setFormName('Precio base (catálogo general)')
+        setFormDescription('Precios por defecto de todos los productos (netos).')
         setActiveTab('products')
         setDraftSearch('')
         setProductSearch('')
@@ -349,11 +349,11 @@ export default function PriceListsPage() {
         <PageContainer>
             <PageHeader
                 icon={Tag}
-                title="Listas de Precios"
+                title="Listas de precios"
                 description="Crea listas con precios fijos para grupos de clientes."
                 actions={
                     <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
-                        <Plus className="h-4 w-4" /> Nueva Lista
+                        <Plus className="h-4 w-4" /> Nueva lista
                     </Button>
                 }
             />
@@ -384,14 +384,14 @@ export default function PriceListsPage() {
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        Precio Base (Catálogo General)
+                                        Precio base (catálogo general)
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                     Precios por defecto de todos los productos del sistema.
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <AccionFila icon={Pencil} label="Editar Precios Base" onClick={openEditBase} />
+                                    <AccionFila icon={Pencil} label="Editar precios base" onClick={openEditBase} />
                                 </TableCell>
                             </TableRow>
                         )}
@@ -427,7 +427,7 @@ export default function PriceListsPage() {
                 <DialogContent data-section="listas-precios.formulario" className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}
+                            {editingId === 'base' ? 'Editar lista base' : (editingId ? 'Editar lista de precios' : 'Nueva lista de precios')}
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
                             {editingId === 'base'
@@ -443,7 +443,7 @@ export default function PriceListsPage() {
                             <div className="space-y-2">
                                 <Label>Nombre <span className="text-destructive">*</span></Label>
                                 <Input
-                                    placeholder="Ej. Clientes Mayoristas"
+                                    placeholder="Ej. Clientes mayoristas"
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
                                     disabled={editingId === 'base'}
@@ -692,7 +692,7 @@ export default function PriceListsPage() {
                             className="cursor-pointer"
                         >
                             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Lista')}
+                            {isSaving ? 'Guardando...' : (editingId ? 'Guardar cambios' : 'Crear lista')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
