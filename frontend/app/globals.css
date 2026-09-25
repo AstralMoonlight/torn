@@ -64,20 +64,35 @@
     @apply border-border;
   }
 
-  /* Todo lo clickeable muestra la mano: botones (Tailwind 4 los deja con la
-     flecha y sólo algunas páginas ponían cursor-pointer a mano), <select>
-     nativos, el disparador de los Select de shadcn (role=combobox) y sus
-     opciones. */
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  select:not(:disabled),
-  [role="combobox"]:not(:disabled),
-  [role="option"]:not([data-disabled]) {
+  /* Todo lo clickeable muestra la mano (Tailwind 4 deja los botones con la
+     flecha): botones, enlaces, <label> de un control, y los roles de Radix que
+     no son <button> (opciones de Select, ítems de menú, pestañas, switch,
+     checkbox). Lo deshabilitado muestra not-allowed. Los div/Card/TableRow con
+     onClick llevan `cursor-pointer` en su className. */
+  button,
+  a[href],
+  summary,
+  label[for],
+  [role="button"],
+  [role="combobox"],
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="file"]::file-selector-button {
     cursor: pointer;
   }
-  button:disabled,
-  select:disabled,
-  [role="combobox"]:disabled {
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
     cursor: not-allowed;
   }
 
