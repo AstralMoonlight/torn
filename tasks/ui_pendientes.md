@@ -4,6 +4,31 @@ Surgen de la revisión de uniformidad del 2026-09-25 (rama `feat/ui-uniformidad`
 ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`,
 `SearchInput`, `ConfirmDialog`, pestañas y espaciado de botones iguales.
 
+## Funcionalidad
+
+- [ ] **Opción "Control de caja" en Configuración.** Hay negocios que no usan
+  turnos de caja. Si la opción está apagada: se oculta Caja del menú y el POS
+  vende sin pedir que se abra caja.
+  - Guardarla por empresa en el backend, no en `uiStore` (hoy ahí vive
+    `posVariantDisplay`, que es solo del navegador): una columna nueva en
+    `SystemSettings` (`backend/app/models/settings.py`), encendida por defecto,
+    con migración Alembic que recorra los esquemas (patrón `c9d0e1f2a3b4`).
+  - **Backend**: `create_sale` (`backend/app/routers/sales.py`, paso "0. Validar
+    Caja Abierta") devuelve 409 si no hay turno. Con el control apagado no debe
+    exigirlo; si no, ocultarlo en el frontend no sirve de nada.
+  - **Frontend**:
+    - `app/pos/page.tsx`: saltarse la pantalla "Caja cerrada" (`sessionStatus !== 'OPEN'`);
+    - `components/layout/Sidebar.tsx`: ocultar el ítem `/caja`;
+    - `app/configuracion/page.tsx`: agregar el interruptor (`Switch`).
+  - **Por decidir**:
+    - ¿qué pasa con `/caja` si alguien entra por URL?
+    - ¿qué pasa si se apaga el control con turnos abiertos?
+    - ¿los reportes que dependen del arqueo siguen teniendo sentido?
+
+    Las ventas no guardan el id del turno, así que venderían igual.
+  - Tests: una venta sin turno pasa con el control apagado y sigue dando 409 con
+    el control encendido.
+
 ## Prioridad alta
 
 - [ ] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
