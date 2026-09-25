@@ -38,3 +38,6 @@ pytest_output*.txt
 
 # Set de pruebas del SII de una empresa real (el nombre del archivo trae su RUT).
 /setDePruebas/
+
+# Preferencias locales de Claude Code
+.claude/settings.local.json
