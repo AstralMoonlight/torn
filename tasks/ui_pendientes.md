@@ -193,6 +193,25 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   - Las plantillas de impresión (`backend/app/templates/html/`) van en blanco y
     negro y no se tocan.
 
+- [ ] **Autocompletar cliente/proveedor desde el SII por RUT.** Al crear uno
+  (`components/customers/CustomerForm.tsx`, `components/providers/ProviderDialog.tsx`),
+  escribir el RUT y traer sus datos desde la "Consulta de situación tributaria
+  de terceros" (https://www2.sii.cl/stc/noauthz), en una ventana oculta.
+  - Lo que se vio en la página (2026-09-25): es una app JS que llama a
+    `/app/stc/recurso/v1/consulta/getConsultaData/`, protegida con
+    **reCAPTCHA Enterprise v3** (invisible, por puntaje) y cola de queue-it.
+    Un navegador headless suele sacar puntaje bajo y la respuesta vuelve con
+    `captchaInvalido`. Saltarse el captcha no es opción.
+  - Por eso, "ventana oculta" tiene que ser en el navegador del usuario (una
+    pestaña/iframe que él mismo carga), no un scraper en el backend. Probar
+    primero si el SII permite cargarla en iframe (cabeceras `X-Frame-Options`/CSP)
+    y si el puntaje alcanza; si no, plan B: abrir la consulta en una pestaña
+    visible y que el usuario copie los datos.
+  - Qué trae la consulta: razón social y actividades económicas (giro/ACTECO).
+    **No trae dirección, comuna ni ciudad**: esos campos siguen a mano.
+  - **Por decidir**: si el giro se llena con la primera actividad o se elige
+    entre las que devuelve el SII.
+
 ## Prioridad alta
 
 - [x] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
