@@ -290,6 +290,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                             size="sm"
                                             onClick={handleCreateBrand}
                                             disabled={!newBrandName.trim()}
+                                            title="Crear marca"
                                             className="h-9 w-9 px-0 shrink-0 "
                                         >
                                             <Plus className="h-4 w-4 text-primary-foreground" />
@@ -450,7 +451,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                                     />
                                                 </td>
                                                 <td className="py-1.5">
-                                                    <button onClick={() => removeVariant(i)} className="text-destructive hover:text-destructive/80">
+                                                    <button type="button" onClick={() => removeVariant(i)} title="Quitar variante" className="text-destructive hover:text-destructive/80">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                 </td>
@@ -486,7 +487,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 disabled={!canProceedStep1 || creating}
                                 className="text-xs"
                             >
-                                {creating && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                {creating && <Loader2 className="h-3 w-3 animate-spin" />}
                                 Crear Sin Variantes
                             </Button>
                             <Button

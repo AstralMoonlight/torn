@@ -2,15 +2,16 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Loader2, Tag, Search, X, Users, Package, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
     Table,
     TableBody,
@@ -18,9 +19,10 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { getApiErrorMessage } from '@/services/api'
 import {
     getPriceLists, getPriceList, createPriceList, updatePriceList, deletePriceList,
@@ -75,7 +77,7 @@ function PriceListItemRow({
                                 : Number(item.fixed_price)
                     }
                     onChange={e => onPriceChange(item.product_id, e.target.value)}
-                    className="w-24 h-7 text-sm text-right border-border focus-visible:ring-ring"
+                    className="w-24 h-7 text-sm text-right"
                 />
             </div>
             {onRemove && (
@@ -98,7 +100,6 @@ export default function PriceListsPage() {
     const [priceLists, setPriceLists] = useState<PriceListRead[]>([])
     const [loading, setLoading] = useState(true)
     const [deleteId, setDeleteId] = useState<number | null>(null)
-    const [isDeleting, setIsDeleting] = useState(false)
 
     // Modal state
     const [openModal, setOpenModal] = useState(false)
@@ -277,16 +278,12 @@ export default function PriceListsPage() {
 
     const handleDelete = async () => {
         if (!deleteId) return
-        setIsDeleting(true)
         try {
             await deletePriceList(deleteId)
             toast.success('Lista eliminada')
-            setDeleteId(null)
             fetchLists()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Error al eliminar'))
-        } finally {
-            setIsDeleting(false)
         }
     }
 
@@ -351,7 +348,7 @@ export default function PriceListsPage() {
                 description="Crea listas con precios fijos para grupos de clientes."
                 actions={
                     <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
-                        <Plus className="h-4 w-4 mr-2" /> Nueva Lista
+                        <Plus className="h-4 w-4" /> Nueva Lista
                     </Button>
                 }
             />
@@ -359,11 +356,11 @@ export default function PriceListsPage() {
             {/* Table */}
             <div data-section="listas-precios.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/60 border-b border-border">
+                    <TableHeader>
                         <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Nombre</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Descripción</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -392,19 +389,9 @@ export default function PriceListsPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {loading && Array(3).fill(0).map((_, i) => (
-                            <TableRow key={i} className="border-b border-border">
-                                <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-[300px]" /></TableCell>
-                                <TableCell />
-                            </TableRow>
-                        ))}
+                        {loading && <TableEmpty colSpan={3} loading />}
                         {!loading && priceLists.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">
-                                    No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={3}>No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.</TableEmpty>
                         )}
                         {!loading && priceLists.map(pl => (
                             <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">
@@ -468,7 +455,6 @@ export default function PriceListsPage() {
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -478,37 +464,25 @@ export default function PriceListsPage() {
                                     value={formDescription}
                                     onChange={e => setFormDescription(e.target.value)}
                                     disabled={editingId === 'base'}
-                                    className="border-border focus-visible:ring-ring"
                                 />
                             </div>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-1 border-b border-border">
-                            {([
-                                ['products', 'Productos', Package],
-                                ...(editingId === 'base' ? [] : [['customers', 'Clientes', Users]])
-                            ] as [Tab, string, typeof Package][]).map(([key, label, Icon]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setActiveTab(key as Tab)}
-                                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === key
-                                        ? 'border-primary text-primary'
-                                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                                        }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {label}
-                                    {key === 'products' && draftItems.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{draftItems.length}</Badge>
-                                    }
-                                    {key === 'customers' && selectedCustomerIds.length > 0 &&
-                                        <Badge className="ml-1 h-4 text-[10px] px-1 bg-primary/10 text-primary">{selectedCustomerIds.length}</Badge>
-                                    }
-                                </button>
-                            ))}
-                        </div>
+                        <Tabs value={activeTab} onValueChange={v => setActiveTab(v as Tab)}>
+                            <TabsList>
+                                <TabsTrigger value="products" className="gap-2">
+                                    <Package className="h-4 w-4" /> Productos
+                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{draftItems.length}</Badge>}
+                                </TabsTrigger>
+                                {editingId !== 'base' && (
+                                    <TabsTrigger value="customers" className="gap-2">
+                                        <Users className="h-4 w-4" /> Clientes
+                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedCustomerIds.length}</Badge>}
+                                    </TabsTrigger>
+                                )}
+                            </TabsList>
+                        </Tabs>
 
                         {/* Products Tab */}
                         {activeTab === 'products' && (
@@ -517,15 +491,7 @@ export default function PriceListsPage() {
                                 {/* Toggle (search bars live inside each panel for custom lists; base mode keeps a single global one) */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                                     {editingId === 'base' && (
-                                        <div className="relative flex-1">
-                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                placeholder="Filtrar catálogo por nombre..."
-                                                value={draftSearch}
-                                                onChange={e => setDraftSearch(e.target.value)}
-                                                className="pl-9 border-border text-sm"
-                                            />
-                                        </div>
+                                        <SearchInput className="flex-1" placeholder="Filtrar catálogo por nombre..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} />
                                     )}
                                     <div className="flex items-center gap-2 shrink-0 bg-muted px-3 py-1.5 rounded-lg border border-border ml-auto">
                                         <Label htmlFor="tax-toggle" className="text-xs font-medium text-muted-foreground cursor-pointer">
@@ -572,16 +538,7 @@ export default function PriceListsPage() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Buscar dentro de esta lista..."
-                                                    value={draftSearch}
-                                                    onChange={e => setDraftSearch(e.target.value)}
-                                                    disabled={draftItems.length === 0}
-                                                    className="pl-9 border-border text-sm"
-                                                />
-                                            </div>
+                                            <SearchInput className="shrink-0" placeholder="Buscar dentro de esta lista..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} disabled={draftItems.length === 0} />
                                             <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {draftItems.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
@@ -629,15 +586,7 @@ export default function PriceListsPage() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Buscar producto por nombre o código..."
-                                                    value={productSearch}
-                                                    onChange={e => setProductSearch(e.target.value)}
-                                                    className="pl-9 border-border text-sm"
-                                                />
-                                            </div>
+                                            <SearchInput className="shrink-0" placeholder="Buscar producto por nombre o código..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
                                             <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {allProducts.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
@@ -692,15 +641,7 @@ export default function PriceListsPage() {
                         {/* Customers Tab */}
                         {activeTab === 'customers' && (
                             <div className="space-y-3">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Buscar cliente por nombre o RUT..."
-                                        value={customerSearch}
-                                        onChange={e => setCustomerSearch(e.target.value)}
-                                        className="pl-9 border-border text-sm"
-                                    />
-                                </div>
+                                <SearchInput placeholder="Buscar cliente por nombre o RUT..." value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} />
 
                                 {selectedCustomerIds.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">
@@ -757,34 +698,19 @@ export default function PriceListsPage() {
                             disabled={isSaving}
                             className="cursor-pointer"
                         >
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                             {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Lista')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Delete Confirm */}
-            <AlertDialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-card border-border">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-destructive">¿Eliminar lista de precios?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground">
-                            Los clientes asignados quedarán sin lista de precios y se aplicará el precio base. Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                        >
-                            {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={o => !o && setDeleteId(null)}
+                title="¿Eliminar lista de precios?"
+                description="Los clientes asignados quedarán sin lista de precios y se aplicará el precio base. Esta acción no se puede deshacer."
+                onConfirm={handleDelete}
+            />
         </PageContainer>
     )
 }

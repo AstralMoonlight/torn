@@ -201,6 +201,7 @@ export default function ProviderSearchCombobox({
                     className="h-6 w-6 text-primary hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
                     onClick={clearProvider}
                     type="button"
+                    title="Quitar proveedor"
                 >
                     <X className="h-3.5 w-3.5" />
                 </Button>

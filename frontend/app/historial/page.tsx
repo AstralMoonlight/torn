@@ -5,6 +5,7 @@ import { useEffect, useState, Fragment } from 'react'
 import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Dialog,
@@ -21,7 +22,6 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import {
     History,
-    Search,
     RotateCcw,
     ExternalLink,
     Loader2,
@@ -35,6 +35,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import { formatCLP } from '@/lib/format'
 import { SelectOpciones } from '@/components/ui/select-opciones'
@@ -198,35 +199,27 @@ export default function HistorialPage() {
             />
 
             {/* Search */}
-            <div data-section="historial.buscador" className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por folio o RUT..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 text-sm"
-                />
-            </div>
+            <SearchInput data-section="historial.buscador" placeholder="Buscar por folio o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
-            <div data-section="historial.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="historial.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted">
+                    <TableHeader>
                         <TableRow className="border-b border-border">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Folio</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tipo</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SII</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell text-center">Hora</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Cliente</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>Folio</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>SII</TableHead>
+                            <TableHead className="hidden sm:table-cell text-center">Hora</TableHead>
+                            <TableHead className="hidden lg:table-cell">Cliente</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Cargando...</TableCell></TableRow>
+                            <TableEmpty colSpan={7} loading />
                         ) : filtered.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell></TableRow>
+                            <TableEmpty colSpan={7}>Sin resultados</TableEmpty>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>

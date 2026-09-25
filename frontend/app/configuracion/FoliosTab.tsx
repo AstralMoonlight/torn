@@ -132,7 +132,7 @@ export default function FoliosTab() {
                 </div>
                 <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
                 <Button onClick={() => cafInput.current?.click()} disabled={subiendo}>
-                    {subiendo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                    {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
                     Cargar CAF
                 </Button>
             </div>
@@ -212,7 +212,7 @@ export default function FoliosTab() {
                     <Dialog open={certOpen} onOpenChange={setCertOpen}>
                         <DialogTrigger asChild>
                             <Button variant="secondary">
-                                <KeyRound className="mr-2 h-4 w-4" />
+                                <KeyRound className="h-4 w-4" />
                                 {certificado ? "Reemplazar" : "Cargar"}
                             </Button>
                         </DialogTrigger>
@@ -236,7 +236,7 @@ export default function FoliosTab() {
                                     Cancelar
                                 </Button>
                                 <Button onClick={handleCertificado} disabled={subiendo || !pfx || !password}>
-                                    {subiendo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {subiendo && <Loader2 className="h-4 w-4 animate-spin" />}
                                     Cargar
                                 </Button>
                             </DialogFooter>

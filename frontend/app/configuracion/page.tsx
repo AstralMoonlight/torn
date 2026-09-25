@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Loader2, Save, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText } from 'lucide-react'
@@ -117,8 +117,8 @@ export default function ConfigurationPage() {
                 description="Administra las preferencias generales y parámetros del sistema."
             />
 
-            <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
+            <Tabs defaultValue="general" className="space-y-6">
+                <TabsList>
                     <TabsTrigger value="general" className="gap-2">
                         <Settings className="h-4 w-4" /> General
                     </TabsTrigger>
@@ -272,11 +272,7 @@ export default function ConfigurationPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {taxes.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                                                    No hay impuestos configurados.
-                                                </TableCell>
-                                            </TableRow>
+                                            <TableEmpty colSpan={4}>No hay impuestos configurados.</TableEmpty>
                                         ) : (
                                             taxes.map((tax) => (
                                                 <TableRow key={tax.id}>

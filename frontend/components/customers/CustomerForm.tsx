@@ -118,7 +118,7 @@ export default function CustomerForm({ initialData, onSubmit, onCancel, isEditin
                     Cancelar
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving} className="">
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                     Guardar
                 </Button>
             </DialogFooter>

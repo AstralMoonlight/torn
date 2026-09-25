@@ -24,6 +24,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     Select,
@@ -227,11 +228,11 @@ export default function ComprasPage() {
             <PageHeader
                 icon={ShoppingBag}
                 title="Ingreso de Mercadería"
-                description="Registre compras y actualice stock de productos."
+                description="Registra compras y actualiza el stock de productos."
             />
 
-            <Tabs defaultValue="nuevo" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6">
+            <Tabs defaultValue="nuevo" className="space-y-6">
+                <TabsList>
                     <TabsTrigger value="nuevo" className="gap-2">
                         <Plus className="h-4 w-4" /> Nuevo Ingreso
                     </TabsTrigger>
@@ -372,7 +373,7 @@ export default function ComprasPage() {
                                 <CardContent className="p-0">
                                     <div className="max-h-[400px] overflow-y-auto">
                                         <Table>
-                                            <TableHeader className="bg-muted/80 backdrop-blur sticky top-0 z-10">
+                                            <TableHeader className="sticky top-0 z-10 backdrop-blur">
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
@@ -428,6 +429,7 @@ export default function ComprasPage() {
                                                                     size="icon"
                                                                     className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                     onClick={() => removeItem(index)}
+                                                                    title="Quitar"
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
@@ -483,20 +485,20 @@ export default function ComprasPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-muted/60">
-                                    <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Fecha</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Documento</TableHead>
-                                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Proveedor</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</TableHead>
-                                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Documento</TableHead>
+                                        <TableHead>Proveedor</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loadingPurchases ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
+                                        <TableEmpty colSpan={5} loading />
                                     ) : purchases.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No hay compras registradas</TableCell></TableRow>
+                                        <TableEmpty colSpan={5}>No hay compras registradas</TableEmpty>
                                     ) : (
                                         purchases.map(p => (
                                             <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
@@ -565,14 +567,9 @@ export default function ComprasPage() {
                                     {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}
-                                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 active:scale-95 transition shadow-sm"
-                            >
-                                <Printer className="h-3.5 w-3.5" />
-                                Imprimir
-                            </button>
+                            <Button size="sm" onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}>
+                                <Printer className="h-4 w-4" /> Imprimir
+                            </Button>
                         </div>
                     </DialogHeader>
                     {selectedPurchase && (

@@ -9,23 +9,14 @@ import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-reac
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Search, Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
+import { Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
 import { validateRut, formatRut } from '@/lib/rut'
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Switch } from '@/components/ui/switch'
 import {
     Table,
@@ -34,6 +25,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 
 /** Datos del SII que se copian a dte-torn. Una empresa nueva parte en certificación. */
@@ -50,7 +42,6 @@ export default function TenantsListPage() {
     const [isCreating, setIsCreating] = useState(false)
     const [openModal, setOpenModal] = useState(false)
     const [editingTenantId, setEditingTenantId] = useState<number | null>(null)
-    const [isDeleting, setIsDeleting] = useState(false)
     const [tenantToDelete, setTenantToDelete] = useState<number | null>(null)
     const [tenantSearch, setTenantSearch] = useState('')
 
@@ -207,16 +198,12 @@ export default function TenantsListPage() {
     const handleDeleteTenant = async () => {
         if (!tenantToDelete) return
 
-        setIsDeleting(true)
         try {
             await deleteTenant(tenantToDelete)
             toast.success("Empresa desactivada")
-            setTenantToDelete(null)
             fetchTenants()
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Error al desactivar empresa'))
-        } finally {
-            setIsDeleting(false)
         }
     }
 
@@ -241,8 +228,8 @@ export default function TenantsListPage() {
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Volver al Panel
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Building2 className="h-8 w-8 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                            <Building2 className="h-6 w-6 text-primary shrink-0" />
                             Gestión de Empresas
                         </h1>
                     </div>
@@ -251,7 +238,7 @@ export default function TenantsListPage() {
                         onClick={openCreateModal}
                         className="cursor-pointer shadow-sm shadow-primary/20"
                     >
-                        <Plus className="mr-2 h-4 w-4" /> Crear nuevo Tenant
+                        <Plus className="h-4 w-4" /> Crear nuevo Tenant
                     </Button>
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
@@ -274,7 +261,6 @@ export default function TenantsListPage() {
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                             required
                                             autoFocus
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -284,7 +270,7 @@ export default function TenantsListPage() {
                                             value={formData.rut}
                                             onChange={handleRutChange}
                                             required
-                                            className={`border-border focus-visible:ring-ring font-mono ${!isRutValid ? 'border-destructive focus-visible:ring-destructive' : ''
+                                            className={`font-mono ${!isRutValid ? 'border-destructive focus-visible:ring-destructive' : ''
                                                 }`}
                                         />
                                         {!isRutValid && (
@@ -297,7 +283,6 @@ export default function TenantsListPage() {
                                             placeholder="Ej. VENTA AL POR MENOR DE PRODUCTOS FARMACEUTICOS..."
                                             value={formData.giro}
                                             onChange={e => setFormData({ ...formData, giro: e.target.value })}
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -306,7 +291,6 @@ export default function TenantsListPage() {
                                             placeholder="Ej. Av. Principal 123"
                                             value={formData.address}
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="border-border focus-visible:ring-ring"
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -316,7 +300,6 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.commune}
                                                 onChange={e => setFormData({ ...formData, commune: e.target.value })}
-                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -325,7 +308,6 @@ export default function TenantsListPage() {
                                                 placeholder="Santiago"
                                                 value={formData.city}
                                                 onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                                className="border-border focus-visible:ring-ring"
                                             />
                                         </div>
                                     </div>
@@ -336,7 +318,7 @@ export default function TenantsListPage() {
                                             value={formData.billing_day.toString()}
                                             onValueChange={v => setFormData({ ...formData, billing_day: parseInt(v) })}
                                         >
-                                            <SelectTrigger className="border-border">
+                                            <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-border">
@@ -365,7 +347,7 @@ export default function TenantsListPage() {
                                                         value={formData.sii_ambiente}
                                                         onValueChange={v => setFormData({ ...formData, sii_ambiente: v as 'CERT' | 'PROD' })}
                                                     >
-                                                        <SelectTrigger className="border-border">
+                                                        <SelectTrigger>
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-card border-border">
@@ -381,7 +363,6 @@ export default function TenantsListPage() {
                                                         maxLength={60}
                                                         value={formData.sii_oficina}
                                                         onChange={e => setFormData({ ...formData, sii_oficina: e.target.value })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -391,7 +372,6 @@ export default function TenantsListPage() {
                                                         min={0}
                                                         value={formData.sii_resolucion_numero}
                                                         onChange={e => setFormData({ ...formData, sii_resolucion_numero: parseInt(e.target.value) || 0 })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -400,7 +380,6 @@ export default function TenantsListPage() {
                                                         type="date"
                                                         value={formData.sii_resolucion_fecha}
                                                         onChange={e => setFormData({ ...formData, sii_resolucion_fecha: e.target.value })}
-                                                        className="border-border focus-visible:ring-ring"
                                                     />
                                                 </div>
                                             </div>
@@ -422,15 +401,7 @@ export default function TenantsListPage() {
                                         <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
                                     </div>
 
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Buscar por código o nombre..."
-                                            value={actecoSearch}
-                                            onChange={e => setActecoSearch(e.target.value)}
-                                            className="pl-9 bg-card border-border text-sm"
-                                        />
-                                    </div>
+                                    <SearchInput placeholder="Buscar por código o nombre..." value={actecoSearch} onChange={e => setActecoSearch(e.target.value)} />
 
                                     <div className="h-32 rounded border border-border bg-card overflow-y-auto">
                                         <div className="p-2 space-y-1">
@@ -478,11 +449,11 @@ export default function TenantsListPage() {
                                 </div>
 
                                 <div className="pt-2 flex justify-end gap-3">
-                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border">
+                                    <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>
                                         Cancelar
                                     </Button>
                                     <Button type="submit" disabled={isCreating || !isRutValid} className="cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
                                             : (editingTenantId ? 'Guardar Cambios' : 'Crear e Inicializar')
@@ -495,23 +466,13 @@ export default function TenantsListPage() {
                 </div>
 
                 <div data-section="saas-admin.empresas.filtros" className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por nombre, RUT o esquema..."
-                            value={tenantSearch}
-                            onChange={e => setTenantSearch(e.target.value)}
-                            className="pl-9 border-border focus-visible:ring-ring h-11"
-                        />
-                        {tenantSearch && (
-                            <button
-                                onClick={() => setTenantSearch('')}
-                                className="absolute right-3 top-1/2 -mt-2 text-muted-foreground hover:text-foreground"
-                            >
-                                <CloseIcon className="h-4 w-4" />
-                            </button>
-                        )}
-                    </div>
+                    <SearchInput
+                        className="flex-1 w-full"
+                        placeholder="Buscar por nombre, RUT o esquema..."
+                        value={tenantSearch}
+                        onChange={e => setTenantSearch(e.target.value)}
+                        onClear={() => setTenantSearch('')}
+                    />
                     <div className="text-sm text-muted-foreground font-medium">
                         {filteredTenants.length} de {tenants.length} empresas
                     </div>
@@ -520,34 +481,22 @@ export default function TenantsListPage() {
                 {/* Table */}
                 <div data-section="saas-admin.empresas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-muted/50 border-b border-border">
+                        <TableHeader>
                             <TableRow>
-                                <TableHead className="font-medium uppercase">Empresa</TableHead>
-                                <TableHead className="font-medium uppercase">RUT</TableHead>
-                                <TableHead className="font-medium uppercase">Esquema BD</TableHead>
-                                <TableHead className="font-medium uppercase">Estado</TableHead>
-                                <TableHead className="font-medium uppercase text-right">Acciones</TableHead>
+                                <TableHead>Empresa</TableHead>
+                                <TableHead>RUT</TableHead>
+                                <TableHead>Esquema BD</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading && (
-                                Array(3).fill(0).map((_, i) => (
-                                    <TableRow key={i} className="border-b border-border/50 bg-card ">
-                                        <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                                        <TableCell />
-                                    </TableRow>
-                                ))
+                                <TableEmpty colSpan={5} loading />
                             )}
 
                             {!loading && filteredTenants.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                                        {tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}
-                                    </TableCell>
-                                </TableRow>
+                                <TableEmpty colSpan={5}>{tenantSearch ? 'No se encontraron empresas que coincidan con la búsqueda' : 'No hay empresas registradas'}</TableEmpty>
                             )}
 
                             {!loading && filteredTenants.map((tenant) => (
@@ -612,31 +561,14 @@ export default function TenantsListPage() {
                         </TableBody>
                     </Table>
                 </div>
-
-                {/* Confirm Delete Dialog */}
-                <AlertDialog open={!!tenantToDelete} onOpenChange={(open: boolean) => !open && setTenantToDelete(null)}>
-                    <AlertDialogContent className="bg-card border-border">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                                <AlertTriangle className="h-5 w-5" />
-                                ¿Desactivar Empresa?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-muted-foreground">
-                                Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleDeleteTenant}
-                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                                disabled={isDeleting}
-                            >
-                                {isDeleting ? 'Desactivando...' : 'Sí, desactivar'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <ConfirmDialog
+                    open={!!tenantToDelete}
+                    onOpenChange={o => !o && setTenantToDelete(null)}
+                    title="¿Desactivar empresa?"
+                    description="Esta acción marcará a la empresa como inactiva. Los usuarios no podrán iniciar sesión en este tenant hasta que sea reactivado."
+                    confirmLabel="Desactivar"
+                    onConfirm={handleDeleteTenant}
+                />
 
             </div>
         </div >

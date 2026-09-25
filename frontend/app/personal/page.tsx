@@ -11,7 +11,6 @@ import {
     Pencil,
     Loader2,
     Mail,
-    Search,
     RefreshCw,
     Save,
     CheckCircle2,
@@ -23,10 +22,11 @@ import {
     TableCell,
     TableHead,
     TableHeader,
-    TableRow
+    TableRow,
+    TableEmpty
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
@@ -229,7 +229,7 @@ export default function PersonalPage() {
             />
 
             <Tabs defaultValue="list" className="space-y-6">
-                <TabsList className="bg-muted">
+                <TabsList>
                     <TabsTrigger value="list" className="gap-2">
                         <Users className="h-4 w-4" /> Personal
                     </TabsTrigger>
@@ -247,7 +247,7 @@ export default function PersonalPage() {
 
                     <Card className="border-border shadow-sm overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-muted/50">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[300px]">Nombre / Rol</TableHead>
                                     <TableHead>Email (Identificador)</TableHead>
@@ -258,11 +258,7 @@ export default function PersonalPage() {
                             </TableHeader>
                             <TableBody>
                                 {staff.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
-                                            No hay personal registrado. Comienza agregando uno nuevo.
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableEmpty colSpan={5}>No hay personal registrado. Comienza agregando uno nuevo.</TableEmpty>
                                 ) : (
                                     staff.map((user) => (
                                         <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
@@ -307,7 +303,7 @@ export default function PersonalPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)} title="Editar">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -322,21 +318,13 @@ export default function PersonalPage() {
 
                 <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <div className="relative max-w-xs w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar usuario..."
-                                value={rolesSearchTerm}
-                                onChange={(e) => setRolesSearchTerm(e.target.value)}
-                                className="pl-9 h-9"
-                            />
-                        </div>
+                        <SearchInput className="max-w-xs w-full" placeholder="Buscar usuario..." value={rolesSearchTerm} onChange={(e) => setRolesSearchTerm(e.target.value)} />
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={loadAll} disabled={savingRoles}>
                                 <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar
                             </Button>
                             <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
-                                <Save className="h-4 w-4 mr-2" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
+                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
                             </Button>
                         </div>
                     </div>
@@ -359,11 +347,11 @@ export default function PersonalPage() {
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
                                         <Table>
-                                            <TableHeader className="bg-muted/50">
+                                            <TableHeader>
                                                 <TableRow className="border-y border-border">
-                                                    <TableHead className="font-bold uppercase tracking-wider text-muted-foreground">Menú / Sección</TableHead>
+                                                    <TableHead>Menú / Sección</TableHead>
                                                     {roles.map(role => (
-                                                        <TableHead key={role.id} className="text-center font-bold uppercase tracking-wider text-muted-foreground">
+                                                        <TableHead key={role.id} className="text-center">
                                                             {role.name}
                                                         </TableHead>
                                                     ))}

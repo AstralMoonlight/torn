@@ -8,6 +8,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     Dialog,
@@ -17,12 +18,13 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Plus, Search, Loader2, Globe } from 'lucide-react'
+import { Pencil, Trash2, Plus, Loader2, Globe } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 
@@ -158,9 +160,9 @@ export default function CustomersPage() {
         }
     }
 
-    const handleDelete = async (customer: Customer) => {
-        if (!confirm(`¿Eliminar cliente ${customer.razon_social}?`)) return
+    const [toDelete, setToDelete] = useState<Customer | null>(null)
 
+    const handleDelete = async (customer: Customer) => {
         try {
             await deleteCustomer(customer.rut)
             setCustomers(customers.filter(c => c.id !== customer.id))
@@ -179,45 +181,29 @@ export default function CustomersPage() {
                 description="Gestiona tus clientes y contribuyentes."
                 actions={
                     <Button onClick={handleOpenCreate}>
-                        <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
+                        <Plus className="h-4 w-4" /> Nuevo Cliente
                     </Button>
                 }
             />
 
-            <div data-section="clientes.buscador" className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por RUT o Nombre..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="h-9"
-                />
-            </div>
+            <SearchInput data-section="clientes.buscador" className="max-w-sm" placeholder="Buscar por RUT o Nombre..." value={filter} onChange={(e) => setFilter(e.target.value)} />
 
             <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted/60">
-                        <TableRow className="border-b border-border hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead className="w-[120px] text-xs uppercase tracking-wider text-muted-foreground font-medium">RUT</TableHead>
-                            <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Razón Social</TableHead>
-                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Giro</TableHead>
-                            <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider text-muted-foreground font-medium">Email</TableHead>
-                            <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[120px]">RUT</TableHead>
+                            <TableHead>Razón Social</TableHead>
+                            <TableHead className="hidden md:table-cell">Giro</TableHead>
+                            <TableHead className="hidden md:table-cell">Email</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={5} loading />
                         ) : filteredCustomers.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    No se encontraron clientes.
-                                </TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={5}>No se encontraron clientes.</TableEmpty>
                         ) : (
                             filteredCustomers.map((customer) => (
                                 <TableRow key={customer.id} className="hover:bg-accent/50 transition-colors">
@@ -248,7 +234,7 @@ export default function CustomersPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleDelete(customer)}
+                                                onClick={() => setToDelete(customer)}
                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 title="Eliminar"
                                             >
@@ -310,12 +296,19 @@ export default function CustomersPage() {
                             Cancelar
                         </Button>
                         <Button onClick={handleSave} disabled={saving} className="">
-                            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                             Guardar
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Eliminar cliente?"
+                description={toDelete?.razon_social}
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
+            />
         </PageContainer>
     )
 }

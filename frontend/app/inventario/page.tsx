@@ -5,7 +5,6 @@ import { getProducts, type Product } from '@/services/products'
 import { getApiErrorMessage } from '@/services/api'
 import {
     Package,
-    Search,
     AlertTriangle,
     XCircle,
     MoreHorizontal,
@@ -14,7 +13,7 @@ import {
     Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Table,
@@ -23,6 +22,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableEmpty,
 } from '@/components/ui/table'
 import {
     DropdownMenu,
@@ -30,8 +30,9 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ProductWizard from '@/components/inventory/ProductWizard'
@@ -82,9 +83,9 @@ export default function InventarioPage() {
         fetchProducts()
     }
 
-    const handleDelete = async (product: Product) => {
-        if (!confirm(`¿Estás seguro de eliminar "${product.full_name}"? Esto no se puede deshacer.`)) return
+    const [toDelete, setToDelete] = useState<Product | null>(null)
 
+    const handleDelete = async (product: Product) => {
         try {
             await deleteProduct(product.id)
             toast.success('Producto eliminado')
@@ -138,38 +139,26 @@ export default function InventarioPage() {
             />
 
             {/* Search */}
-            <div data-section="inventario.buscador" className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por nombre, SKU o código de barras..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 text-sm"
-                />
-            </div>
+            <SearchInput data-section="inventario.buscador" placeholder="Buscar por nombre, SKU o código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
-            <div data-section="inventario.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="inventario.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-muted">
+                    <TableHeader>
                         <TableRow className="border-b border-border">
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">SKU</TableHead>
-                            <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Producto</TableHead>
-                            <TableHead className="text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Precio Neto</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Stock Total</TableHead>
-                            <TableHead className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Variantes</TableHead>
-                            <TableHead className="w-[50px] text-right text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Acciones</TableHead>
+                            <TableHead>SKU</TableHead>
+                            <TableHead>Producto</TableHead>
+                            <TableHead className="text-right hidden sm:table-cell">Precio Neto</TableHead>
+                            <TableHead className="text-center">Stock Total</TableHead>
+                            <TableHead className="text-center hidden lg:table-cell">Variantes</TableHead>
+                            <TableHead className="w-[50px] text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                         {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Cargando...</TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={6} loading />
                         ) : filtered.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Sin resultados</TableCell>
-                            </TableRow>
+                            <TableEmpty colSpan={6}>Sin resultados</TableEmpty>
                         ) : (
                             filtered.map((p) => (
                                 <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
@@ -214,7 +203,7 @@ export default function InventarioPage() {
                                                     Editar
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="text-destructive focus:text-destructive">
+                                                <DropdownMenuItem onClick={() => setToDelete(p)} className="text-destructive focus:text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Eliminar
                                                 </DropdownMenuItem>
@@ -244,6 +233,13 @@ export default function InventarioPage() {
                     setEditDialogOpen(false)
                     if (refresh) loadProducts()
                 }}
+            />
+            <ConfirmDialog
+                open={!!toDelete}
+                onOpenChange={(o) => !o && setToDelete(null)}
+                title="¿Eliminar producto?"
+                description={<>&quot;{toDelete?.full_name}&quot; se eliminará. Esta acción no se puede deshacer.</>}
+                onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
             />
         </PageContainer>
     )
