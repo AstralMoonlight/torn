@@ -202,7 +202,7 @@ export default function HistorialPage() {
             <SearchInput data-section="historial.buscador" placeholder="Buscar por folio o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
-            <div data-section="historial.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="historial.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="border-b border-border">

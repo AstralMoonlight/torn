@@ -16,7 +16,6 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { formatRut } from '@/lib/rut'
 import { getProviders, deleteProvider, type Provider } from '@/services/providers'
@@ -89,71 +88,63 @@ export default function ProvidersPage() {
                 }
             />
 
-            <Card data-section="proveedores.tabla">
-                <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium">Listado de Proveedores</CardTitle>
-                        <SearchInput className="w-72" placeholder="Buscar por Nombre o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>RUT</TableHead>
-                                    <TableHead>Razón Social</TableHead>
-                                    <TableHead className="hidden md:table-cell">Giro</TableHead>
-                                    <TableHead className="hidden lg:table-cell">Email</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
+            <SearchInput data-section="proveedores.buscador" className="max-w-sm" placeholder="Buscar por Nombre o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
+
+            <div data-section="proveedores.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>RUT</TableHead>
+                            <TableHead>Razón Social</TableHead>
+                            <TableHead className="hidden md:table-cell">Giro</TableHead>
+                            <TableHead className="hidden lg:table-cell">Email</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableEmpty colSpan={5} loading />
+                        ) : filtered.length === 0 ? (
+                            <TableEmpty colSpan={5}>No se encontraron proveedores.</TableEmpty>
+                        ) : (
+                            filtered.map((provider) => (
+                                <TableRow key={provider.id} className="hover:bg-accent/50 transition-colors">
+                                    <TableCell className="font-mono text-xs">{formatRut(provider.rut)}</TableCell>
+                                    <TableCell className="font-medium">{provider.razon_social}</TableCell>
+                                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                                        {provider.giro}
+                                    </TableCell>
+                                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                                        {provider.email}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEdit(provider)}
+                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                title="Editar"
+                                            >
+                                                <Edit2 className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setToDelete(provider)}
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                title="Desactivar"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableEmpty colSpan={5} loading />
-                                ) : filtered.length === 0 ? (
-                                    <TableEmpty colSpan={5}>No se encontraron proveedores.</TableEmpty>
-                                ) : (
-                                    filtered.map((provider) => (
-                                        <TableRow key={provider.id} className="hover:bg-accent/50 transition-colors">
-                                            <TableCell className="font-mono text-xs">{formatRut(provider.rut)}</TableCell>
-                                            <TableCell className="font-medium">{provider.razon_social}</TableCell>
-                                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                                                {provider.giro}
-                                            </TableCell>
-                                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                                {provider.email}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEdit(provider)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                        title="Editar"
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setToDelete(provider)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                        title="Desactivar"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
 
             <ProviderDialog
                 open={isDialogOpen}

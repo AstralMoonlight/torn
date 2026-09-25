@@ -102,7 +102,7 @@ export default function LoginPage() {
                         className="w-full h-10 font-medium"
                         disabled={loading}
                     >
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Ingresar
                     </Button>
                 </form>

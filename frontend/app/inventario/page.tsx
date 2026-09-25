@@ -142,7 +142,7 @@ export default function InventarioPage() {
             <SearchInput data-section="inventario.buscador" placeholder="Buscar por nombre, SKU o código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
-            <div data-section="inventario.tabla" className="rounded-xl border border-border bg-card overflow-hidden">
+            <div data-section="inventario.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow className="border-b border-border">

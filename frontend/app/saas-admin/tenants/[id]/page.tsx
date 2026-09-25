@@ -236,12 +236,12 @@ export default function TenantDetailsPage() {
                             className="bg-background hover:bg-accent border-border text-foreground w-full sm:w-auto cursor-pointer"
                             onClick={handleImpersonate}
                         >
-                            <Store className="mr-2 h-4 w-4" /> Entrar al POS
+                            <Store className="h-4 w-4" /> Entrar al POS
                         </Button>
                         <Dialog open={openSettings} onOpenChange={setOpenSettings}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer">
-                                    <Settings className="mr-2 h-4 w-4" /> Límites de Usuarios
+                                    <Settings className="h-4 w-4" /> Límites de Usuarios
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
@@ -349,7 +349,7 @@ export default function TenantDetailsPage() {
                                 </div>
                                 <div className="md:w-32">
                                     <Button type="submit" className="w-full h-10 cursor-pointer shadow-sm shadow-primary/20" disabled={isSubmitting || isAtLimit}>
-                                        {isSubmitting ? '...' : <><UserPlus className="mr-2 h-4 w-4" /> Asignar</>}
+                                        {isSubmitting ? '...' : <><UserPlus className="h-4 w-4" /> Asignar</>}
                                     </Button>
                                 </div>
                             </div>

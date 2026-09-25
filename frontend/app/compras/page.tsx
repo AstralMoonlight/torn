@@ -228,7 +228,7 @@ export default function ComprasPage() {
             <PageHeader
                 icon={ShoppingBag}
                 title="Ingreso de Mercadería"
-                description="Registre compras y actualice stock de productos."
+                description="Registra compras y actualiza el stock de productos."
             />
 
             <Tabs defaultValue="nuevo" className="space-y-6">

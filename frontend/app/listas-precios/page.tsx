@@ -348,7 +348,7 @@ export default function PriceListsPage() {
                 description="Crea listas con precios fijos para grupos de clientes."
                 actions={
                     <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
-                        <Plus className="h-4 w-4 mr-2" /> Nueva Lista
+                        <Plus className="h-4 w-4" /> Nueva Lista
                     </Button>
                 }
             />
@@ -698,7 +698,7 @@ export default function PriceListsPage() {
                             disabled={isSaving}
                             className="cursor-pointer"
                         >
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                             {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Lista')}
                         </Button>
                     </DialogFooter>

@@ -238,7 +238,7 @@ export default function TenantsListPage() {
                         onClick={openCreateModal}
                         className="cursor-pointer shadow-sm shadow-primary/20"
                     >
-                        <Plus className="mr-2 h-4 w-4" /> Crear nuevo Tenant
+                        <Plus className="h-4 w-4" /> Crear nuevo Tenant
                     </Button>
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
@@ -453,7 +453,7 @@ export default function TenantsListPage() {
                                         Cancelar
                                     </Button>
                                     <Button type="submit" disabled={isCreating || !isRutValid} className="cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
                                             : (editingTenantId ? 'Guardar Cambios' : 'Crear e Inicializar')

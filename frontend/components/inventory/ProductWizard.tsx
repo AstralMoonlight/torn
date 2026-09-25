@@ -487,7 +487,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 disabled={!canProceedStep1 || creating}
                                 className="text-xs"
                             >
-                                {creating && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                {creating && <Loader2 className="h-3 w-3 animate-spin" />}
                                 Crear Sin Variantes
                             </Button>
                             <Button

@@ -324,7 +324,7 @@ export default function PersonalPage() {
                                 <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar
                             </Button>
                             <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
-                                <Save className="h-4 w-4 mr-2" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
+                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
                             </Button>
                         </div>
                     </div>

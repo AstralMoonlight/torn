@@ -76,7 +76,7 @@ export default function SelectTenantPage() {
                     </div>
                     <LogoutConfirmModal>
                         <Button variant="outline" className="w-full h-11 cursor-pointer">
-                            <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+                            <LogOut className="h-4 w-4" /> Cerrar Sesión
                         </Button>
                     </LogoutConfirmModal>
                 </div>
@@ -112,7 +112,7 @@ export default function SelectTenantPage() {
                                 className="w-full h-12 font-bold shadow-lg shadow-primary/20 cursor-pointer"
                                 onClick={() => window.open('https://pagos.tu-sistema.com', '_blank')}
                             >
-                                <Store className="mr-2 h-5 w-5" /> Reactivar mi cuenta
+                                <Store className="h-5 w-5" /> Reactivar mi cuenta
                             </Button>
 
                             <LogoutConfirmModal>
@@ -121,7 +121,7 @@ export default function SelectTenantPage() {
                                     size="sm"
                                     className="w-full h-11 text-muted-foreground hover:bg-accent cursor-pointer"
                                 >
-                                    <LogOut className="mr-2 h-4 w-4" /> Volver más tarde
+                                    <LogOut className="h-4 w-4" /> Volver más tarde
                                 </Button>
                             </LogoutConfirmModal>
                         </div>
@@ -185,7 +185,7 @@ export default function SelectTenantPage() {
                 <div className="pt-4 text-center">
                     <LogoutConfirmModal>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-muted-foreground cursor-pointer">
-                            <LogOut className="mr-2 h-4 w-4" /> Cambiar de Usuario
+                            <LogOut className="h-4 w-4" /> Cambiar de Usuario
                         </Button>
                     </LogoutConfirmModal>
                 </div>

@@ -119,7 +119,7 @@ export default function BrandsPage() {
                 description="Gestiona las marcas de tus productos."
                 actions={
                     <Button onClick={handleOpenCreate}>
-                        <Plus className="mr-2 h-4 w-4" /> Nueva Marca
+                        <Plus className="h-4 w-4" /> Nueva Marca
                     </Button>
                 }
             />
@@ -194,7 +194,7 @@ export default function BrandsPage() {
                             Cancelar
                         </Button>
                         <Button onClick={handleSave} disabled={!name.trim() || saving} className="">
-                            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                             Guardar
                         </Button>
                     </DialogFooter>
