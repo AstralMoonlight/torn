@@ -202,11 +202,13 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 - Motor de ventas transaccional, caja con arqueo ciego, kardex, crédito interno y devoluciones con NC.
 - Emisión de DTE a través de dte-torn; carga de CAF y certificado desde Configuración → Folios; datos del SII
   por empresa (`public.tenants.sii_*`, solo superusuario) copiados a dte-torn al guardar el emisor.
+- Modo del emisor (`sii_ambiente`): CERT, PROD o DEV (Desarrollador: emite con CAF de prueba, sin el SII).
+  Cada venta guarda su `modo` y solo se ve en ese modo (`filtrar_por_modo` en `dependencies/tenant.py`).
 - Plantillas de impresión HTML (ticket 80mm/57mm y carta), formato configurable por tipo de documento.
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
-- Suite Pytest de integración: **101 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-25).
+- Suite Pytest de integración: **104 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-25).
   dte-torn se sustituye por un fake (`FakeDte` en `backend/tests/conftest.py`).
 - Contenerización completa (backend + frontend + PostgreSQL) vía Docker Compose.
 
