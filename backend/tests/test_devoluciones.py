@@ -55,10 +55,12 @@ def _devolver(client, sale_id, product_id, cantidad):
 
 
 class TestValidacionDeDevoluciones:
-    def test_devolucion_parcial_es_aceptada(self, client, venta):
+    def test_devolucion_parcial_es_aceptada(self, client, venta, fake_dte):
         resp = _devolver(client, venta["sale_id"], venta["product"].id, 2)
         assert resp.status_code == 201, resp.text
         assert resp.json()["tipo_dte"] == 61
+        # El manual de muestras exige imprimir el motivo (RazonRef).
+        assert fake_dte.documentos[-1]["referencias"][0]["razon"] == "Prueba"
 
         venta["db"].refresh(venta["product"])
         assert venta["product"].stock_actual == 7  # 10 - 5 vendidas + 2 devueltas

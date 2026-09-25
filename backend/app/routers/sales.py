@@ -119,7 +119,8 @@ def _guardar_estado(sale: Sale, doc: dict) -> None:
 
 def _referencias_dte(referencias) -> list:
     return [
-        {"tipo_doc": r["tipo_documento"], "folio": r["folio"], "fecha": r["fecha"], "codigo": r.get("sii_reason_code")}
+        {"tipo_doc": r["tipo_documento"], "folio": r["folio"], "fecha": r["fecha"], "codigo": r.get("sii_reason_code"),
+         "razon": r.get("razon")}
         for r in referencias or []
     ]
 
@@ -580,7 +581,8 @@ def create_return(
         "tipo_documento": str(original_sale.tipo_dte),
         "folio": str(original_sale.folio),
         "fecha": original_sale.fecha_emision.strftime("%Y-%m-%d"),
-        "sii_reason_code": return_in.sii_reason_code
+        "sii_reason_code": return_in.sii_reason_code,
+        "razon": return_in.reason[:90],
     }]
 
     nc_sale = Sale(

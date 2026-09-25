@@ -308,6 +308,7 @@ class DocumentReferenceCreate(BaseModel):
     folio: str
     fecha: str  # YYYY-MM-DD
     sii_reason_code: Optional[int] = None  # 1: Anula, 2: Corrige Texto, 3: Corrige Monto
+    razon: Optional[str] = Field(None, max_length=90)  # RazonRef: el motivo que va impreso
 
 
 class SaleCreate(BaseModel):
@@ -345,6 +346,7 @@ class DocumentReferenceOut(BaseModel):
     folio: str
     fecha: str
     sii_reason_code: Optional[int] = None
+    razon: Optional[str] = None
 
 
 class SaleOut(BaseModel):

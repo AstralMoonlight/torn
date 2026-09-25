@@ -63,7 +63,7 @@ Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verifi
    - Backend: guardar `estado`, `estado_sii` y `track_id` (migración Alembic). Consultar
      `GET /documents/{external_id}` después de emitir y en segundo plano, o con un botón "actualizar".
    - Frontend: mostrar el estado en historial, reporte diario y detalle de venta. Alertar los rechazados.
-2. **`razon` en las referencias.** `_referencias_dte` (`backend/app/routers/sales.py:111`) envía `codigo` pero
+2. ✅ **`razon` en las referencias.** Hecho: la devolución manda su motivo (truncado a 90) y `SaleCreate` acepta `razon`. Antes: `_referencias_dte` (`backend/app/routers/sales.py:111`) envía `codigo` pero
    no `razon`. El manual de muestras exige imprimir el motivo. Hay que pasar la razón que ya pide el
    formulario de devolución.
 3. **Guía de despacho (52).** El POS no la puede emitir: dte-torn rechaza una 52 sin `ind_traslado`, y el
