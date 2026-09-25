@@ -102,6 +102,37 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   `<Toaster>`. Actualizar `CLAUDE.md`: sacar Sonner de la tabla del stack y
   agregar a la sección 5 la regla "no usar toasts; usar Alert".
 
+- [ ] **Color principal seleccionable en Configuración.** Hoy es azul fijo.
+  Como todo pasa por variables CSS, el cambio es chico:
+  - `frontend/app/globals.css` define `--primary`, `--primary-foreground` y
+    `--ring` como tripletas HSL, en claro (líneas 12, 13 y 24) y en oscuro
+    (40, 41 y 52). `tailwind.config.js` y los componentes shadcn las leen con
+    `hsl(var(--primary))`.
+  - Ofrecer una paleta cerrada (azul, verde, violeta, naranja, rojo, gris...) en
+    vez de un selector libre. Cada opción trae sus valores para claro y oscuro y
+    su `primary-foreground`, ya probados con contraste 4.5:1. Con un color libre,
+    alguien elige amarillo y el texto de los botones deja de leerse.
+  - Aplicarlo con `document.documentElement.style.setProperty(...)`. Para que no
+    se vea un parpadeo azul al cargar, guardar la última elección en
+    `localStorage` y aplicarla con un script en línea en `app/layout.tsx`, antes
+    de pintar. Después, confirmar con el valor del servidor.
+  - **Por decidir:** ¿el color es por empresa o por usuario? Recomiendo por
+    empresa (es identidad del negocio). En ese caso va como columna en
+    `SystemSettings`, con migración Alembic igual que "Control de caja", y se
+    guarda al elegir, sin botón (tarea de guardado inmediato). Login y
+    selección de empresa quedan en el color por defecto, porque todavía no
+    hay empresa elegida.
+  - Colores que no siguen al tema y hay que pasar a `hsl(var(--primary))`:
+    - `components/dashboard/DashboardCharts.tsx`: barra `#3b82f6`, borde del
+      tooltip `#e2e8f0` y la paleta del gráfico de torta;
+    - `app/dashboard/page.tsx`: tarjetas `indigo`/`purple`;
+    - `app/historial/page.tsx`: badges `bg-indigo-*` y `bg-sky-600`.
+
+    Estos últimos son colores de estado. Revisar si deben seguir fijos para no
+    confundirse con el color principal.
+  - Las plantillas de impresión (`backend/app/templates/html/`) van en blanco y
+    negro y no se tocan.
+
 ## Prioridad alta
 
 - [ ] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
