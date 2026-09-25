@@ -31,6 +31,7 @@ Límites conocidos, aceptados:
 | SII STC (https://www2.sii.cl/stc/noauthz) | reCAPTCHA Enterprise v3 + queue-it; un scraper oculto saca puntaje bajo y vuelve `captchaInvalido`. Saltarse el captcha no es opción |
 | [Webempresario](https://api-sii-chile.webempresario.com/), [API Gateway](https://www.apigateway.cl/products/sii/contribuyentes) | De pago, y usan los mismos datos públicos del SII |
 | [BaseAPI](https://baseapi.cl/servicios/contribuyente) | Pide la clave SII y deja de aceptar registros nuevos el 11-12-2026 |
+| [ruts.info](https://www.ruts.info/docs) (`GET /api/company-info?rut=...`) | Sirve las mismas nóminas ("datos hasta agosto 2026": actividades con `iva_affects`, direcciones históricas). Pide `x-api-key` (se obtiene donando en Buy Me a Coffee), máximo 100 consultas al día por key para todos los tenants juntos, y su `robots.txt` excluye `/api/`. Mismos datos que la copia propia, con más dependencia |
 
 ## Diseño
 
