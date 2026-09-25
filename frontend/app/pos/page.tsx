@@ -1,81 +1,98 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useUIStore } from '@/lib/store/uiStore'
 import { useBarcodeScanner } from '@/lib/hooks/useBarcodeScanner'
-import ProductSearch from '@/components/pos/ProductSearch'
+import ProductSearch, { enfocarBusqueda } from '@/components/pos/ProductSearch'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
 import { getProducts, getProductBySku, type Product } from '@/services/products'
 import { getApiErrorMessage } from '@/services/api'
-import { Landmark, AlertTriangle, ShoppingBag } from 'lucide-react'
+import { Landmark, AlertTriangle, ShoppingBag, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { formatCLP } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
 export default function POSPage() {
     const sessionStatus = useSessionStore((s) => s.status)
     const addItem = useCartStore((s) => s.addItem)
-    const cartCount = useCartStore((s) => s.items.length)
+    const cartItems = useCartStore((s) => s.items)
+    const totalFinal = useCartStore((s) => s.totalFinal)
     const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
     const [products, setProducts] = useState<Product[]>([])
-    const [filtered, setFiltered] = useState<Product[]>([])
     const [loading, setLoading] = useState(true)
+    const [query, setQuery] = useState('')
+    const [brandId, setBrandId] = useState<number | null>(null)
     const [showMobileCart, setShowMobileCart] = useState(false)
 
     useEffect(() => {
         getProducts()
-            .then((data) => {
-                // Exclude child variants only in 'grouped' mode
-                const sellable = data.filter(
-                    (p) => (posVariantDisplay === 'grouped' ? !p.parent_id : true) &&
-                        (parseFloat(p.precio_neto) > 0 || p.variants.length === 0)
-                )
-                setProducts(data)
-                setFiltered(sellable)
-            })
+            .then(setProducts)
             .catch((error) => {
                 console.error(error)
                 toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
             })
             .finally(() => setLoading(false))
-    }, [posVariantDisplay])
+    }, [])
 
-    const handleSearch = (query: string) => {
-        const baseFilter = (p: Product) =>
+    // En modo 'grouped' las variantes se eligen desde su producto padre.
+    const sellable = useMemo(
+        () => products.filter((p) =>
             (posVariantDisplay === 'grouped' ? !p.parent_id : true) &&
-            (parseFloat(p.precio_neto) > 0 || p.variants.length === 0)
+            (parseFloat(p.precio_neto) > 0 || p.variants.length === 0)),
+        [products, posVariantDisplay],
+    )
 
-        if (!query.trim()) {
-            setFiltered(products.filter(baseFilter))
+    const brands = useMemo(() => {
+        const porId = new Map<number, string>()
+        sellable.forEach((p) => p.brand && porId.set(p.brand.id, p.brand.name))
+        return [...porId].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+    }, [sellable])
+
+    const filtered = useMemo(() => {
+        const q = query.trim().toLowerCase()
+        return sellable.filter((p) =>
+            (brandId === null || p.brand_id === brandId) &&
+            (!q ||
+                p.nombre.toLowerCase().includes(q) ||
+                p.codigo_interno.toLowerCase().includes(q) ||
+                !!p.codigo_barras?.includes(q) ||
+                p.variants.some((v) => v.nombre.toLowerCase().includes(q) || v.codigo_interno.toLowerCase().includes(q))))
+    }, [sellable, query, brandId])
+
+    // Enter en el buscador: si queda un solo producto simple, se agrega y se limpia.
+    const agregarUnico = () => {
+        const [unico, ...resto] = filtered
+        if (!unico || resto.length > 0 || (posVariantDisplay === 'grouped' && unico.variants.length > 0)) return
+        if (unico.controla_stock && parseFloat(unico.stock_actual) <= 0) {
+            toast.error(`Sin stock: ${unico.full_name}`)
             return
         }
-        const q = query.toLowerCase()
-        const results = products.filter(
-            (p) =>
-                baseFilter(p) &&
-                (p.nombre.toLowerCase().includes(q) ||
-                    p.codigo_interno.toLowerCase().includes(q) ||
-                    p.codigo_barras?.includes(q) ||
-                    p.variants.some((v) => v.nombre.toLowerCase().includes(q) || v.codigo_interno.toLowerCase().includes(q)))
-        )
-        setFiltered(results)
+        addItem(unico)
+        setQuery('')
     }
 
-    // Invisible barcode scanner
+    // F2: volver al buscador desde cualquier parte del POS.
+    useEffect(() => {
+        const alTeclear = (e: KeyboardEvent) => {
+            if (e.key !== 'F2') return
+            e.preventDefault()
+            enfocarBusqueda()
+        }
+        window.addEventListener('keydown', alTeclear)
+        return () => window.removeEventListener('keydown', alTeclear)
+    }, [])
+
+    // Lector de código de barras (teclado "invisible").
     const handleBarcodeScan = useCallback(
         async (barcode: string) => {
             try {
-                // Try by barcode first, then by SKU
-                const allProducts = products.flatMap((p) =>
-                    p.variants.length > 0 ? p.variants : [p]
-                )
-                const found = allProducts.find(
-                    (p) => p.codigo_barras === barcode || p.codigo_interno === barcode
-                )
+                const allProducts = products.flatMap((p) => (p.variants.length > 0 ? p.variants : [p]))
+                const found = allProducts.find((p) => p.codigo_barras === barcode || p.codigo_interno === barcode)
 
                 if (found) {
                     if (found.controla_stock && parseFloat(found.stock_actual) <= 0) {
@@ -83,13 +100,12 @@ export default function POSPage() {
                         return
                     }
                     addItem(found)
-                    toast.success(`🔫 ${found.nombre}`, { duration: 1500 })
+                    toast.success(`Agregado: ${found.nombre}`, { duration: 1500 })
                 } else {
-                    // Try API lookup
                     try {
                         const product = await getProductBySku(barcode)
                         addItem(product)
-                        toast.success(`🔫 ${product.nombre}`, { duration: 1500 })
+                        toast.success(`Agregado: ${product.nombre}`, { duration: 1500 })
                     } catch {
                         toast.error(`Producto no encontrado: ${barcode}`)
                     }
@@ -103,19 +119,20 @@ export default function POSPage() {
 
     useBarcodeScanner(handleBarcodeScan)
 
-    // Gate: If cash session is not open
+    const unidades = cartItems.reduce((s, i) => s + i.quantity, 0)
+
     if (sessionStatus !== 'OPEN') {
         return (
-            <div className="flex h-full items-center justify-center p-6">
+            <div data-section="pos.caja-cerrada" className="flex h-full items-center justify-center p-6">
                 <div className="text-center space-y-4 max-w-md mx-auto">
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                        <AlertTriangle className="h-10 w-10 text-destructive" aria-hidden />
                     </div>
-                    <h2 className="text-2xl font-bold text-foreground">Caja Cerrada</h2>
+                    <h2 className="text-2xl font-bold text-foreground">Caja cerrada</h2>
                     <p className="text-muted-foreground">Debes abrir un turno de caja antes de poder vender.</p>
                     <Link href="/caja">
-                        <Button size="lg" className="gap-2 ">
-                            <Landmark className="h-5 w-5" /> Ir a Abrir Caja
+                        <Button size="lg" className="gap-2">
+                            <Landmark className="h-5 w-5" aria-hidden /> Ir a abrir caja
                         </Button>
                     </Link>
                 </div>
@@ -124,36 +141,68 @@ export default function POSPage() {
     }
 
     return (
-        <div className="flex h-full flex-col lg:flex-row">
-            {/* Left Panel: Search + Products */}
-            <div data-section="pos.productos" className="flex flex-1 flex-col p-3 md:p-4 gap-3 min-h-0">
-                <ProductSearch onSearch={handleSearch} />
-                <ProductGrid products={filtered} loading={loading} variantDisplay={posVariantDisplay} />
-            </div>
+        <div className="flex h-full flex-col lg:flex-row bg-muted/40">
+            <section data-section="pos.productos" className="flex flex-1 flex-col gap-3 p-3 md:p-4 min-h-0">
+                <ProductSearch
+                    value={query}
+                    onChange={setQuery}
+                    onEnter={agregarUnico}
+                    resultados={query.trim() ? filtered.length : null}
+                />
 
-            {/* Mobile: Cart Toggle FAB */}
-            <button
-                onClick={() => setShowMobileCart(true)}
-                className="lg:hidden fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
-            >
-                <ShoppingBag className="h-6 w-6" />
-                {cartCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-destructive text-[10px] px-1">
-                        {cartCount}
-                    </Badge>
+                {brands.length > 1 && (
+                    <div data-section="pos.marcas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrar por marca">
+                        {[{ id: null, name: 'Todas' }, ...brands].map((b) => (
+                            <button
+                                key={b.id ?? 'todas'}
+                                type="button"
+                                onClick={() => setBrandId(b.id)}
+                                aria-pressed={brandId === b.id}
+                                className={cn(
+                                    'h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors cursor-pointer',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                    brandId === b.id
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
+                                )}
+                            >
+                                {b.name}
+                            </button>
+                        ))}
+                    </div>
                 )}
-            </button>
 
-            {/* Desktop: Cart Panel */}
-            <div data-section="pos.carrito" className="hidden lg:block w-[380px] xl:w-[420px] border-l border-border">
+                <ProductGrid products={filtered} loading={loading} variantDisplay={posVariantDisplay} />
+            </section>
+
+            {/* Escritorio: el carrito siempre visible a la derecha */}
+            <aside data-section="pos.carrito" className="hidden lg:flex w-[400px] xl:w-[440px] border-l border-border bg-card">
                 <CartPanel />
-            </div>
+            </aside>
 
-            {/* Mobile: Cart Sheet */}
+            {/* Móvil: barra con el total que abre el carrito */}
+            {cartItems.length > 0 && !showMobileCart && (
+                <button
+                    type="button"
+                    data-section="pos.barra-movil"
+                    onClick={() => setShowMobileCart(true)}
+                    className="lg:hidden fixed inset-x-3 bottom-[4.5rem] z-30 flex h-14 items-center justify-between rounded-xl bg-primary px-4 text-primary-foreground shadow-lg shadow-primary/30 active:scale-[0.99] transition-transform cursor-pointer"
+                >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                        <ShoppingBag className="h-5 w-5" aria-hidden />
+                        {unidades} {unidades === 1 ? 'producto' : 'productos'}
+                    </span>
+                    <span className="flex items-center gap-2 text-lg font-bold font-tabular">
+                        {formatCLP(totalFinal)}
+                        <ChevronUp className="h-5 w-5" aria-hidden />
+                    </span>
+                </button>
+            )}
+
             {showMobileCart && (
                 <div data-section="pos.carrito-movil" className="lg:hidden fixed inset-0 z-50">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileCart(false)} />
-                    <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] rounded-t-2xl bg-card shadow-xl animate-in slide-in-from-bottom">
+                    <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] flex flex-col rounded-t-2xl bg-card shadow-xl animate-in slide-in-from-bottom">
                         <div className="flex justify-center py-2">
                             <div className="h-1 w-10 rounded-full bg-border" />
                         </div>

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useCartStore, isExemptDte } from '@/lib/store/cartStore'
-import { Trash2, Minus, Plus, ShoppingBag, CreditCard, X, Receipt, FileText, ChevronDown, ChevronRight, FileStack } from 'lucide-react'
+import { Trash2, Minus, Plus, ShoppingBag, CreditCard, X, ScanBarcode, Receipt, FileText, ChevronDown, ChevronRight, FileStack } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import CheckoutModal from '@/components/pos/CheckoutModal'
 import { formatCLP } from '@/lib/format'
 import PriceListSelector from '@/components/pos/PriceListSelector'
@@ -90,6 +89,7 @@ export default function CartPanel({ onClose }: Props) {
     }, [])
 
     const isBoleta = [39, 41].includes(tipoDte)
+    const unidades = items.reduce((sum, i) => sum + i.quantity, 0)
     // La guía descuenta stock y no se cobra (se cobra al facturarla desde Historial).
     const isGuia = tipoDte === 52
     const trasladoInterno = isGuia && guia.indTraslado === 5
@@ -135,99 +135,110 @@ export default function CartPanel({ onClose }: Props) {
                 ? 'Selecciona un cliente.'
                 : null
 
+    // F12 abre el cobro. Solo la instancia de escritorio: la hoja móvil trae onClose.
+    useEffect(() => {
+        if (onClose) return
+        const alTeclear = (e: KeyboardEvent) => {
+            if (e.key !== 'F12' || !canCheckout || checkoutOpen) return
+            e.preventDefault()
+            setCheckoutOpen(true)
+        }
+        window.addEventListener('keydown', alTeclear)
+        return () => window.removeEventListener('keydown', alTeclear)
+    }, [onClose, canCheckout, checkoutOpen])
+
     return (
-        <div className="flex h-full max-h-[85vh] lg:max-h-full flex-col bg-card">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col bg-card">
             {/* Header */}
-            <div data-section="pos.carrito.encabezado" className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
+            <div data-section="pos.carrito.encabezado" className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 shrink-0">
                 <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />
-                    <h2 className="font-semibold text-sm text-foreground">Ticket</h2>
-                    {items.length > 0 && (
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground px-1.5 text-[10px] font-bold text-background">
-                            {items.length}
+                    <ShoppingBag className="h-5 w-5 text-muted-foreground" aria-hidden />
+                    <h2 className="text-base font-semibold text-foreground">Venta actual</h2>
+                    {unidades > 0 && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground font-tabular">
+                            {unidades} {unidades === 1 ? 'unidad' : 'unidades'}
                         </span>
                     )}
                 </div>
-                <PriceListSelector />
                 <div className="flex items-center gap-1">
+                    <PriceListSelector />
                     {items.length > 0 && (
-                        <Button variant="ghost" size="sm" onClick={clear} className="text-[11px] text-destructive hover:bg-destructive/10 h-7 px-2">
-                            Limpiar
+                        <Button variant="ghost" size="sm" onClick={clear} className="h-9 gap-1.5 px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" aria-hidden /> Vaciar
                         </Button>
                     )}
                     {onClose && (
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 lg:hidden">
-                            <X className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 lg:hidden" aria-label="Cerrar carrito">
+                            <X className="h-5 w-5" />
                         </Button>
                     )}
                 </div>
             </div>
 
             {/* Items */}
-            <div data-section="pos.carrito.items" className="flex-1 overflow-auto px-3 py-2 min-h-0">
+            <div data-section="pos.carrito.items" className="flex-1 overflow-auto px-3 py-3 min-h-0">
                 {items.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-                        <ShoppingBag className="h-12 w-12 opacity-20" />
-                        <p className="mt-2 text-xs">Carrito vacío</p>
+                    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                            <ScanBarcode className="h-8 w-8" aria-hidden />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground">Sin productos</p>
+                            <p className="mt-1 text-xs">Escanea un código o toca un producto para empezar.</p>
+                        </div>
                     </div>
                 ) : (
-                    <div className="space-y-1.5">
+                    <ul className="space-y-2">
                         {items.map((item) => (
-                            <div
-                                key={item.product.id}
-                                className="group rounded-lg border border-border bg-muted/50 p-2.5"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <p className="text-xs font-medium text-foreground truncate">
-                                                {item.product.full_name}
-                                            </p>
-                                            {item.price_source === 'price_list' && (
-                                                <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-primary/10 text-primary">
-                                                    Lista
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground font-mono">{item.product.codigo_interno}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5 font-tabular">
-                                            <span className="text-muted-foreground">Neto:</span> {formatCLP(item.precio_neto)} +
-                                            <span className="text-muted-foreground ml-1">IVA:</span> {formatCLP(item.precio_bruto - item.precio_neto)} × {item.quantity}
-                                        </p>
-                                    </div>
-                                    <p className="font-bold text-xs text-foreground font-tabular whitespace-nowrap">
+                            <li key={item.product.id} className="rounded-lg border border-border bg-background p-2.5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <p className="text-sm font-medium leading-snug text-foreground line-clamp-2">
+                                        {item.product.full_name}
+                                    </p>
+                                    <p className="shrink-0 text-sm font-semibold text-foreground font-tabular">
                                         {formatCLP(item.precio_bruto * item.quantity)}
                                     </p>
                                 </div>
-
-                                <div className="mt-1.5 flex items-center justify-between">
-                                    <div className="flex items-center gap-0.5">
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground font-tabular">
+                                        {formatCLP(item.precio_bruto)} c/u
+                                        {item.price_source === 'price_list' && (
+                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-primary/10 text-primary">Lista</Badge>
+                                        )}
+                                    </p>
+                                    <div className="flex items-center gap-1">
                                         <button
+                                            type="button"
                                             onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                            className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent transition active:scale-90"
+                                            aria-label={`Quitar una unidad de ${item.product.full_name}`}
+                                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground active:scale-95 transition cursor-pointer"
                                         >
-                                            <Minus className="h-3 w-3" />
+                                            <Minus className="h-4 w-4" />
                                         </button>
-                                        <span className="flex h-7 min-w-[28px] items-center justify-center text-xs font-semibold font-tabular">
+                                        <span className="min-w-[2.25rem] text-center text-sm font-semibold font-tabular" aria-label="Cantidad">
                                             {item.quantity}
                                         </span>
                                         <button
+                                            type="button"
                                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                            className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent transition active:scale-90"
+                                            aria-label={`Agregar una unidad de ${item.product.full_name}`}
+                                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground active:scale-95 transition cursor-pointer"
                                         >
-                                            <Plus className="h-3 w-3" />
+                                            <Plus className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeItem(item.product.id)}
+                                            aria-label={`Eliminar ${item.product.full_name}`}
+                                            className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    <button
-                                        onClick={() => removeItem(item.product.id)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition"
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </button>
                                 </div>
-                            </div>
+                            </li>
                         ))}
-                    </div>
+                    </ul>
                 )}
             </div>
 
@@ -409,34 +420,36 @@ export default function CartPanel({ onClose }: Props) {
                         )}
                     </div>
 
-                    <div data-section="pos.carrito.totales" className="space-y-0.5 px-4 py-2.5 font-tabular">
+                    <div data-section="pos.carrito.totales" className="px-4 pt-3 font-tabular">
                         <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Neto</span>
                             <span>{formatCLP(totalNeto)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>{isExemptDte(tipoDte) ? 'IVA (exento)' : 'IVA (19%)'}</span>
+                        <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
+                            <span>{isExemptDte(tipoDte) ? 'IVA (exento)' : 'IVA 19%'}</span>
                             <span>{formatCLP(totalIva)}</span>
                         </div>
-                        <Separator className="my-1.5" />
-                        <div className="flex justify-between text-base font-bold text-foreground">
-                            <span>Total</span>
-                            <span>{formatCLP(totalFinal)}</span>
+                        <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-sm font-medium text-muted-foreground">Total</span>
+                            <span className="text-3xl font-bold tracking-tight text-foreground">{formatCLP(totalFinal)}</span>
                         </div>
                     </div>
 
-                    <div className="px-4 pb-3 space-y-1.5">
+                    <div className="px-4 pb-4 pt-3 space-y-2">
                         {checkoutBlockedReason && (
-                            <p className="text-[11px] text-destructive text-center">{checkoutBlockedReason}</p>
+                            <p className="text-xs text-destructive text-center" role="status">{checkoutBlockedReason}</p>
                         )}
                         <Button
                             size="lg"
-                            className="w-full h-12 text-sm font-bold shadow-lg shadow-primary/25 gap-2 active:scale-[0.98] transition-transform"
+                            className="h-14 w-full justify-between gap-2 px-5 text-base font-semibold shadow-lg shadow-primary/25 active:scale-[0.99] transition-transform"
                             onClick={() => setCheckoutOpen(true)}
                             disabled={!canCheckout}
                         >
-                            <CreditCard className="h-5 w-5" />
-                            {isGuia ? `Emitir guía ${formatCLP(totalFinal)}` : `Cobrar ${formatCLP(totalFinal)}`}
+                            <span className="flex items-center gap-2">
+                                {isGuia ? <FileStack className="h-5 w-5" aria-hidden /> : <CreditCard className="h-5 w-5" aria-hidden />}
+                                {isGuia ? 'Emitir guía' : 'Cobrar'}
+                            </span>
+                            <kbd className="hidden lg:inline-flex h-6 items-center rounded border border-primary-foreground/30 px-1.5 text-[11px] font-medium opacity-80">F12</kbd>
                         </Button>
                     </div>
                 </div>
