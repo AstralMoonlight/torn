@@ -36,8 +36,11 @@ export default function POSPage() {
     const irACobrar = () => { setShowMobileCart(false); setEtapa('cobrar') }
 
     useEffect(() => {
+        // /products/ trae también los inactivos (Inventario los necesita); el POS no los vende.
         getProducts()
-            .then(setProducts)
+            .then((ps) => setProducts(ps
+                .filter((p) => p.is_active)
+                .map((p) => ({ ...p, variants: p.variants.filter((v) => v.is_active) }))))
             .catch((error) => {
                 console.error(error)
                 avisar(getApiErrorMessage(error, 'Error al cargar productos'))
@@ -110,6 +113,7 @@ export default function POSPage() {
                 } else {
                     try {
                         const product = await getProductBySku(barcode)
+                        if (!product.is_active) throw new Error('inactivo')
                         addItem(product)
                     } catch {
                         avisar(`Producto no encontrado: ${barcode}`)
