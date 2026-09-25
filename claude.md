@@ -115,6 +115,7 @@ Torn/
 │   ├── alembic/          # Migraciones (6 revisiones)
 │   ├── alembic.ini
 │   ├── scripts/          # Mantenimiento/seed (seed_*, setup_*, migrate_*, sync_*, create_admin)
+│   │   ├── carga/            # Prueba de carga del POS con Locust, solo en modo DEV (ver su README)
 │   │   └── legacy/           # Scripts manuales previos al multi-inquilino (ver su README)
 │   ├── tests/            # Pytest de integración (inventory, pos, sales, world_class)
 │   ├── pytest.ini
