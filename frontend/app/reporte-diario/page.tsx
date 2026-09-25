@@ -87,7 +87,7 @@ export default function DailyReportPage() {
                 <PageHeader
                     icon={BarChart2}
                     title="Reportes"
-                    description="Histórico de ventas"
+                    description="Revisa las ventas y la utilidad por día, semana o mes."
                     actions={
                         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                             {/* Period Selector */}

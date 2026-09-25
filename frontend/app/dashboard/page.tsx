@@ -133,7 +133,7 @@ export default function DashboardPage() {
             <PageHeader
                 icon={BarChart3}
                 title="Panel de control"
-                description="Resumen operativo y financiero"
+                description="Resumen operativo y financiero de tu empresa."
                 actions={
                     <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
                         <TabsList className="bg-muted p-1">

@@ -80,7 +80,7 @@ export default function ProvidersPage() {
             <PageHeader
                 icon={Truck}
                 title="Proveedores"
-                description="Gestión de empresas y entidades suministradoras."
+                description="Gestiona tus proveedores y sus datos de contacto."
                 actions={
                     <Button onClick={() => { setEditingProvider(null); setIsDialogOpen(true) }} className="gap-2">
                         <Plus className="h-4 w-4" /> Nuevo proveedor
