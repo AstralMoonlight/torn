@@ -51,8 +51,6 @@ function KPICard({
         green: 'bg-muted text-foreground',
         amber: 'bg-muted text-foreground',
         red: 'bg-destructive/10 text-destructive',
-        indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
-        purple: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
     }
 
     return (
@@ -167,7 +165,7 @@ export default function DashboardPage() {
                     title="Ticket Promedio"
                     value={formatCLP(currentStats.sales_count > 0 ? currentStats.sales_total / currentStats.sales_count : 0)}
                     icon={TrendingUp}
-                    color="purple"
+                    color="blue"
                 />
                 <KPICard
                     title="IVA Por Pagar"
