@@ -5,7 +5,6 @@ import { getProducts, type Product } from '@/services/products'
 import { getApiErrorMessage } from '@/services/api'
 import {
     Package,
-    Search,
     AlertTriangle,
     XCircle,
     MoreHorizontal,
@@ -14,7 +13,7 @@ import {
     Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Table,
@@ -31,7 +30,7 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
+    DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -139,15 +138,7 @@ export default function InventarioPage() {
             />
 
             {/* Search */}
-            <div data-section="inventario.buscador" className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por nombre, SKU o código de barras..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 text-sm"
-                />
-            </div>
+            <SearchInput data-section="inventario.buscador" placeholder="Buscar por nombre, SKU o código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
             <div data-section="inventario.tabla" className="rounded-xl border border-border bg-card overflow-hidden">

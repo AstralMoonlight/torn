@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Loader2, Tag, Search, X, Users, Package, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -507,15 +508,7 @@ export default function PriceListsPage() {
                                 {/* Toggle (search bars live inside each panel for custom lists; base mode keeps a single global one) */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                                     {editingId === 'base' && (
-                                        <div className="relative flex-1">
-                                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                placeholder="Filtrar catálogo por nombre..."
-                                                value={draftSearch}
-                                                onChange={e => setDraftSearch(e.target.value)}
-                                                className="pl-9 border-border text-sm"
-                                            />
-                                        </div>
+                                        <SearchInput className="flex-1" placeholder="Filtrar catálogo por nombre..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} />
                                     )}
                                     <div className="flex items-center gap-2 shrink-0 bg-muted px-3 py-1.5 rounded-lg border border-border ml-auto">
                                         <Label htmlFor="tax-toggle" className="text-xs font-medium text-muted-foreground cursor-pointer">
@@ -562,16 +555,7 @@ export default function PriceListsPage() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Buscar dentro de esta lista..."
-                                                    value={draftSearch}
-                                                    onChange={e => setDraftSearch(e.target.value)}
-                                                    disabled={draftItems.length === 0}
-                                                    className="pl-9 border-border text-sm"
-                                                />
-                                            </div>
+                                            <SearchInput className="shrink-0" placeholder="Buscar dentro de esta lista..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} disabled={draftItems.length === 0} />
                                             <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {draftItems.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
@@ -619,15 +603,7 @@ export default function PriceListsPage() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="relative shrink-0">
-                                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Buscar producto por nombre o código..."
-                                                    value={productSearch}
-                                                    onChange={e => setProductSearch(e.target.value)}
-                                                    className="pl-9 border-border text-sm"
-                                                />
-                                            </div>
+                                            <SearchInput className="shrink-0" placeholder="Buscar producto por nombre o código..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
                                             <div className="rounded-lg border border-border bg-card h-[336px] overflow-y-auto p-1.5">
                                                 {allProducts.length === 0 ? (
                                                     <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground text-xs px-4">
@@ -682,15 +658,7 @@ export default function PriceListsPage() {
                         {/* Customers Tab */}
                         {activeTab === 'customers' && (
                             <div className="space-y-3">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Buscar cliente por nombre o RUT..."
-                                        value={customerSearch}
-                                        onChange={e => setCustomerSearch(e.target.value)}
-                                        className="pl-9 border-border text-sm"
-                                    />
-                                </div>
+                                <SearchInput placeholder="Buscar cliente por nombre o RUT..." value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} />
 
                                 {selectedCustomerIds.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">

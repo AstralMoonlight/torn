@@ -11,7 +11,6 @@ import {
     Pencil,
     Loader2,
     Mail,
-    Search,
     RefreshCw,
     Save,
     CheckCircle2,
@@ -27,7 +26,7 @@ import {
     TableEmpty
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
@@ -319,15 +318,7 @@ export default function PersonalPage() {
 
                 <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
                     <div className="flex items-center justify-between">
-                        <div className="relative max-w-xs w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar usuario..."
-                                value={rolesSearchTerm}
-                                onChange={(e) => setRolesSearchTerm(e.target.value)}
-                                className="pl-9 h-9"
-                            />
-                        </div>
+                        <SearchInput className="max-w-xs w-full" placeholder="Buscar usuario..." value={rolesSearchTerm} onChange={(e) => setRolesSearchTerm(e.target.value)} />
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={loadAll} disabled={savingRoles}>
                                 <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar

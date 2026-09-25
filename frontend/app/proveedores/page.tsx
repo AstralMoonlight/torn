@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Edit2, Trash2, Truck } from 'lucide-react'
+import { Plus, Edit2, Trash2, Truck } from 'lucide-react'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import {
     Table,
     TableBody,
@@ -91,15 +91,7 @@ export default function ProvidersPage() {
                 <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-medium">Listado de Proveedores</CardTitle>
-                        <div className="relative w-72">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar por Nombre o RUT..."
-                                className="pl-9 h-9"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
+                        <SearchInput className="w-72" placeholder="Buscar por Nombre o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
                 </CardHeader>
                 <CardContent>

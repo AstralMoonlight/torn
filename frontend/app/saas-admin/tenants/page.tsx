@@ -11,9 +11,10 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Search, Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
+import { Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
 import { validateRut, formatRut } from '@/lib/rut'
 import {
     AlertDialog,
@@ -422,15 +423,7 @@ export default function TenantsListPage() {
                                         <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
                                     </div>
 
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Buscar por código o nombre..."
-                                            value={actecoSearch}
-                                            onChange={e => setActecoSearch(e.target.value)}
-                                            className="pl-9 bg-card border-border text-sm"
-                                        />
-                                    </div>
+                                    <SearchInput placeholder="Buscar por código o nombre..." value={actecoSearch} onChange={e => setActecoSearch(e.target.value)} />
 
                                     <div className="h-32 rounded border border-border bg-card overflow-y-auto">
                                         <div className="p-2 space-y-1">
@@ -495,23 +488,13 @@ export default function TenantsListPage() {
                 </div>
 
                 <div data-section="saas-admin.empresas.filtros" className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -ms-4 -mt-2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por nombre, RUT o esquema..."
-                            value={tenantSearch}
-                            onChange={e => setTenantSearch(e.target.value)}
-                            className="pl-9 border-border focus-visible:ring-ring h-11"
-                        />
-                        {tenantSearch && (
-                            <button
-                                onClick={() => setTenantSearch('')}
-                                className="absolute right-3 top-1/2 -mt-2 text-muted-foreground hover:text-foreground"
-                            >
-                                <CloseIcon className="h-4 w-4" />
-                            </button>
-                        )}
-                    </div>
+                    <SearchInput
+                        className="flex-1 w-full"
+                        placeholder="Buscar por nombre, RUT o esquema..."
+                        value={tenantSearch}
+                        onChange={e => setTenantSearch(e.target.value)}
+                        onClear={() => setTenantSearch('')}
+                    />
                     <div className="text-sm text-muted-foreground font-medium">
                         {filteredTenants.length} de {tenants.length} empresas
                     </div>

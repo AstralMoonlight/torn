@@ -18,11 +18,11 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Plus, Search, Loader2, Globe } from 'lucide-react'
+import { Pencil, Trash2, Plus, Loader2, Globe } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -185,15 +185,7 @@ export default function CustomersPage() {
                 }
             />
 
-            <div data-section="clientes.buscador" className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por RUT o Nombre..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="h-9"
-                />
-            </div>
+            <SearchInput data-section="clientes.buscador" className="max-w-sm" placeholder="Buscar por RUT o Nombre..." value={filter} onChange={(e) => setFilter(e.target.value)} />
 
             <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>

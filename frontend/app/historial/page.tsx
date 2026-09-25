@@ -5,6 +5,7 @@ import { useEffect, useState, Fragment } from 'react'
 import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Badge } from '@/components/ui/badge'
 import {
     Dialog,
@@ -21,7 +22,6 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import {
     History,
-    Search,
     RotateCcw,
     ExternalLink,
     Loader2,
@@ -199,15 +199,7 @@ export default function HistorialPage() {
             />
 
             {/* Search */}
-            <div data-section="historial.buscador" className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por folio o RUT..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 text-sm"
-                />
-            </div>
+            <SearchInput data-section="historial.buscador" placeholder="Buscar por folio o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
             {/* Table */}
             <div data-section="historial.tabla" className="rounded-xl border border-border bg-card overflow-hidden">

@@ -19,11 +19,12 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Label } from '@/components/ui/label'
 import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/services/brands'
 import { getApiErrorMessage } from '@/services/api'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Plus, Search, Loader2, Tags } from 'lucide-react'
+import { Pencil, Trash2, Plus, Loader2, Tags } from 'lucide-react'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 
@@ -122,15 +123,7 @@ export default function BrandsPage() {
                 }
             />
 
-            <div data-section="marcas.buscador" className="flex items-center gap-2 max-w-sm">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar marca..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="h-9"
-                />
-            </div>
+            <SearchInput data-section="marcas.buscador" className="max-w-sm" placeholder="Buscar marca..." value={filter} onChange={(e) => setFilter(e.target.value)} />
 
             <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
