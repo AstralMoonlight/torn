@@ -243,15 +243,20 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
         terminar()
     }
 
-    // Esc vuelve a la venta; F12 confirma.
+    // Esc vuelve a la venta (tras emitir, pasa a la venta nueva); F12 confirma.
+    // En captura: ningún campo del cobro se queda con la tecla.
     useEffect(() => {
         const alTeclear = (e: KeyboardEvent) => {
-            if (emitida) return
-            if (e.key === 'Escape' && !enviando) { e.preventDefault(); onVolver() }
-            if (e.key === 'F12') { e.preventDefault(); confirmar() }
+            if (e.key === 'Escape') {
+                if (enviando) return
+                e.preventDefault()
+                if (emitida) terminar()
+                else onVolver()
+            }
+            if (e.key === 'F12' && !emitida) { e.preventDefault(); confirmar() }
         }
-        window.addEventListener('keydown', alTeclear)
-        return () => window.removeEventListener('keydown', alTeclear)
+        window.addEventListener('keydown', alTeclear, true)
+        return () => window.removeEventListener('keydown', alTeclear, true)
     })
 
     const sugeridos = useMemo(() => billetesSugeridos(totalFinal), [totalFinal])
@@ -276,7 +281,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                         <Printer className="h-5 w-5" aria-hidden /> Imprimir
                     </Button>
                     <Button size="lg" variant="outline" className="h-12 text-base" onClick={terminar}>
-                        Nueva venta sin imprimir
+                        Nueva venta sin imprimir <kbd className="ml-2 rounded border border-border px-1.5 text-xs font-medium text-muted-foreground">Esc</kbd>
                     </Button>
                 </div>
             </div>
@@ -290,6 +295,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             <div className="flex items-center gap-3 border-b border-border px-4 py-3 md:px-6 shrink-0">
                 <Button variant="ghost" size="sm" onClick={onVolver} className="h-10 gap-2 px-3 text-base">
                     <ArrowLeft className="h-5 w-5" aria-hidden /> Volver
+                    <kbd className="hidden md:inline rounded border border-border px-1.5 text-xs font-medium text-muted-foreground">Esc</kbd>
                 </Button>
                 <h2 className="text-lg font-semibold text-foreground">Cobrar</h2>
                 <span className="ml-auto text-2xl font-bold text-foreground font-tabular">{formatCLP(totalFinal)}</span>

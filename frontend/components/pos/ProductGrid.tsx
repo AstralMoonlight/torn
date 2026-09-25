@@ -27,11 +27,20 @@ const SEARCH_THRESHOLD = 8
 
 export default function ProductGrid({ products, loading, variantDisplay }: Props) {
     const addItem = useCartStore((s) => s.addItem)
+    const updateQuantity = useCartStore((s) => s.updateQuantity)
     const items = useCartStore((s) => s.items)
     // Cantidad de cada producto ya en el carrito, para mostrarla en su tarjeta.
     const enCarrito = useMemo(() => new Map(items.map((i) => [i.product.id, i.quantity])), [items])
     const [variantsOf, setVariantsOf] = useState<Product | null>(null)
     const [variantSearch, setVariantSearch] = useState('')
+
+    // Clic derecho: descuenta una unidad. En un producto con variantes, la última variante agregada.
+    const quitarUno = (e: React.MouseEvent, product: Product) => {
+        e.preventDefault()
+        const linea = [...useCartStore.getState().items].reverse().find((i) =>
+            i.product.id === product.id || (variantDisplay === 'grouped' && i.product.parent_id === product.id))
+        if (linea) updateQuantity(linea.product.id, linea.quantity - 1)
+    }
 
     const handleClick = (product: Product) => {
         // In 'grouped' mode, products with variants open the modal
@@ -98,6 +107,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                             key={product.id}
                             type="button"
                             onClick={() => handleClick(product)}
+                            onContextMenu={(e) => quitarUno(e, product)}
                             disabled={outOfStock && !hasVariants}
                             aria-label={`${product.full_name}, ${hasVariants ? `${product.variants.length} variantes` : formatCLP(price)}${enCarro ? `, ${enCarro} en el carrito` : ''}`}
                             className={cn(
@@ -185,6 +195,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                     <button
                                         key={variant.id}
                                         disabled={outOfStock}
+                                        onContextMenu={(e) => quitarUno(e, variant)}
                                         onClick={() => {
                                             addItem(variant)
                                             setVariantsOf(null)
