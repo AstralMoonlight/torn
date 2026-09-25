@@ -19,7 +19,7 @@ from app.models.customer import Customer
 from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
+from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
 from app.utils.formatters import format_clp, format_number
 from app.utils.pricing import resolve_unit_price
@@ -74,7 +74,8 @@ def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Deci
     return item, monto, rate == 0
 
 
-def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str) -> None:
+def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str,
+                tipo_despacho: int | None = None) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
@@ -93,6 +94,16 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
             "direccion": customer.direccion, "comuna": customer.comuna, "ciudad": customer.ciudad,
             "correo": customer.email,
         }
+    if sale.tipo_dte == GUIA_DESPACHO:
+        documento["ind_traslado"] = sale.ind_traslado
+        documento["tipo_despacho"] = tipo_despacho
+        if sale.ind_traslado == TRASLADO_INTERNO:
+            # Traslado entre bodegas propias: el receptor es el mismo emisor.
+            issuer = db.query(Issuer).first()
+            documento["receptor"] = {
+                "rut": issuer.rut, "razon_social": issuer.razon_social, "giro": issuer.giro,
+                "direccion": issuer.direccion, "comuna": issuer.comuna, "ciudad": issuer.ciudad,
+            }
     try:
         emitido = dte_client.emitir(tenant, documento, actor)
     except dte_client.DteError as exc:
@@ -106,6 +117,11 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         # documento ya está emitido, así que la venta se guarda igual.
         log.error("Venta %s: total cobrado %s, total del DTE %s", sale.id, sale.monto_total, emitido["monto_total"])
 
+
+GUIA_DESPACHO = 52
+TRASLADO_INTERNO = 5
+#: IndTraslado de guías que después se facturan (venta, venta por efectuar, consignación).
+TRASLADOS_FACTURABLES = {1, 2, 3}
 
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
 ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION"}
@@ -191,12 +207,77 @@ def actualizar_estados_dte(
              description="Registra una nueva venta de forma atómica.",
              response_description="Objeto de venta creado con detalles y folio.")
 def create_sale(
-    sale_in: SaleCreate, 
+    sale_in: SaleCreate,
     db: Session = Depends(get_tenant_db),
     local_user: User = Depends(get_current_local_user),
     global_user: SaaSUser = Depends(get_current_global_user),
     tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
+    return _registrar_venta(sale_in, db, local_user, global_user, tenant_user)
+
+
+@router.get("/guias-pendientes", response_model=List[SaleOut], summary="Guías por facturar")
+def guias_pendientes(db: Session = Depends(get_tenant_db)):
+    """Guías de venta (no traslados internos) que todavía no se facturan, las más antiguas primero."""
+    return (
+        db.query(Sale)
+        .options(joinedload(Sale.customer), joinedload(Sale.details).joinedload(SaleDetail.product))
+        .filter(Sale.tipo_dte == GUIA_DESPACHO, Sale.facturada_por_id.is_(None),
+                Sale.ind_traslado.in_(TRASLADOS_FACTURABLES))
+        .order_by(Sale.fecha_emision)
+        .all()
+    )
+
+
+@router.post("/facturar-guias", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+             summary="Facturar guías de despacho")
+def facturar_guias(
+    datos: FacturarGuias,
+    db: Session = Depends(get_tenant_db),
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Factura con las líneas y precios de las guías, que referencia a cada una.
+
+    No mueve stock (ya salió con la guía) y cobra el total con un solo medio de pago.
+    """
+    if datos.tipo_dte not in (33, 34):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Las guías se facturan con factura (33) o factura exenta (34).")
+    guias = (
+        db.query(Sale).options(joinedload(Sale.customer), joinedload(Sale.details).joinedload(SaleDetail.product))
+        .filter(Sale.id.in_(datos.guia_ids)).with_for_update(of=Sale).all()
+    )
+    if len(guias) != len(set(datos.guia_ids)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Alguna de las guías no existe.")
+    for g in guias:
+        if g.tipo_dte != GUIA_DESPACHO or g.ind_traslado not in TRASLADOS_FACTURABLES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"El documento folio {g.folio} no es una guía facturable.")
+        if g.facturada_por_id is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"La guía folio {g.folio} ya está facturada.")
+    if len({g.customer_id for g in guias}) > 1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Las guías de una factura deben ser del mismo cliente.")
+    metodo = db.get(PaymentMethod, datos.payment_method_id)
+    if metodo is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Medio de pago no encontrado.")
+
+    # El pago cubre justo el total: se calcula igual que lo hará `_registrar_venta`.
+    lineas = [
+        _linea_dte(datos.tipo_dte, d.product, d.cantidad, d.precio_unitario, d.descuento)[1:]
+        for g in guias for d in g.details
+    ]
+    total = totales_dte(datos.tipo_dte, lineas)[3]
+    if metodo.code == "EFECTIVO":
+        total = round_to_nearest_ten(total)
+    venta = SaleCreate(
+        rut_cliente=guias[0].customer.rut, tipo_dte=datos.tipo_dte, items=[],
+        payments=[{"payment_method_id": metodo.id, "amount": total}],
+    )
+    return _registrar_venta(venta, db, local_user, global_user, tenant_user, guias)
+
+
+def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_user: SaaSUser,
+                     tenant_user: TenantUser, guias: list = ()):
     """
     Registra una nueva venta en el sistema.
 
@@ -229,7 +310,8 @@ def create_sale(
         CashSession.status == "OPEN"
     ).first()
     
-    if not active_session:
+    # La guía no se cobra (se cobra al facturarla), así que no pasa por caja.
+    if not active_session and sale_in.tipo_dte != GUIA_DESPACHO:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"El vendedor (ID {seller_id_to_use}) no tiene turno de caja abierto."
@@ -258,13 +340,18 @@ def create_sale(
                     detail="Las referencias de un documento de ajuste deben incluir tipo_documento, folio y sii_reason_code."
                 )
 
-    # 2. Validar Productos y Calcular Totales
     tipo = sale_in.tipo_dte
-    lineas_dte = []
-    items_dte = []
-    sale_details = []
-    stock_movements = []
+    if tipo == GUIA_DESPACHO:
+        if sale_in.ind_traslado is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "La guía de despacho requiere el tipo de traslado.")
+        if sale_in.payments:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "La guía no se cobra: se cobra al facturarla.")
+    elif sale_in.ind_traslado or sale_in.tipo_despacho:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo de traslado y de despacho son solo para guías (52).")
 
+    # (producto, cantidad, precio neto, descuento, mueve stock). Las líneas de
+    # guías que se facturan ya descontaron stock al emitir la guía.
+    lineas = []
     for item in sale_in.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
         if not product:
@@ -272,24 +359,33 @@ def create_sale(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Producto ID {item.product_id} no encontrado",
             )
-
         if not product.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Producto {product.nombre} (SKU {product.codigo_interno}) no está activo",
             )
-        
+        lineas.append((product, item.cantidad, resolve_unit_price(db, product, customer), item.descuento, True))
+    for guia in guias:
+        lineas.extend((d.product, d.cantidad, d.precio_unitario, d.descuento, False) for d in guia.details)
+
+    # 2. Validar Productos y Calcular Totales
+    lineas_dte = []
+    items_dte = []
+    sale_details = []
+    stock_movements = []
+
+    for product, cantidad, precio_unitario, descuento, mueve_stock in lineas:
         # Validar Stock
-        if product.controla_stock:
-            if product.stock_actual < item.cantidad:
+        if mueve_stock and product.controla_stock:
+            if product.stock_actual < cantidad:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Stock insuficiente para {product.nombre}. Disponible: {product.stock_actual}, Solicitado: {item.cantidad}"
+                    detail=f"Stock insuficiente para {product.nombre}. Disponible: {product.stock_actual}, Solicitado: {cantidad}"
                 )
-            
+
             # Descontar Stock y Registrar Movimiento (se guardará al hacer commit de la venta)
-            product.stock_actual -= item.cantidad
-            
+            product.stock_actual -= cantidad
+
             # Importar localmente para evitar dependencias circulares
             from app.models.inventory import StockMovement
             
@@ -297,19 +393,16 @@ def create_sale(
                 product_id=product.id,
                 user_id=seller_id_to_use, # Usuario caja
                 tipo="SALIDA",
-                motivo="VENTA",
-                cantidad=item.cantidad,
+                motivo="GUIA" if tipo == GUIA_DESPACHO else "VENTA",
+                cantidad=cantidad,
                 description=f"Venta en proceso", 
             )
             # No hacemos db.add(movement) aquí, lo vinculamos a la venta
             stock_movements.append(movement)
 
-        precio_unitario = resolve_unit_price(db, product, customer)
-        cantidad = item.cantidad
         subtotal_bruto_linea = precio_unitario * cantidad
 
-        descuento = item.descuento
-        if descuento > subtotal_bruto_linea:
+        if descuento> subtotal_bruto_linea:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -359,7 +452,7 @@ def create_sale(
 
     # Validar Pagos
     total_payments = sum(p.amount for p in sale_in.payments)
-    if total_payments < total_ajustado:
+    if tipo != GUIA_DESPACHO and total_payments < total_ajustado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -372,7 +465,7 @@ def create_sale(
     # efectivo: no tiene sentido devolver cambio de un pago con tarjeta o
     # crédito interno. Si no hay efectivo suficiente en los pagos para
     # cubrirlo, la combinación de pagos no es válida.
-    vuelto = quantize_money(total_payments - total_ajustado)
+    vuelto = quantize_money(max(total_payments - total_ajustado, Decimal("0")))
     if vuelto > 0 and cash_declared < vuelto:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -383,9 +476,12 @@ def create_sale(
         )
 
     # Serializar referencias para columna JSON (solo para Factura)
-    referencias_json = None
-    if sale_in.referencias:
-        referencias_json = [r.model_dump() for r in sale_in.referencias]
+    referencias_json = [r.model_dump() for r in sale_in.referencias or []]
+    referencias_json += [
+        {"tipo_documento": "52", "folio": str(g.folio), "fecha": g.fecha_emision.strftime("%Y-%m-%d")}
+        for g in guias
+    ]
+    referencias_json = referencias_json or None
 
     # 5. Crear Venta
     new_sale = Sale(
@@ -404,9 +500,12 @@ def create_sale(
         stock_movements=stock_movements, # Vinculación automática
         audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None,
         referencias=referencias_json,
+        ind_traslado=sale_in.ind_traslado,
     )
     db.add(new_sale)
     db.flush()  # Genera new_sale.id sin hacer commit todavía
+    for guia in guias:
+        guia.facturada_por_id = new_sale.id
 
     # 5.1 Guardar Pagos
     for payment_in in sale_in.payments:
@@ -430,7 +529,7 @@ def create_sale(
 
     # 6. Emitir en dte-torn (asigna el folio) y confirmar
     _emitir_dte(db, tenant_user.tenant, new_sale, customer, items_dte,
-                _referencias_dte(referencias_json), global_user.email)
+                _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho)
     db.commit()
 
     # Eager load para respuesta

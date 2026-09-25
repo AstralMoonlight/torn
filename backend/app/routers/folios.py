@@ -18,7 +18,7 @@ from app.services import dte_client
 router = APIRouter(prefix="/folios", tags=["folios"])
 
 #: Tipos que emite dte-torn, en el orden en que se muestran.
-TIPOS_DTE = [33, 34, 39, 41, 56, 61]
+TIPOS_DTE = [33, 34, 39, 41, 52, 56, 61]
 
 
 class FolioStockOut(BaseModel):

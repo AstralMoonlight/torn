@@ -26,6 +26,7 @@ import {
     ExternalLink,
     Loader2,
     Receipt,
+    FileText,
 } from 'lucide-react'
 import {
     Table,
@@ -36,6 +37,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { formatCLP } from '@/lib/format'
+import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 
 
 function DteBadge({ tipo }: { tipo: number }) {
@@ -44,6 +46,7 @@ function DteBadge({ tipo }: { tipo: number }) {
         34: { label: 'Factura Exenta', color: 'bg-muted-foreground' },
         39: { label: 'Boleta', color: 'bg-primary' },
         41: { label: 'Boleta Exenta', color: 'bg-muted-foreground' },
+        52: { label: 'Guía', color: 'bg-amber-600' },
         56: { label: 'N. Débito', color: 'bg-muted-foreground' },
         61: { label: 'N. Crédito', color: 'bg-destructive' },
         110: { label: 'Factura Export.', color: 'bg-indigo-600' },
@@ -80,6 +83,7 @@ export default function HistorialPage() {
     const [availableAdjustments, setAvailableAdjustments] = useState<FolioStockOut[]>([])
     const [returnDteType, setReturnDteType] = useState<number>(61)
     const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
+    const [facturarOpen, setFacturarOpen] = useState(false)
 
     useEffect(() => {
         Promise.all([
@@ -185,6 +189,11 @@ export default function HistorialPage() {
                 icon={History}
                 title="Historial de Ventas"
                 description={`${sales.length} documentos`}
+                actions={
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setFacturarOpen(true)}>
+                        <FileText className="h-4 w-4" /> Facturar guías
+                    </Button>
+                }
             />
 
             {/* Search */}
@@ -232,6 +241,11 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <DteBadge tipo={sale.tipo_dte} />
+                                                {sale.tipo_dte === 52 && [1, 2, 3].includes(sale.ind_traslado ?? 0) && (
+                                                    <span className={`ml-1 text-[10px] ${sale.facturada_por_id ? 'text-muted-foreground' : 'text-amber-600'}`}>
+                                                        {sale.facturada_por_id ? 'facturada' : 'por facturar'}
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <SiiBadge estado={sale.dte_estado} glosa={sale.dte_glosa} />
@@ -256,7 +270,7 @@ export default function HistorialPage() {
                                                     >
                                                         <ExternalLink className="h-4 w-4" />
                                                     </Button>
-                                                    {![56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
+                                                    {![52, 56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -376,6 +390,12 @@ export default function HistorialPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <FacturarGuiasDialog
+                open={facturarOpen}
+                methods={methods}
+                onClose={() => setFacturarOpen(false)}
+                onFacturada={() => getSales().then(setSales)}
+            />
         </PageContainer>
     )
 }

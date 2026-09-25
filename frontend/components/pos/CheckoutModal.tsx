@@ -100,6 +100,19 @@ const REFERENCE_DOC_TYPES = [
     { value: '46', label: '46 - Factura de Compra' },
 ] as const
 
+/** IndTraslado del SII que ofrece el POS. 5: el receptor es la propia empresa. */
+const TIPOS_TRASLADO = [
+    { value: 1, label: 'Venta (se factura después)' },
+    { value: 2, label: 'Venta por efectuar' },
+    { value: 3, label: 'Consignación' },
+    { value: 5, label: 'Traslado interno' },
+    { value: 6, label: 'Otro traslado (no venta)' },
+] as const
+
+const NOMBRE_DTE: Record<number, string> = {
+    33: 'Factura', 34: 'Exenta', 39: 'Boleta', 41: 'Boleta Exenta', 52: 'Guía',
+}
+
 function formatDateForInput(d: Date): string {
     return d.toISOString().slice(0, 10)
 }
@@ -128,6 +141,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
     const [lastSaleId, setLastSaleId] = useState<number | null>(null)
     const [refsSectionOpen, setRefsSectionOpen] = useState(false)
     const [referencias, setReferencias] = useState<DocumentReference[]>([])
+    const [indTraslado, setIndTraslado] = useState<number>(1)
+    const [tipoDespacho, setTipoDespacho] = useState<number | null>(null)
 
     // totalFinal puede cambiar mientras el modal ya está abierto (recálculo
     // async de precio de lista, IVA según el tipo de DTE, etc.). El efecto de
@@ -169,6 +184,8 @@ export default function CheckoutModal({ open, onClose }: Props) {
             setDteType(39)
             setReferencias([])
             setRefsSectionOpen(false)
+            setIndTraslado(1)
+            setTipoDespacho(null)
         }
     }, [open])
 
@@ -312,10 +329,14 @@ export default function CheckoutModal({ open, onClose }: Props) {
 
     // Determine effective RUT
     const isBoleta = [39, 41].includes(dteType)
-    const effectiveRut = customer?.rut || (isBoleta ? GENERIC_RUT : '')
+    // La guía descuenta stock pero no se cobra: se cobra al facturarla (Historial).
+    const isGuia = dteType === 52
+    const trasladoInterno = isGuia && indTraslado === 5
+    const effectiveRut = customer?.rut || (isBoleta || trasladoInterno ? GENERIC_RUT : '')
 
     // Can submit: Boleta always OK (generic fallback), Factura needs a selected customer
-    const canSubmit = (isBoleta || !!customer) && remaining <= 0 && !changeExceedsCash && availableDtes.length > 0
+    const canSubmit = (isBoleta || trasladoInterno || !!customer) && availableDtes.length > 0
+        && (isGuia || (remaining <= 0 && !changeExceedsCash))
 
     const handleSubmit = async () => {
         setSubmitting(true)
@@ -327,10 +348,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
                     product_id: i.product.id,
                     cantidad: i.quantity,
                 })),
-                payments: payments.map((p) => ({
+                payments: isGuia ? [] : payments.map((p) => ({
                     payment_method_id: p.method.id,
                     amount: p.amount,
                 })),
+                ...(isGuia ? { ind_traslado: indTraslado, tipo_despacho: tipoDespacho ?? undefined } : {}),
                 seller_id: userId || undefined,
                 ...(isBoleta ? {} : { referencias: referencias.filter((r) => r.folio.trim() && r.fecha) }),
             })
@@ -450,6 +472,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                     {![33, 39].includes(dteType) && availableDtes.find(d => d.dte_type === dteType) ? (
                                                         availableDtes.find(d => d.dte_type === dteType)?.dte_type === 34 ? 'Factura Exenta (34)' :
                                                             availableDtes.find(d => d.dte_type === dteType)?.dte_type === 41 ? 'Boleta Exenta (41)' :
+                                                                dteType === 52 ? 'Guía (52)' :
                                                                 `DTE ${dteType}`
                                                     ) : (
                                                         "..."
@@ -467,6 +490,11 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                                         <Receipt className="h-3.5 w-3.5 text-muted-foreground" /> Boleta Exenta (41)
                                                     </DropdownMenuItem>
                                                 )}
+                                                {availableDtes.find(d => d.dte_type === 52) && (
+                                                    <DropdownMenuItem onClick={() => setDteType(52)} className="text-xs flex gap-2">
+                                                        <FileStack className="h-3.5 w-3.5 text-muted-foreground" /> Guía de Despacho (52)
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TabsList>
@@ -474,6 +502,40 @@ export default function CheckoutModal({ open, onClose }: Props) {
                             ) : (
                                 <div className="p-3 bg-destructive/10 text-destructive text-xs rounded-md text-center font-medium border border-destructive/30">
                                     No hay folios de venta disponibles. Solicite folios al SII.
+                                </div>
+                            )}
+
+                            {isGuia && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Tipo de traslado *</Label>
+                                        <select
+                                            value={indTraslado}
+                                            onChange={(e) => setIndTraslado(Number(e.target.value))}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                        >
+                                            {TIPOS_TRASLADO.map((t) => (
+                                                <option key={t.value} value={t.value}>{t.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Despacho</Label>
+                                        <select
+                                            value={tipoDespacho ?? ''}
+                                            onChange={(e) => setTipoDespacho(e.target.value ? Number(e.target.value) : null)}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                        >
+                                            <option value="">Sin indicar</option>
+                                            <option value={1}>Por cuenta del cliente</option>
+                                            <option value={2}>Emisor a local del cliente</option>
+                                            <option value={3}>Emisor a otras instalaciones</option>
+                                        </select>
+                                    </div>
+                                    <p className="col-span-2 text-[10px] text-muted-foreground">
+                                        La guía descuenta stock y no se cobra.
+                                        {indTraslado === 5 ? ' En traslado interno el receptor es la propia empresa.' : ' Se cobra al facturarla desde Historial.'}
+                                    </p>
                                 </div>
                             )}
 
@@ -577,6 +639,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 </div>
                             )}
 
+                            {!isGuia && (<>
                             <Separator />
 
                             {/* Payment Methods */}
@@ -674,6 +737,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                     </p>
                                 )}
                             </div>
+                            </>)}
                         </div>
                     )}
 
@@ -688,7 +752,7 @@ export default function CheckoutModal({ open, onClose }: Props) {
                                 className="gap-2 text-xs"
                             >
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                {`Emitir ${dteType === 33 ? 'Factura' : dteType === 34 ? 'Exenta' : dteType === 41 ? 'Boleta Exenta' : 'Boleta'}`}
+                                {`Emitir ${NOMBRE_DTE[dteType] ?? `DTE ${dteType}`}`}
                             </Button>
                         </DialogFooter>
                     )}

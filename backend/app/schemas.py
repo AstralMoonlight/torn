@@ -321,6 +321,11 @@ class SaleCreate(BaseModel):
     descripcion: Optional[str] = None
     seller_id: Optional[int] = None
     referencias: Optional[List[DocumentReferenceCreate]] = None
+    # Solo guía de despacho (52): 1 venta, 2 venta por efectuar, 3 consignación,
+    # 5 traslado interno, 6 otro traslado no venta... (IndTraslado del SII).
+    ind_traslado: Optional[int] = Field(None, ge=1, le=9)
+    # 1 por cuenta del receptor, 2 del emisor a instalaciones del cliente, 3 del emisor a otras.
+    tipo_despacho: Optional[int] = Field(None, ge=1, le=3)
 
     @field_validator("rut_cliente")
     @classmethod
@@ -369,9 +374,19 @@ class SaleOut(BaseModel):
     referencias: Optional[List[DocumentReferenceOut]] = None
     dte_estado: Optional[str] = None
     dte_glosa: Optional[str] = None
+    ind_traslado: Optional[int] = None
+    facturada_por_id: Optional[int] = None
 
     customer: CustomerOut
     details: List[SaleDetailOut]
+
+
+class FacturarGuias(BaseModel):
+    """Factura que cobra una o varias guías de despacho del mismo cliente."""
+
+    guia_ids: List[int] = Field(min_length=1, max_length=40)  # el SII admite 40 referencias
+    tipo_dte: int = 33
+    payment_method_id: int
 
 
 class ReturnItem(BaseModel):

@@ -27,6 +27,9 @@ export interface SaleCreate {
     descripcion?: string
     seller_id?: number
     referencias?: DocumentReference[]
+    /** Solo guía de despacho (52): IndTraslado y TipoDespacho del SII. */
+    ind_traslado?: number
+    tipo_despacho?: number
 }
 
 export interface FolioStockOut {
@@ -76,6 +79,9 @@ export interface SaleOut {
     /** Estado en dte-torn (ACEPTADO, REPAROS, RECHAZADO, ENVIADO...). null: venta anterior a la integración. */
     dte_estado: string | null
     dte_glosa: string | null
+    ind_traslado: number | null
+    /** Factura que cobró esta guía; null mientras está pendiente. */
+    facturada_por_id: number | null
     customer: CustomerOut
     details: SaleDetailOut[]
 }
@@ -109,6 +115,16 @@ export async function getSales(skip = 0, limit = 50): Promise<SaleOut[]> {
 /** Pide a dte-torn el estado de las ventas que todavía esperan respuesta del SII. */
 export async function actualizarEstadosDte(): Promise<{ pendientes: number; cambiadas: number }> {
     const { data } = await api.post('/sales/dte-estados')
+    return data
+}
+
+export async function getGuiasPendientes(): Promise<SaleOut[]> {
+    const { data } = await api.get<SaleOut[]>('/sales/guias-pendientes')
+    return data
+}
+
+export async function facturarGuias(guia_ids: number[], tipo_dte: number, payment_method_id: number): Promise<SaleOut> {
+    const { data } = await api.post<SaleOut>('/sales/facturar-guias', { guia_ids, tipo_dte, payment_method_id })
     return data
 }
 

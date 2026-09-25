@@ -66,7 +66,12 @@ Ordenadas por impacto. Cada una se trabaja como un issue: commit, tests y verifi
 2. ✅ **`razon` en las referencias.** Hecho: la devolución manda su motivo (truncado a 90) y `SaleCreate` acepta `razon`. Antes: `_referencias_dte` (`backend/app/routers/sales.py:111`) envía `codigo` pero
    no `razon`. El manual de muestras exige imprimir el motivo. Hay que pasar la razón que ya pide el
    formulario de devolución.
-3. **Guía de despacho (52).** El POS no la puede emitir: dte-torn rechaza una 52 sin `ind_traslado`, y el
+3. ✅ **Guía de despacho (52).** Hecho: el POS la emite con tipo de traslado y despacho; descuenta stock,
+   no pasa por caja ni se cobra. Traslado interno (5) va al propio emisor y no se factura. Historial →
+   "Facturar guías" arma una 33/34 con las líneas y precios de las guías (mismo cliente, hasta 40),
+   las referencia con tipo 52, cobra con un medio de pago y no vuelve a mover stock
+   (`sales.ind_traslado`, `sales.facturada_por_id`, migración `d0e1f2a3b4c5`). Pendiente: emitir una
+   real en maullin (JCB no tiene CAF 52 vigentes). Antes: El POS no la puede emitir: dte-torn rechaza una 52 sin `ind_traslado`, y el
    backend no lo envía. Falta:
    - Frontend: tipo de traslado (venta, traslado interno, etc.) y tipo de despacho en el checkout.
    - Backend: enviarlos. En traslado interno, el receptor es el propio emisor.
