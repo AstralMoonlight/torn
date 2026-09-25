@@ -226,7 +226,7 @@ export default function CustomerSearchCombobox({
                                 <UserCheck className="h-4 w-4 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-medium text-primary truncate">{value.razon_social}</p>
-                                    <p className="text-[10px] font-mono text-primary/80">{value.rut}</p>
+                                    <p className="text-xs font-mono text-primary/80">{value.rut}</p>
                                 </div>
                             </div>
                             <div className="flex gap-1.5">
@@ -268,13 +268,13 @@ export default function CustomerSearchCombobox({
 
                             <div ref={listRef} className="max-h-48 overflow-y-auto">
                                 {query.length < 2 && (
-                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                                         Escribe al menos 2 caracteres para buscar.
                                     </div>
                                 )}
 
                                 {query.length >= 2 && results.length === 0 && !loading && (
-                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                                         No se encontraron clientes para &ldquo;{query}&rdquo;
                                     </div>
                                 )}
@@ -295,7 +295,7 @@ export default function CustomerSearchCombobox({
                                             <p className="text-xs truncate text-foreground">
                                                 <HighlightedText text={customer.razon_social} query={query} />
                                             </p>
-                                            <p className="text-[10px] font-mono text-muted-foreground">
+                                            <p className="text-xs font-mono text-muted-foreground">
                                                 <HighlightedText text={customer.rut} query={query} />
                                             </p>
                                         </div>
@@ -316,7 +316,7 @@ export default function CustomerSearchCombobox({
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-background shrink-0">
                                         <Plus className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[11px] font-medium text-foreground">
+                                    <span className="text-xs font-medium text-foreground">
                                         Crear nuevo cliente
                                     </span>
                                 </button>

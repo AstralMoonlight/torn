@@ -47,15 +47,15 @@ function StockBadge({ product }: { product: Product }) {
     const min = parseFloat(product.stock_minimo)
 
     if (!product.controla_stock) {
-        return <Badge variant="secondary" className="text-[10px]">Sin control</Badge>
+        return <Badge variant="secondary" className="text-xs">Sin control</Badge>
     }
     if (stock <= 0) {
-        return <Badge variant="destructive" className="text-[10px] gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
+        return <Badge variant="destructive" className="text-xs gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
     }
     if (stock <= min) {
-        return <Badge variant="outline" className="text-[10px] gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
+        return <Badge variant="outline" className="text-xs gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
     }
-    return <Badge variant="secondary" className="text-[10px]">{stock}</Badge>
+    return <Badge variant="secondary" className="text-xs">{stock}</Badge>
 }
 
 export default function InventarioPage() {
@@ -188,9 +188,9 @@ export default function InventarioPage() {
                                     </TableCell>
                                     <TableCell className="text-center text-xs text-muted-foreground font-tabular hidden lg:table-cell">
                                         {p.variants.length > 0 ? (
-                                            <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
+                                            <Badge variant="outline" className="text-xs">{p.variants.length} vars</Badge>
                                         ) : (
-                                            <span className="text-[10px]">—</span>
+                                            <span className="text-xs">—</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">

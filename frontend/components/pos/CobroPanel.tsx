@@ -511,7 +511,7 @@ function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
                 activa ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/40',
             )}>
             {children}
-            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">sin folios</span>}
+            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive">sin folios</span>}
         </button>
     )
 }

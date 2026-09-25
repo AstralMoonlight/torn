@@ -181,7 +181,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     {!user && !canActivateMore && (
                         <div className="p-3 bg-muted border border-border rounded-lg flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="text-[10px] text-muted-foreground leading-tight">
+                            <div className="text-xs text-muted-foreground leading-tight">
                                 <p className="font-bold">Límite alcanzado</p>
                                 <p>No puedes agregar personal activo. Desactiva a alguien primero.</p>
                             </div>

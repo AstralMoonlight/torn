@@ -146,7 +146,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
 
                                 {product.controla_stock && !hasVariants && (
                                     <span className={cn(
-                                        'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium font-tabular',
+                                        'shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium font-tabular',
                                         outOfStock ? 'bg-destructive/10 text-destructive'
                                             : lowStock ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
                                                 : 'bg-muted text-muted-foreground',
@@ -212,7 +212,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                                 {formatCLP(variant.precio_bruto)}
                                             </p>
                                             {variant.controla_stock && (
-                                                <p className="text-[10px] text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
                                                     {outOfStock ? 'Agotado' : `Stock: ${stock}`}
                                                 </p>
                                             )}

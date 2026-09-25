@@ -467,7 +467,7 @@ export default function TenantDetailsPage() {
                                     autoComplete="new-password"
                                     onChange={e => setEditPassword(e.target.value)}
                                 />
-                                <p className="text-[10px] text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
+                                <p className="text-xs text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
                             </div>
                             <AlertaError mensaje={errorEditar} />
                             <div className="pt-2 flex justify-end gap-3">

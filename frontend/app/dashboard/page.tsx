@@ -61,7 +61,7 @@ function KPICard({
                 </div>
                 {trend && (
                     <div className={cn(
-                        "flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                        "flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full",
                         trend.positive ? "bg-muted text-foreground" : "bg-destructive/10 text-destructive"
                     )}>
                         {trend.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -72,7 +72,7 @@ function KPICard({
             <div className="mt-3">
                 <p className="text-xs text-muted-foreground truncate font-medium uppercase tracking-wider">{title}</p>
                 <p className="text-2xl font-bold text-foreground font-tabular mt-0.5 tracking-tight">{value}</p>
-                {subtitle && <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">{subtitle}</p>}
+                {subtitle && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">{subtitle}</p>}
             </div>
         </div>
     )
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                                 <ShoppingCart className="h-4 w-4 text-primary" />
                                 Más vendidos (cantidad)
                             </span>
-                            <Badge variant="outline" className="text-[10px] uppercase">Últimos 30 días</Badge>
+                            <Badge variant="outline" className="text-xs uppercase">Últimos 30 días</Badge>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4">
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-muted-foreground font-tabular">{p.total_qty} unidades vendidas</p>
+                                    <p className="text-xs text-muted-foreground font-tabular">{p.total_qty} unidades vendidas</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-bold text-foreground">{formatCLP(p.total_sales)}</p>
@@ -229,11 +229,11 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-[10px] text-muted-foreground font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
+                                    <p className="text-xs text-muted-foreground font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs font-bold text-primary">{formatCLP(p.total_margin)}</p>
-                                    <p className="text-[9px] text-muted-foreground">Utilidad total</p>
+                                    <p className="text-xs text-muted-foreground">Utilidad total</p>
                                 </div>
                             </div>
                         ))}

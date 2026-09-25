@@ -171,7 +171,7 @@ export default function CajaPage() {
                             <p className="text-sm font-bold text-foreground">
                                 {user?.full_name || user?.email || 'Usuario'}
                             </p>
-                            <p className="text-[10px] text-muted-foreground font-mono">
+                            <p className="text-xs text-muted-foreground font-mono">
                                 {user?.email || ''}
                             </p>
                         </div>
@@ -331,7 +331,7 @@ export default function CajaPage() {
                                                 <TableCell className="text-xs">
                                                     {new Date(session.start_time).toLocaleString('es-CL')}
                                                     {session.end_time && (
-                                                        <div className="text-[10px] text-muted-foreground mt-1">
+                                                        <div className="text-xs text-muted-foreground mt-1">
                                                             Cierre: {new Date(session.end_time).toLocaleString('es-CL')}
                                                         </div>
                                                     )}
@@ -340,7 +340,7 @@ export default function CajaPage() {
                                                     <div className="font-medium text-foreground">
                                                         {session.user.full_name || session.user.name || session.user.email}
                                                     </div>
-                                                    <div className="text-[10px] text-muted-foreground font-mono">
+                                                    <div className="text-xs text-muted-foreground font-mono">
                                                         {session.user.rut || ''}
                                                     </div>
                                                 </TableCell>
@@ -366,7 +366,7 @@ export default function CajaPage() {
                                                 <TableCell className="text-center">
                                                     <Badge
                                                         variant={session.status === 'OPEN' ? 'default' : 'secondary'}
-                                                        className={'text-[10px]'}
+                                                        className={'text-xs'}
                                                     >
                                                         {session.status === 'OPEN' ? 'ABIERTA' : 'CERRADA'}
                                                     </Badge>

@@ -465,12 +465,12 @@ export default function PriceListsPage() {
                             <TabsList>
                                 <TabsTrigger value="products" className="gap-2">
                                     <Package className="h-4 w-4" /> Productos
-                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{draftItems.length}</Badge>}
+                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">{draftItems.length}</Badge>}
                                 </TabsTrigger>
                                 {editingId !== 'base' && (
                                     <TabsTrigger value="customers" className="gap-2">
                                         <Users className="h-4 w-4" /> Clientes
-                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedCustomerIds.length}</Badge>}
+                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">{selectedCustomerIds.length}</Badge>}
                                     </TabsTrigger>
                                 )}
                             </TabsList>
@@ -525,7 +525,7 @@ export default function PriceListsPage() {
                                                     <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Esta lista ({draftItems.length})
                                                     </p>
-                                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                                    <p className="text-xs text-muted-foreground leading-tight">
                                                         Precios que se guardarán al confirmar
                                                     </p>
                                                 </div>
@@ -573,7 +573,7 @@ export default function PriceListsPage() {
                                                     <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Catálogo completo
                                                     </p>
-                                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                                    <p className="text-xs text-muted-foreground leading-tight">
                                                         Haz clic en un producto para agregarlo a la lista ←
                                                     </p>
                                                 </div>
@@ -597,10 +597,10 @@ export default function PriceListsPage() {
                                                             >
                                                                 <div className="min-w-0 flex-1">
                                                                     <p className="text-xs font-medium text-foreground truncate leading-tight">{p.full_name}</p>
-                                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{p.codigo_interno}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono mt-0.5">{p.codigo_interno}</p>
                                                                 </div>
                                                                 <div className="shrink-0 ml-2 text-right flex items-center gap-1.5">
-                                                                    <p className="text-[11px] font-semibold text-muted-foreground">
+                                                                    <p className="text-xs font-semibold text-muted-foreground">
                                                                         ${(isGrossMode
                                                                             ? Number(p.precio_bruto)
                                                                             : Number(p.precio_neto)

@@ -58,7 +58,7 @@ function DteBadge({ tipo }: { tipo: number }) {
         112: { label: 'NC Export.', color: 'bg-pink-500' },
     }
     const info = map[tipo] || { label: `DTE ${tipo}`, color: 'bg-muted-foreground' }
-    return <Badge className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
+    return <Badge className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
 }
 
 const ESTADOS_SII: Record<string, { label: string; color: string }> = {
@@ -72,7 +72,7 @@ const ESTADOS_SII: Record<string, { label: string; color: string }> = {
 function SiiBadge({ estado, glosa }: { estado: string | null; glosa: string | null }) {
     if (!estado) return <span className="text-xs text-muted-foreground">—</span>
     const info = ESTADOS_SII[estado] || { label: 'En proceso', color: 'bg-sky-600' }
-    return <Badge title={glosa || estado} className={`${info.color} text-[10px] px-1.5`}>{info.label}</Badge>
+    return <Badge title={glosa || estado} className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
 }
 
 export default function HistorialPage() {
@@ -235,7 +235,7 @@ export default function HistorialPage() {
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>
                                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell colSpan={7} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
+                                        <TableCell colSpan={7} className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
                                             {date}
                                         </TableCell>
                                     </TableRow>
@@ -247,7 +247,7 @@ export default function HistorialPage() {
                                             <TableCell>
                                                 <DteBadge tipo={sale.tipo_dte} />
                                                 {sale.tipo_dte === 52 && [1, 2, 3].includes(sale.ind_traslado ?? 0) && (
-                                                    <span className={`ml-1 text-[10px] ${sale.facturada_por_id ? 'text-muted-foreground' : 'text-amber-600'}`}>
+                                                    <span className={`ml-1 text-xs ${sale.facturada_por_id ? 'text-muted-foreground' : 'text-amber-600'}`}>
                                                         {sale.facturada_por_id ? 'facturada' : 'por facturar'}
                                                     </span>
                                                 )}

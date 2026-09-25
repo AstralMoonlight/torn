@@ -190,7 +190,7 @@ export default function ProviderSearchCombobox({
                     <p className="text-sm font-medium text-primary truncate">
                         {value.razon_social}
                     </p>
-                    <p className="text-[11px] font-mono text-primary/80">
+                    <p className="text-xs font-mono text-primary/80">
                         {value.rut}
                     </p>
                 </div>
@@ -266,7 +266,7 @@ export default function ProviderSearchCombobox({
                                         <p className="text-sm truncate text-foreground">
                                             <HighlightedText text={provider.razon_social} query={query} />
                                         </p>
-                                        <p className="text-[11px] font-mono text-muted-foreground dark:text-muted-foreground">
+                                        <p className="text-xs font-mono text-muted-foreground dark:text-muted-foreground">
                                             <HighlightedText text={provider.rut} query={query} />
                                         </p>
                                     </div>

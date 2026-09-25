@@ -374,7 +374,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                         </div>
 
                         {/* Hint for optional fields */}
-                        <div className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                        <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                             <Barcode className="inline h-3 w-3 mr-1" />
                             Los campos SKU y código de barras se generan automáticamente si no los ingresas.
                         </div>

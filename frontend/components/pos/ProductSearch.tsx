@@ -55,7 +55,7 @@ export default function ProductSearch({ value, onChange, onEnter, resultados }: 
                         <X className="h-4 w-4" />
                     </button>
                 ) : (
-                    <kbd className="hidden md:inline-flex h-6 items-center rounded border border-border bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">F2</kbd>
+                    <kbd className="hidden md:inline-flex h-6 items-center rounded border border-border bg-muted px-1.5 text-xs font-medium text-muted-foreground">F2</kbd>
                 )}
             </div>
         </div>

@@ -401,7 +401,7 @@ export default function ComprasPage() {
                                                             <TableCell>
                                                                 <div>
                                                                     <p className="font-medium text-sm leading-tight">{item.product.full_name || item.product.nombre}</p>
-                                                                    <p className="text-[10px] text-muted-foreground font-mono">{item.product.codigo_interno}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">{item.product.codigo_interno}</p>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -414,7 +414,7 @@ export default function ComprasPage() {
                                                             </TableCell>
                                                             <TableCell>
                                                                 <div className="relative">
-                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-muted-foreground">$</span>
+                                                                    <span className="absolute left-1.5 top-1.5 text-xs text-muted-foreground">$</span>
                                                                     <Input
                                                                         type="number"
                                                                         className="h-8 text-right pl-4 pr-1"
@@ -579,7 +579,7 @@ export default function ComprasPage() {
                                             <TableRow key={d.id}>
                                                 <TableCell>
                                                     <p className="font-medium text-xs">{d.product?.full_name || d.product?.nombre}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-mono">{d.product?.codigo_interno}</p>
+                                                    <p className="text-xs text-muted-foreground font-mono">{d.product?.codigo_interno}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center font-tabular text-xs">
                                                     {parseFloat(String(d.cantidad))}

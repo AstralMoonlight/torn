@@ -107,7 +107,7 @@ export default function Sidebar() {
                         <h1 className="text-sm font-bold tracking-tight text-foreground leading-tight truncate max-w-[160px]" title={currentTenant?.name || 'Torn'}>
                             {currentTenant?.name || 'Torn'}
                         </h1>
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground leading-none">
+                        <p className="text-xs uppercase tracking-widest text-muted-foreground leading-none">
                             punto de venta
                         </p>
                     </div>
@@ -130,7 +130,7 @@ export default function Sidebar() {
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
                             {!collapsed && (
-                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     {group.label}
                                 </h2>
                             )}
@@ -174,10 +174,10 @@ export default function Sidebar() {
                 {/* User Info */}
                 {!collapsed && (
                     <div className="px-3 pt-3 flex flex-col">
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground truncate">
                             {userPayload?.full_name || userPayload?.email || 'Usuario'}
                         </span>
-                        <span className="text-[10px] text-muted-foreground truncate lowercase italic">
+                        <span className="text-xs text-muted-foreground truncate lowercase italic">
                             {roleForCurrentTenant.replace('_', ' ')}
                         </span>
                     </div>
@@ -190,14 +190,14 @@ export default function Sidebar() {
                     collapsed ? 'justify-center' : 'justify-between'
                 )}>
                     {!collapsed && (
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                             Caja
                         </span>
                     )}
                     <Badge
                         variant={status === 'OPEN' ? 'default' : 'destructive'}
                         className={cn(
-                            'text-[9px] px-1.5 py-0',
+                            'text-xs px-1.5 py-0',
                         )}
                     >
                         {collapsed

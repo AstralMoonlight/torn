@@ -162,11 +162,11 @@ export default function DailyReportPage() {
                         <div className="p-2 bg-primary/10 rounded-full print:hidden">
                             <Wallet className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary print:text-black">Utilidad (después de impuestos)</span>
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary print:text-black">Utilidad (después de impuestos)</span>
                         <div className="text-4xl font-black text-foreground print:text-black">
                             {formatCLP(totalUtilidadReal)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                             <Info className="h-3 w-3" />
                             <span>Calculado sobre venta neta - costo</span>
                         </div>
@@ -178,7 +178,7 @@ export default function DailyReportPage() {
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Detalle por artículo</h2>
-                    <span className="text-[10px] font-mono text-muted-foreground uppercase">{itemCount} Items</span>
+                    <span className="text-xs font-mono text-muted-foreground uppercase">{itemCount} Items</span>
                 </div>
                 <div data-section="reporte-diario.tabla" className="border border-border rounded-lg overflow-hidden print:border-black">
                     <Table>
@@ -201,7 +201,7 @@ export default function DailyReportPage() {
                                     <TableRow key={item.product_id} className="border-b-border print:border-black">
                                         <TableCell className="py-3">
                                             <div className="text-xs font-semibold text-foreground print:text-black">{item.full_name}</div>
-                                            <div className="text-[9px] font-mono text-muted-foreground print:text-muted-foreground italic">SKU: {item.product_id}</div>
+                                            <div className="text-xs font-mono text-muted-foreground print:text-muted-foreground italic">SKU: {item.product_id}</div>
                                         </TableCell>
                                         <TableCell className="text-right text-xs font-mono">{item.cantidad}</TableCell>
                                         <TableCell className="text-right text-xs">{formatCLP(item.monto_total)}</TableCell>
@@ -217,7 +217,7 @@ export default function DailyReportPage() {
             </div>
 
             {/* Disclaimer & Tech Info */}
-            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-[9px] text-muted-foreground border-t border-border print:border-black print:text-black">
+            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-xs text-muted-foreground border-t border-border print:border-black print:text-black">
                 <div className="max-w-xs italic text-left">
                     * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
                 </div>

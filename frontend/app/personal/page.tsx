@@ -276,10 +276,10 @@ export default function PersonalPage() {
                                                         <span className="font-semibold text-foreground truncate flex items-center gap-2">
                                                             {user.name}
                                                             {user.is_owner && (
-                                                                <Badge className="bg-primary h-4 text-[8px] px-1 font-black">ADMIN</Badge>
+                                                                <Badge className="bg-primary h-5 text-xs px-1.5 font-bold">ADMIN</Badge>
                                                             )}
                                                         </span>
-                                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                                        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                                                             {user.role_obj?.name || user.role || 'Vendedor'}
                                                         </span>
                                                     </div>
@@ -299,7 +299,7 @@ export default function PersonalPage() {
                                                         disabled={user.is_owner}
                                                     />
                                                     <span className={cn(
-                                                        "text-[10px] font-bold uppercase tracking-wider",
+                                                        "text-xs font-bold uppercase tracking-wider",
                                                         user.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                                     )}>
                                                         {user.is_active ? 'Activo' : 'Inactivo'}
@@ -412,7 +412,7 @@ export default function PersonalPage() {
                                             <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
                                                 <div className="flex flex-col min-w-0 pr-2">
                                                     <span className="text-sm font-medium truncate">{user.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{user.rut}</span>
+                                                    <span className="text-xs text-muted-foreground">{user.rut}</span>
                                                 </div>
                                                 <Select
                                                     value={user.role_id?.toString() || ""}
@@ -434,7 +434,7 @@ export default function PersonalPage() {
                                         ))
                                     )}
                                     {filteredRolesUsers.length > 8 && (
-                                        <p className="text-center pt-2 text-[10px] text-muted-foreground">Carga más resultados usando el buscador</p>
+                                        <p className="text-center pt-2 text-xs text-muted-foreground">Carga más resultados usando el buscador</p>
                                     )}
                                 </CardContent>
                             </Card>
@@ -443,9 +443,9 @@ export default function PersonalPage() {
                                 <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
                                     <div className="flex items-center gap-1.5 mb-1 text-primary">
                                         <CheckCircle2 className="h-3.5 w-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Info: Admin</span>
+                                        <span className="text-xs font-bold uppercase tracking-wider">Info: Admin</span>
                                     </div>
-                                    <p className="text-[10px] text-primary leading-relaxed">
+                                    <p className="text-xs text-primary leading-relaxed">
                                         El rol ADMINISTRADOR tiene todos los permisos activos por defecto y no se puede limitar.
                                     </p>
                                 </div>

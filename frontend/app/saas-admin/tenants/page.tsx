@@ -323,14 +323,14 @@ export default function TenantsListPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[10px] text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
+                                        <p className="text-xs text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
                                     </div>
 
                                     {editingTenantId && (
                                         <div className="space-y-4 p-4 bg-muted rounded-lg border border-border">
                                             <div>
                                                 <Label>Facturación electrónica (SII)</Label>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                <p className="text-xs text-muted-foreground mt-1">
                                                     Resolución y ambiente con que el SII autorizó a la empresa. Van impresos bajo el timbre.
                                                 </p>
                                             </div>
@@ -392,7 +392,7 @@ export default function TenantsListPage() {
                                             Actividades económicas (ACTECO)
                                             <Info className="h-3 w-3 text-muted-foreground" />
                                         </Label>
-                                        <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
+                                        <Badge variant="outline" className="text-xs">{formData.economic_activities.length} seleccionadas</Badge>
                                     </div>
 
                                     <SearchInput placeholder="Buscar por código o nombre..." value={actecoSearch} onChange={e => setActecoSearch(e.target.value)} />
@@ -508,7 +508,7 @@ export default function TenantsListPage() {
                                                 onCheckedChange={(checked: boolean) => handleToggleStatus(tenant, checked)}
                                             />
                                             <span className={cn(
-                                                "text-[10px] font-bold uppercase tracking-wider",
+                                                "text-xs font-bold uppercase tracking-wider",
                                                 tenant.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                             )}>
                                                 {tenant.is_active ? 'Activo' : 'Inactivo'}
