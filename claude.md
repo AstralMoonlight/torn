@@ -1,4 +1,4 @@
-# claude.md — Torn
+# claude.md - Torn
 
 Documento de contexto para asistentes de IA y desarrolladores que trabajen en este repositorio.
 Todo lo aquí descrito proviene de la inspección directa de los archivos locales.
@@ -36,7 +36,7 @@ Según la lógica encontrada en `backend/app/`, el sistema cubre:
 
 Detectado exclusivamente a partir de los archivos de dependencias y configuración presentes en el repo.
 
-### Backend — `backend/requirements.txt` (sin versiones), `backend/app/`
+### Backend - `backend/requirements.txt` (sin versiones), `backend/app/`
 
 | Tecnología | Evidencia |
 |---|---|
@@ -57,7 +57,7 @@ Detectado exclusivamente a partir de los archivos de dependencias y configuraci�
 | PyYAML, anyio, click, idna, six, tomli, tzdata, typing_extensions, typing-inspection, exceptiongroup | `backend/requirements.txt` (dependencias transitivas) |
 | Pytest + httpx | `backend/requirements-dev.txt`, `backend/tests/` |
 
-### Frontend — `frontend/package.json`
+### Frontend - `frontend/package.json`
 
 | Tecnología | Evidencia |
 |---|---|
@@ -72,12 +72,11 @@ Detectado exclusivamente a partir de los archivos de dependencias y configuraci�
 | Zustand | `frontend/lib/store` |
 | React Hook Form + Zod | `react-hook-form`, `@hookform/resolvers`, `zod` |
 | Recharts | gráficos |
-| Sonner | notificaciones |
 | next-themes | tema claro/oscuro |
 | class-variance-authority, clsx, tailwind-merge, tailwindcss-animate, aria-hidden, react-remove-scroll | utilidades de estilo |
 | ESLint 9 | `eslint`, `eslint.config.mjs` |
 
-### Infraestructura — Dockerfiles y `docker-compose.yml`
+### Infraestructura - Dockerfiles y `docker-compose.yml`
 
 | Tecnología | Evidencia |
 |---|---|
@@ -129,8 +128,9 @@ Torn/
 │   │                     #   dashboard, ui (shadcn)
 │   ├── services/         # capa Axios por dominio (api.ts + 15 módulos)
 │   └── lib/              # utils.ts, rut.ts, store (Zustand)
-├── database/         # Datos auxiliares para poblar la BD (actecos_sii.json) — ignorado por git
-├── info/             # Documentación (DEVELOPER_GUIDE.md, INFORME_TECNICO.md, MDs de sesión)
+├── database/         # Datos auxiliares para poblar la BD (actecos_sii.json) - ignorado por git
+├── info/             # Documentación estable (DEVELOPER_GUIDE.md, INFORME_TECNICO.md)
+├── tasks/            # Trabajo en curso: planes y listas de tareas (plan.md, todo.md, ui_pendientes.md)
 ├── Dockerfile.backend / Dockerfile.frontend / docker-compose.yml   # en la raíz: orquestan ambos servicios
 └── README.md / CLAUDE.md / package.json (shim raíz)
 ```
@@ -206,7 +206,7 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
-- Suite Pytest de integración: **74 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-24).
+- Suite Pytest de integración: **101 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-25).
   dte-torn se sustituye por un fake (`FakeDte` en `backend/tests/conftest.py`).
 - Contenerización completa (backend + frontend + PostgreSQL) vía Docker Compose.
 
@@ -313,3 +313,10 @@ En la práctica esto significa:
 8. No se usan `<select>` nativos: su lista la dibuja el navegador y no respeta estilos (ni el puntero de
    mano en las opciones). Se usa `SelectOpciones` (`frontend/components/ui/select-opciones.tsx`) o el
    `Select` de shadcn.
+9. No se usa el guion largo (U+2014) en ningún archivo versionado (código, textos de la UI, plantillas,
+   documentación, commits): se usa "-" o se reescribe la frase. CI falla si `git grep` lo encuentra. La
+   única excepción es `texto_sii` en `dte-torn/app/dte/builder.py`, que lo escribe como escape `\u2014`.
+10. No se usan toasts. Un error de diálogo o formulario va en `AlertaError`
+    (`frontend/components/ui/alerta-error.tsx`) dentro del diálogo; uno de página, con `avisar()` de
+    `uiStore`, que lo muestra como `Alert` arriba del contenido (`components/layout/Aviso.tsx`). Los
+    éxitos que ya se ven en pantalla no llevan mensaje.

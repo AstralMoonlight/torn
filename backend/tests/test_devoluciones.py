@@ -1,7 +1,7 @@
 """Tests de devoluciones y notas de crédito.
 
 `create_return` no contrastaba las cantidades devueltas contra la venta original
-—lo decía un comentario: _"Omitido por simplicidad, confiamos en operador"_—, de
+-lo decía un comentario: _"Omitido por simplicidad, confiamos en operador"_-, de
 modo que se podía devolver más de lo vendido o devolver la misma venta varias
 veces. Cada devolución reingresa stock, emite una NC y abona la cuenta corriente
 del cliente.

@@ -24,6 +24,8 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { useUIStore } from '@/lib/store/uiStore'
 import { Badge } from '@/components/ui/badge'
 import ThemeToggle from './ThemeToggle'
+import SelectorColor from './SelectorColor'
+import { useControlCaja } from '@/lib/store/settingsStore'
 import { LogoutConfirmModal } from './LogoutConfirmModal'
 
 const navGroups = [
@@ -39,7 +41,7 @@ const navGroups = [
         label: 'Inventario',
         items: [
             { href: '/inventario', label: 'Productos', icon: Package, permissionKey: 'Productos' },
-            { href: '/listas-precios', label: 'Listas de Precios', icon: Tags, permissionKey: 'Productos' },
+            { href: '/listas-precios', label: 'Listas de precios', icon: Tags, permissionKey: 'Productos' },
             { href: '/marcas', label: 'Marcas', icon: Tags, permissionKey: 'Marcas' },
             { href: '/compras', label: 'Compras', icon: ShoppingBag, permissionKey: 'Compras' },
         ]
@@ -56,14 +58,14 @@ const navGroups = [
         label: 'Auditoría',
         items: [
             { href: '/historial', label: 'Historial', icon: History, permissionKey: 'Historial' },
-            { href: '/reporte-diario', label: 'Reportes de Ventas', icon: BarChart3, permissionKey: 'Reportes de Ventas' },
+            { href: '/reporte-diario', label: 'Reportes de ventas', icon: BarChart3, permissionKey: 'Reportes de Ventas' },
         ]
     },
     {
         label: 'Sistema',
         items: [
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
-            { href: '/saas-admin', label: 'Terminal SaaS Global', icon: Globe, permissionKey: '__SUPERADMIN__' },
+            { href: '/saas-admin', label: 'Terminal SaaS global', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
     }
 ]
@@ -76,6 +78,7 @@ export default function Sidebar() {
     const toggle = useUIStore((s) => s.toggleSidebar)
     const availableTenants = useSessionStore((s) => s.availableTenants)
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
+    const controlCaja = useControlCaja()
 
     const currentTenant = availableTenants.find(t => t.id === selectedTenantId)
     // El rol y los permisos son del vínculo tenant-usuario (AvailableTenant),
@@ -104,7 +107,7 @@ export default function Sidebar() {
                         <h1 className="text-sm font-bold tracking-tight text-foreground leading-tight truncate max-w-[160px]" title={currentTenant?.name || 'Torn'}>
                             {currentTenant?.name || 'Torn'}
                         </h1>
-                        <p className="text-[9px] uppercase tracking-widest text-muted-foreground leading-none">
+                        <p className="text-xs uppercase tracking-widest text-muted-foreground leading-none">
                             punto de venta
                         </p>
                     </div>
@@ -117,6 +120,7 @@ export default function Sidebar() {
                     // Filter items based on dynamic permissions
                     const filteredItems = group.items.filter(item => {
                         if (item.permissionKey === '__SUPERADMIN__') return isSuperadmin
+                        if (item.href === '/caja' && !controlCaja) return false
                         if (isAdmin) return true
                         return permissions[item.permissionKey] === true
                     })
@@ -126,7 +130,7 @@ export default function Sidebar() {
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
                             {!collapsed && (
-                                <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     {group.label}
                                 </h2>
                             )}
@@ -170,29 +174,30 @@ export default function Sidebar() {
                 {/* User Info */}
                 {!collapsed && (
                     <div className="px-3 pt-3 flex flex-col">
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground truncate">
                             {userPayload?.full_name || userPayload?.email || 'Usuario'}
                         </span>
-                        <span className="text-[10px] text-muted-foreground truncate lowercase italic">
+                        <span className="text-xs text-muted-foreground truncate lowercase italic">
                             {roleForCurrentTenant.replace('_', ' ')}
                         </span>
                     </div>
                 )}
 
                 {/* Cash Status */}
+                {controlCaja && (
                 <div className={cn(
                     'flex items-center px-3 py-2',
                     collapsed ? 'justify-center' : 'justify-between'
                 )}>
                     {!collapsed && (
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                             Caja
                         </span>
                     )}
                     <Badge
                         variant={status === 'OPEN' ? 'default' : 'destructive'}
                         className={cn(
-                            'text-[9px] px-1.5 py-0',
+                            'text-xs px-1.5 py-0',
                         )}
                     >
                         {collapsed
@@ -200,18 +205,22 @@ export default function Sidebar() {
                             : (status === 'OPEN' ? '● Abierta' : '○ Cerrada')}
                     </Badge>
                 </div>
+                )}
 
                 {/* Theme + Logout + Collapse */}
                 <div className={cn(
                     'flex items-center border-t border-border px-2 py-1.5',
                     collapsed ? 'flex-col justify-center gap-2' : 'flex-row justify-between'
                 )}>
-                    <ThemeToggle />
+                    <div className={cn('flex items-center gap-1', collapsed && 'flex-col gap-2')}>
+                        <ThemeToggle />
+                        <SelectorColor />
+                    </div>
 
                     <LogoutConfirmModal>
                         <button
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
-                            title="Cerrar Sesión"
+                            title="Cerrar sesión"
                         >
                             <LogOut className="h-4 w-4" />
                         </button>

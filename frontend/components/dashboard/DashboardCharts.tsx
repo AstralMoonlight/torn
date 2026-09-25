@@ -30,7 +30,8 @@ interface Props {
     paymentData: PaymentData[]
 }
 
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+// Tonos del color principal (sigue al color elegido en Configuración y al tema).
+const PIE_COLORS = [1, 0.75, 0.55, 0.4, 0.28, 0.18].map((a) => `hsl(var(--primary) / ${a})`)
 
 
 export default function DashboardCharts({ salesData, paymentData }: Props) {
@@ -38,7 +39,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
         <div data-section="dashboard.graficos" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Sales by Hour */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por Hora</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por hora</h3>
                 {salesData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -53,12 +54,14 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                                     formatter={(v) => [formatCLP(Number(v)), 'Total']}
                                     contentStyle={{
                                         borderRadius: '0.5rem',
-                                        border: '1px solid #e2e8f0',
+                                        border: '1px solid hsl(var(--border))',
+                                        background: 'hsl(var(--popover))',
+                                        color: 'hsl(var(--popover-foreground))',
                                         fontSize: '12px',
                                         boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                                     }}
                                 />
-                                <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -71,7 +74,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
 
             {/* Payment Methods Pie */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de Pago</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de pago</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -95,7 +98,13 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                                 </Pie>
                                 <Tooltip
                                     formatter={(v) => [formatCLP(Number(v)), 'Total']}
-                                    contentStyle={{ borderRadius: '0.5rem', fontSize: '12px' }}
+                                    contentStyle={{
+                                        borderRadius: '0.5rem',
+                                        fontSize: '12px',
+                                        border: '1px solid hsl(var(--border))',
+                                        background: 'hsl(var(--popover))',
+                                        color: 'hsl(var(--popover-foreground))',
+                                    }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>

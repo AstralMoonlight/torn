@@ -5,8 +5,9 @@ import { Plus, Edit2, Trash2, Truck } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
-import { SearchInput } from '@/components/ui/search-input'
+import { AccionFila } from '@/components/ui/accion-fila'
 import {
     Table,
     TableBody,
@@ -16,10 +17,10 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatRut } from '@/lib/rut'
 import { getProviders, deleteProvider, type Provider } from '@/services/providers'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import ProviderDialog from '@/components/providers/ProviderDialog'
 
 export default function ProvidersPage() {
@@ -37,7 +38,7 @@ export default function ProvidersPage() {
             setProviders(data)
             setFiltered(data)
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al cargar proveedores'))
+            avisar(getApiErrorMessage(error, 'Error al cargar proveedores'), { reintentar: loadProviders })
         } finally {
             setLoading(false)
         }
@@ -68,10 +69,9 @@ export default function ProvidersPage() {
     const handleDelete = async (id: number) => {
         try {
             await deleteProvider(id)
-            toast.success('Proveedor desactivado')
             loadProviders()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al desactivar proveedor'))
+            avisar(getApiErrorDetail(error, 'No se pudo desactivar el proveedor.'))
         }
     }
 
@@ -80,22 +80,29 @@ export default function ProvidersPage() {
             <PageHeader
                 icon={Truck}
                 title="Proveedores"
-                description="Gestión de empresas y entidades suministradoras."
+                description="Gestiona tus proveedores y sus datos de contacto."
                 actions={
                     <Button onClick={() => { setEditingProvider(null); setIsDialogOpen(true) }} className="gap-2">
-                        <Plus className="h-4 w-4" /> Nuevo Proveedor
+                        <Plus className="h-4 w-4" /> Nuevo proveedor
                     </Button>
                 }
             />
 
-            <SearchInput data-section="proveedores.buscador" className="max-w-sm" placeholder="Buscar por Nombre o RUT..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <ListToolbar
+                busqueda={search}
+                onBusqueda={setSearch}
+                placeholder="Buscar por nombre o RUT..."
+                visibles={filtered.length}
+                total={providers.length}
+                unidad="proveedores"
+            />
 
             <div data-section="proveedores.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>RUT</TableHead>
-                            <TableHead>Razón Social</TableHead>
+                            <TableHead>Razón social</TableHead>
                             <TableHead className="hidden md:table-cell">Giro</TableHead>
                             <TableHead className="hidden lg:table-cell">Email</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
@@ -119,24 +126,8 @@ export default function ProvidersPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleEdit(provider)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                title="Editar"
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setToDelete(provider)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                title="Desactivar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Edit2} label="Editar" onClick={() => handleEdit(provider)} />
+                                            <AccionFila icon={Trash2} label="Desactivar" onClick={() => setToDelete(provider)} peligro />
                                         </div>
                                     </TableCell>
                                 </TableRow>

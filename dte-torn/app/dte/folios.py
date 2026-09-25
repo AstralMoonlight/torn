@@ -112,7 +112,7 @@ async def asignar_folio(
             .with_for_update()
             # Obligatorio: sin esto, si el CAF ya estaba en el identity map de
             # la sesión, el ORM devuelve la copia en memoria y se pierde el
-            # `ultimo_folio_usado` que acaba de leer con el lock — que es
+            # `ultimo_folio_usado` que acaba de leer con el lock - que es
             # justamente el dato por el que se bloqueó.
             .execution_options(populate_existing=True)
         )

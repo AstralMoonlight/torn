@@ -4,14 +4,19 @@ import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** `compacta`: celdas más bajas y angostas, para tablas editables (variantes). */
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableElement> & { compacta?: boolean }
+>(({ className, compacta, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-sm",
+        compacta && "[&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5",
+        className
+      )}
       {...props}
     />
   </div>

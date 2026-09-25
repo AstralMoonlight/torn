@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { type User, createUser, updateUser } from '@/services/users'
 import { type Role } from '@/services/roles'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
 import { Loader2, Plus, Pencil, AlertTriangle } from 'lucide-react'
 import { getApiErrorDetail } from '@/services/api'
 import {
@@ -40,6 +40,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [roleId, setRoleId] = useState<string>('')
+    const [error, setError] = useState<string | null>(null)
 
     const isOwner = user?.is_owner ?? false
 
@@ -55,21 +56,21 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                 setRoleId('')
             }
             setPassword('')
+            setError(null)
         }
     }, [open, user])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
 
         if (!user && !canActivateMore) {
-            toast.error('Límite de usuarios alcanzado', {
-                description: 'No puedes crear más usuarios activos. Desactiva alguno primero o sube de plan.'
-            })
+            setError('Límite de usuarios alcanzado: desactiva alguno o sube de plan para crear más.')
             return
         }
 
         if (!isOwner && !roleId) {
-            toast.error('Debes seleccionar un rol')
+            setError('Debes seleccionar un rol.')
             return
         }
 
@@ -82,7 +83,6 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     role_id: isOwner ? undefined : parseInt(roleId),
                     password: password || undefined
                 })
-                toast.success('Usuario actualizado')
             } else {
                 await createUser({
                     full_name: name,
@@ -90,12 +90,11 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     role_id: parseInt(roleId),
                     password
                 })
-                toast.success('Usuario creado')
             }
             onSuccess()
             onClose()
         } catch (error) {
-            toast.error(getApiErrorDetail(error, 'Error al guardar usuario'))
+            setError(getApiErrorDetail(error, 'No se pudo guardar el usuario.'))
         } finally {
             setLoading(false)
         }
@@ -109,12 +108,12 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                         {user ? (
                             <>
                                 <Pencil className="h-5 w-5 text-primary" />
-                                {isOwner ? 'Editar Mi Perfil (Admin)' : 'Editar Personal'}
+                                {isOwner ? 'Editar mi perfil (admin)' : 'Editar personal'}
                             </>
                         ) : (
                             <>
                                 <Plus className="h-5 w-5 text-primary" />
-                                Nuevo Personal
+                                Nuevo personal
                             </>
                         )}
                     </DialogTitle>
@@ -126,7 +125,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Nombre Completo</Label>
+                        <Label htmlFor="name">Nombre completo</Label>
                         <Input
                             id="name"
                             value={name}
@@ -149,7 +148,7 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="password">
-                            {user ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña'}
+                            {user ? 'Nueva contraseña (déjala en blanco para no cambiarla)' : 'Contraseña'}
                         </Label>
                         <Input
                             id="password"
@@ -182,20 +181,21 @@ export default function UserDialog({ open, onClose, onSuccess, user, roles, canA
                     {!user && !canActivateMore && (
                         <div className="p-3 bg-muted border border-border rounded-lg flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="text-[10px] text-muted-foreground leading-tight">
+                            <div className="text-xs text-muted-foreground leading-tight">
                                 <p className="font-bold">Límite alcanzado</p>
                                 <p>No puedes agregar personal activo. Desactiva a alguien primero.</p>
                             </div>
                         </div>
                     )}
 
+                    <AlertaError mensaje={error} />
                     <DialogFooter className="pt-4">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
                             Cancelar
                         </Button>
                         <Button type="submit" disabled={loading} className="">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            {user ? 'Guardar Cambios' : 'Crear Personal'}
+                            {user ? 'Guardar cambios' : 'Crear personal'}
                         </Button>
                     </DialogFooter>
                 </form>

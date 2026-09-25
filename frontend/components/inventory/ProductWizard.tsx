@@ -11,11 +11,13 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { createProduct, createProductWithVariants } from '@/services/products'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
 import {
     Loader2,
     Plus,
@@ -75,6 +77,7 @@ export default function ProductWizard({ open, onClose }: Props) {
     // Step 2: Variants list
     const [variants, setVariants] = useState<VariantRow[]>([])
     const [creating, setCreating] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Load brands and taxes
     useEffect(() => {
@@ -102,6 +105,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
     // ── Create simple product (no variants) ──
     const handleCreateSimple = async () => {
+        setError(null)
         setCreating(true)
         try {
             await createProduct({
@@ -116,12 +120,10 @@ export default function ProductWizard({ open, onClose }: Props) {
                 brand_id: selectedBrand ? parseInt(selectedBrand) : undefined,
                 tax_id: selectedTax ? parseInt(selectedTax) : undefined,
             })
-            toast.success(`✓ ${baseName} creado`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al crear producto')
+            setError(getApiErrorDetail(err, 'No se pudo crear el producto.'))
         } finally {
             setCreating(false)
         }
@@ -132,10 +134,11 @@ export default function ProductWizard({ open, onClose }: Props) {
         // Validate all variants have name and price
         const invalid = variants.some(v => !v.nombre.trim() || !v.precio.trim())
         if (invalid) {
-            toast.error('Cada variante necesita Nombre y Precio')
+            setError('Cada variante necesita nombre y precio.')
             return
         }
 
+        setError(null)
         setCreating(true)
         try {
             await createProductWithVariants({
@@ -154,12 +157,10 @@ export default function ProductWizard({ open, onClose }: Props) {
                     descripcion: v.descripcion || undefined,
                 })),
             })
-            toast.success(`✓ ${baseName} creado con ${variants.length} variantes`)
             resetForm()
             onClose(true)
         } catch (err: unknown) {
-            const detail = getApiErrorDetail(err, '')
-            toast.error(detail || 'Error al crear producto')
+            setError(getApiErrorDetail(err, 'No se pudo crear el producto.'))
         } finally {
             setCreating(false)
         }
@@ -178,6 +179,7 @@ export default function ProductWizard({ open, onClose }: Props) {
         setNewBrandName('')
         setControlStock(true)
         setVariants([])
+        setError(null)
     }
 
     const handleCreateBrand = async () => {
@@ -188,10 +190,9 @@ export default function ProductWizard({ open, onClose }: Props) {
             setSelectedBrand(brand.id.toString())
             setIsCreatingBrand(false)
             setNewBrandName('')
-            toast.success('Marca creada')
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al crear marca')
+        } catch (err) {
+            console.error(err)
+            setError(getApiErrorDetail(err, 'No se pudo crear la marca.'))
         }
     }
 
@@ -205,7 +206,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-lg">
                         <Package className="h-5 w-5 text-primary" />
-                        Nuevo Producto
+                        Nuevo producto
                     </DialogTitle>
                     <DialogDescription>
                         {step === 1 && 'Datos del producto base'}
@@ -250,7 +251,7 @@ export default function ProductWizard({ open, onClose }: Props) {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs">Código de Barras <span className="text-muted-foreground">(opcional)</span></Label>
+                                <Label className="text-xs">Código de barras <span className="text-muted-foreground">(opcional)</span></Label>
                                 <div className="relative">
                                     <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
@@ -262,7 +263,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Precio Neto</Label>
+                                <Label className="text-xs">Precio neto</Label>
                                 <Input
                                     type="number"
                                     placeholder="50000"
@@ -373,9 +374,9 @@ export default function ProductWizard({ open, onClose }: Props) {
                         </div>
 
                         {/* Hint for optional fields */}
-                        <div className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+                        <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                             <Barcode className="inline h-3 w-3 mr-1" />
-                            Los campos SKU y Código de Barras se generan automáticamente si no los ingresas.
+                            Los campos SKU y código de barras se generan automáticamente si no los ingresas.
                         </div>
                     </div>
                 )}
@@ -394,82 +395,81 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 No hay variantes aún. Agrega la primera.
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                    <thead>
-                                        <tr className="border-b border-border">
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Nombre *</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">SKU</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Cód. Barras</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Precio *</th>
-                                            <th className="text-left pb-1.5 font-medium text-muted-foreground text-[10px]">Descripción</th>
-                                            <th className="w-8"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
+                            <div className="rounded-md border border-border overflow-hidden">
+                                <Table compacta>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Nombre *</TableHead>
+                                            <TableHead>SKU</TableHead>
+                                            <TableHead>Cód. barras</TableHead>
+                                            <TableHead>Precio *</TableHead>
+                                            <TableHead>Descripción</TableHead>
+                                            <TableHead className="w-10"><span className="sr-only">Quitar</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {variants.map((v, i) => (
-                                            <tr key={i}>
-                                                <td className="py-1.5 pr-1">
+                                            <TableRow key={i}>
+                                                <TableCell>
                                                     <Input
                                                         value={v.nombre}
                                                         onChange={(e) => updateVariant(i, 'nombre', e.target.value)}
                                                         placeholder="Talla 42"
-                                                        className="h-7 w-28 text-[11px]"
+                                                        className="h-8 w-28 text-xs"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.sku}
                                                         onChange={(e) => updateVariant(i, 'sku', e.target.value.toUpperCase())}
                                                         placeholder="Auto"
-                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                        className="h-8 w-24 text-xs font-mono"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.barcode}
                                                         onChange={(e) => updateVariant(i, 'barcode', e.target.value)}
                                                         placeholder="Auto"
-                                                        className="h-7 w-24 text-[11px] font-mono"
+                                                        className="h-8 w-24 text-xs font-mono"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         type="number"
                                                         value={v.precio}
                                                         onChange={(e) => updateVariant(i, 'precio', e.target.value)}
                                                         placeholder="0"
-                                                        className="h-7 w-20 text-[11px] font-tabular"
+                                                        className="h-8 w-20 text-xs font-tabular"
                                                     />
-                                                </td>
-                                                <td className="py-1.5 pr-1">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
                                                         value={v.descripcion}
                                                         onChange={(e) => updateVariant(i, 'descripcion', e.target.value)}
                                                         placeholder="Opcional"
-                                                        className="h-7 w-28 text-[11px]"
+                                                        className="h-8 w-28 text-xs"
                                                     />
-                                                </td>
-                                                <td className="py-1.5">
-                                                    <button type="button" onClick={() => removeVariant(i)} title="Quitar variante" className="text-destructive hover:text-destructive/80">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <AccionFila icon={Trash2} label="Quitar variante" onClick={() => removeVariant(i)} peligro />
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
 
                         <Button variant="outline" size="sm" onClick={addVariant} className="text-xs gap-1 h-7">
-                            <Plus className="h-3 w-3" /> Agregar Variante
+                            <Plus className="h-3 w-3" /> Agregar variante
                         </Button>
                     </div>
                 )}
 
                 <Separator />
 
+                <AlertaError mensaje={error} />
                 <DialogFooter className="flex-col sm:flex-row gap-2">
                     {step > 1 && (
                         <Button type="button" variant="outline" onClick={() => setStep(1)} className="text-xs">
@@ -496,7 +496,7 @@ export default function ProductWizard({ open, onClose }: Props) {
                                 disabled={!canProceedStep1}
                                 className="text-xs gap-1"
                             >
-                                Con Variantes →
+                                Con variantes →
                             </Button>
                         </div>
                     )}

@@ -7,8 +7,8 @@ La aritmética de folios y CAF vive en dte-torn y se prueba allá. Acá:
   producto exento salían con 19% de impuesto.
 * `quantize_money` redondeaba a centavos (2 decimales) en vez de al peso
   entero: un IVA por línea que no cerraba en un peso exacto (950 * 0.19 =
-  180.50) dejaba el total con una fracción de peso que el frontend —que
-  siempre trabaja en pesos enteros— nunca podía igualar. Con efectivo el
+  180.50) dejaba el total con una fracción de peso que el frontend -que
+  siempre trabaja en pesos enteros- nunca podía igualar. Con efectivo el
   redondeo a la decena lo disimulaba; con cualquier otro medio de pago,
   que exige el monto exacto, la venta se rechazaba con un vuelto fantasma
   de unos centavos ("El vuelto ($0.50) no puede superar el efectivo

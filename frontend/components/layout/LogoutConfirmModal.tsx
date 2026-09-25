@@ -48,7 +48,7 @@ export function LogoutConfirmModal({ children }: LogoutConfirmModalProps) {
                         onClick={handleConfirm}
                         className="bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer"
                     >
-                        Cerrar Sesión
+                        Cerrar sesión
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { searchProviders, Provider } from '@/services/providers'
 import ProviderDialog from '@/components/providers/ProviderDialog'
-import { toast } from 'sonner'
 import {
     Loader2,
     Search,
@@ -49,7 +48,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 export default function ProviderSearchCombobox({
     value,
     onChange,
-    placeholder = 'Buscar proveedor por Razón Social o RUT…',
+    placeholder = 'Buscar proveedor por razón social o RUT…',
 }: Props) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<Provider[]>([])
@@ -177,9 +176,9 @@ export default function ProviderSearchCombobox({
     }
 
     // ── Provider creation handler ────────────────────────────────
-    const handleCreateSuccess = () => {
+    const handleCreateSuccess = (creado: Provider) => {
         setCreateOpen(false)
-        toast.success('Proveedor creado. Por favor búscalo de nuevo.')
+        selectProvider(creado)
     }
 
     // ── RENDER: Selected state (chip) ────────────────────────────
@@ -191,7 +190,7 @@ export default function ProviderSearchCombobox({
                     <p className="text-sm font-medium text-primary truncate">
                         {value.razon_social}
                     </p>
-                    <p className="text-[11px] font-mono text-primary/80">
+                    <p className="text-xs font-mono text-primary/80">
                         {value.rut}
                     </p>
                 </div>
@@ -267,7 +266,7 @@ export default function ProviderSearchCombobox({
                                         <p className="text-sm truncate text-foreground">
                                             <HighlightedText text={provider.razon_social} query={query} />
                                         </p>
-                                        <p className="text-[11px] font-mono text-muted-foreground dark:text-muted-foreground">
+                                        <p className="text-xs font-mono text-muted-foreground dark:text-muted-foreground">
                                             <HighlightedText text={provider.rut} query={query} />
                                         </p>
                                     </div>

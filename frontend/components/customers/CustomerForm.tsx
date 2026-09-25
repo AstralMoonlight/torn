@@ -1,127 +1,105 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { DialogFooter } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { AlertaError } from '@/components/ui/alerta-error'
 import { Loader2 } from 'lucide-react'
 import { CustomerCreate } from '@/services/customers'
+import { getApiErrorDetail } from '@/services/api'
 import { formatRut, validateRut } from '@/lib/rut'
-import { toast } from 'sonner'
+
+const customerSchema = z.object({
+    rut: z.string().min(1, 'El RUT es obligatorio').refine(validateRut, 'RUT inválido: revisa el dígito verificador'),
+    razon_social: z.string().trim().min(1, 'La razón social es obligatoria'),
+    giro: z.string(),
+    direccion: z.string(),
+    comuna: z.string(),
+    ciudad: z.string(),
+    email: z.string().email('Email inválido').or(z.literal('')),
+})
+
+type CustomerFormValues = z.infer<typeof customerSchema>
+
+const VACIO: CustomerFormValues = { rut: '', razon_social: '', giro: '', direccion: '', comuna: '', ciudad: '', email: '' }
 
 interface CustomerFormProps {
     initialData?: CustomerCreate
+    /** Si lanza, el error se muestra en el formulario y el diálogo sigue abierto. */
     onSubmit: (data: CustomerCreate) => Promise<void>
     onCancel: () => void
     isEditing?: boolean
 }
 
-
-
 export default function CustomerForm({ initialData, onSubmit, onCancel, isEditing }: CustomerFormProps) {
-    const [formData, setFormData] = useState<CustomerCreate>({
-        rut: '',
-        razon_social: '',
-        giro: '',
-        direccion: '',
-        comuna: '',
-        ciudad: '',
-        email: ''
-    })
-    const [saving, setSaving] = useState(false)
+    const form = useForm<CustomerFormValues>({ resolver: zodResolver(customerSchema), defaultValues: VACIO })
 
     useEffect(() => {
-        if (initialData) {
-            setFormData(initialData)
-        }
-    }, [initialData])
+        form.reset(initialData ? { ...VACIO, ...initialData } : VACIO)
+    }, [initialData, form])
 
-    const handleSubmit = async () => {
-        if (!validateRut(formData.rut)) {
-            toast.error('RUT inválido', {
-                description: 'Verifique el formato y el dígito verificador.'
-            })
-            return
-        }
-        setSaving(true)
+    const guardar = async (values: CustomerFormValues) => {
         try {
-            await onSubmit(formData)
-        } finally {
-            setSaving(false)
+            await onSubmit(values)
+        } catch (error) {
+            form.setError('root', { message: getApiErrorDetail(error, 'No se pudo guardar el cliente.') })
         }
     }
 
-    return (
-        <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>RUT *</Label>
-                    <Input
-                        value={formData.rut}
-                        onChange={(e) => setFormData({ ...formData, rut: formatRut(e.target.value) })}
-                        placeholder="12.345.678-9"
-                        disabled={!!isEditing}
-                        maxLength={12}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="cliente@email.com"
-                    />
-                </div>
-            </div>
-            <div className="space-y-2">
-                <Label>Razón Social *</Label>
-                <Input
-                    value={formData.razon_social}
-                    onChange={(e) => setFormData({ ...formData, razon_social: e.target.value })}
-                    placeholder="Nombre o empresa"
-                />
-            </div>
-            <div className="space-y-2">
-                <Label>Giro</Label>
-                <Input
-                    value={formData.giro}
-                    onChange={(e) => setFormData({ ...formData, giro: e.target.value })}
-                    placeholder="Rubro o actividad económica"
-                />
-            </div>
-            <div className="space-y-2">
-                <Label>Dirección</Label>
-                <Input
-                    value={formData.direccion}
-                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                    placeholder="Calle y número"
-                />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>Comuna</Label>
-                    <Input
-                        value={formData.comuna}
-                        onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Ciudad</Label>
-                    <Input
-                        value={formData.ciudad}
-                        onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                    />
-                </div>
-            </div>
+    const campo = (name: keyof CustomerFormValues, label: string, placeholder?: string, extra?: { disabled?: boolean; rut?: boolean }) => (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>{label}</FormLabel>
+                    <FormControl>
+                        <Input
+                            placeholder={placeholder}
+                            disabled={extra?.disabled}
+                            maxLength={extra?.rut ? 12 : undefined}
+                            {...field}
+                            onChange={(e) => field.onChange(extra?.rut ? formatRut(e.target.value) : e.target.value)}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    )
 
-            <DialogFooter>
-                <Button variant="outline" onClick={onCancel} disabled={saving}>
-                    Cancelar
-                </Button>
-                <Button onClick={handleSubmit} disabled={saving} className="">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Guardar
-                </Button>
-            </DialogFooter>
-        </div>
+    const { isSubmitting, errors } = form.formState
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(guardar)} className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                    {campo('rut', 'RUT *', '12.345.678-9', { disabled: !!isEditing, rut: true })}
+                    {campo('email', 'Email', 'cliente@email.com')}
+                </div>
+                {campo('razon_social', 'Razón social *', 'Nombre o empresa')}
+                {campo('giro', 'Giro', 'Rubro o actividad económica')}
+                {campo('direccion', 'Dirección', 'Calle y número')}
+                <div className="grid grid-cols-2 gap-4">
+                    {campo('comuna', 'Comuna')}
+                    {campo('ciudad', 'Ciudad')}
+                </div>
+
+                <AlertaError mensaje={errors.root?.message} />
+
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                        Cancelar
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Guardar
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
     )
 }

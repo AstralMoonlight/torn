@@ -17,7 +17,7 @@ Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
 **Descripción:** correr `certificacion set` con el archivo nuevo y los CAF de U1.
 **Aceptación:**
 - [x] `revisar-set` muestra los 8 casos con totales que cuadran a mano
-- [x] Envío único: EPR, 8 aceptados, 0 reparos — track 0260080046 (24-09-2026). CAF en `dte-torn/folios/`: 33 71-74, 61 69-71, 56 60
+- [x] Envío único: EPR, 8 aceptados, 0 reparos - track 0260080046 (24-09-2026). CAF en `dte-torn/folios/`: 33 71-74, 61 69-71, 56 60
 - [ ] Usuario declara el avance con el track ID
 **Dependencias:** U1 · **Archivos:** ninguno (solo `.env`) · **Tamaño:** XS
 
@@ -52,8 +52,8 @@ contra `DTE_v10.xsd` y sin IVA ni tasa.
 **Dependencias:** T2 · **Archivos:** `app/scripts/certificacion.py`, `tests/test_certificacion_script.py`, `tests/test_builder_xsd.py` · **Tamaño:** S
 
 ### T4: Enviar y declarar el set de exenta
-- [x] Máximos 34 ≥ 3 y 56 ≥ 2 (U2); pedir CAF 34×3, 61×3, 56×2 — el SII los dio directo: 34 101-103, 61 72-74, 56 61-62
-- [x] Envío único EPR 8 aceptados 0 reparos — track 0260081142 (24-09-2026); falta que el usuario declare
+- [x] Máximos 34 ≥ 3 y 56 ≥ 2 (U2); pedir CAF 34×3, 61×3, 56×2 - el SII los dio directo: 34 101-103, 61 72-74, 56 61-62
+- [x] Envío único EPR 8 aceptados 0 reparos - track 0260081142 (24-09-2026); falta que el usuario declare
 **Dependencias:** T3, U2 · **Tamaño:** XS
 
 ### Checkpoint A
@@ -93,7 +93,7 @@ solo si el traslado es venta. En el traslado interno "el ejemplar cedible es ino
 ### T8: Subir máximo del 52, enviar y declarar
 - [x] `certificacion enviar` emite una prueba con un CAF 52
 - [ ] Emisiones de prueba de 52 hasta máximo ≥ 3 (U)
-- [x] CAF 52×3 (106-108); envío único EPR 3 aceptados 0 reparos — track 0260086000 (24-09-2026)
+- [x] CAF 52×3 (106-108); envío único EPR 3 aceptados 0 reparos - track 0260086000 (24-09-2026)
 **Dependencias:** T6, T7
 
 ### Checkpoint B
@@ -116,18 +116,18 @@ detalle, firma sobre `EnvioLibro`) y subirlos con `ClienteSii.enviar`. Hay que c
 ### T10: Libro de ventas desde el set básico
 **Descripción:** detalle y resumen por tipo a partir de los 8 documentos aceptados (tabla `documents`,
 external_id `set-5093757-*`).
-**Aceptación:** [x] totales por tipo a mano en el test · [x] valida XSD — **ENVIADO: track 0260084694, LOK** (24-09-2026). El primer intento (0260084070) fue LRH: faltaban MntExe/MntNeto/MntIVA en 0.
+**Aceptación:** [x] totales por tipo a mano en el test · [x] valida XSD - **ENVIADO: track 0260084694, LOK** (24-09-2026). El primer intento (0260084070) fue LRH: faltaban MntExe/MntNeto/MntIVA en 0.
 **Dependencias:** T9, T1 · **Tamaño:** S
 
 ### T11: Libro de compras desde el set
 **Descripción:** leer la tabla del set: IVA de uso común con factor 0,60, factura de compra 46 con
 retención total, entrega gratuita como IVA no recuperable (código a confirmar) y notas de crédito.
-**Aceptación:** [x] 7 detalles con montos e IVA a mano · [x] valida XSD — **ENVIADO: track 0260084758, LOK** (24-09-2026)
+**Aceptación:** [x] 7 detalles con montos e IVA a mano · [x] valida XSD - **ENVIADO: track 0260084758, LOK** (24-09-2026)
 **Dependencias:** T9 · **Tamaño:** S
 
 ### T12: Libro de guías desde el set de guía
 **Descripción:** 3 guías; caso 2 marcada facturada y caso 3 anulada.
-**Aceptación:** [x] valida XSD · [x] marcas de facturada y anulada — factura 75 (track 0260086476) ampara la guía 107; **libro ENVIADO: track 0260086522, LOK** (24-09-2026). FolioNotificacion = N° de atención del set de libro de guías.
+**Aceptación:** [x] valida XSD · [x] marcas de facturada y anulada - factura 75 (track 0260086476) ampara la guía 107; **libro ENVIADO: track 0260086522, LOK** (24-09-2026). FolioNotificacion = N° de atención del set de libro de guías.
 **Dependencias:** T9, T8 · **Tamaño:** S
 
 ### T13: Modo `libros` en el script, enviar y declarar
@@ -174,7 +174,7 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 ## Fase 6: Simulación
 
 - [x] `setDePruebas/simulacion.txt` (gitignored): 24 documentos con clientes, productos y precios reales de Bsale (facturas 1648-1667). 17×33, 1×34 exenta, 2×52 y 3×61. La NC que anula apunta a la exenta, porque JCB no tiene productos exentos. 1×56.
-- [x] Envío único EPR, 24 aceptados, 0 reparos — **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
+- [x] Envío único EPR, 24 aceptados, 0 reparos - **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
 - [ ] Usuario declara el avance con el track ID
 - [ ] Siguiente etapa: intercambio de información (acuse de recibo y aceptación/rechazo en XML a `SII_dte_intercambio@sii.cl`): no existe en dte-torn
 - [ ] Muestras impresas: todos los del set de pruebas + 10 de la simulación que cubran todos los tipos

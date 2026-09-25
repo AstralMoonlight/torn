@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import api, { getApiErrorDetail } from "@/services/api";
-import { useToast } from "@/components/ui/use-toast";
+import { AlertaError } from "@/components/ui/alerta-error";
+import { avisar } from "@/lib/store/uiStore";
 
 type FolioStock = {
     dte_type: number;
@@ -57,7 +58,8 @@ export default function FoliosTab() {
     const [password, setPassword] = useState("");
 
     const cafInput = useRef<HTMLInputElement>(null);
-    const { toast } = useToast();
+    const [errorCaf, setErrorCaf] = useState<string | null>(null);
+    const [errorCert, setErrorCert] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -69,32 +71,27 @@ export default function FoliosTab() {
             setStocks(resStocks.data);
             setCertificado(resCert.data);
         } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: getApiErrorDetail(error, "No se pudo cargar la información de folios."),
-            });
+            avisar(getApiErrorDetail(error, "No se pudo cargar la información de folios."), { reintentar: fetchData });
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, []);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    const subir = async (ruta: string, form: FormData, exito: string) => {
+    /** Sube el archivo y devuelve el error, o `null` si salió bien. */
+    const subir = async (ruta: string, form: FormData): Promise<string | null> => {
         setSubiendo(true);
         try {
             // El cliente manda JSON por defecto, y con ese Content-Type axios
             // convierte el FormData a JSON: hay que pedir multipart explícito.
             await api.post(ruta, form, { headers: { "Content-Type": "multipart/form-data" } });
-            toast({ title: exito });
             fetchData();
-            return true;
+            return null;
         } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: getApiErrorDetail(error, "No se pudo cargar el archivo.") });
-            return false;
+            return getApiErrorDetail(error, "No se pudo cargar el archivo.");
         } finally {
             setSubiendo(false);
         }
@@ -106,7 +103,7 @@ export default function FoliosTab() {
         if (!file) return;
         const form = new FormData();
         form.append("file", file);
-        await subir("/folios/upload", form, "CAF cargado");
+        setErrorCaf(await subir("/folios/upload", form));
     };
 
     const handleCertificado = async () => {
@@ -114,7 +111,9 @@ export default function FoliosTab() {
         const form = new FormData();
         form.append("file", pfx);
         form.append("password", password);
-        if (await subir("/folios/certificate", form, "Certificado cargado")) {
+        const error = await subir("/folios/certificate", form);
+        setErrorCert(error);
+        if (!error) {
             setCertOpen(false);
             setPfx(null);
             setPassword("");
@@ -125,7 +124,7 @@ export default function FoliosTab() {
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-xl font-semibold tracking-tight">Gestión de Folios (CAF)</h2>
+                    <h2 className="text-xl font-semibold tracking-tight">Gestión de folios (CAF)</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                         Descarga el CAF desde el sitio del SII y cárgalo aquí.
                     </p>
@@ -136,6 +135,8 @@ export default function FoliosTab() {
                     Cargar CAF
                 </Button>
             </div>
+
+            <AlertaError mensaje={errorCaf} />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {loading ? (
@@ -164,7 +165,7 @@ export default function FoliosTab() {
                                                 {stock.available}
                                             </p>
                                             <p className="text-sm text-muted-foreground mt-1">
-                                                Folios Disponibles
+                                                Folios disponibles
                                             </p>
                                         </div>
 
@@ -185,7 +186,7 @@ export default function FoliosTab() {
                                     {stock.total > 0 && (
                                         <div className="flex flex-col gap-1 mt-4">
                                             <p className="text-xs text-muted-foreground">
-                                                Rango Actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
+                                                Rango actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
                                             </p>
                                             {stock.fecha_vencimiento && (
                                                 <p className="text-xs text-muted-foreground font-medium">
@@ -204,12 +205,12 @@ export default function FoliosTab() {
             <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                     <div>
-                        <CardTitle>Certificado Digital</CardTitle>
+                        <CardTitle>Certificado digital</CardTitle>
                         <CardDescription>
                             Con él se firman los documentos. Se guarda cifrado.
                         </CardDescription>
                     </div>
-                    <Dialog open={certOpen} onOpenChange={setCertOpen}>
+                    <Dialog open={certOpen} onOpenChange={(o) => { setCertOpen(o); setErrorCert(null); }}>
                         <DialogTrigger asChild>
                             <Button variant="secondary">
                                 <KeyRound className="h-4 w-4" />
@@ -218,7 +219,7 @@ export default function FoliosTab() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md">
                             <DialogHeader>
-                                <DialogTitle>Cargar Certificado Digital</DialogTitle>
+                                <DialogTitle>Cargar certificado digital</DialogTitle>
                                 <DialogDescription>Archivo .pfx o .p12 de la empresa y su contraseña.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
@@ -231,6 +232,7 @@ export default function FoliosTab() {
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
+                            <AlertaError mensaje={errorCert} />
                             <DialogFooter>
                                 <Button variant="secondary" onClick={() => setCertOpen(false)} disabled={subiendo}>
                                     Cancelar
@@ -250,7 +252,7 @@ export default function FoliosTab() {
                         <p className="text-sm text-destructive">Sin certificado: no se pueden emitir documentos.</p>
                     ) : (
                         <div className="text-sm space-y-1">
-                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "—"}</span></p>
+                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "-"}</span></p>
                             {certificado.not_after && (
                                 <p className={certificado.dias_restantes !== null && certificado.dias_restantes < 30 ? "text-destructive font-medium" : ""}>
                                     Vence: {new Date(certificado.not_after).toLocaleDateString("es-CL")}

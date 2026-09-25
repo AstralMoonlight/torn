@@ -13,9 +13,9 @@ sin reparos ni rechazos, y dejar listas las muestras impresas.
 | Básico | 5093757 | 33×4, 61×3, 56×1 |
 | Guía de despacho | 5093758 | 52×3 |
 | Factura exenta | 5093759 | 34×3, 61×3, 56×2 |
-| Libro de ventas | 5093760 | — (documentos del set básico) |
-| Libro de compras | 5093761 | — (7 documentos dados por el SII) |
-| Libro de guías | 5093762 | — (guías del set de guía; caso 2 facturada, caso 3 anulada) |
+| Libro de ventas | 5093760 | - (documentos del set básico) |
+| Libro de compras | 5093761 | - (7 documentos dados por el SII) |
+| Libro de guías | 5093762 | - (guías del set de guía; caso 2 facturada, caso 3 anulada) |
 
 ## Decisiones
 

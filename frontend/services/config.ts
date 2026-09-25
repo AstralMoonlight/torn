@@ -23,18 +23,20 @@ export const PRINT_FORMAT_OPTIONS: { value: PrintFormat; label: string }[] = [
     { value: 'carta', label: 'Carta / A4' },
 ]
 
+/** 'empresa': el administrador fija el color; 'usuario': cada uno elige el suyo. */
+export type ColorMode = 'empresa' | 'usuario'
+
 export interface SystemSettings {
     id: number
     print_format: PrintFormat
     print_formats: Record<string, PrintFormat>
     iva_default_id: number | null
+    control_caja: boolean
+    color_mode: ColorMode
+    color_primario: string
 }
 
-export interface SettingsUpdate {
-    print_format?: PrintFormat
-    print_formats?: Record<string, PrintFormat>
-    iva_default_id?: number | null
-}
+export type SettingsUpdate = Partial<Omit<SystemSettings, 'id'>>
 
 /**
  * Tipos de documento con formato de impresión configurable por separado.
@@ -49,7 +51,7 @@ export const DOCUMENT_PRINT_TYPES: { key: string; label: string }[] = [
     { key: '41', label: 'Boleta Exenta' },
     { key: '56', label: 'Nota de Débito' },
     { key: '61', label: 'Nota de Crédito' },
-    { key: 'purchase', label: 'Compras (Comprobante Proveedor)' },
+    { key: 'purchase', label: 'Compras (comprobante de proveedor)' },
 ]
 
 export async function getTaxes(): Promise<Tax[]> {

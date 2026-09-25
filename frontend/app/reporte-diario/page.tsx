@@ -50,9 +50,9 @@ export default function DailyReportPage() {
     const getReportTitle = () => {
         if (!report) return "Reporte"
         const d = new Date(report.fecha)
-        if (period === 'day') return `Cierre Diario - ${formatDate(report.fecha)}`
-        if (period === 'week') return `Reporte Semanal`
-        if (period === 'month') return `Reporte Mensual - ${d.toLocaleString('es-CL', { month: 'long', year: 'numeric', timeZone: 'America/Santiago' }).toUpperCase()}`
+        if (period === 'day') return `Cierre diario - ${formatDate(report.fecha)}`
+        if (period === 'week') return `Reporte semanal`
+        if (period === 'month') return `Reporte mensual - ${d.toLocaleString('es-CL', { month: 'long', year: 'numeric', timeZone: 'America/Santiago' }).toUpperCase()}`
         return "Reporte de Ventas"
     }
 
@@ -87,7 +87,7 @@ export default function DailyReportPage() {
                 <PageHeader
                     icon={BarChart2}
                     title="Reportes"
-                    description="Histórico de Ventas"
+                    description="Revisa las ventas y la utilidad por día, semana o mes."
                     actions={
                         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                             {/* Period Selector */}
@@ -134,10 +134,10 @@ export default function DailyReportPage() {
             <div data-section="reporte-diario.resumen" className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
                 {/* Financial Summary */}
                 <div className="space-y-6">
-                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Resumen Financiero</h2>
+                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Resumen financiero</h2>
                     <div className="space-y-3">
                         <div className="flex justify-between items-center group">
-                            <span className="text-sm text-muted-foreground dark:text-muted-foreground">Total Ingresos (Bruto)</span>
+                            <span className="text-sm text-muted-foreground dark:text-muted-foreground">Total ingresos (bruto)</span>
                             <span className="font-mono font-medium">{formatCLP(totalVentasBrutas)}</span>
                         </div>
                         <div className="flex justify-between items-center text-muted-foreground text-xs italic">
@@ -146,11 +146,11 @@ export default function DailyReportPage() {
                         </div>
                         <Separator />
                         <div className="flex justify-between items-center font-semibold">
-                            <span className="text-sm text-foreground underline decoration-border decoration-2 underline-offset-4">Venta Neta</span>
+                            <span className="text-sm text-foreground underline decoration-border decoration-2 underline-offset-4">Venta neta</span>
                             <span className="text-lg">{formatCLP(totalVentasNetas)}</span>
                         </div>
                         <div className="flex justify-between items-center text-muted-foreground text-xs">
-                            <span>Costo de Existencias</span>
+                            <span>Costo de existencias</span>
                             <span>{formatCLP(totalCostos)}</span>
                         </div>
                     </div>
@@ -162,13 +162,13 @@ export default function DailyReportPage() {
                         <div className="p-2 bg-primary/10 rounded-full print:hidden">
                             <Wallet className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary print:text-black">Utilidad (Después de impuestos)</span>
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary print:text-black">Utilidad (después de impuestos)</span>
                         <div className="text-4xl font-black text-foreground print:text-black">
                             {formatCLP(totalUtilidadReal)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                             <Info className="h-3 w-3" />
-                            <span>Calculado sobre Venta Neta - Costo</span>
+                            <span>Calculado sobre venta neta - costo</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -177,16 +177,16 @@ export default function DailyReportPage() {
             {/* Compact Table */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Detalle por Artículo</h2>
-                    <span className="text-[10px] font-mono text-muted-foreground uppercase">{itemCount} Items</span>
+                    <h2 className="text-sm font-bold uppercase text-muted-foreground tracking-widest print:text-black">Detalle por artículo</h2>
+                    <span className="text-xs font-mono text-muted-foreground uppercase">{itemCount} Items</span>
                 </div>
                 <div data-section="reporte-diario.tabla" className="border border-border rounded-lg overflow-hidden print:border-black">
                     <Table>
                         <TableHeader className="print:bg-transparent">
                             <TableRow className="border-b-border print:border-black">
-                                <TableHead className="py-3 print:text-black">Descripción Producto</TableHead>
+                                <TableHead className="py-3 print:text-black">Descripción del producto</TableHead>
                                 <TableHead className="text-right print:text-black">Cant.</TableHead>
-                                <TableHead className="text-right print:text-black">Venta (Neta)</TableHead>
+                                <TableHead className="text-right print:text-black">Venta (neta)</TableHead>
                                 <TableHead className="text-right print:text-black">Utilidad</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -201,7 +201,7 @@ export default function DailyReportPage() {
                                     <TableRow key={item.product_id} className="border-b-border print:border-black">
                                         <TableCell className="py-3">
                                             <div className="text-xs font-semibold text-foreground print:text-black">{item.full_name}</div>
-                                            <div className="text-[9px] font-mono text-muted-foreground print:text-muted-foreground italic">SKU: {item.product_id}</div>
+                                            <div className="text-xs font-mono text-muted-foreground print:text-muted-foreground italic">SKU: {item.product_id}</div>
                                         </TableCell>
                                         <TableCell className="text-right text-xs font-mono">{item.cantidad}</TableCell>
                                         <TableCell className="text-right text-xs">{formatCLP(item.monto_total)}</TableCell>
@@ -217,12 +217,12 @@ export default function DailyReportPage() {
             </div>
 
             {/* Disclaimer & Tech Info */}
-            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-[9px] text-muted-foreground border-t border-border print:border-black print:text-black">
+            <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-xs text-muted-foreground border-t border-border print:border-black print:text-black">
                 <div className="max-w-xs italic text-left">
                     * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
                 </div>
                 <div className="text-right space-y-1">
-                    <p className="font-bold print:hidden">TORN — SISTEMA DE GESTIÓN POS</p>
+                    <p className="font-bold print:hidden">TORN - SISTEMA DE GESTIÓN POS</p>
                     <p className="font-mono">FOLIO: {report?.fecha ? new Date(report.fecha).getTime().toString().slice(-6) : '---'}</p>
                 </div>
             </div>

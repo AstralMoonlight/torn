@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import {
     ArrowLeft, Banknote, CreditCard, Landmark, Wallet, Receipt, FileText, FileStack,
     CheckCircle2, Printer, Loader2, Plus, Trash2, ChevronDown, ChevronRight,
@@ -16,6 +15,8 @@ import {
 import type { Customer } from '@/services/customers'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
 import { Button } from '@/components/ui/button'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCLP } from '@/lib/format'
@@ -126,6 +127,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const [verOtros, setVerOtros] = useState(false)
     const [verAvanzado, setVerAvanzado] = useState(false)
     const [enviando, setEnviando] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [emitida, setEmitida] = useState<{ id: number; folio: number; tipo: number; vuelto: number } | null>(null)
     // El cajero tecleó el efectivo recibido: un cambio de total (otro documento) no lo pisa.
     const recibidoEditado = useRef(false)
@@ -146,7 +148,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                 const efectivo = m.find((pm) => pm.code === 'EFECTIVO') ?? m[0]
                 if (efectivo) setPagos([{ method: efectivo, amount: 0 }])
             })
-            .catch(() => toast.error('No se pudieron cargar los medios de pago'))
+            .catch(() => setError('No se pudieron cargar los medios de pago. Vuelve y entra de nuevo al cobro.'))
         if ([41, 34, 52].includes(tipoDte)) setVerOtros(true)
         // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al entrar al cobro
     }, [])
@@ -194,7 +196,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                 const { getPriceList } = await import('@/services/price_lists')
                 const list = await getPriceList(c.price_list_id)
                 setCustomer(c, list)
-                toast.success(`Lista de precios aplicada: ${list.name}`)
+                avisar(`Lista de precios aplicada: ${list.name}`, { tipo: 'info' })
                 return
             } catch { /* sigue con precio base */ }
         }
@@ -204,6 +206,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const confirmar = async () => {
         if (bloqueo || enviando) return
         setEnviando(true)
+        setError(null)
         try {
             const sale = await createSale({
                 rut_cliente: customer?.rut || GENERIC_RUT,
@@ -217,7 +220,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             setEmitida({ id: sale.id, folio: sale.folio, tipo: sale.tipo_dte, vuelto: isGuia ? 0 : vuelto })
         } catch (err) {
             const status = getApiErrorStatus(err)
-            toast.error(getApiErrorDetail(err, status === 422 ? 'Datos inválidos. Revisa la venta.' : 'No se pudo emitir el documento.'), { duration: 6000 })
+            setError(getApiErrorDetail(err, status === 422 ? 'Datos inválidos. Revisa la venta.' : 'No se pudo emitir el documento.'))
         } finally {
             setEnviando(false)
         }
@@ -246,7 +249,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                 document.body.appendChild(frame)
             }
         } catch (err) {
-            toast.error(getApiErrorDetail(err, 'No se pudo cargar el documento. Reimprímelo desde Historial.'))
+            avisar(getApiErrorDetail(err, 'No se pudo cargar el documento. Reimprímelo desde Historial.'))
         }
         terminar()
     }
@@ -478,6 +481,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             </div>
 
             <div data-section="pos.cobro.confirmar" className="border-t border-border bg-card px-4 py-4 md:px-6 shrink-0 space-y-2">
+                <AlertaError mensaje={error} />
                 {bloqueo && <p className="text-center text-sm text-destructive" role="status">{bloqueo}</p>}
                 <Button size="lg" onClick={confirmar} disabled={!!bloqueo || enviando}
                     className="h-14 w-full justify-between px-5 text-lg font-semibold shadow-lg shadow-primary/25">
@@ -507,7 +511,7 @@ function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
                 activa ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/40',
             )}>
             {children}
-            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-[11px] font-medium text-destructive">sin folios</span>}
+            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive">sin folios</span>}
         </button>
     )
 }

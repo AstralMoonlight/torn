@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { getProducts, type Product } from '@/services/products'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import {
     Package,
     AlertTriangle,
     XCircle,
-    MoreHorizontal,
     Pencil,
     Trash2,
     Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SearchInput } from '@/components/ui/search-input'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Badge } from '@/components/ui/badge'
 import {
     Table,
@@ -24,21 +23,14 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
 import { deleteProduct } from '@/services/products'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
 
 
@@ -47,15 +39,15 @@ function StockBadge({ product }: { product: Product }) {
     const min = parseFloat(product.stock_minimo)
 
     if (!product.controla_stock) {
-        return <Badge variant="secondary" className="text-[10px]">Sin control</Badge>
+        return <Badge variant="secondary" className="text-xs">Sin control</Badge>
     }
     if (stock <= 0) {
-        return <Badge variant="destructive" className="text-[10px] gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
+        return <Badge variant="destructive" className="text-xs gap-0.5"><XCircle className="h-2.5 w-2.5" /> Agotado</Badge>
     }
     if (stock <= min) {
-        return <Badge variant="outline" className="text-[10px] gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
+        return <Badge variant="outline" className="text-xs gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Bajo ({stock})</Badge>
     }
-    return <Badge variant="secondary" className="text-[10px]">{stock}</Badge>
+    return <Badge variant="secondary" className="text-xs">{stock}</Badge>
 }
 
 export default function InventarioPage() {
@@ -71,7 +63,7 @@ export default function InventarioPage() {
             .then(setProducts)
             .catch((error) => {
                 console.error(error)
-                toast.error(getApiErrorMessage(error, 'Error al cargar productos'))
+                avisar(getApiErrorMessage(error, 'Error al cargar productos'), { reintentar: loadProducts })
             })
             .finally(() => setLoading(false))
     }
@@ -88,11 +80,10 @@ export default function InventarioPage() {
     const handleDelete = async (product: Product) => {
         try {
             await deleteProduct(product.id)
-            toast.success('Producto eliminado')
             loadProducts()
         } catch (error) {
             console.error(error)
-            toast.error('Error al eliminar producto')
+            avisar(getApiErrorDetail(error, 'No se pudo eliminar el producto.'))
         }
     }
 
@@ -130,16 +121,22 @@ export default function InventarioPage() {
             <PageHeader
                 icon={Package}
                 title="Inventario"
-                description={`${allProducts.length} productos`}
+                description="Gestiona tus productos, precios y stock."
                 actions={
                     <Button onClick={() => setWizardOpen(true)} className="gap-1.5 text-xs">
-                        <Plus className="h-4 w-4" /> Nuevo Producto
+                        <Plus className="h-4 w-4" /> Nuevo producto
                     </Button>
                 }
             />
 
-            {/* Search */}
-            <SearchInput data-section="inventario.buscador" placeholder="Buscar por nombre, SKU o código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <ListToolbar
+                busqueda={search}
+                onBusqueda={setSearch}
+                placeholder="Buscar por nombre, SKU o código de barras..."
+                visibles={filtered.length}
+                total={allProducts.length}
+                unidad="productos"
+            />
 
             {/* Table */}
             <div data-section="inventario.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -148,8 +145,8 @@ export default function InventarioPage() {
                         <TableRow className="border-b border-border">
                             <TableHead>SKU</TableHead>
                             <TableHead>Producto</TableHead>
-                            <TableHead className="text-right hidden sm:table-cell">Precio Neto</TableHead>
-                            <TableHead className="text-center">Stock Total</TableHead>
+                            <TableHead className="text-right hidden sm:table-cell">Precio neto</TableHead>
+                            <TableHead className="text-center">Stock total</TableHead>
                             <TableHead className="text-center hidden lg:table-cell">Variantes</TableHead>
                             <TableHead className="w-[50px] text-right">Acciones</TableHead>
                         </TableRow>
@@ -183,32 +180,16 @@ export default function InventarioPage() {
                                     </TableCell>
                                     <TableCell className="text-center text-xs text-muted-foreground font-tabular hidden lg:table-cell">
                                         {p.variants.length > 0 ? (
-                                            <Badge variant="outline" className="text-[10px]">{p.variants.length} vars</Badge>
+                                            <Badge variant="outline" className="text-xs">{p.variants.length} vars</Badge>
                                         ) : (
-                                            <span className="text-[10px]">—</span>
+                                            <span className="text-xs">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                                    <span className="sr-only">Abrir menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEdit(p)}>
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    Editar
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => setToDelete(p)} className="text-destructive focus:text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Eliminar
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="flex justify-end gap-1">
+                                            <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(p)} />
+                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(p)} peligro />
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

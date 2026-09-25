@@ -1,10 +1,12 @@
 """Router para configuración del sistema e impuestos."""
 
-from typing import List
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import es_admin, get_current_tenant_user, get_tenant_db
+from app.models.cash import CashSession
+from app.models.saas import TenantUser
 from app.models.tax import Tax
 from app.models.settings import SystemSettings
 from app.schemas import (
@@ -60,15 +62,34 @@ def get_settings(db: Session = Depends(get_tenant_db)):
         db.refresh(settings)
     return settings
 
+#: Ajustes que afectan a toda la empresa y solo cambia el administrador.
+SOLO_ADMIN = {"control_caja", "color_mode", "color_primario"}
+
+
 @router.put("/settings/", response_model=SettingsOut)
-def update_settings(settings_in: SettingsUpdate, db: Session = Depends(get_tenant_db)):
-    """Actualiza la configuración global."""
+def update_settings(
+    settings_in: SettingsUpdate,
+    tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],
+    db: Session = Depends(get_tenant_db),
+):
+    """Actualiza la configuración global (solo los campos que llegan)."""
+    cambios = settings_in.model_dump(exclude_unset=True)
+    if SOLO_ADMIN & cambios.keys() and not es_admin(tenant_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el administrador de la empresa puede cambiar este ajuste.")
+
+    # Con turnos abiertos, apagar el control los dejaría sin forma de cerrarse.
+    if cambios.get("control_caja") is False and db.query(CashSession).filter(CashSession.status == "OPEN").first():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cierra los turnos de caja abiertos antes de desactivar el control de caja.",
+        )
+
     settings = db.query(SystemSettings).first()
     if not settings:
         settings = SystemSettings(id=1)
         db.add(settings)
-    
-    for field, value in settings_in.model_dump(exclude_unset=True).items():
+
+    for field, value in cambios.items():
         setattr(settings, field, value)
     
     db.commit()

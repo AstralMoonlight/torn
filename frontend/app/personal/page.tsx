@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import {
     Users,
     ShieldCheck,
@@ -26,7 +27,6 @@ import {
     TableEmpty
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { SearchInput } from '@/components/ui/search-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
@@ -35,11 +35,12 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select"
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getUsers, updateUser, type User } from '@/services/users'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { roleService, type Role } from '@/services/roles'
 import UserDialog from '@/components/users/UserDialog'
 import { Switch } from '@/components/ui/switch'
@@ -90,7 +91,7 @@ export default function PersonalPage() {
             // In a real multi-tenant app, the API already filters by tenant
             setStaff(data)
         } catch {
-            toast.error('Error al cargar personal')
+            avisar('No se pudo cargar el personal.', { reintentar: fetchStaff })
         } finally {
             setStaffLoading(false)
         }
@@ -101,7 +102,7 @@ export default function PersonalPage() {
             const rolesData = await roleService.getRoles()
             setRoles(rolesData.filter(r => r.name !== 'CLIENTE'))
         } catch {
-            toast.error('Error al cargar roles')
+            avisar('No se pudieron cargar los roles.', { reintentar: fetchRoles })
         }
     }, [])
 
@@ -130,18 +131,15 @@ export default function PersonalPage() {
 
     const handleToggleStatus = async (user: User) => {
         if (!user.is_active && !canActivateMore) {
-            toast.error('Límite de usuarios alcanzado', {
-                description: `Tu plan permite hasta ${maxUsers} usuarios activos (incluyendo al administrador principal).`
-            })
+            avisar(`Límite de usuarios alcanzado: tu plan permite hasta ${maxUsers} usuarios activos (incluyendo al administrador principal).`)
             return
         }
 
         try {
             await updateUser(user.id, { is_active: !user.is_active })
-            toast.success(user.is_active ? 'Usuario desactivado' : 'Usuario activado')
             fetchStaff()
         } catch {
-            toast.error('No se pudo cambiar el estado del usuario')
+            avisar('No se pudo cambiar el estado del usuario.')
         }
     }
 
@@ -168,9 +166,9 @@ export default function PersonalPage() {
                     roleService.updateRole(role.id, { permissions: role.permissions })
                 )
             )
-            toast.success('Permisos actualizados correctamente')
+            avisar('Permisos guardados.', { tipo: 'info' })
         } catch {
-            toast.error('Error al guardar permisos')
+            avisar('No se pudieron guardar los permisos.')
         } finally {
             setSavingRoles(false)
         }
@@ -190,9 +188,8 @@ export default function PersonalPage() {
                     role_obj: { ...u.role_obj!, name: newRole?.name || '' }
                 }
             }))
-            toast.success('Rol actualizado')
         } catch {
-            toast.error('Error al actualizar rol')
+            avisar('No se pudo cambiar el rol.')
         } finally {
             setUpdatingUserId(null)
         }
@@ -216,7 +213,7 @@ export default function PersonalPage() {
         <PageContainer>
             <PageHeader
                 icon={Users}
-                title="Gestión de Personal"
+                title="Gestión de personal"
                 description="Controla el acceso, roles y cupos de los trabajadores de tu empresa."
                 actions={
                     <Badge variant="outline" className="h-9 px-3 gap-1.5">
@@ -234,33 +231,41 @@ export default function PersonalPage() {
                         <Users className="h-4 w-4" /> Personal
                     </TabsTrigger>
                     <TabsTrigger value="roles" className="gap-2">
-                        <ShieldCheck className="h-4 w-4" /> Roles y Permisos
+                        <ShieldCheck className="h-4 w-4" /> Roles y permisos
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent data-section="personal.usuarios" value="list" className="space-y-4">
-                    <div className="flex justify-end">
-                        <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
-                            <Plus className="h-4 w-4" /> Nuevo Personal
-                        </Button>
-                    </div>
+                    <ListToolbar
+                        busqueda={rolesSearchTerm}
+                        onBusqueda={setRolesSearchTerm}
+                        placeholder="Buscar por nombre o RUT..."
+                        visibles={filteredRolesUsers.length}
+                        total={staff.length}
+                        unidad="usuarios"
+                        acciones={
+                            <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
+                                <Plus className="h-4 w-4" /> Nuevo personal
+                            </Button>
+                        }
+                    />
 
                     <Card className="border-border shadow-sm overflow-hidden">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[300px]">Nombre / Rol</TableHead>
-                                    <TableHead>Email (Identificador)</TableHead>
+                                    <TableHead className="w-[300px]">Nombre / rol</TableHead>
+                                    <TableHead>Email (identificador)</TableHead>
                                     <TableHead>Identificación (RUT)</TableHead>
                                     <TableHead>Estado</TableHead>
                                     <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {staff.length === 0 ? (
-                                    <TableEmpty colSpan={5}>No hay personal registrado. Comienza agregando uno nuevo.</TableEmpty>
+                                {filteredRolesUsers.length === 0 ? (
+                                    <TableEmpty colSpan={5}>{staff.length === 0 ? 'No hay personal registrado. Comienza agregando uno nuevo.' : 'Nadie coincide con la búsqueda.'}</TableEmpty>
                                 ) : (
-                                    staff.map((user) => (
+                                    filteredRolesUsers.map((user) => (
                                         <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
@@ -271,10 +276,10 @@ export default function PersonalPage() {
                                                         <span className="font-semibold text-foreground truncate flex items-center gap-2">
                                                             {user.name}
                                                             {user.is_owner && (
-                                                                <Badge className="bg-primary h-4 text-[8px] px-1 font-black">ADMIN</Badge>
+                                                                <Badge className="bg-primary h-5 text-xs px-1.5 font-bold">ADMIN</Badge>
                                                             )}
                                                         </span>
-                                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                                        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                                                             {user.role_obj?.name || user.role || 'Vendedor'}
                                                         </span>
                                                     </div>
@@ -294,7 +299,7 @@ export default function PersonalPage() {
                                                         disabled={user.is_owner}
                                                     />
                                                     <span className={cn(
-                                                        "text-[10px] font-bold uppercase tracking-wider",
+                                                        "text-xs font-bold uppercase tracking-wider",
                                                         user.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                                     )}>
                                                         {user.is_active ? 'Activo' : 'Inactivo'}
@@ -303,9 +308,7 @@ export default function PersonalPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(user)} title="Editar">
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
+                                                    <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(user)} />
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -317,17 +320,22 @@ export default function PersonalPage() {
                 </TabsContent>
 
                 <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <SearchInput className="max-w-xs w-full" placeholder="Buscar usuario..." value={rolesSearchTerm} onChange={(e) => setRolesSearchTerm(e.target.value)} />
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={loadAll} disabled={savingRoles}>
-                                <RefreshCw className={cn("h-4 w-4 mr-2", staffLoading && "animate-spin")} /> Recargar
+                    <ListToolbar
+                        busqueda={rolesSearchTerm}
+                        onBusqueda={setRolesSearchTerm}
+                        placeholder="Buscar por nombre o RUT..."
+                        visibles={filteredRolesUsers.length}
+                        total={staff.length}
+                        unidad="usuarios"
+                        acciones={<>
+                            <Button variant="outline" onClick={loadAll} disabled={savingRoles}>
+                                <RefreshCw className={cn("h-4 w-4", staffLoading && "animate-spin")} /> Recargar
                             </Button>
-                            <Button size="sm" onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
-                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar Permisos'}
+                            <Button onClick={saveRoles} disabled={savingRoles} className="shadow-lg shadow-primary/20">
+                                <Save className="h-4 w-4" /> {savingRoles ? 'Guardando...' : 'Guardar permisos'}
                             </Button>
-                        </div>
-                    </div>
+                        </>}
+                    />
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Matrix Table */}
@@ -339,7 +347,7 @@ export default function PersonalPage() {
                                             <ShieldCheck className="h-5 w-5 text-primary" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-lg">Configuración de Accesos</CardTitle>
+                                            <CardTitle className="text-lg">Configuración de accesos</CardTitle>
                                             <CardDescription className="text-xs">Define la visibilidad del menú por rol.</CardDescription>
                                         </div>
                                     </div>
@@ -349,7 +357,7 @@ export default function PersonalPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="border-y border-border">
-                                                    <TableHead>Menú / Sección</TableHead>
+                                                    <TableHead>Menú / sección</TableHead>
                                                     {roles.map(role => (
                                                         <TableHead key={role.id} className="text-center">
                                                             {role.name}
@@ -393,7 +401,7 @@ export default function PersonalPage() {
                             <Card className="border-border sticky top-20">
                                 <CardHeader className="py-4">
                                     <CardTitle className="text-lg flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-primary" /> Asignación Rápida
+                                        <Users className="h-5 w-5 text-primary" /> Asignación rápida
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="px-2 space-y-1">
@@ -404,7 +412,7 @@ export default function PersonalPage() {
                                             <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
                                                 <div className="flex flex-col min-w-0 pr-2">
                                                     <span className="text-sm font-medium truncate">{user.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{user.rut}</span>
+                                                    <span className="text-xs text-muted-foreground">{user.rut}</span>
                                                 </div>
                                                 <Select
                                                     value={user.role_id?.toString() || ""}
@@ -412,7 +420,7 @@ export default function PersonalPage() {
                                                     disabled={updatingUserId === user.id}
                                                 >
                                                     <SelectTrigger className="h-8 w-[120px] text-xs">
-                                                        <SelectValue placeholder="Sin Rol" />
+                                                        <SelectValue placeholder="Sin rol" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {roles.map(r => (
@@ -426,7 +434,7 @@ export default function PersonalPage() {
                                         ))
                                     )}
                                     {filteredRolesUsers.length > 8 && (
-                                        <p className="text-center pt-2 text-[10px] text-muted-foreground">Carga más resultados usando el buscador</p>
+                                        <p className="text-center pt-2 text-xs text-muted-foreground">Carga más resultados usando el buscador</p>
                                     )}
                                 </CardContent>
                             </Card>
@@ -435,9 +443,9 @@ export default function PersonalPage() {
                                 <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
                                     <div className="flex items-center gap-1.5 mb-1 text-primary">
                                         <CheckCircle2 className="h-3.5 w-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Info: Admin</span>
+                                        <span className="text-xs font-bold uppercase tracking-wider">Info: Admin</span>
                                     </div>
-                                    <p className="text-[10px] text-primary leading-relaxed">
+                                    <p className="text-xs text-primary leading-relaxed">
                                         El rol ADMINISTRADOR tiene todos los permisos activos por defecto y no se puede limitar.
                                     </p>
                                 </div>

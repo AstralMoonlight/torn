@@ -5,13 +5,18 @@ import { cn } from '@/lib/utils'
 import { getTenants, createTenant, updateTenant, deleteTenant, searchActecos, type Tenant, type ActecoItem, type EconomicActivity } from '@/services/saas'
 import { getApiErrorDetail, getApiErrorMessage } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
-import { Building2, ArrowLeft, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Building2, Plus, Loader2, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { SearchInput } from '@/components/ui/search-input'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { AccionFila } from '@/components/ui/accion-fila'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { SearchInput } from '@/components/ui/search-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Info, X as CloseIcon, AlertTriangle } from 'lucide-react'
@@ -40,6 +45,7 @@ export default function TenantsListPage() {
     const [tenants, setTenants] = useState<Tenant[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreating, setIsCreating] = useState(false)
+    const [errorModal, setErrorModal] = useState<string | null>(null)
     const [openModal, setOpenModal] = useState(false)
     const [editingTenantId, setEditingTenantId] = useState<number | null>(null)
     const [tenantToDelete, setTenantToDelete] = useState<number | null>(null)
@@ -107,7 +113,7 @@ export default function TenantsListPage() {
                 .then(setActecoResults)
                 .catch((err) => {
                     setActecoResults([])
-                    toast.error(getApiErrorMessage(err, 'Error al buscar actividades económicas'))
+                    setErrorModal(getApiErrorMessage(err, 'Error al buscar actividades económicas'))
                 })
                 .finally(() => setActecoSearchLoading(false))
         }, 300)
@@ -118,7 +124,7 @@ export default function TenantsListPage() {
         setLoading(true)
         getTenants()
             .then(setTenants)
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error cargando las empresas')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error cargando las empresas'), { reintentar: fetchTenants }))
             .finally(() => setLoading(false))
     }
 
@@ -135,6 +141,7 @@ export default function TenantsListPage() {
             economic_activities: [],
             ...SII_VACIO,
         })
+        setErrorModal(null)
         setOpenModal(true)
     }
 
@@ -154,18 +161,20 @@ export default function TenantsListPage() {
             sii_resolucion_fecha: tenant.sii_resolucion_fecha || '',
             sii_oficina: tenant.sii_oficina || '',
         })
+        setErrorModal(null)
         setOpenModal(true)
     }
 
     const handleSaveTenant = async (e: React.FormEvent) => {
         e.preventDefault()
+        setErrorModal(null)
         if (!formData.name || !formData.rut) {
-            toast.error("El nombre y RUT son requeridos")
+            setErrorModal("El nombre y el RUT son obligatorios.")
             return
         }
 
         if (!validateRut(formData.rut)) {
-            toast.error("El formato del RUT ingresado no es válido")
+            setErrorModal("El RUT ingresado no es válido.")
             return
         }
 
@@ -180,16 +189,14 @@ export default function TenantsListPage() {
 
             if (editingTenantId) {
                 await updateTenant(editingTenantId, payload)
-                toast.success("Empresa actualizada con éxito")
             } else {
                 await createTenant(payload)
-                toast.success("Empresa creada con éxito")
             }
 
             setOpenModal(false)
             fetchTenants()
         } catch (error) {
-            toast.error(getApiErrorDetail(error, editingTenantId ? 'Error al actualizar' : 'Error al provisionar'))
+            setErrorModal(getApiErrorDetail(error, editingTenantId ? 'No se pudo actualizar la empresa.' : 'No se pudo provisionar la empresa.'))
         } finally {
             setIsCreating(false)
         }
@@ -200,10 +207,9 @@ export default function TenantsListPage() {
 
         try {
             await deleteTenant(tenantToDelete)
-            toast.success("Empresa desactivada")
             fetchTenants()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al desactivar empresa'))
+            avisar(getApiErrorDetail(error, 'No se pudo desactivar la empresa.'))
         }
     }
 
@@ -211,41 +217,29 @@ export default function TenantsListPage() {
         try {
             await updateTenant(tenant.id, { is_active: newStatus })
             setTenants(prev => prev.map(t => t.id === tenant.id ? { ...t, is_active: newStatus } : t))
-            toast.success(`Empresa ${newStatus ? 'activada' : 'desactivada'}`)
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al cambiar estado'))
+            avisar(getApiErrorDetail(error, 'No se pudo cambiar el estado de la empresa.'))
         }
     }
 
     return (
-        <div className="min-h-screen bg-background p-6 md:p-12">
-            <div className="max-w-5xl mx-auto space-y-6">
-
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                        <Link href="/saas-admin" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver al Panel
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Building2 className="h-6 w-6 text-primary shrink-0" />
-                            Gestión de Empresas
-                        </h1>
-                    </div>
-
-                    <Button
-                        onClick={openCreateModal}
-                        className="cursor-pointer shadow-sm shadow-primary/20"
-                    >
-                        <Plus className="h-4 w-4" /> Crear nuevo Tenant
-                    </Button>
+        <PageContainer>
+                <PageHeader
+                    icon={Building2}
+                    title="Gestión de empresas"
+                    volver={{ href: '/saas-admin', label: 'Volver al panel' }}
+                    actions={
+                        <Button onClick={openCreateModal} className="shadow-sm shadow-primary/20">
+                            <Plus className="h-4 w-4" /> Crear nuevo tenant
+                        </Button>
+                    }
+                />
 
                     <Dialog open={openModal} onOpenChange={setOpenModal}>
                         <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-xl">
-                                    {editingTenantId ? 'Editar Empresa' : 'Crear nuevo Tenant'}
+                                    {editingTenantId ? 'Editar empresa' : 'Crear nuevo tenant'}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground">
                                     {editingTenantId ? 'Actualiza los datos de facturación y configuración de la empresa.' : 'Ingresa los datos para provisionar una nueva instancia separada para tu cliente.'}
@@ -254,7 +248,7 @@ export default function TenantsListPage() {
                             <form onSubmit={handleSaveTenant} className="space-y-6 py-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Nombre de la Empresa</Label>
+                                        <Label>Nombre de la empresa</Label>
                                         <Input
                                             placeholder="Ej. Comercializadora SpA"
                                             value={formData.name}
@@ -264,7 +258,7 @@ export default function TenantsListPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>RUT Empresa</Label>
+                                        <Label>RUT de la empresa</Label>
                                         <Input
                                             placeholder="Ej. 76.543.210-K"
                                             value={formData.rut}
@@ -278,7 +272,7 @@ export default function TenantsListPage() {
                                         )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
-                                        <Label>Giro Comercial</Label>
+                                        <Label>Giro comercial</Label>
                                         <Input
                                             placeholder="Ej. VENTA AL POR MENOR DE PRODUCTOS FARMACEUTICOS..."
                                             value={formData.giro}
@@ -286,7 +280,7 @@ export default function TenantsListPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Dirección Casa Matriz</Label>
+                                        <Label>Dirección casa matriz</Label>
                                         <Input
                                             placeholder="Ej. Av. Principal 123"
                                             value={formData.address}
@@ -313,7 +307,7 @@ export default function TenantsListPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Día de Pago Mensual</Label>
+                                        <Label>Día de pago mensual</Label>
                                         <Select
                                             value={formData.billing_day.toString()}
                                             onValueChange={v => setFormData({ ...formData, billing_day: parseInt(v) })}
@@ -329,14 +323,14 @@ export default function TenantsListPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[10px] text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
+                                        <p className="text-xs text-muted-foreground">Día en que se genera la facturación del servicio SaaS.</p>
                                     </div>
 
                                     {editingTenantId && (
                                         <div className="space-y-4 p-4 bg-muted rounded-lg border border-border">
                                             <div>
-                                                <Label>Facturación Electrónica (SII)</Label>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                <Label>Facturación electrónica (SII)</Label>
+                                                <p className="text-xs text-muted-foreground mt-1">
                                                     Resolución y ambiente con que el SII autorizó a la empresa. Van impresos bajo el timbre.
                                                 </p>
                                             </div>
@@ -366,7 +360,7 @@ export default function TenantsListPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label>N° Resolución</Label>
+                                                    <Label>N° de resolución</Label>
                                                     <Input
                                                         type="number"
                                                         min={0}
@@ -375,7 +369,7 @@ export default function TenantsListPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label>Fecha Resolución</Label>
+                                                    <Label>Fecha de resolución</Label>
                                                     <Input
                                                         type="date"
                                                         value={formData.sii_resolucion_fecha}
@@ -395,10 +389,10 @@ export default function TenantsListPage() {
                                 <div className="space-y-3 p-4 bg-muted rounded-lg border border-border">
                                     <div className="flex items-center justify-between">
                                         <Label className="flex items-center gap-2">
-                                            Actividades Económicas (ACTECO)
+                                            Actividades económicas (ACTECO)
                                             <Info className="h-3 w-3 text-muted-foreground" />
                                         </Label>
-                                        <Badge variant="outline" className="text-[10px]">{formData.economic_activities.length} seleccionadas</Badge>
+                                        <Badge variant="outline" className="text-xs">{formData.economic_activities.length} seleccionadas</Badge>
                                     </div>
 
                                     <SearchInput placeholder="Buscar por código o nombre..." value={actecoSearch} onChange={e => setActecoSearch(e.target.value)} />
@@ -448,6 +442,8 @@ export default function TenantsListPage() {
                                     </div>
                                 </div>
 
+                                <AlertaError mensaje={errorModal} />
+
                                 <div className="pt-2 flex justify-end gap-3">
                                     <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>
                                         Cancelar
@@ -456,27 +452,22 @@ export default function TenantsListPage() {
                                         {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                                         {isCreating
                                             ? (editingTenantId ? 'Guardando...' : 'Provisionando...')
-                                            : (editingTenantId ? 'Guardar Cambios' : 'Crear e Inicializar')
+                                            : (editingTenantId ? 'Guardar cambios' : 'Crear e inicializar')
                                         }
                                     </Button>
                                 </div>
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
 
-                <div data-section="saas-admin.empresas.filtros" className="flex flex-col md:flex-row items-center gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-                    <SearchInput
-                        className="flex-1 w-full"
-                        placeholder="Buscar por nombre, RUT o esquema..."
-                        value={tenantSearch}
-                        onChange={e => setTenantSearch(e.target.value)}
-                        onClear={() => setTenantSearch('')}
-                    />
-                    <div className="text-sm text-muted-foreground font-medium">
-                        {filteredTenants.length} de {tenants.length} empresas
-                    </div>
-                </div>
+                <ListToolbar
+                    busqueda={tenantSearch}
+                    onBusqueda={setTenantSearch}
+                    placeholder="Buscar por nombre, RUT o esquema..."
+                    visibles={filteredTenants.length}
+                    total={tenants.length}
+                    unidad="empresas"
+                />
 
                 {/* Table */}
                 <div data-section="saas-admin.empresas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -517,7 +508,7 @@ export default function TenantsListPage() {
                                                 onCheckedChange={(checked: boolean) => handleToggleStatus(tenant, checked)}
                                             />
                                             <span className={cn(
-                                                "text-[10px] font-bold uppercase tracking-wider",
+                                                "text-xs font-bold uppercase tracking-wider",
                                                 tenant.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
                                             )}>
                                                 {tenant.is_active ? 'Activo' : 'Inactivo'}
@@ -526,26 +517,9 @@ export default function TenantsListPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => openEditModal(tenant)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                                title="Editar datos"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Pencil} label="Editar datos" onClick={() => openEditModal(tenant)} />
 
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setTenantToDelete(tenant.id)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                                disabled={!tenant.is_active}
-                                                title="Desactivar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Trash2} label="Desactivar" onClick={() => setTenantToDelete(tenant.id)} peligro disabled={!tenant.is_active} />
 
                                             <div className="w-px h-4 bg-border mx-1" />
 
@@ -570,7 +544,6 @@ export default function TenantsListPage() {
                     onConfirm={handleDeleteTenant}
                 />
 
-            </div>
-        </div >
+        </PageContainer>
     )
 }

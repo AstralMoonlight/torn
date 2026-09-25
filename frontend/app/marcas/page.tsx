@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import {
     Table,
     TableBody,
@@ -18,16 +21,21 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
-import { SearchInput } from '@/components/ui/search-input'
-import { Label } from '@/components/ui/label'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { AlertaError } from '@/components/ui/alerta-error'
 import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/services/brands'
-import { getApiErrorMessage } from '@/services/api'
-import { toast } from 'sonner'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
+import { avisar } from '@/lib/store/uiStore'
 import { Pencil, Trash2, Plus, Loader2, Tags } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
+
+const brandSchema = z.object({ name: z.string().trim().min(1, 'El nombre es obligatorio') })
+type BrandFormValues = z.infer<typeof brandSchema>
 
 export default function BrandsPage() {
     const [brands, setBrands] = useState<Brand[]>([])
@@ -37,8 +45,7 @@ export default function BrandsPage() {
     // Dialog state
     const [open, setOpen] = useState(false)
     const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
-    const [name, setName] = useState('')
-    const [saving, setSaving] = useState(false)
+    const form = useForm<BrandFormValues>({ resolver: zodResolver(brandSchema), defaultValues: { name: '' } })
 
     useEffect(() => {
         loadBrands()
@@ -51,7 +58,7 @@ export default function BrandsPage() {
             setBrands(data)
         } catch (error) {
             console.error(error)
-            toast.error(getApiErrorMessage(error, 'Error al cargar marcas'))
+            avisar(getApiErrorMessage(error, 'Error al cargar marcas'), { reintentar: loadBrands })
         } finally {
             setLoading(false)
         }
@@ -63,40 +70,32 @@ export default function BrandsPage() {
 
     const handleOpenCreate = () => {
         setEditingBrand(null)
-        setName('')
+        form.reset({ name: '' })
         setOpen(true)
     }
 
     const handleOpenEdit = (brand: Brand) => {
         setEditingBrand(brand)
-        setName(brand.name)
+        form.reset({ name: brand.name })
         setOpen(true)
     }
 
-    const handleSave = async () => {
-        if (!name.trim()) return
-
-        setSaving(true)
+    const handleSave = async ({ name }: BrandFormValues) => {
         try {
             if (editingBrand) {
-                // Update
                 const updated = await updateBrand(editingBrand.id, { name })
                 setBrands(brands.map(b => b.id === updated.id ? updated : b))
-                toast.success('Marca actualizada')
             } else {
-                // Create
                 const created = await createBrand({ name })
                 setBrands([...brands, created])
-                toast.success('Marca creada')
             }
             setOpen(false)
         } catch (error) {
             console.error(error)
-            toast.error('Error al guardar marca')
-        } finally {
-            setSaving(false)
+            form.setError('root', { message: getApiErrorDetail(error, 'No se pudo guardar la marca.') })
         }
     }
+    const saving = form.formState.isSubmitting
 
     const [toDelete, setToDelete] = useState<Brand | null>(null)
 
@@ -104,10 +103,9 @@ export default function BrandsPage() {
         try {
             await deleteBrand(brand.id)
             setBrands(brands.filter(b => b.id !== brand.id))
-            toast.success('Marca eliminada')
         } catch (error) {
             console.error(error)
-            toast.error('Error al eliminar marca (¿está en uso?)')
+            avisar(getApiErrorDetail(error, 'No se pudo eliminar la marca (¿está en uso?).'))
         }
     }
 
@@ -119,12 +117,19 @@ export default function BrandsPage() {
                 description="Gestiona las marcas de tus productos."
                 actions={
                     <Button onClick={handleOpenCreate}>
-                        <Plus className="h-4 w-4" /> Nueva Marca
+                        <Plus className="h-4 w-4" /> Nueva marca
                     </Button>
                 }
             />
 
-            <SearchInput data-section="marcas.buscador" className="max-w-sm" placeholder="Buscar marca..." value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <ListToolbar
+                busqueda={filter}
+                onBusqueda={setFilter}
+                placeholder="Buscar marca..."
+                visibles={filteredBrands.length}
+                total={brands.length}
+                unidad="marcas"
+            />
 
             <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
@@ -147,24 +152,8 @@ export default function BrandsPage() {
                                     <TableCell className="font-medium">{brand.name}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleOpenEdit(brand)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                title="Editar"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setToDelete(brand)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AccionFila icon={Pencil} label="Editar" onClick={() => handleOpenEdit(brand)} />
+                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(brand)} peligro />
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -177,27 +166,35 @@ export default function BrandsPage() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent data-section="marcas.formulario">
                     <DialogHeader>
-                        <DialogTitle>{editingBrand ? 'Editar Marca' : 'Nueva Marca'}</DialogTitle>
+                        <DialogTitle>{editingBrand ? 'Editar marca' : 'Nueva marca'}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Nombre</Label>
-                            <Input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Ej. Nike, Adidas..."
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 py-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nombre</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ej. Nike, Adidas..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-                            Cancelar
-                        </Button>
-                        <Button onClick={handleSave} disabled={!name.trim() || saving} className="">
-                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                            Guardar
-                        </Button>
-                    </DialogFooter>
+                            <AlertaError mensaje={form.formState.errors.root?.message} />
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" disabled={saving}>
+                                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Guardar
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
                 </DialogContent>
             </Dialog>
             <ConfirmDialog

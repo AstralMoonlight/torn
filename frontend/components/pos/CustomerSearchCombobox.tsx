@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog'
 import { searchCustomers, createCustomer, Customer, type CustomerCreate } from '@/services/customers'
 import CustomerForm from '@/components/customers/CustomerForm'
-import { toast } from 'sonner'
 import {
     Loader2,
     Search,
@@ -26,7 +25,7 @@ interface Props {
     value: Customer | null
     onChange: (customer: Customer | null) => void
     required?: boolean
-    /** Ícono h-9 w-9 (default) vs. barra completa — ver comentario donde se usa el trigger. */
+    /** Ícono h-9 w-9 (default) vs. barra completa - ver comentario donde se usa el trigger. */
     compact?: boolean
 }
 
@@ -55,7 +54,7 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     )
 }
 
-const SEARCH_PLACEHOLDER = 'Buscar por Nombre o RUT…'
+const SEARCH_PLACEHOLDER = 'Buscar por nombre o RUT…'
 
 export default function CustomerSearchCombobox({
     value,
@@ -64,7 +63,7 @@ export default function CustomerSearchCombobox({
     compact = true,
 }: Props) {
     // Panel inline (no modal): se expande en el flujo normal del documento,
-    // empujando lo que viene después en vez de taparlo — el dropdown
+    // empujando lo que viene después en vez de taparlo - el dropdown
     // absoluto que tenía antes sí tapaba Referencias/Totales, y abrir un
     // Dialog para elegir cliente en cada venta resultó ser demasiada
     // ventana emergente. Sólo "Crear nuevo cliente" (formulario largo, poco
@@ -178,14 +177,10 @@ export default function CustomerSearchCombobox({
 
     // ── Customer creation handler ────────────────────────────────
     const handleCreateSuccess = async (data: CustomerCreate) => {
-        try {
-            const newCustomer = await createCustomer(data)
-            selectCustomer(newCustomer)
-            setCreateOpen(false)
-            toast.success('Cliente creado y seleccionado')
-        } catch {
-            toast.error('Error al crear cliente')
-        }
+        // Si falla, CustomerForm muestra el error dentro del diálogo.
+        const newCustomer = await createCustomer(data)
+        selectCustomer(newCustomer)
+        setCreateOpen(false)
     }
 
     const triggerToneClass = value
@@ -200,7 +195,7 @@ export default function CustomerSearchCombobox({
                 <button
                     type="button"
                     onClick={() => setExpanded((o) => !o)}
-                    title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
+                    title={value ? `${value.razon_social} (${value.rut}) - cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
                     className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${triggerToneClass}`}
                 >
                     {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
@@ -216,7 +211,7 @@ export default function CustomerSearchCombobox({
                 >
                     {value ? <UserCheck className="h-3.5 w-3.5 shrink-0" /> : <UserIcon className="h-3.5 w-3.5 shrink-0" />}
                     <span className="truncate flex-1 text-left">
-                        {value ? `${value.razon_social} — ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
+                        {value ? `${value.razon_social} - ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
                     </span>
                     {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />}
                 </button>
@@ -231,7 +226,7 @@ export default function CustomerSearchCombobox({
                                 <UserCheck className="h-4 w-4 text-primary shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-medium text-primary truncate">{value.razon_social}</p>
-                                    <p className="text-[10px] font-mono text-primary/80">{value.rut}</p>
+                                    <p className="text-xs font-mono text-primary/80">{value.rut}</p>
                                 </div>
                             </div>
                             <div className="flex gap-1.5">
@@ -273,13 +268,13 @@ export default function CustomerSearchCombobox({
 
                             <div ref={listRef} className="max-h-48 overflow-y-auto">
                                 {query.length < 2 && (
-                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                                         Escribe al menos 2 caracteres para buscar.
                                     </div>
                                 )}
 
                                 {query.length >= 2 && results.length === 0 && !loading && (
-                                    <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                                         No se encontraron clientes para &ldquo;{query}&rdquo;
                                     </div>
                                 )}
@@ -300,14 +295,14 @@ export default function CustomerSearchCombobox({
                                             <p className="text-xs truncate text-foreground">
                                                 <HighlightedText text={customer.razon_social} query={query} />
                                             </p>
-                                            <p className="text-[10px] font-mono text-muted-foreground">
+                                            <p className="text-xs font-mono text-muted-foreground">
                                                 <HighlightedText text={customer.rut} query={query} />
                                             </p>
                                         </div>
                                     </button>
                                 ))}
 
-                                {/* "Crear nuevo" — always visible */}
+                                {/* "Crear nuevo" - always visible */}
                                 <button
                                     data-combobox-item
                                     onClick={() => {
@@ -321,7 +316,7 @@ export default function CustomerSearchCombobox({
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-background shrink-0">
                                         <Plus className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[11px] font-medium text-foreground">
+                                    <span className="text-xs font-medium text-foreground">
                                         Crear nuevo cliente
                                     </span>
                                 </button>
@@ -334,7 +329,7 @@ export default function CustomerSearchCombobox({
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogContent className="sm:max-w-lg z-[100]">
                     <DialogHeader>
-                        <DialogTitle>Nuevo Cliente Rápido</DialogTitle>
+                        <DialogTitle>Nuevo cliente rápido</DialogTitle>
                     </DialogHeader>
                     <CustomerForm
                         onSubmit={handleCreateSuccess}

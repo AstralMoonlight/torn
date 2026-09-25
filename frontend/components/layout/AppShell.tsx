@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
-import { Toaster } from '@/components/ui/toaster'
 import MobileNav from './MobileNav'
+import Aviso from './Aviso'
 import { useSessionStore } from '@/lib/store/sessionStore'
+import { avisar, useUIStore } from '@/lib/store/uiStore'
+import { useColorEfectivo, useControlCaja, useSettingsStore } from '@/lib/store/settingsStore'
+import { aplicarColor, leerColorUsuario } from '@/lib/colores'
 import { getSessionStatus } from '@/services/cash'
 import { validateSession } from '@/services/auth'
 import { useHydrated } from '@/lib/hooks/useHydrated'
@@ -38,6 +41,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
 
     const isMounted = useHydrated()
+    const sinEmpresa = pathname === '/login' || pathname === '/select-tenant' || pathname.startsWith('/saas-admin')
+
+    const cargarSettings = useSettingsStore((s) => s.cargar)
+    const limpiarSettings = useSettingsStore((s) => s.limpiar)
+    const setColorUsuario = useSettingsStore((s) => s.setColorUsuario)
+    const controlCaja = useControlCaja()
+    const color = useColorEfectivo()
+    const ultimaRuta = useRef<string | null>(null)
 
     // Auth & Route Protection
     useEffect(() => {
@@ -104,6 +115,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
     }, [token, selectedTenantId, pathname, router, isMounted, userPayload, availableTenants])
 
+    // Ajustes de la empresa (control de caja, color): se recargan al cambiar de empresa.
+    useEffect(() => {
+        limpiarSettings()
+        if (!token || !selectedTenantId) return
+        const cargar = () => cargarSettings().catch(() =>
+            avisar('No se pudo cargar la configuración de la empresa.', { reintentar: cargar }))
+        cargar()
+    }, [token, selectedTenantId, cargarSettings, limpiarSettings])
+
+    useEffect(() => {
+        setColorUsuario(selectedTenantId && userPayload ? leerColorUsuario(selectedTenantId, userPayload.id) : null)
+    }, [selectedTenantId, userPayload, setColorUsuario])
+
+    // Login, selección de empresa y saas-admin van en azul: no hay empresa elegida.
+    // Mientras cargan los ajustes queda el color que puso el script de app/layout.tsx.
+    useEffect(() => {
+        if (sinEmpresa) aplicarColor(null)
+        else if (color) aplicarColor(color)
+    }, [color, sinEmpresa])
+
+    // El aviso de una página se va al salir de ella. Va antes que el efecto de
+    // /caja: si corriera después, borraría en el mismo render el aviso que ese
+    // efecto acaba de dejar para la página de destino.
+    useEffect(() => {
+        const { aviso, cerrarAviso } = useUIStore.getState()
+        if (aviso?.ruta && aviso.ruta !== pathname) cerrarAviso()
+    }, [pathname])
+
+    // Con el control de caja apagado, /caja no existe: si se entra por URL al abrir
+    // el sitio se va al dashboard; si ya se estaba dentro, se vuelve a la página
+    // anterior. En los dos casos se explica con un aviso.
+    useEffect(() => {
+        if (!pathname.startsWith('/caja')) {
+            ultimaRuta.current = pathname
+            return
+        }
+        if (controlCaja) return
+        const destino = ultimaRuta.current ?? '/dashboard'
+        avisar('El control de caja está desactivado. Se activa en Configuración > General.', { tipo: 'info', ruta: destino })
+        router.replace(destino)
+    }, [pathname, controlCaja, router])
+
     // Sincronización global del perfil y empresas al montar la app
     useEffect(() => {
         if (!token) return
@@ -153,8 +206,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     if (!isMounted) return null // Prevent hydration mismatch
 
-    if (pathname === '/login' || pathname === '/select-tenant' || pathname.startsWith('/saas-admin')) {
-        return <main className="min-h-screen bg-background">{children}</main>
+    const aviso = (
+        <div className="sticky top-0 z-30 mx-auto max-w-7xl px-4 pt-4 md:px-6 empty:hidden">
+            <Aviso />
+        </div>
+    )
+
+    if (sinEmpresa) {
+        return <main className="min-h-screen bg-background">{aviso}{children}</main>
     }
 
     if (!token || !selectedTenantId) return null // Wait for redirect
@@ -163,10 +222,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex h-[100dvh] overflow-hidden">
             <Sidebar />
             <main data-section="contenido" className="flex-1 overflow-auto bg-background pb-16 md:pb-0">
+                {/* El POS pone el aviso dentro de su propia zona, para no correr su alto fijo. */}
+                {pathname !== '/pos' && aviso}
                 {children}
             </main>
             <MobileNav />
-            <Toaster />
         </div>
     )
 }

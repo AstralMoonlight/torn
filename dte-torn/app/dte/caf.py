@@ -4,8 +4,8 @@ El CAF es el archivo que entrega el SII cuando autoriza un rango de folios.
 Tiene dos partes que importan:
 
 - El nodo `<CAF>` (`<DA>` + `<FRMA>`), que va **literal** dentro del `<TED>` de
-  cada documento que use esos folios. Reserializarlo —aunque el XML resultante
-  sea equivalente— cambia los bytes y el SII rechaza el timbre.
+  cada documento que use esos folios. Reserializarlo -aunque el XML resultante
+  sea equivalente- cambia los bytes y el SII rechaza el timbre.
 - `<RSASK>`, la llave privada con la que se firma el `<DD>` del timbre. Es un
   secreto: quien la tenga puede timbrar folios de esa empresa.
 

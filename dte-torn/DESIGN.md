@@ -1,4 +1,4 @@
-# dte-torn — Diseño (revisión previa a la implementación)
+# dte-torn - Diseño (revisión previa a la implementación)
 
 Microservicio de emisión de DTE para el SII de Chile. Multi-tenant, consumido
 por un backend interno vía API. Firma y envío propios, sin proveedor intermedio.
@@ -24,7 +24,7 @@ aprovisionamiento por Alembic que ya dio problemas.
 
 ## 2. Modelo de datos
 
-### `tenants` (sin RLS — tabla de control)
+### `tenants` (sin RLS - tabla de control)
 
 | columna | tipo | nota |
 |---|---|---|
@@ -42,7 +42,7 @@ Los datos del emisor **no se capturan acá**: son una copia sincronizada del
 mismos campos). El backend hace `PUT /tenants/{id}` cuando crea o edita su
 emisor; es una llamada por cambio, no por documento. Ver §8.4.
 
-### `certificates` — certificado digital de la empresa
+### `certificates` - certificado digital de la empresa
 
 | columna | tipo | nota |
 |---|---|---|
@@ -63,7 +63,7 @@ AES-256-GCM con AAD = `f"{tenant_id}:{cert_id}"`. Ningún tenant comparte llave;
 el AAD impide mover un blob cifrado de un tenant a otro. `key_version` está
 desde el día uno porque rotar sin esa columna es una migración bajo fuego.
 
-### `cafs` — folios autorizados
+### `cafs` - folios autorizados
 
 | columna | tipo | nota |
 |---|---|---|
@@ -79,7 +79,7 @@ El CAF se cifra entero porque contiene la llave RSA privada que firma el TED.
 Se guarda byte a byte y el nodo `<CAF>` se recupera cortando los bytes
 originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 
-### `documents` — el agregado central
+### `documents` - el agregado central
 
 | columna | tipo | nota |
 |---|---|---|
@@ -107,12 +107,12 @@ originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 
 Índices y constraints:
 
-- `UNIQUE (tenant_id, external_id)` — respaldo duro de la idempotencia.
-- `UNIQUE (tenant_id, tipo_dte, folio)` — respaldo duro contra folio duplicado.
-- `(estado, next_action_at) WHERE estado NOT IN (terminales)` — el barrido del
+- `UNIQUE (tenant_id, external_id)` - respaldo duro de la idempotencia.
+- `UNIQUE (tenant_id, tipo_dte, folio)` - respaldo duro contra folio duplicado.
+- `(estado, next_action_at) WHERE estado NOT IN (terminales)` - el barrido del
   scheduler.
 
-### `envios` — envío al SII (EnvioDTE)
+### `envios` - envío al SII (EnvioDTE)
 
 El SII entrega **un TrackID por envío, no por documento**. Modelarlo al revés es
 el error clásico.
@@ -137,7 +137,7 @@ día uno sin tabla intermedia; el lote por defecto es 1. Si un envío se rechaza
 por transporte, el documento se re-envía y apunta a un envío nuevo; el anterior
 queda como fila histórica.
 
-### `audit_log` — append-only
+### `audit_log` - append-only
 
 `tenant_id, document_id, operacion (FIRMA | ACCESO_CERT | CARGA_CAF | ENVIO |
 CONSULTA), resultado, cert_fingerprint, detalle jsonb, actor, created_at`.
@@ -152,7 +152,7 @@ Sin política de UPDATE ni DELETE: la tabla solo acepta INSERT.
 `tenant_id, tipo_dte, cantidad, maximo_autorizado, estado (PENDIENTE | EN_CURSO |
 COMPLETADA | REVISAR), paso, respuesta jsonb, caf_id, created_at, updated_at`.
 
-`UNIQUE (tenant_id, tipo_dte) WHERE estado IN ('PENDIENTE','EN_CURSO')` — el SII
+`UNIQUE (tenant_id, tipo_dte) WHERE estado IN ('PENDIENTE','EN_CURSO')` - el SII
 no es idempotente pidiendo folios; ver §7.
 
 **Sin tabla de tokens SII**: el token es efímero y se vuelve a pedir; vive solo
@@ -285,7 +285,7 @@ resolvió (un CAF sin estrenar debe partir en `folio_desde`, no en 1).
 de la BD, llama a `dte/`, persiste y encola la siguiente. Cambiar Taskiq por
 otra cosa toca solo `tasks/`.
 
-**Reconciliación (scheduler, cada 60s)** — esto es lo que hace que Redis sea
+**Reconciliación (scheduler, cada 60s)** - esto es lo que hace que Redis sea
 desechable:
 
 ```sql
@@ -302,11 +302,11 @@ colgados (`FIRMANDO` / `ENVIANDO` sin avanzar).
 Otros jobs del scheduler: stock de folios por tenant/tipo (alerta + cola
 `folios`), CAF vencidos → `VENCIDO`, certificados por vencer.
 
-**Circuit breaker**: contador en Redis por `(ambiente, endpoint)` — el SII es
+**Circuit breaker**: contador en Redis por `(ambiente, endpoint)` - el SII es
 infraestructura compartida, no por tenant. Abierto → las tareas de `envio`
 reprograman `next_action_at` en vez de golpear.
 
-**Cómo quedó implementado (2026-09-23)** — `app/tasks/colas.py` y
+**Cómo quedó implementado (2026-09-23)** - `app/tasks/colas.py` y
 `app/tasks/scheduler.py`:
 
 - Tres colas con worker propio: `firma`, `envio` (que también resuelve
@@ -373,9 +373,9 @@ El flujo "máquina a máquina" del SII no es una API: son CGIs de `palena` que s
 autentican con la misma cookie `TOKEN` del envío. Cuatro pasos:
 
 1. token (semilla → firma → token), igual que para enviar;
-2. `of_solicita_folios` — devuelve el **máximo autorizado** para ese tipo de DTE;
-3. `of_genera_folios` — con la cantidad pedida, acotada a ese máximo;
-4. `of_confirma_folios` — devuelve el XML del CAF.
+2. `of_solicita_folios` - devuelve el **máximo autorizado** para ese tipo de DTE;
+3. `of_genera_folios` - con la cantidad pedida, acotada a ese máximo;
+4. `of_confirma_folios` - devuelve el XML del CAF.
 
 Tres cosas que hay que hacer bien, porque el SII **no es idempotente acá**: pedir
 dos veces entrega dos CAF, y los folios del que sobra hay que declararlos como no
@@ -452,8 +452,8 @@ se firmó.
 **Con una excepción deliberada:** `Sale` guarda `tipo_dte` y `folio` como copia
 de solo lectura, escrita una vez cuando se emite. No es una fuente de verdad, es
 una caché de impresión: la boleta se imprime en el mostrador y no puede depender
-de que este servicio responda. Todo lo demás —estado del SII, XML, PDF, track
-id— se consulta acá, que es donde está el dato y los índices.
+de que este servicio responda. Todo lo demás -estado del SII, XML, PDF, track
+id- se consulta acá, que es donde está el dato y los índices.
 
 Para `#12` (Centro de Facturación) eso significa que la pantalla lee de
 `GET /documents`, no de una tabla local. El backend es un proxy autenticado, no

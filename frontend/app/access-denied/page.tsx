@@ -13,7 +13,7 @@ export default function AccessDenied() {
                         <ShieldAlert className="w-10 h-10" />
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                        Acceso Denegado
+                        Acceso denegado
                     </h1>
                     <p className="text-muted-foreground">
                         No tienes los permisos necesarios para acceder a esta sección.
@@ -25,14 +25,14 @@ export default function AccessDenied() {
                     <Button asChild className="w-full h-12 text-base font-medium" variant="default">
                         <Link href="/pos" className="flex items-center justify-center gap-2">
                             <Store className="w-5 h-5" />
-                            Ir al Terminal POS
+                            Ir al terminal POS
                         </Link>
                     </Button>
 
                     <Button asChild className="w-full h-12 text-base font-medium" variant="outline">
                         <Link href="/login" className="flex items-center justify-center gap-2">
                             <ArrowLeft className="w-5 h-5" />
-                            Volver al Inicio
+                            Volver al inicio
                         </Link>
                     </Button>
                 </div>

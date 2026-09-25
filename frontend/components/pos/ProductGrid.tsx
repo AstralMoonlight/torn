@@ -12,7 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +50,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
             return
         }
         if (product.controla_stock && parseFloat(product.stock_actual) <= 0) {
-            toast.error(`Sin stock: ${product.full_name}`)
+            avisar(`Sin stock: ${product.full_name}`)
             return
         }
         addItem(product)
@@ -146,7 +146,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
 
                                 {product.controla_stock && !hasVariants && (
                                     <span className={cn(
-                                        'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium font-tabular',
+                                        'shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium font-tabular',
                                         outOfStock ? 'bg-destructive/10 text-destructive'
                                             : lowStock ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
                                                 : 'bg-muted text-muted-foreground',
@@ -160,7 +160,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                 })}
             </div>
 
-            {/* Variants Dialog — only used in 'grouped' mode */}
+            {/* Variants Dialog - only used in 'grouped' mode */}
             <Dialog
                 open={!!variantsOf}
                 onOpenChange={() => { setVariantsOf(null); setVariantSearch('') }}
@@ -170,7 +170,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                         <DialogTitle>{variantsOf?.full_name}</DialogTitle>
                     </DialogHeader>
 
-                    {/* Search — only appears when variants > SEARCH_THRESHOLD */}
+                    {/* Search - only appears when variants > SEARCH_THRESHOLD */}
                     {manyVariants && (
                         <input
                             autoFocus
@@ -212,7 +212,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                                                 {formatCLP(variant.precio_bruto)}
                                             </p>
                                             {variant.controla_stock && (
-                                                <p className="text-[10px] text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
                                                     {outOfStock ? 'Agotado' : `Stock: ${stock}`}
                                                 </p>
                                             )}

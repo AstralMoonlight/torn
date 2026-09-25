@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getTenantUsers, addTenantUser, getTenants, updateTenant, updateTenantUser, type TenantUser, type TenantUserCreate, type Tenant, type TenantUpdate, type TenantUserUpdate } from '@/services/saas'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { Badge } from '@/components/ui/badge'
-import { Store, ArrowLeft, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { Store, UserPlus, ShieldPlus, Mail, Edit, Settings, Trash2 } from 'lucide-react'
+import PageContainer from '@/components/layout/PageContainer'
+import PageHeader from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,7 +22,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSessionStore } from '@/lib/store/sessionStore'
 
@@ -46,6 +49,9 @@ export default function TenantDetailsPage() {
 
     // Form state - Settings
     const [openSettings, setOpenSettings] = useState(false)
+    const [errorAjustes, setErrorAjustes] = useState<string | null>(null)
+    const [errorAsignar, setErrorAsignar] = useState<string | null>(null)
+    const [errorEditar, setErrorEditar] = useState<string | null>(null)
     const [tenantOverride, setTenantOverride] = useState('')
 
     // Form state - Edit User
@@ -67,7 +73,7 @@ export default function TenantDetailsPage() {
                 setUsers(uData)
             }
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error cargando detalles del inquilino'))
+            avisar(getApiErrorMessage(err, 'Error cargando detalles del inquilino'), { reintentar: loadData })
         } finally {
             setLoading(false)
         }
@@ -83,8 +89,9 @@ export default function TenantDetailsPage() {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (isAtLimit) return toast.error("Límite de usuarios alcanzado para esta empresa.")
-        if (!email || !role) return toast.error("El email y rol son obligatorios")
+        setErrorAsignar(null)
+        if (isAtLimit) return setErrorAsignar("Límite de usuarios alcanzado para esta empresa.")
+        if (!email || !role) return setErrorAsignar("El email y el rol son obligatorios.")
 
         setIsSubmitting(true)
         const payload: TenantUserCreate = {
@@ -95,8 +102,7 @@ export default function TenantDetailsPage() {
         }
 
         try {
-            const newUser = await addTenantUser(tenantId, payload)
-            toast.success(`Usuario ${newUser.user.email} asignado exitosamente`)
+            await addTenantUser(tenantId, payload)
             const currentUsers = await getTenantUsers(tenantId)
             setUsers(currentUsers)
             setEmail('')
@@ -104,7 +110,7 @@ export default function TenantDetailsPage() {
             setFullName('')
             setRole('VENDEDOR')
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al asignar usuario (¿Límite excedido?)'))
+            setErrorAsignar(getApiErrorDetail(error, 'No se pudo asignar el usuario (¿límite excedido?).'))
         } finally {
             setIsSubmitting(false)
         }
@@ -114,6 +120,7 @@ export default function TenantDetailsPage() {
         e.preventDefault()
         if (!tenant) return
 
+        setErrorAjustes(null)
         setIsSubmitting(true)
         const updates: TenantUpdate = {
             max_users_override: tenantOverride ? parseInt(tenantOverride) : null
@@ -121,11 +128,10 @@ export default function TenantDetailsPage() {
 
         try {
             await updateTenant(tenantId, updates)
-            toast.success("Empresa actualizada con éxito")
             setOpenSettings(false)
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error al actualizar la empresa"))
+            setErrorAjustes(getApiErrorDetail(error, "No se pudo actualizar la empresa."))
         } finally {
             setIsSubmitting(false)
         }
@@ -133,6 +139,7 @@ export default function TenantDetailsPage() {
 
     const handleSaveUserEdit = async () => {
         if (!editingUser) return
+        setErrorEditar(null)
         setIsSubmitting(true)
         try {
             const updates: TenantUserUpdate = {
@@ -142,12 +149,11 @@ export default function TenantDetailsPage() {
             if (editPassword) updates.password = editPassword
 
             await updateTenantUser(tenantId, editingUser.user_id, updates)
-            toast.success("Usuario actualizado con éxito")
             setEditingUser(null)
             setEditPassword('')
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error modificando al usuario"))
+            setErrorEditar(getApiErrorDetail(error, "No se pudo modificar el usuario."))
         } finally {
             setIsSubmitting(false)
         }
@@ -159,16 +165,15 @@ export default function TenantDetailsPage() {
     const handleToggleUserStatus = async (tu: TenantUser) => {
         // Check limit if reactivating
         if (!tu.is_active && isAtLimit) {
-            toast.error("No se puede reactivar. Límite de usuarios alcanzado.")
+            avisar("No se puede reactivar: límite de usuarios alcanzado.")
             return
         }
 
         try {
             await updateTenantUser(tenantId, tu.user_id, { is_active: !tu.is_active })
-            toast.success("Estado del usuario actualizado")
             loadData()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Error modificando estado"))
+            avisar(getApiErrorDetail(error, "No se pudo cambiar el estado del usuario."))
         }
     }
 
@@ -208,29 +213,12 @@ export default function TenantDetailsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-6 md:p-12">
-            <div className="max-w-5xl mx-auto space-y-6">
-
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                        <Link href="/saas-admin/tenants" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver a Empresas
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-                            <Store className="h-6 w-6 text-primary shrink-0" />
-                            {tenant.name}
-                        </h1>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <span>RUT: {tenant.rut || '-'}</span>
-                            &bull;
-                            <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
-                            {tenant.max_users_override && <span>&bull; Máx Usr: {tenant.max_users_override}</span>}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
+        <PageContainer>
+                <PageHeader
+                    icon={Store}
+                    title={tenant.name}
+                    volver={{ href: '/saas-admin/tenants', label: 'Volver a empresas' }}
+                    actions={<>
                         <Button
                             variant="outline"
                             className="bg-background hover:bg-accent border-border text-foreground w-full sm:w-auto cursor-pointer"
@@ -238,42 +226,50 @@ export default function TenantDetailsPage() {
                         >
                             <Store className="h-4 w-4" /> Entrar al POS
                         </Button>
-                        <Dialog open={openSettings} onOpenChange={setOpenSettings}>
+                        <Dialog open={openSettings} onOpenChange={(o) => { setOpenSettings(o); setErrorAjustes(null) }}>
                             <DialogTrigger asChild>
                                 <Button variant="outline" className="border-border text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer">
-                                    <Settings className="h-4 w-4" /> Límites de Usuarios
+                                    <Settings className="h-4 w-4" /> Límites de usuarios
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle className="text-xl">Ajustar Cupos</DialogTitle>
+                                    <DialogTitle className="text-xl">Ajustar cupos</DialogTitle>
                                     <DialogDescription className="text-muted-foreground">
                                         Modifica el límite de usuarios permitidos para esta empresa.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleSaveSettings} className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label>Cupo Máximo de Usuarios (Override)</Label>
+                                        <Label>Cupo máximo de usuarios (override)</Label>
                                         <Input
                                             type="number"
                                             min="1"
-                                            placeholder={`Predeterminado del Plan (${tenant.plan_max_users || 3})`}
+                                            placeholder={`Predeterminado del plan (${tenant.plan_max_users || 3})`}
                                             value={tenantOverride}
                                             onChange={e => setTenantOverride(e.target.value)}
                                         />
                                         <p className="text-xs text-muted-foreground">Deja vacío para usar el límite por defecto ({tenant.plan_max_users || 3}) del plan SaaS.</p>
                                     </div>
+                                    <AlertaError mensaje={errorAjustes} />
                                     <div className="pt-2 flex justify-end gap-3">
                                         <Button type="button" variant="outline" onClick={() => setOpenSettings(false)} className="border-border cursor-pointer">Cancelar</Button>
                                         <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-                                            Guardar Cambios
+                                            Guardar cambios
                                         </Button>
                                     </div>
                                 </form>
                             </DialogContent>
                         </Dialog>
+                    </>}
+                >
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-1">
+                        <span>RUT: {tenant.rut || '-'}</span>
+                        &bull;
+                        <span>Esquema: <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{tenant.schema_name}</code></span>
+                        {tenant.max_users_override && <span>&bull; Máx. usuarios: {tenant.max_users_override}</span>}
                     </div>
-                </div>
+                </PageHeader>
 
                 <div className="grid grid-cols-1 gap-6">
                     {/* Formulario Asignación ARRIBA */}
@@ -281,7 +277,7 @@ export default function TenantDetailsPage() {
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                                 <ShieldPlus className="h-5 w-5 text-primary" />
-                                Vincular Operador
+                                Vincular operador
                             </h2>
                             <div className={`text-sm ${isAtLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                                 Cupos: {users.filter(u => u.is_active).length} / {maxUsersLimit}
@@ -291,7 +287,7 @@ export default function TenantDetailsPage() {
                         <form onSubmit={handleAddUser} autoComplete="off" className={`bg-card p-6 rounded-xl border ${isAtLimit ? 'border-destructive/30 opacity-80' : 'border-border'} shadow-sm`}>
                             {isAtLimit && (
                                 <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
-                                    Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la Configuración SaaS.
+                                    Se ha alcanzado el límite máximo de usuarios operativos activos permitidos por el plan de la empresa. Desactiva uno existente o aumenta el límite en la configuración SaaS.
                                 </div>
                             )}
 
@@ -338,10 +334,10 @@ export default function TenantDetailsPage() {
                                 <div className="flex-1 space-y-2">
                                     <Select value={role} onValueChange={setRole} disabled={isSubmitting || isAtLimit}>
                                         <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
-                                            <SelectValue placeholder="Selecciona Rol" />
+                                            <SelectValue placeholder="Selecciona un rol" />
                                         </SelectTrigger>
                                         <SelectContent className="border-border bg-card cursor-pointer">
-                                            <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
+                                            <SelectItem value="ADMINISTRADOR">Administrador local</SelectItem>
                                             <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                             <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
                                         </SelectContent>
@@ -354,6 +350,7 @@ export default function TenantDetailsPage() {
                                 </div>
                             </div>
                         </form>
+                        <AlertaError mensaje={errorAsignar} />
                     </div>
 
                     {/* Lista de Usuarios */}
@@ -365,9 +362,9 @@ export default function TenantDetailsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Global ID / Email</TableHead>
+                                            <TableHead>ID global / email</TableHead>
                                             <TableHead>Nombre</TableHead>
-                                            <TableHead>Rol Local</TableHead>
+                                            <TableHead>Rol local</TableHead>
                                             <TableHead>Estado</TableHead>
                                             <TableHead className="text-right">Acciones</TableHead>
                                         </TableRow>
@@ -394,23 +391,15 @@ export default function TenantDetailsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            title="Editar Rol"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary cursor-pointer"
-                                                            onClick={() => {
+                                                        <AccionFila icon={Edit} label="Editar rol" onClick={() => {
                                                                 setEditingUser(tu)
                                                                 setEditRole(tu.role_name)
                                                                 setEditPassword('')
                                                                 setEditFullName(tu.user.full_name || '')
-                                                            }}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" className={`h-8 w-8 cursor-pointer ${tu.is_active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-primary hover:text-primary hover:bg-primary/10'}`} onClick={() => tu.is_active ? setToDeactivate(tu) : handleToggleUserStatus(tu)} title={tu.is_active ? "Desactivar" : "Reactivar"}>
-                                                            {tu.is_active ? <Trash2 className="h-4 w-4" /> : <ShieldPlus className="h-4 w-4" />}
-                                                        </Button>
+                                                            }} />
+                                                        {tu.is_active
+                                                            ? <AccionFila icon={Trash2} label="Desactivar" onClick={() => setToDeactivate(tu)} peligro />
+                                                            : <AccionFila icon={ShieldPlus} label="Reactivar" onClick={() => handleToggleUserStatus(tu)} />}
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -426,6 +415,7 @@ export default function TenantDetailsPage() {
                 <Dialog open={!!editingUser} onOpenChange={(open) => {
                     if (!open) {
                         setEditingUser(null);
+                        setErrorEditar(null);
                         setEditRole('');
                         setEditPassword('');
                         setEditFullName('');
@@ -433,31 +423,31 @@ export default function TenantDetailsPage() {
                 }}>
                     <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="text-xl">Editar Operador</DialogTitle>
+                            <DialogTitle className="text-xl">Editar operador</DialogTitle>
                             <DialogDescription className="text-muted-foreground">
                                 Actualiza los permisos o la información del usuario vinculado.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label>Usuario Global</Label>
+                                <Label>Usuario global</Label>
                                 <Input value={editingUser?.user.email || ''} disabled className="bg-muted" autoComplete="none" name="operator-email-edit" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Nuevo Rol Interno</Label>
+                                <Label>Nuevo rol interno</Label>
                                 <Select value={editRole} onValueChange={setEditRole} disabled={isSubmitting}>
                                     <SelectTrigger className="h-10 border-border focus:ring-ring cursor-pointer">
-                                        <SelectValue placeholder="Selecciona Rol" />
+                                        <SelectValue placeholder="Selecciona un rol" />
                                     </SelectTrigger>
                                     <SelectContent className="border-border bg-card cursor-pointer">
-                                        <SelectItem value="ADMINISTRADOR">Administrador T. Local</SelectItem>
+                                        <SelectItem value="ADMINISTRADOR">Administrador local</SelectItem>
                                         <SelectItem value="VENDEDOR">Vendedor POS</SelectItem>
                                         <SelectItem value="BODEGUERO">Bodeguero</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Nombre del Operador</Label>
+                                <Label>Nombre del operador</Label>
                                 <Input
                                     value={editFullName}
                                     onChange={e => setEditFullName(e.target.value)}
@@ -468,7 +458,7 @@ export default function TenantDetailsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Cambiar Contraseña (Opcional)</Label>
+                                <Label>Cambiar contraseña (opcional)</Label>
                                 <Input
                                     type="password"
                                     name="operator-password-edit"
@@ -477,12 +467,13 @@ export default function TenantDetailsPage() {
                                     autoComplete="new-password"
                                     onChange={e => setEditPassword(e.target.value)}
                                 />
-                                <p className="text-[10px] text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
+                                <p className="text-xs text-muted-foreground">Si el operador olvidó su clave, ingresa una nueva aquí y compártela de forma segura.</p>
                             </div>
+                            <AlertaError mensaje={errorEditar} />
                             <div className="pt-2 flex justify-end gap-3">
                                 <Button type="button" variant="outline" onClick={() => setEditingUser(null)} className="cursor-pointer">Cancelar</Button>
                                 <Button type="button" onClick={handleSaveUserEdit} disabled={isSubmitting} className="cursor-pointer">
-                                    Guardar Cambios
+                                    Guardar cambios
                                 </Button>
                             </div>
                         </div>
@@ -496,7 +487,6 @@ export default function TenantDetailsPage() {
                     confirmLabel="Desactivar"
                     onConfirm={async () => { if (toDeactivate) await handleToggleUserStatus(toDeactivate) }}
                 />
-            </div>
-        </div>
+        </PageContainer>
     )
 }

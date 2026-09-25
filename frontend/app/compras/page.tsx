@@ -13,6 +13,7 @@ import {
     Printer
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -34,7 +35,9 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { avisar } from '@/lib/store/uiStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     Dialog,
@@ -42,13 +45,12 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from '@/components/ui/dialog'
 import { type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
 import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type Purchase, type PurchaseCreate } from '@/services/purchases'
-import { getApiErrorMessage, fetchBlobUrl } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail, fetchBlobUrl } from '@/services/api'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 import PageContainer from '@/components/layout/PageContainer'
@@ -78,18 +80,21 @@ export default function ComprasPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearching, setIsSearching] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const [errorIngreso, setErrorIngreso] = useState<string | null>(null)
+    const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
 
     // Purchase Detail Modal
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
     const verPdfCompra = async (purchaseId: number) => {
+        setErrorDetalle(null)
         try {
             const blobUrl = await fetchBlobUrl(getPurchasePdfPath(purchaseId))
             window.open(blobUrl, '_blank')
             setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'No se pudo cargar el documento.'))
+            setErrorDetalle(getApiErrorMessage(err, 'No se pudo cargar el documento.'))
         }
     }
 
@@ -108,7 +113,7 @@ export default function ComprasPage() {
                 setProducts(leafProducts)
                 setPurchases(purchaseData)
             })
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error al cargar datos')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error al cargar datos'), { reintentar: loadInitialData }))
     }
 
     const refreshPurchases = async () => {
@@ -117,7 +122,7 @@ export default function ComprasPage() {
             const data = await getPurchases()
             setPurchases(data)
         } catch {
-            toast.error('Error al actualizar historial')
+            avisar('No se pudo actualizar el historial de compras.', { reintentar: refreshPurchases })
         } finally {
             setLoadingPurchases(false)
         }
@@ -135,7 +140,7 @@ export default function ComprasPage() {
     const addItem = (product: Product) => {
         const existing = items.find(i => i.product.id === product.id)
         if (existing) {
-            toast.info(`${product.full_name} ya está en la lista`)
+            avisar(`${product.full_name} ya está en la lista`, { tipo: 'info' })
             return
         }
 
@@ -171,12 +176,13 @@ export default function ComprasPage() {
     const totalFinal = totalNeto + totalIva
 
     const handleSave = async () => {
+        setErrorIngreso(null)
         if (!selectedProvider) {
-            toast.error('Seleccione un proveedor')
+            setErrorIngreso('Selecciona un proveedor.')
             return
         }
         if (items.length === 0) {
-            toast.error('Agregue al menos un producto')
+            setErrorIngreso('Agrega al menos un producto.')
             return
         }
 
@@ -196,7 +202,6 @@ export default function ComprasPage() {
             }
 
             await createPurchase(payload)
-            toast.success('Ingreso de mercadería registrado con éxito')
 
             // Reset form
             setItems([])
@@ -205,7 +210,7 @@ export default function ComprasPage() {
             setSelectedProvider(null)
             refreshPurchases()
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Error al registrar compra'))
+            setErrorIngreso(getApiErrorDetail(error, 'No se pudo registrar la compra.'))
         } finally {
             setSubmitting(false)
         }
@@ -215,11 +220,9 @@ export default function ComprasPage() {
         if (!deleteId) return
         try {
             await deletePurchase(deleteId)
-            toast.success('Compra eliminada y stock revertido')
-            setDeleteId(null)
             refreshPurchases()
-        } catch {
-            toast.error('Error al eliminar compra')
+        } catch (err) {
+            avisar(getApiErrorDetail(err, 'No se pudo eliminar la compra.'))
         }
     }
 
@@ -227,17 +230,17 @@ export default function ComprasPage() {
         <PageContainer>
             <PageHeader
                 icon={ShoppingBag}
-                title="Ingreso de Mercadería"
+                title="Ingreso de mercadería"
                 description="Registra compras y actualiza el stock de productos."
             />
 
             <Tabs defaultValue="nuevo" className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="nuevo" className="gap-2">
-                        <Plus className="h-4 w-4" /> Nuevo Ingreso
+                        <Plus className="h-4 w-4" /> Nuevo ingreso
                     </TabsTrigger>
                     <TabsTrigger value="historial" className="gap-2" onClick={refreshPurchases}>
-                        <Clock className="h-4 w-4" /> Historial / Gestión
+                        <Clock className="h-4 w-4" /> Historial / gestión
                     </TabsTrigger>
                 </TabsList>
 
@@ -247,7 +250,7 @@ export default function ComprasPage() {
                         <Card className="lg:col-span-1 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
-                                    <FileText className="h-4 w-4" /> Datos del Documento
+                                    <FileText className="h-4 w-4" /> Datos del documento
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -269,7 +272,7 @@ export default function ComprasPage() {
                                             <SelectContent>
                                                 <SelectItem value="FACTURA">Factura</SelectItem>
                                                 <SelectItem value="BOLETA">Boleta</SelectItem>
-                                                <SelectItem value="SIN_DOCUMENTO">Sin Docto.</SelectItem>
+                                                <SelectItem value="SIN_DOCUMENTO">Sin docto.</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -284,7 +287,7 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha Compra</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha de compra</Label>
                                     <div className="relative">
                                         <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -364,7 +367,7 @@ export default function ComprasPage() {
                             <Card className="shadow-sm overflow-hidden">
                                 <CardHeader className="bg-muted/50 flex flex-row items-center justify-between">
                                     <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                        <Package className="h-4 w-4" /> Ítems a Ingresar
+                                        <Package className="h-4 w-4" /> Ítems a ingresar
                                     </CardTitle>
                                     <Badge variant="secondary" className="font-tabular">
                                         {items.length} productos
@@ -377,7 +380,7 @@ export default function ComprasPage() {
                                                 <TableRow>
                                                     <TableHead>Producto</TableHead>
                                                     <TableHead className="w-24 text-center">Cantidad</TableHead>
-                                                    <TableHead className="w-32 text-right">Costo Unitario</TableHead>
+                                                    <TableHead className="w-32 text-right">Costo unitario</TableHead>
                                                     <TableHead className="w-32 text-right">Subtotal</TableHead>
                                                     <TableHead className="w-12"></TableHead>
                                                 </TableRow>
@@ -398,7 +401,7 @@ export default function ComprasPage() {
                                                             <TableCell>
                                                                 <div>
                                                                     <p className="font-medium text-sm leading-tight">{item.product.full_name || item.product.nombre}</p>
-                                                                    <p className="text-[10px] text-muted-foreground font-mono">{item.product.codigo_interno}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono">{item.product.codigo_interno}</p>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -411,7 +414,7 @@ export default function ComprasPage() {
                                                             </TableCell>
                                                             <TableCell>
                                                                 <div className="relative">
-                                                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-muted-foreground">$</span>
+                                                                    <span className="absolute left-1.5 top-1.5 text-xs text-muted-foreground">$</span>
                                                                     <Input
                                                                         type="number"
                                                                         className="h-8 text-right pl-4 pr-1"
@@ -424,15 +427,7 @@ export default function ComprasPage() {
                                                                 {formatCLP(item.cantidad * item.precio_costo)}
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                    onClick={() => removeItem(index)}
-                                                                    title="Quitar"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
+                                                                <AccionFila icon={Trash2} label="Quitar" onClick={() => removeItem(index)} peligro />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))
@@ -446,7 +441,7 @@ export default function ComprasPage() {
                                     <CardFooter className="bg-muted/50 p-6 flex flex-col gap-4">
                                         <div className="w-full space-y-2">
                                             <div className="flex justify-between text-sm text-muted-foreground">
-                                                <span>Subtotal Neto</span>
+                                                <span>Subtotal neto</span>
                                                 <span>{formatCLP(totalNeto)}</span>
                                             </div>
                                             {tipoDoc === 'FACTURA' && (
@@ -462,13 +457,14 @@ export default function ComprasPage() {
                                             </div>
                                         </div>
 
+                                        <AlertaError mensaje={errorIngreso} className="w-full" />
                                         <Button
                                             className="w-full h-12 text-lg font-bold gap-2"
                                             size="lg"
                                             onClick={handleSave}
                                             disabled={submitting}
                                         >
-                                            {submitting ? 'Registrando...' : 'Finalizar Ingreso'}
+                                            {submitting ? 'Registrando...' : 'Finalizar ingreso'}
                                             {!submitting && <Plus className="h-5 w-5" />}
                                         </Button>
                                     </CardFooter>
@@ -481,7 +477,7 @@ export default function ComprasPage() {
                 <TabsContent data-section="compras.historial" value="historial" className="space-y-4">
                     <Card>
                         <CardHeader className="py-4">
-                            <CardTitle className="text-base">Historial de Compras</CardTitle>
+                            <CardTitle className="text-base">Historial de compras</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
@@ -517,33 +513,9 @@ export default function ComprasPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                            title="Imprimir Comprobante"
-                                                            onClick={() => verPdfCompra(p.id)}
-                                                        >
-                                                            <Printer className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                            onClick={() => setSelectedPurchase(p)}
-                                                            title="Ver Detalle"
-                                                        >
-                                                            <Search className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => setDeleteId(p.id)}
-                                                            title="Eliminar"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <AccionFila icon={Printer} label="Imprimir comprobante" onClick={() => verPdfCompra(p.id)} />
+                                                        <AccionFila icon={Search} label="Ver detalle" onClick={() => setSelectedPurchase(p)} />
+                                                        <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(p.id)} peligro />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -557,14 +529,14 @@ export default function ComprasPage() {
             </Tabs>
 
             {/* Purchase Detail Modal */}
-            <Dialog open={!!selectedPurchase} onOpenChange={() => setSelectedPurchase(null)}>
+            <Dialog open={!!selectedPurchase} onOpenChange={() => { setSelectedPurchase(null); setErrorDetalle(null) }}>
                 <DialogContent data-section="compras.detalle" className="max-w-3xl overflow-y-auto max-h-[90vh]">
                     <DialogHeader>
                         <div className="flex items-center justify-between pr-8">
                             <div>
-                                <DialogTitle>Detalle de Compra #{selectedPurchase?.id}</DialogTitle>
+                                <DialogTitle>Detalle de compra #{selectedPurchase?.id}</DialogTitle>
                                 <DialogDescription>
-                                    {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
+                                    {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} - {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
                             </div>
                             <Button size="sm" onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}>
@@ -572,15 +544,16 @@ export default function ComprasPage() {
                             </Button>
                         </div>
                     </DialogHeader>
+                    <AlertaError mensaje={errorDetalle} />
                     {selectedPurchase && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha Compra</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha de compra</p>
                                     <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto Total</p>
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto total</p>
                                     <p className="font-bold text-foreground text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
@@ -597,7 +570,7 @@ export default function ComprasPage() {
                                         <TableRow>
                                             <TableHead>Producto</TableHead>
                                             <TableHead className="text-center">Cantidad</TableHead>
-                                            <TableHead className="text-right">Costo Unit.</TableHead>
+                                            <TableHead className="text-right">Costo unit.</TableHead>
                                             <TableHead className="text-right">Subtotal</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -606,7 +579,7 @@ export default function ComprasPage() {
                                             <TableRow key={d.id}>
                                                 <TableCell>
                                                     <p className="font-medium text-xs">{d.product?.full_name || d.product?.nombre}</p>
-                                                    <p className="text-[10px] text-muted-foreground font-mono">{d.product?.codigo_interno}</p>
+                                                    <p className="text-xs text-muted-foreground font-mono">{d.product?.codigo_interno}</p>
                                                 </TableCell>
                                                 <TableCell className="text-center font-tabular text-xs">
                                                     {parseFloat(String(d.cantidad))}
@@ -628,23 +601,14 @@ export default function ComprasPage() {
             </Dialog>
 
             {/* Delete Confirmation */}
-            <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>¿Está seguro de eliminar esta compra?</DialogTitle>
-                        <DialogDescription>
-                            Esta acción revertirá el stock de todos los productos incluidos en este documento.
-                            No se puede deshacer.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
-                        <Button onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                            Eliminar definitivamente
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={(o) => !o && setDeleteId(null)}
+                title="¿Eliminar esta compra?"
+                description="Se revierte el stock de todos los productos del documento. No se puede deshacer."
+                confirmLabel="Eliminar definitivamente"
+                onConfirm={handleDelete}
+            />
 
             {/* Click outside search logic */}
             {isSearching && (

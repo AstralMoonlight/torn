@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
 import { FileText, Loader2 } from 'lucide-react'
 import { getApiErrorDetail } from '@/services/api'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { facturarGuias, getGuiasPendientes, type PaymentMethod, type SaleOut } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -33,16 +34,18 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
     const [tipoDte, setTipoDte] = useState(33)
     const [methodId, setMethodId] = useState<number>(0)
     const [enviando, setEnviando] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         if (!open) return
         setSeleccion([])
+        setError(null)
         getGuiasPendientes()
             .then((g) => {
                 setGuias(g)
                 setCustomerId(g[0]?.customer.id ?? null)
             })
-            .catch((err) => toast.error(getApiErrorDetail(err, 'No se pudieron cargar las guías.')))
+            .catch((err) => setError(getApiErrorDetail(err, 'No se pudieron cargar las guías.')))
         if (methods.length > 0) setMethodId(methods[0].id)
     }, [open, methods])
 
@@ -59,13 +62,14 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
 
     const facturar = async () => {
         setEnviando(true)
+        setError(null)
         try {
             const factura = await facturarGuias(seleccion, tipoDte, methodId)
-            toast.success(`Factura folio #${factura.folio} emitida por ${formatCLP(Number(factura.monto_total))}`)
+            avisar(`Factura folio #${factura.folio} emitida por ${formatCLP(Number(factura.monto_total))}`, { tipo: 'info' })
             onFacturada()
             onClose()
         } catch (err) {
-            toast.error(getApiErrorDetail(err, 'No se pudo facturar.'))
+            setError(getApiErrorDetail(err, 'No se pudo facturar.'))
         } finally {
             setEnviando(false)
         }
@@ -130,6 +134,8 @@ export default function FacturarGuiasDialog({ open, methods, onClose, onFacturad
                         )}
                     </div>
                 )}
+
+                <AlertaError mensaje={error} />
 
                 <DialogFooter className="gap-2 sm:gap-0">
                     <Button variant="outline" onClick={onClose} className="text-xs">Cancelar</Button>

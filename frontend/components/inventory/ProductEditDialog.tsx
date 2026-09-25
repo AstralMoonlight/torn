@@ -9,11 +9,13 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { getApiErrorDetail } from '@/services/api'
 import { Loader2, Package, RefreshCw } from 'lucide-react'
 import { Product, updateProduct } from '@/services/products'
 import { getBrands, Brand } from '@/services/brands'
@@ -27,6 +29,7 @@ interface Props {
 
 export default function ProductEditDialog({ open, product, onClose }: Props) {
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [baseName, setBaseName] = useState('')
     const [baseSku, setBaseSku] = useState('')
     const [baseDescription, setBaseDescription] = useState('')
@@ -70,6 +73,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
 
     const handleSave = async () => {
         if (!product) return
+        setError(null)
         setLoading(true)
         try {
             // 1. Save main product info (General)
@@ -106,11 +110,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 }
             }
 
-            toast.success('Producto actualizado correctamente')
             onClose(true)
-        } catch (error) {
-            console.error(error)
-            toast.error('Error al actualizar producto')
+        } catch (err) {
+            console.error(err)
+            setError(getApiErrorDetail(err, 'No se pudo actualizar el producto.'))
         } finally {
             setLoading(false)
         }
@@ -121,12 +124,12 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
     const isParent = product.variants && product.variants.length > 0
 
     return (
-        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+        <Dialog open={open} onOpenChange={(val) => { if (!val) { setError(null); onClose() } }}>
             <DialogContent data-section="inventario.editar-producto" className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-primary" />
-                        Editar Producto: {product?.full_name || baseName}
+                        Editar producto: {product?.full_name || baseName}
                     </DialogTitle>
                     <DialogDescription>
                         SKU: {baseSku}
@@ -135,9 +138,9 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
 
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="general">Información General</TabsTrigger>
+                        <TabsTrigger value="general">Información general</TabsTrigger>
                         <TabsTrigger value="variants">
-                            {isParent ? `Variantes (${variants.length})` : 'Precio y Stock'}
+                            {isParent ? `Variantes (${variants.length})` : 'Precio y stock'}
                         </TabsTrigger>
                     </TabsList>
 
@@ -145,14 +148,14 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                     <TabsContent value="general" className="space-y-4 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Nombre del Producto</Label>
+                                <Label>Nombre del producto</Label>
                                 <Input
                                     value={baseName}
                                     onChange={(e) => setBaseName(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>SKU Base</Label>
+                                <Label>SKU base</Label>
                                 <Input
                                     value={baseSku}
                                     onChange={(e) => setBaseSku(e.target.value)}
@@ -166,7 +169,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         <SelectValue placeholder="Seleccionar marca" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin Marca</SelectItem>
+                                        <SelectItem value="0">Sin marca</SelectItem>
                                         {brands.map(b => (
                                             <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                                         ))}
@@ -181,17 +184,17 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         onChange={(e) => setControlStock(e.target.checked)}
                                         className="w-4 h-4"
                                     />
-                                    <span className="text-sm font-medium">Controlar Stock Globalmente</span>
+                                    <span className="text-sm font-medium">Controlar stock globalmente</span>
                                 </label>
                             </div>
                             <div className="space-y-2">
-                                <Label>Impuesto Aplicado</Label>
+                                <Label>Impuesto aplicado</Label>
                                 <Select value={selectedTax} onValueChange={setSelectedTax}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Seleccionar impuesto" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin Impuesto (0%)</SelectItem>
+                                        <SelectItem value="0">Sin impuesto (0%)</SelectItem>
                                         {taxes.map(t => (
                                             <SelectItem key={t.id} value={t.id.toString()}>
                                                 {t.name} ({(t.rate * 100).toFixed(0)}%)
@@ -212,7 +215,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         <div className="flex justify-end pt-4">
                             <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Guardar Cambios
+                                Guardar cambios
                             </Button>
                         </div>
                     </TabsContent>
@@ -222,19 +225,19 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         {isParent ? (
                             <>
                                 <div className="rounded-md border border-border overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Variante / SKU</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Precio Neto</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Stock</th>
-                                                <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase">Código Barras</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
+                                    <Table compacta>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Variante / SKU</TableHead>
+                                                <TableHead>Precio neto</TableHead>
+                                                <TableHead>Stock</TableHead>
+                                                <TableHead>Código de barras</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
                                             {variants.map((v, i) => (
-                                                <tr key={v.id}>
-                                                    <td className="px-3 py-2">
+                                                <TableRow key={v.id}>
+                                                    <TableCell>
                                                         <Input
                                                             value={v.nombre}
                                                             onChange={(e) => {
@@ -242,7 +245,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, nombre: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-7 text-xs mb-1"
+                                                            className="h-8 text-xs mb-1"
                                                         />
                                                         <Input
                                                             value={v.codigo_interno}
@@ -251,10 +254,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, codigo_interno: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-7 text-xs font-mono w-32"
+                                                            className="h-8 text-xs font-mono w-32"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             type="number"
                                                             value={v.precio_neto.toString()}
@@ -263,10 +266,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, precio_neto: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-8 w-24 text-right font-tabular"
+                                                            className="h-8 w-24 text-xs text-right font-tabular"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             type="number"
                                                             value={v.stock_actual.toString()}
@@ -275,10 +278,10 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                                 newVariants[i] = { ...v, stock_actual: e.target.value }
                                                                 setVariants(newVariants)
                                                             }}
-                                                            className="h-8 w-20 text-center font-tabular"
+                                                            className="h-8 w-20 text-xs text-center font-tabular"
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-2">
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input
                                                             value={v.codigo_barras || ''}
                                                             onChange={(e) => {
@@ -289,26 +292,26 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                             placeholder="EAN-13"
                                                             className="h-8 w-32 font-mono text-xs"
                                                         />
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                                 <div className="flex justify-end pt-4">
                                     <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Guardar Todas las Variantes
+                                        Guardar todas las variantes
                                     </Button>
                                 </div>
                             </>
                         ) : (
                             <div className="bg-muted p-6 rounded-lg border border-border">
-                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de Inventario (Producto Simple)</h3>
+                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de inventario (producto simple)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
-                                        <Label>Precio Neto</Label>
+                                        <Label>Precio neto</Label>
                                         <Input
                                             type="number"
                                             value={simplePrice.toString()}
@@ -317,7 +320,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Stock Actual</Label>
+                                        <Label>Stock actual</Label>
                                         <Input
                                             type="number"
                                             value={simpleStock.toString()}
@@ -326,7 +329,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Código de Barras</Label>
+                                        <Label>Código de barras</Label>
                                         <Input
                                             value={simpleBarcode}
                                             onChange={(e) => setSimpleBarcode(e.target.value)}
@@ -339,13 +342,14 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     <Button onClick={handleSave} disabled={loading} className="gap-2 ">
                                         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <RefreshCw className="h-4 w-4" />
-                                        Guardar Todo
+                                        Guardar todo
                                     </Button>
                                 </div>
                             </div>
                         )}
                     </TabsContent>
                 </Tabs>
+                <AlertaError mensaje={error} />
             </DialogContent>
         </Dialog>
     )

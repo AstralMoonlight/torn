@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { toast } from 'sonner'
+import { AlertaError } from '@/components/ui/alerta-error'
+import { avisar } from '@/lib/store/uiStore'
 import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
 import { Button } from '@/components/ui/button'
+import { AccionFila } from '@/components/ui/accion-fila'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
@@ -23,7 +26,7 @@ import {
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { getApiErrorMessage } from '@/services/api'
+import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import {
     getPriceLists, getPriceList, createPriceList, updatePriceList, deletePriceList,
     assignProducts, assignCustomers,
@@ -98,12 +101,14 @@ function PriceListItemRow({
 
 export default function PriceListsPage() {
     const [priceLists, setPriceLists] = useState<PriceListRead[]>([])
+    const [busqueda, setBusqueda] = useState('')
     const [loading, setLoading] = useState(true)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
     // Modal state
     const [openModal, setOpenModal] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<number | 'base' | null>(null)
     const [activeTab, setActiveTab] = useState<Tab>('products')
     const [isGrossMode, setIsGrossMode] = useState(false)
@@ -129,7 +134,7 @@ export default function PriceListsPage() {
         setLoading(true)
         getPriceLists()
             .then(setPriceLists)
-            .catch(err => toast.error(getApiErrorMessage(err, 'Error cargando las listas de precios')))
+            .catch(err => avisar(getApiErrorMessage(err, 'Error cargando las listas de precios'), { reintentar: fetchLists }))
             .finally(() => setLoading(false))
     }, [])
 
@@ -175,8 +180,8 @@ export default function PriceListsPage() {
 
     const openEditBase = async () => {
         setEditingId('base')
-        setFormName('Precio Base (Catálogo General)')
-        setFormDescription('Precios por defecto de todos los productos (Netos).')
+        setFormName('Precio base (catálogo general)')
+        setFormDescription('Precios por defecto de todos los productos (netos).')
         setActiveTab('products')
         setDraftSearch('')
         setProductSearch('')
@@ -237,8 +242,9 @@ export default function PriceListsPage() {
     // ── Save ───────────────────────────────────────────────────────────────
 
     const handleSave = async () => {
+        setErrorGuardar(null)
         if (!formName.trim()) {
-            toast.error('El nombre de la lista es obligatorio.')
+            setErrorGuardar('El nombre de la lista es obligatorio.')
             return
         }
         setIsSaving(true)
@@ -252,7 +258,6 @@ export default function PriceListsPage() {
                 await Promise.all(changed.map(item =>
                     updateProduct(item.product_id, { precio_neto: String(item.fixed_price) })
                 ))
-                toast.success('Precios base actualizados correctamente')
             } else {
                 let listId = editingId
                 if (listId) {
@@ -263,12 +268,11 @@ export default function PriceListsPage() {
                 }
                 await assignProducts(listId!, draftItems.map(i => ({ product_id: i.product_id, fixed_price: Number(i.fixed_price) })))
                 await assignCustomers(listId!, selectedCustomerIds)
-                toast.success(editingId ? 'Lista actualizada' : 'Lista creada correctamente')
             }
             setOpenModal(false)
             fetchLists()
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error guardando los cambios'))
+            setErrorGuardar(getApiErrorDetail(err, 'No se pudieron guardar los cambios.'))
         } finally {
             setIsSaving(false)
         }
@@ -280,10 +284,9 @@ export default function PriceListsPage() {
         if (!deleteId) return
         try {
             await deletePriceList(deleteId)
-            toast.success('Lista eliminada')
             fetchLists()
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Error al eliminar'))
+            avisar(getApiErrorDetail(err, 'No se pudo eliminar la lista.'))
         }
     }
 
@@ -340,17 +343,28 @@ export default function PriceListsPage() {
 
     // ── Render ────────────────────────────────────────────────────────────
 
+    const listasVisibles = priceLists.filter(pl => pl.name.toLowerCase().includes(busqueda.trim().toLowerCase()))
+
     return (
         <PageContainer>
             <PageHeader
                 icon={Tag}
-                title="Listas de Precios"
+                title="Listas de precios"
                 description="Crea listas con precios fijos para grupos de clientes."
                 actions={
                     <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
-                        <Plus className="h-4 w-4" /> Nueva Lista
+                        <Plus className="h-4 w-4" /> Nueva lista
                     </Button>
                 }
+            />
+
+            <ListToolbar
+                busqueda={busqueda}
+                onBusqueda={setBusqueda}
+                placeholder="Buscar lista por nombre..."
+                visibles={listasVisibles.length}
+                total={priceLists.length}
+                unidad="listas"
             />
 
             {/* Table */}
@@ -370,30 +384,22 @@ export default function PriceListsPage() {
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        Precio Base (Catálogo General)
+                                        Precio base (catálogo general)
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                     Precios por defecto de todos los productos del sistema.
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                        onClick={openEditBase}
-                                        title="Editar Precios Base"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
+                                    <AccionFila icon={Pencil} label="Editar precios base" onClick={openEditBase} />
                                 </TableCell>
                             </TableRow>
                         )}
                         {loading && <TableEmpty colSpan={3} loading />}
-                        {!loading && priceLists.length === 0 && (
-                            <TableEmpty colSpan={3}>No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.</TableEmpty>
+                        {!loading && listasVisibles.length === 0 && (
+                            <TableEmpty colSpan={3}>{priceLists.length === 0 ? 'No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.' : 'Ninguna lista coincide con la búsqueda.'}</TableEmpty>
                         )}
-                        {!loading && priceLists.map(pl => (
+                        {!loading && listasVisibles.map(pl => (
                             <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">
                                 <TableCell className="font-medium text-foreground">
                                     <div className="flex items-center gap-2">
@@ -406,22 +412,8 @@ export default function PriceListsPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost" size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
-                                            onClick={() => openEdit(pl.id)}
-                                            title="Editar"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost" size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                                            onClick={() => setDeleteId(pl.id)}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <AccionFila icon={Pencil} label="Editar" onClick={() => openEdit(pl.id)} />
+                                        <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(pl.id)} peligro />
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -431,11 +423,11 @@ export default function PriceListsPage() {
             </div>
 
             {/* Create / Edit Modal */}
-            <Dialog open={openModal} onOpenChange={setOpenModal}>
+            <Dialog open={openModal} onOpenChange={(o) => { setOpenModal(o); setErrorGuardar(null) }}>
                 <DialogContent data-section="listas-precios.formulario" className="sm:max-w-4xl bg-card border-border max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingId === 'base' ? 'Editar Lista Base' : (editingId ? 'Editar Lista de Precios' : 'Nueva Lista de Precios')}
+                            {editingId === 'base' ? 'Editar lista base' : (editingId ? 'Editar lista de precios' : 'Nueva lista de precios')}
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
                             {editingId === 'base'
@@ -451,7 +443,7 @@ export default function PriceListsPage() {
                             <div className="space-y-2">
                                 <Label>Nombre <span className="text-destructive">*</span></Label>
                                 <Input
-                                    placeholder="Ej. Clientes Mayoristas"
+                                    placeholder="Ej. Clientes mayoristas"
                                     value={formName}
                                     onChange={e => setFormName(e.target.value)}
                                     disabled={editingId === 'base'}
@@ -473,12 +465,12 @@ export default function PriceListsPage() {
                             <TabsList>
                                 <TabsTrigger value="products" className="gap-2">
                                     <Package className="h-4 w-4" /> Productos
-                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{draftItems.length}</Badge>}
+                                    {draftItems.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">{draftItems.length}</Badge>}
                                 </TabsTrigger>
                                 {editingId !== 'base' && (
                                     <TabsTrigger value="customers" className="gap-2">
                                         <Users className="h-4 w-4" /> Clientes
-                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{selectedCustomerIds.length}</Badge>}
+                                        {selectedCustomerIds.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">{selectedCustomerIds.length}</Badge>}
                                     </TabsTrigger>
                                 )}
                             </TabsList>
@@ -533,7 +525,7 @@ export default function PriceListsPage() {
                                                     <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Esta lista ({draftItems.length})
                                                     </p>
-                                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                                    <p className="text-xs text-muted-foreground leading-tight">
                                                         Precios que se guardarán al confirmar
                                                     </p>
                                                 </div>
@@ -581,7 +573,7 @@ export default function PriceListsPage() {
                                                     <p className="text-sm font-semibold text-foreground leading-tight">
                                                         Catálogo completo
                                                     </p>
-                                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                                    <p className="text-xs text-muted-foreground leading-tight">
                                                         Haz clic en un producto para agregarlo a la lista ←
                                                     </p>
                                                 </div>
@@ -605,10 +597,10 @@ export default function PriceListsPage() {
                                                             >
                                                                 <div className="min-w-0 flex-1">
                                                                     <p className="text-xs font-medium text-foreground truncate leading-tight">{p.full_name}</p>
-                                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{p.codigo_interno}</p>
+                                                                    <p className="text-xs text-muted-foreground font-mono mt-0.5">{p.codigo_interno}</p>
                                                                 </div>
                                                                 <div className="shrink-0 ml-2 text-right flex items-center gap-1.5">
-                                                                    <p className="text-[11px] font-semibold text-muted-foreground">
+                                                                    <p className="text-xs font-semibold text-muted-foreground">
                                                                         ${(isGrossMode
                                                                             ? Number(p.precio_bruto)
                                                                             : Number(p.precio_neto)
@@ -689,6 +681,7 @@ export default function PriceListsPage() {
                         )}
                     </div>
 
+                    <AlertaError mensaje={errorGuardar} />
                     <DialogFooter className="border-t border-border pt-4">
                         <Button type="button" variant="outline" onClick={() => setOpenModal(false)} className="border-border cursor-pointer">
                             Cancelar
@@ -699,7 +692,7 @@ export default function PriceListsPage() {
                             className="cursor-pointer"
                         >
                             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Lista')}
+                            {isSaving ? 'Guardando...' : (editingId ? 'Guardar cambios' : 'Crear lista')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

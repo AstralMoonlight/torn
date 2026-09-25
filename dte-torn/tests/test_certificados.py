@@ -1,7 +1,7 @@
 """Cifrado de secretos por tenant y manejo del certificado digital.
 
-Lo que se prueba acá no es que el cifrado "funcione" —eso lo garantiza
-`cryptography`— sino las tres propiedades de las que depende el diseño:
+Lo que se prueba acá no es que el cifrado "funcione" -eso lo garantiza
+`cryptography`- sino las tres propiedades de las que depende el diseño:
 
 1. Cada tenant tiene su propia llave: el material de uno no se abre con la del
    otro, aunque la llave maestra sea la misma.
