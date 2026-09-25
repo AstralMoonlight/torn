@@ -108,28 +108,74 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
     `--ring` como tripletas HSL, en claro (líneas 12, 13 y 24) y en oscuro
     (40, 41 y 52). `tailwind.config.js` y los componentes shadcn las leen con
     `hsl(var(--primary))`.
-  - Ofrecer una paleta cerrada (azul, verde, violeta, naranja, rojo, gris...) en
-    vez de un selector libre. Cada opción trae sus valores para claro y oscuro y
-    su `primary-foreground`, ya probados con contraste 4.5:1. Con un color libre,
-    alguien elige amarillo y el texto de los botones deja de leerse.
+  - **Quién decide (definido por el usuario, 2026-09-25):** el administrador de
+    la empresa (rol `ADMINISTRADOR`; el frontend lo sabe por
+    `availableTenants[].role_name` en `sessionStore`) elige el modo en
+    Configuración:
+    - **Por empresa:** el administrador elige el color y se aplica a todos. A
+      los que no son administradores no les aparece la opción.
+    - **Libre por usuario:** cada usuario elige su color. Se guarda solo en su
+      navegador (`localStorage`, por empresa), sin tocar el backend.
+
+    En el backend van dos columnas en `SystemSettings`: `color_mode`
+    (`empresa` | `usuario`, por defecto `empresa`) y `color_primario` (clave de
+    la paleta, por defecto `azul`). Migración Alembic que recorra los esquemas,
+    igual que "Control de caja". `PUT /settings/` tiene que rechazar esos dos
+    campos si quien llama no es administrador; hoy cualquiera con acceso a
+    Configuración puede cambiar cualquier ajuste. Se guardan al elegir, sin
+    botón (tarea de guardado inmediato).
+  - Cómo se decide el color al cargar: si el modo es `empresa`, se usa el de la
+    empresa; si es `usuario`, el del navegador y, si no hay, el de la empresa.
+    Login y selección de empresa quedan en azul, porque todavía no hay empresa
+    elegida.
   - Aplicarlo con `document.documentElement.style.setProperty(...)`. Para que no
     se vea un parpadeo azul al cargar, guardar la última elección en
     `localStorage` y aplicarla con un script en línea en `app/layout.tsx`, antes
     de pintar. Después, confirmar con el valor del servidor.
-  - **Por decidir:** ¿el color es por empresa o por usuario? Recomiendo por
-    empresa (es identidad del negocio). En ese caso va como columna en
-    `SystemSettings`, con migración Alembic igual que "Control de caja", y se
-    guarda al elegir, sin botón (tarea de guardado inmediato). Login y
-    selección de empresa quedan en el color por defecto, porque todavía no
-    hay empresa elegida.
+  - **Paleta cerrada, no selector libre:** con un color libre alguien elige
+    amarillo y el texto de los botones deja de leerse. Propuesta de 20 colores,
+    calculada contra los colores reales del tema. En claro va texto blanco
+    (`210 40% 98%`) sobre el botón y el fondo es blanco; en oscuro va texto
+    oscuro (`222.2 47.4% 11.2%`, el `primary-foreground` actual) y el fondo es
+    `0 0% 7%` (card `0 0% 10%`). Todos pasan WCAG AA (4.5:1) de las dos
+    maneras: texto sobre el botón y `text-primary` sobre el fondo.
+
+    | Color | Claro (`H S L`) | Oscuro (`H S L`) |
+    |---|---|---|
+    | Azul (actual) | `221 83% 55%` | `221 83% 61.5%` |
+    | Índigo | `239 84% 65%` | `239 84% 70%` |
+    | Violeta | `262 83% 61.5%` | `262 83% 67.5%` |
+    | Púrpura | `280 75% 55%` | `280 75% 62.5%` |
+    | Fucsia | `293 80% 46.5%` | `293 80% 56.5%` |
+    | Rosa | `330 81% 47%` | `330 81% 57.5%` |
+    | Frambuesa | `345 83% 47.5%` | `345 83% 59%` |
+    | Rojo | `0 78% 49%` | `0 78% 60.5%` |
+    | Naranja | `21 90% 40%` | `21 90% 46.5%` |
+    | Ámbar | `38 92% 32%` | `38 92% 37%` |
+    | Oliva | `65 60% 29%` | `65 60% 34%` |
+    | Lima | `84 80% 27.5%` | `84 80% 32%` |
+    | Verde | `142 71% 30%` | `142 71% 34.5%` |
+    | Esmeralda | `160 84% 27.5%` | `160 84% 32%` |
+    | Turquesa | `174 80% 27.5%` | `174 80% 32%` |
+    | Cian | `189 94% 29.5%` | `189 94% 34%` |
+    | Celeste | `199 89% 35.5%` | `199 89% 41.5%` |
+    | Acero | `215 25% 47%` | `215 25% 54%` |
+    | Grafito | `220 9% 46%` | `220 9% 53%` |
+    | Café | `25 45% 42.5%` | `25 45% 49%` |
+
+    Cada valor es el más claro (en tema claro) o el más oscuro (en tema oscuro)
+    que todavía cumple 4.6:1, un margen sobre 4.5. `--ring` usa el mismo valor
+    que `--primary`. El azul actual (`221.2 83.2% 53.3%`) queda casi igual.
+    Falta verlos en pantalla: los amarillos y verdes salen oscuros en tema claro
+    (es lo que exige el contraste), y hay que revisar `bg-primary/10` con
+    `text-primary` (chips, íconos de encabezado), donde el contraste baja un poco.
   - Colores que no siguen al tema y hay que pasar a `hsl(var(--primary))`:
     - `components/dashboard/DashboardCharts.tsx`: barra `#3b82f6`, borde del
       tooltip `#e2e8f0` y la paleta del gráfico de torta;
-    - `app/dashboard/page.tsx`: tarjetas `indigo`/`purple`;
-    - `app/historial/page.tsx`: badges `bg-indigo-*` y `bg-sky-600`.
-
-    Estos últimos son colores de estado. Revisar si deben seguir fijos para no
-    confundirse con el color principal.
+    - `app/dashboard/page.tsx`: tarjetas `indigo`/`purple`.
+  - **Los badges de estado no se tocan por ahora** (`app/historial/page.tsx`:
+    `bg-indigo-*`, `bg-sky-600`, etc.). Más adelante: paletas de badges que
+    combinen con el color elegido.
   - Las plantillas de impresión (`backend/app/templates/html/`) van en blanco y
     negro y no se tocan.
 
