@@ -29,6 +29,29 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
   - Tests: una venta sin turno pasa con el control apagado y sigue dando 409 con
     el control encendido.
 
+- [ ] **Configuración > General se guarda sola al elegir cada opción.** Hoy el
+  botón "Guardar Cambios" queda al final de la tarjeta, la gente no lo ve y se
+  va sin guardar. Además, en la misma tarjeta, "Vista del POS — Variantes" ya
+  aplica al instante (va a `uiStore`) y los formatos de impresión no: dos
+  comportamientos en la misma pantalla.
+  - `app/configuracion/page.tsx`: que `setDocPrintFormat` llame a
+    `updateSettings` enseguida y quitar el botón. `PUT /settings/`
+    (`backend/app/routers/config.py`) ya actualiza solo los campos que llegan
+    (`exclude_unset`), así que no hay que tocar el backend. Se puede seguir
+    mandando el `print_formats` completo, como hace hoy `handleSaveSettings`.
+  - `handleSaveSettings` también manda `iva_default_id`, pero en esta pestaña no
+    hay dónde editarlo. Revisar si se puede dejar de mandar.
+  - Feedback: un toast discreto ("Guardado") o una marca junto a la opción. Si
+    falla, volver a la opción anterior y mostrar el error.
+  - Evitar que se pisen los cambios: si el usuario toca dos opciones seguidas,
+    la segunda respuesta no debe revertir la primera. Mandar siempre el estado
+    más reciente, o encolar los envíos.
+  - Si se hace la tarea de "Control de caja", su interruptor debe guardarse
+    igual, sin botón.
+  - Aplicar la misma regla (guardado inmediato) a otros ajustes simples de
+    Configuración. Los formularios con varios campos (emisor, impuestos nuevos)
+    siguen con botón.
+
 ## Prioridad alta
 
 - [ ] **Puntero de mano en hover que no funciona bien.** `app/globals.css` pone
