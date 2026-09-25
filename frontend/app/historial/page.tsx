@@ -70,7 +70,7 @@ const ESTADOS_SII: Record<string, { label: string; color: string }> = {
 }
 
 function SiiBadge({ estado, glosa }: { estado: string | null; glosa: string | null }) {
-    if (!estado) return <span className="text-xs text-muted-foreground">—</span>
+    if (!estado) return <span className="text-xs text-muted-foreground">-</span>
     const info = ESTADOS_SII[estado] || { label: 'En proceso', color: 'bg-sky-600' }
     return <Badge title={glosa || estado} className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
 }
@@ -259,7 +259,7 @@ export default function HistorialPage() {
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground dark:text-muted-foreground hidden lg:table-cell truncate max-w-[200px]">
-                                                {sale.customer?.razon_social || '—'}
+                                                {sale.customer?.razon_social || '-'}
                                             </TableCell>
                                             <TableCell className="text-right font-tabular text-xs font-semibold text-foreground">
                                                 {formatCLP(parseFloat(String(sale.monto_total)))}
@@ -290,7 +290,7 @@ export default function HistorialPage() {
                             Generar nota de ajuste
                         </DialogTitle>
                         <DialogDescription>
-                            Folio #{returnDialog?.folio} — {formatCLP(parseFloat(String(returnDialog?.monto_total || 0)))}
+                            Folio #{returnDialog?.folio} - {formatCLP(parseFloat(String(returnDialog?.monto_total || 0)))}
                         </DialogDescription>
                     </DialogHeader>
 

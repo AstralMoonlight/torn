@@ -2,8 +2,8 @@
 Seed script for multi-tenant demo data.
 Each tenant gets DIFFERENT data to prove data isolation.
 
-Tenant 27 (tenant_167603513) — "Jonathan Isla E.I.R.L." → Tienda de Electrónica
-Tenant 25 (tenant_763989569) — "Distribuidora JCB SpA"  → Distribuidora Médica
+Tenant 27 (tenant_167603513) - "Jonathan Isla E.I.R.L." → Tienda de Electrónica
+Tenant 25 (tenant_763989569) - "Distribuidora JCB SpA"  → Distribuidora Médica
 """
 
 import os
@@ -195,7 +195,7 @@ def seed_tenant(cur, schema, tenant_data):
         cur.execute(f"SELECT id FROM {schema}.users WHERE is_active = true LIMIT 1")
         row = cur.fetchone()
     if not row:
-        print("  ⚠ No local user found — skipping sales & purchases")
+        print("  ⚠ No local user found - skipping sales & purchases")
         return
     local_user_id = row["id"]
     print(f"  ✓ Local user_id: {local_user_id}")
@@ -600,7 +600,7 @@ def main():
         conn.commit()
 
         print(f"\n{'='*60}")
-        print("  ✅ ALL DONE — Both tenants seeded with unique data!")
+        print("  ✅ ALL DONE - Both tenants seeded with unique data!")
         print(f"{'='*60}")
 
     except Exception as e:

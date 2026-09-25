@@ -6,7 +6,7 @@ sobreescritas (ver conftest.py), así que nunca ejercita esta lógica. Es
 justamente el código más sensible del proyecto: un error aquí puede filtrar
 datos entre inquilinos o escribir en el esquema equivocado, como pasó durante
 el desarrollo de esta misma protección (create_user escribía en `public.users`
-en vez del esquema del tenant después del primer commit() — ver el historial
+en vez del esquema del tenant después del primer commit() - ver el historial
 de app/dependencies/tenant.py).
 
 Requiere una PostgreSQL real alcanzable con las TORN_DB_* del entorno (la del

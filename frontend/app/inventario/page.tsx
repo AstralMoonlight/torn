@@ -190,7 +190,7 @@ export default function InventarioPage() {
                                         {p.variants.length > 0 ? (
                                             <Badge variant="outline" className="text-xs">{p.variants.length} vars</Badge>
                                         ) : (
-                                            <span className="text-xs">—</span>
+                                            <span className="text-xs">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">

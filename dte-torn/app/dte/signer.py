@@ -154,7 +154,7 @@ def timbrar(documento: etree._Element, caf: CafParseado, momento: datetime) -> b
         + b"</FRMT></TED>"
     )
     # Se parsea con el namespace del documento declarado, para que al quedar
-    # dentro del `<DTE>` sus nodos —incluido el CAF— sean del namespace del SII.
+    # dentro del `<DTE>` sus nodos -incluido el CAF- sean del namespace del SII.
     # La declaración de encoding no es opcional: sin ella lxml asume UTF-8 y
     # cualquier tilde en latin-1 revienta el parseo.
     con_ns = ted.replace(b"<TED ", f'<TED xmlns="{NS}" '.encode(), 1)

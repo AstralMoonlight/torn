@@ -349,14 +349,14 @@ export default function CajaPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right text-xs font-tabular">
                                                     {session.status === 'OPEN' ? (
-                                                        <span className="text-muted-foreground italic">—</span>
+                                                        <span className="text-muted-foreground italic">-</span>
                                                     ) : (
                                                         <span>{formatCLP(parseFloat(session.final_cash_system))}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right text-xs font-tabular">
                                                     {session.status === 'OPEN' ? (
-                                                        <span className="text-muted-foreground italic">—</span>
+                                                        <span className="text-muted-foreground italic">-</span>
                                                     ) : (
                                                         <span className={`font-semibold ${parseFloat(session.difference) === 0 ? 'text-foreground' : parseFloat(session.difference) > 0 ? 'text-primary' : 'text-destructive'}`}>
                                                             {parseFloat(session.difference) > 0 ? '+' : ''}{formatCLP(parseFloat(session.difference))}

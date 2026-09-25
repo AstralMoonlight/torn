@@ -222,7 +222,7 @@ export default function DailyReportPage() {
                     * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
                 </div>
                 <div className="text-right space-y-1">
-                    <p className="font-bold print:hidden">TORN — SISTEMA DE GESTIÓN POS</p>
+                    <p className="font-bold print:hidden">TORN - SISTEMA DE GESTIÓN POS</p>
                     <p className="font-mono">FOLIO: {report?.fecha ? new Date(report.fecha).getTime().toString().slice(-6) : '---'}</p>
                 </div>
             </div>

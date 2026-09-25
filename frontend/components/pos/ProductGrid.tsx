@@ -160,7 +160,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                 })}
             </div>
 
-            {/* Variants Dialog — only used in 'grouped' mode */}
+            {/* Variants Dialog - only used in 'grouped' mode */}
             <Dialog
                 open={!!variantsOf}
                 onOpenChange={() => { setVariantsOf(null); setVariantSearch('') }}
@@ -170,7 +170,7 @@ export default function ProductGrid({ products, loading, variantDisplay }: Props
                         <DialogTitle>{variantsOf?.full_name}</DialogTitle>
                     </DialogHeader>
 
-                    {/* Search — only appears when variants > SEARCH_THRESHOLD */}
+                    {/* Search - only appears when variants > SEARCH_THRESHOLD */}
                     {manyVariants && (
                         <input
                             autoFocus

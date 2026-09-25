@@ -106,7 +106,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Print Styles — 80mm Thermal Ticket ─── */
+/* ── Print Styles - 80mm Thermal Ticket ─── */
 @media print {
   @page {
     size: 80mm auto;

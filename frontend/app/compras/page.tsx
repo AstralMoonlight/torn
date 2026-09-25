@@ -536,7 +536,7 @@ export default function ComprasPage() {
                             <div>
                                 <DialogTitle>Detalle de compra #{selectedPurchase?.id}</DialogTitle>
                                 <DialogDescription>
-                                    {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} — {selectedPurchase?.provider?.razon_social}
+                                    {selectedPurchase?.tipo_documento} Folio #{selectedPurchase?.folio || 'S/N'} - {selectedPurchase?.provider?.razon_social}
                                 </DialogDescription>
                             </div>
                             <Button size="sm" onClick={() => selectedPurchase && verPdfCompra(selectedPurchase.id)}>

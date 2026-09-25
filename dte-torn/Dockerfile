@@ -25,7 +25,7 @@ RUN python -m venv "$VIRTUAL_ENV"
 COPY requirements.txt .
 
 # --no-binary lxml,xmlsec: obliga a compilar ambos contra la libxml2 del
-# sistema. Ver el comentario en requirements.txt — con los wheels, firmar
+# sistema. Ver el comentario en requirements.txt - con los wheels, firmar
 # segfaultea. Es lo que hace lento este build; el resto sí usa wheels.
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir --no-binary lxml,xmlsec -r requirements.txt

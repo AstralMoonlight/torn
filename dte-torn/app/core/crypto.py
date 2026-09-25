@@ -9,8 +9,8 @@ Sobre de dos capas:
    material cifrado de una empresa no compromete el de otra.
 
 El cifrado es AES-256-GCM, que además autentica. El AAD amarra cada blob a su
-tenant y a su fila concreta, así que un blob movido de un registro a otro —o de
-un tenant a otro— no descifra, aunque la llave maestra sea la misma.
+tenant y a su fila concreta, así que un blob movido de un registro a otro -o de
+un tenant a otro- no descifra, aunque la llave maestra sea la misma.
 
 Nada de esto protege contra un atacante que ya tenga la llave maestra **y** la
 base de datos. Protege contra el escenario realista: un dump de la base, un

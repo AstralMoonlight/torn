@@ -15,7 +15,7 @@ certificación de factura → boletas → esta alineación → seguridad → ser
 | Libros de ventas, compras y guías | LOK / SOK | 0260088990 · 0260084758 · 0260086522 |
 | Simulación: 24 documentos reales de Bsale (17×33, 34, 2×52, 3×61, 56) | EPR 24/24, aprobada | 0260198860 |
 | Muestras impresas: 28 del set + 7 de simulación | Enviadas, **en revisión del SII** | reemplazo de simulación: 0260200310 |
-| Declaración de cumplimiento (representante legal) | Pendiente | — |
+| Declaración de cumplimiento (representante legal) | Pendiente | - |
 
 Cambios de código de esta etapa (dte-torn):
 

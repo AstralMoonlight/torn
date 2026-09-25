@@ -118,8 +118,8 @@ def get_tenant_db(
     """Retorna una sesión DB mapeada al esquema del Tenant.
 
     Reusa la conexión de `global_db` en vez de abrir una segunda (issue #38):
-    cada petición con inquilino pasaba de una conexión a dos —la de
-    `get_global_db` y una propia aquí para el `schema_translate_map`—, lo que
+    cada petición con inquilino pasaba de una conexión a dos -la de
+    `get_global_db` y una propia aquí para el `schema_translate_map`-, lo que
     reducía a la mitad el techo de peticiones concurrentes que el pool podía
     atender.
 
@@ -127,8 +127,8 @@ def get_tenant_db(
     `SaaSUser`, `Tenant`, `TenantUser` y `SaaSPlan` fijan
     `__table_args__ = {'schema': 'public'}` (igual que `Acteco`); el resto de
     los modelos no declara esquema (`None`). `schema_translate_map` sólo
-    traduce las tablas cuyo esquema coincide con una clave del mapa — aquí
-    sólo `None` está mapeado — así que las tablas 'public' explícitas siguen
+    traduce las tablas cuyo esquema coincide con una clave del mapa - aquí
+    sólo `None` está mapeado - así que las tablas 'public' explícitas siguen
     resolviendo a 'public' sin que importe en qué orden una misma conexión
     alterne entre consultas de una y otra (como hace `app/routers/users.py`,
     que consulta `SaaSUser`/`TenantUser` y `User`/`Role` dentro del mismo
@@ -149,7 +149,7 @@ def get_tenant_db(
     # vez de abrir (`engine.connect()`) y cerrar una conexión aparte.
     # `execution_options` en un `Connection` muta y devuelve el mismo objeto
     # (no una copia), así que esto también afecta a las consultas que el
-    # propio `global_db` haga después dentro de esta misma petición — lo cual
+    # propio `global_db` haga después dentro de esta misma petición - lo cual
     # es correcto, por el punto anterior sobre el esquema 'public' explícito.
     connection = global_db.connection()
     connection.execution_options(

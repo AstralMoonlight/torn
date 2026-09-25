@@ -52,24 +52,24 @@ ya mergeada). Lo hecho en esa rama: estilos de tabla centralizados, `TableEmpty`
     Configuración. Los formularios con varios campos (emisor, impuestos nuevos)
     siguen con botón.
 
-- [ ] **Eliminar el guion largo "—" de todo el proyecto.** Usar "-" normal o
+- [ ] **Eliminar el guion largo "-" de todo el proyecto.** Usar "-" normal o
   reescribir la frase (coma, dos puntos, paréntesis). Hay 106 usos en archivos
-  versionados (`git grep -c "—"`):
+  versionados (`git grep -c "-"`):
   - texto que ve el usuario: `frontend/app` (13), `frontend/components` (7),
     `frontend/lib` (1) y las plantillas de impresión de `backend/app/templates/html/`
-    (por ejemplo `customer.giro or '—'` como relleno de campo vacío, y el pie
-    "Documento generado por Torn — ...");
+    (por ejemplo `customer.giro or '-'` como relleno de campo vacío, y el pie
+    "Documento generado por Torn - ...");
   - comentarios y docstrings: `backend/`, `dte-torn/app`, `dte-torn/tests`;
   - documentación: `dte-torn/DESIGN.md` (19), `dte-torn/README.md`, `CLAUDE.md`,
     `tasks/*.md`, `.env.example`, `dte-torn/Dockerfile`.
 
   **Excepción:** `dte-torn/app/dte/builder.py:336` (`texto_sii`) convierte a propósito
-  "—" en "-" antes de mandar el texto al SII, y `dte-torn/tests/test_builder.py`
+  "-" en "-" antes de mandar el texto al SII, y `dte-torn/tests/test_builder.py`
   (líneas 299 y 310) lo prueba. Ahí el carácter no se borra: se escribe como
-  `"—"` para que el código siga igual y el grep quede limpio.
+  `"-"` para que el código siga igual y el grep quede limpio.
 
   Para que no vuelva: agregar la regla a la sección 5 de `CLAUDE.md` y un paso
-  en `.github/workflows/ci.yml` que falle si `git grep "—"` encuentra algo.
+  en `.github/workflows/ci.yml` que falle si `git grep "-"` encuentra algo.
   Después de reemplazar, correr los tests de backend y de dte-torn y
   revisar en pantalla los textos del frontend.
 

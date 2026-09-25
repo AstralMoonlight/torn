@@ -27,9 +27,9 @@ DATABASE_URL = (
 
 # ── Pool de conexiones ───────────────────────────────────────────────
 # Los valores por defecto de SQLAlchemy (pool_size=5, max_overflow=10) dan 15
-# conexiones. Originalmente cada petición con inquilino consumía DOS —la
+# conexiones. Originalmente cada petición con inquilino consumía DOS -la
 # sesión global de `get_global_db` y una conexión propia de `get_tenant_db`
-# para el schema_translate_map—, así que el techo real eran ~7 peticiones
+# para el schema_translate_map-, así que el techo real eran ~7 peticiones
 # concurrentes: a partir de ahí el POS devolvía 500 con "QueuePool limit ...
 # reached". `get_tenant_db` ahora reusa la conexión de `get_global_db` en vez
 # de abrir una segunda (ver app/dependencies/tenant.py), así que cada

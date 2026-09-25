@@ -23,12 +23,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # sa.JSON() (no postgresql.JSONB): es tabla de tenant y la suite de tests
     # crea el esquema sobre SQLite (`tests/conftest.py`), que no entiende
-    # JSONB — mismo criterio que `sales.referencias`/`users.permissions`.
+    # JSONB - mismo criterio que `sales.referencias`/`users.permissions`.
     #
     # Sin `comment=`: con una conexión de `schema_translate_map` (aprovisionamiento
     # de tenants), SQLAlchemy emite el `COMMENT ON COLUMN` apuntando al esquema
     # traducido en el SQL pero antes de que Postgres vea el ADD COLUMN recién
-    # hecho en esa misma sesión, y falla con "column does not exist" — se
+    # hecho en esa misma sesión, y falla con "column does not exist" - se
     # documenta en el modelo (`app/models/settings.py`) en su lugar.
     op.add_column(
         'system_settings',

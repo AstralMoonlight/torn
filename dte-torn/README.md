@@ -4,7 +4,7 @@ Microservicio de emisión de Documentos Tributarios Electrónicos para el SII de
 Chile. Multi-tenant, sin proveedor intermediario: la firma y el envío son
 propios.
 
-El diseño completo —modelo de datos, flujo de estados, decisiones y por qué—
+El diseño completo -modelo de datos, flujo de estados, decisiones y por qué-
 está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
@@ -15,20 +15,20 @@ Construido y verificado (250 tests en verde dentro del contenedor):
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
 - Asignación atómica de folios e idempotencia de emisión (`app/dte/folios.py`).
 - Cifrado de secretos por tenant (`app/core/crypto.py`) y carga del certificado
-  digital con auditoría de cada acceso (`app/core/certificados.py`) — issue #15.
+  digital con auditoría de cada acceso (`app/core/certificados.py`) - issue #15.
 - Canario de la llave maestra: el servicio no arranca si la llave configurada
   no es la que cifró los datos existentes.
-- Carga de CAF (`app/dte/caf.py`) — issue #22: parseo, validación contra el
+- Carga de CAF (`app/dte/caf.py`) - issue #22: parseo, validación contra el
   RUT del tenant, rechazo de rangos solapados y guardado cifrado byte a byte.
-- Construcción del XML del DTE (`app/dte/builder.py`) — issue #14: facturas,
+- Construcción del XML del DTE (`app/dte/builder.py`) - issue #14: facturas,
   exentas, notas de crédito/débito y boletas, validadas contra los XSD oficiales
   del SII versionados en `app/dte/xsd/`. El esquema de boletas del SII trae un
   defecto que libxml2 no compila; el test lo corrige en una copia (ver
   `tests/test_builder_xsd.py`) y avisa si el SII lo cambia.
-- Timbre (TED) y firma XMLDSig del DTE (`app/dte/signer.py`) — issue #20: con
+- Timbre (TED) y firma XMLDSig del DTE (`app/dte/signer.py`) - issue #20: con
   los algoritmos que fija el SII, verificado dentro del sobre `<EnvioDTE>` y
   validado contra el XSD con timbre y firma reales.
-- Cliente del SII (`app/dte/sii_client.py`) y sobre firmado (`firmar_sobre`) —
+- Cliente del SII (`app/dte/sii_client.py`) y sobre firmado (`firmar_sobre`) -
   issue #21: semilla, token cacheado en Redis, envío y consulta, para facturas
   (SOAP) y boletas (REST). Endpoints y formatos de respuesta verificados contra
   el SII real; los sobres validan contra `EnvioDTE_v10.xsd` y
@@ -75,7 +75,7 @@ docker compose up -d --build
 El primer build compila `lxml` y `xmlsec` desde fuente y tarda varios minutos;
 es a propósito (ver el comentario en `requirements.txt`).
 
-La API queda en `http://127.0.0.1:8001` — solo loopback. El servicio **no se
+La API queda en `http://127.0.0.1:8001` - solo loopback. El servicio **no se
 expone**: quien lo consume es el backend, por la red interna de Docker. En
 despliegue hay que borrar el bloque `ports:` del servicio `api`.
 

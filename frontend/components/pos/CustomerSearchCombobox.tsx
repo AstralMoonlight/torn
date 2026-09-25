@@ -25,7 +25,7 @@ interface Props {
     value: Customer | null
     onChange: (customer: Customer | null) => void
     required?: boolean
-    /** Ícono h-9 w-9 (default) vs. barra completa — ver comentario donde se usa el trigger. */
+    /** Ícono h-9 w-9 (default) vs. barra completa - ver comentario donde se usa el trigger. */
     compact?: boolean
 }
 
@@ -63,7 +63,7 @@ export default function CustomerSearchCombobox({
     compact = true,
 }: Props) {
     // Panel inline (no modal): se expande en el flujo normal del documento,
-    // empujando lo que viene después en vez de taparlo — el dropdown
+    // empujando lo que viene después en vez de taparlo - el dropdown
     // absoluto que tenía antes sí tapaba Referencias/Totales, y abrir un
     // Dialog para elegir cliente en cada venta resultó ser demasiada
     // ventana emergente. Sólo "Crear nuevo cliente" (formulario largo, poco
@@ -195,7 +195,7 @@ export default function CustomerSearchCombobox({
                 <button
                     type="button"
                     onClick={() => setExpanded((o) => !o)}
-                    title={value ? `${value.razon_social} (${value.rut}) — cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
+                    title={value ? `${value.razon_social} (${value.rut}) - cambiar o quitar` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}`}
                     className={`flex h-9 w-9 items-center justify-center rounded-md border shrink-0 transition-colors ${triggerToneClass}`}
                 >
                     {value ? <UserCheck className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
@@ -211,7 +211,7 @@ export default function CustomerSearchCombobox({
                 >
                     {value ? <UserCheck className="h-3.5 w-3.5 shrink-0" /> : <UserIcon className="h-3.5 w-3.5 shrink-0" />}
                     <span className="truncate flex-1 text-left">
-                        {value ? `${value.razon_social} — ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
+                        {value ? `${value.razon_social} - ${value.rut}` : `Buscar cliente${required ? ' (requerido)' : ' (opcional)'}…`}
                     </span>
                     {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />}
                 </button>
@@ -302,7 +302,7 @@ export default function CustomerSearchCombobox({
                                     </button>
                                 ))}
 
-                                {/* "Crear nuevo" — always visible */}
+                                {/* "Crear nuevo" - always visible */}
                                 <button
                                     data-combobox-item
                                     onClick={() => {

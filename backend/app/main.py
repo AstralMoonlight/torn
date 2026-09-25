@@ -102,7 +102,7 @@ async def logged_http_exception_handler(request: Request, exc: HTTPException):
     El frontend (dev, Turbopack) intercepta el AxiosError vía console.error
     y lo muestra en su propio overlay de depuración, que sólo trae el
     mensaje genérico ("Request failed with status code 400") y no el
-    `detail` real que arma el backend — para verlo hay que ir al toast de
+    `detail` real que arma el backend - para verlo hay que ir al toast de
     la app o, más confiable, acá.
     """
     logger.warning(

@@ -31,7 +31,7 @@ from app.models import User, Sale  # noqa: F401
 
 def main():
     print("=" * 50)
-    print("  Torn — Verificación de Base de Datos")
+    print("  Torn - Verificación de Base de Datos")
     print("=" * 50)
 
     # 1. Probar conexión

@@ -6,6 +6,21 @@ on:
   pull_request:
 
 jobs:
+  estilo:
+    name: Sin guion largo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Regla 9 de CLAUDE.md. El carácter (U+2014) se arma con printf para que
+      # este archivo tampoco lo contenga.
+      - name: Buscar guion largo
+        run: |
+          if git grep -n "$(printf '\u2014')"; then
+            echo "Usa '-' en vez del guion largo (U+2014): ver la regla 9 de CLAUDE.md."
+            exit 1
+          fi
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest

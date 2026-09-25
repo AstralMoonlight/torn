@@ -296,7 +296,7 @@ def test_el_emisor_es_la_empresa_aunque_firme_una_persona() -> None:
 
 
 def test_texto_sii_limpia_lo_que_latin1_no_tiene() -> None:
-    assert texto_sii("Café “premium” — 500g", 80) == 'Café "premium" - 500g'
+    assert texto_sii("Café “premium” \u2014 500g", 80) == 'Café "premium" - 500g'
     assert texto_sii("Pizza 🍕 grande", 80) == "Pizza grande"
     assert texto_sii("Línea1\nLínea2\t fin", 80) == "Línea1 Línea2 fin"
     assert texto_sii("x" * 100, 80) == "x" * 80
@@ -307,7 +307,7 @@ def test_serializa_en_iso_8859_1_sin_referencias_numericas() -> None:
     """Ñ y tildes como un byte; nada de &#...; en la salida."""
     dte = construir_dte(
         EMISOR,
-        _factura([Item(nombre="Ñandú “especial” — 🦤", precio=Decimal("1000"))]),
+        _factura([Item(nombre="Ñandú “especial” \u2014 🦤", precio=Decimal("1000"))]),
         1,
     )
     salida = serializar(dte)

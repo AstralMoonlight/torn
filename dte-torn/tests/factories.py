@@ -2,8 +2,8 @@
 
 Un CAF de verdad no se puede versionar: trae la llave privada con la que se
 timbran folios reales. Estos generadores producen archivos con la misma
-estructura y llaves de juguete, para poder probar el parseo, el guardado y —más
-adelante— la firma del TED sin depender de un archivo secreto en el repositorio.
+estructura y llaves de juguete, para poder probar el parseo, el guardado y -más
+adelante- la firma del TED sin depender de un archivo secreto en el repositorio.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def caf_xml(
     )
 
     # `<FRMA>` es la firma del SII sobre el `<DA>`. No se valida en este
-    # servicio —haría falta la llave pública del SII— así que va un relleno.
+    # servicio -haría falta la llave pública del SII- así que va un relleno.
     frma = base64.b64encode(b"firma-del-sii-de-mentira").decode("ascii")
 
     xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>

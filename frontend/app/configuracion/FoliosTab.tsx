@@ -252,7 +252,7 @@ export default function FoliosTab() {
                         <p className="text-sm text-destructive">Sin certificado: no se pueden emitir documentos.</p>
                     ) : (
                         <div className="text-sm space-y-1">
-                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "—"}</span></p>
+                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "-"}</span></p>
                             {certificado.not_after && (
                                 <p className={certificado.dias_restantes !== null && certificado.dias_restantes < 30 ? "text-destructive font-medium" : ""}>
                                     Vence: {new Date(certificado.not_after).toLocaleDateString("es-CL")}
