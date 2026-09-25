@@ -135,6 +135,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         else if (color) aplicarColor(color)
     }, [color, sinEmpresa])
 
+    // El aviso de una página se va al salir de ella. Va antes que el efecto de
+    // /caja: si corriera después, borraría en el mismo render el aviso que ese
+    // efecto acaba de dejar para la página de destino.
+    useEffect(() => {
+        const { aviso, cerrarAviso } = useUIStore.getState()
+        if (aviso?.ruta && aviso.ruta !== pathname) cerrarAviso()
+    }, [pathname])
+
     // Con el control de caja apagado, /caja no existe: si se entra por URL al abrir
     // el sitio se va al dashboard; si ya se estaba dentro, se vuelve a la página
     // anterior. En los dos casos se explica con un aviso.
@@ -148,12 +156,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         avisar('El control de caja está desactivado. Se activa en Configuración > General.', { tipo: 'info', ruta: destino })
         router.replace(destino)
     }, [pathname, controlCaja, router])
-
-    // El aviso de una página se va al salir de ella.
-    useEffect(() => {
-        const { aviso, cerrarAviso } = useUIStore.getState()
-        if (aviso?.ruta && aviso.ruta !== pathname) cerrarAviso()
-    }, [pathname])
 
     // Sincronización global del perfil y empresas al montar la app
     useEffect(() => {
