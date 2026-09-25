@@ -159,8 +159,13 @@ proceso (uvicorn, pytest, Docker, etc.).
   `backend/app/dependencies/tenant.py` valida el token contra `public.saas_users`, resuelve el `schema_name` del
   tenant y entrega una sesión SQLAlchemy apuntando a ese esquema.
 - **backend → PostgreSQL**: `backend/app/database.py` construye la URL desde `TORN_DB_USER/PASSWORD/HOST/PORT/NAME`.
-  El esquema se versiona con Alembic; `main.py` hace además `create_all()` al arrancar, salvo que
-  `TORN_AUTO_CREATE_TABLES=0`.
+  El esquema se versiona con Alembic. En Docker, `backend/scripts/migrar_al_arrancar.py` corre
+  `alembic upgrade head` antes de uvicorn (base vacía: `create_all` + `stamp head`); si falla, el
+  contenedor no arranca. Las migraciones de tablas de empresa recorren cada esquema con SQL calificado
+  (ver `c9d0e1f2a3b4`), porque `op.add_column` con `schema_translate_map` cae en `public`.
+  `main.py` hace además `create_all()` al arrancar, salvo que `TORN_AUTO_CREATE_TABLES=0`.
+- **Reinicios**: todos los servicios de ambos compose tienen `restart` (`always` en Torn,
+  `unless-stopped` en dte-torn), así que vuelven solos tras una caída o un reinicio de Docker.
 - **docker (raíz) → ambos**: `docker-compose.yml` levanta `db` (postgres:18-alpine con healthcheck),
   `backend` (build desde `Dockerfile.backend`, `env_file: .env`, override `TORN_DB_HOST: db`, puerto 8000,
   `depends_on: db healthy`) y `frontend` (build desde `Dockerfile.frontend` con contexto raíz, puerto 3000,
@@ -266,8 +271,8 @@ para que el total del POS coincida con el que cobra el backend.
   `TORN_ENV` es staging o production.
 - `tenant_service.py` invocaba `psql` con usuario, host, puerto y contraseña
   fijos en el código; pasa a leer las `TORN_DB_*`.
-- `Dockerfile.backend` instala `postgresql-client`: `python:3.10-slim` no trae
-  `psql`, así que el aprovisionamiento de empresas fallaba en el contenedor.
+- `tenant_service.py` ya no invoca `psql` (el esquema sale de `create_all`), así que
+  `Dockerfile.backend` no necesita `postgresql-client`.
 - CORS configurable con `TORN_CORS_ORIGINS`; `on_event` reemplazado por lifespan.
 
 ### Tests

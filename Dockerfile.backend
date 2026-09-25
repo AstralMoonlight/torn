@@ -10,4 +10,5 @@ COPY backend/ .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migraciones antes de servir: si fallan, el contenedor no arranca (ver el script).
+CMD ["sh", "-c", "python scripts/migrar_al_arrancar.py && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -41,3 +41,12 @@ pytest_output*.txt
 !README.md
 .vscode
 .idea
+
+# Nada de esto entra a las imágenes del backend ni del frontend. dte-torn tiene
+# su propio build, y ahí viven el certificado (.pfx) y los CAF: no deben viajar
+# al daemon como contexto de build.
+dte-torn/
+database/
+info/
+tasks/
+*.pfx

@@ -26,6 +26,7 @@ x-worker: &worker
 
 services:
   db:
+    restart: unless-stopped
     image: postgres:18-alpine
     environment:
       POSTGRES_USER: postgres
@@ -47,6 +48,7 @@ services:
       retries: 10
 
   redis:
+    restart: unless-stopped
     image: redis:8-alpine
     command: ["redis-server", "--appendonly", "no"]
     healthcheck:
@@ -56,6 +58,7 @@ services:
       retries: 10
 
   minio:
+    restart: unless-stopped
     # quay.io y no Docker Hub: `minio/minio` en Hub ya no publica `latest` y el
     # pull falla con "pull access denied", que confunde porque parece un
     # problema de credenciales.
@@ -76,6 +79,7 @@ services:
       retries: 10
 
   api:
+    restart: unless-stopped
     <<: *app
     # El rol de aplicación y las políticas RLS los crea la migración, así que
     # el arranque las aplica antes de servir.

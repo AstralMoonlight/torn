@@ -1,0 +1,8 @@
+# El Dockerfile copia solo app/, alembic/ y tests/, pero todo el directorio viaja
+# al daemon como contexto de build. El certificado y los CAF no deben hacerlo.
+*.pfx
+*.p12
+folios/
+.env
+**/__pycache__
+.pytest_cache
