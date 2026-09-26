@@ -3,8 +3,8 @@
 Fecha: 2026-09-25. Revisión de Productos, Listas de precios, Marcas, Compras, Clientes, Proveedores,
 Personal, Historial, Reportes, Dashboard, Caja y Configuración, más el kardex en el backend.
 
-**Criterio:** las usuarias del piloto tienen más de 60 años ([`lanzamiento.md`](lanzamiento.md)). Cada
-pantalla hace una cosa, con los campos de todos los días a la vista y el resto en "Más opciones". No se
+**Criterio:** no todos los usuarios serán mayores, pero la vara es que una persona de más de 60 años lo
+pueda usar sin ayuda: si a ella no se le complica, a nadie más joven tampoco. Cada pantalla hace una cosa, con los campos de todos los días a la vista y el resto en "Más opciones". No se
 quita funcionalidad: se esconde lo que no se usa a diario.
 
 ---
@@ -196,11 +196,9 @@ revisión con el usuario antes del piloto.
    guarda el neto, o se deja neto como hoy? Recomendación: con IVA.
 2. **Pago de cuenta corriente en efectivo:** ¿entra a la caja del turno abierto (suma al arqueo)?
    Recomendación: sí, si el control de caja está encendido.
-3. **Carga masiva desde Bsale:** ¿se importan productos y clientes desde un Excel/CSV exportado de Bsale
-   para el piloto, o se cargan a mano? Si hay que importar, va como fase propia antes del piloto.
-4. **Costo del producto:** hoy es el costo de la última compra. ¿Basta, o se quiere costo promedio? Afecta
+3. **Costo del producto:** hoy es el costo de la última compra. ¿Basta, o se quiere costo promedio? Afecta
    la utilidad de los reportes. Recomendación: dejar el último costo.
-5. **Menú:** ¿se aprueba la agrupación de 3.1 y sacar Marcas del menú?
+4. **Menú:** ¿se aprueba la agrupación de 3.1 y sacar Marcas del menú?
 
 Fuera de alcance: el POS; autocompletar por RUT tiene su plan en
 [`autocompletar_rut_sii.md`](autocompletar_rut_sii.md).
