@@ -9,7 +9,7 @@ está en [DESIGN.md](DESIGN.md). Este README es solo la puesta en marcha.
 
 ## Estado
 
-Construido y verificado (250 tests en verde dentro del contenedor):
+Construido y verificado (291 tests en verde dentro del contenedor al 2026-09-24):
 
 - Esquema completo con Row Level Security por tenant (migración `0001`),
   incluyendo el rol `dte_app` sin `BYPASSRLS` y `audit_log` append-only.
@@ -45,7 +45,10 @@ Construido y verificado (250 tests en verde dentro del contenedor):
   firma. Es lo que ejecutarán los workers.
 - **Set de pruebas básico aceptado por el SII de certificación (2026-09-23):**
   los 8 casos en un solo envío (`certificacion set`), track 0260023678, `EPR`
-  con 8 aceptados y sin reparos. Avance declarado; en revisión del SII.
+  con 8 aceptados y sin reparos.
+- **Certificación de factura aprobada por el SII (2026-09-25):** sets básico,
+  exenta y guía, libros, simulación y muestras impresas. Falta la certificación
+  de boletas.
 - API HTTP (`app/api.py`): emisor, certificado (#15), CAF (#22), emisión de
   documentos y boletas, consulta, XML y PDF. Ver [API](#api).
 - Capa de colas (`app/tasks/`): workers Taskiq de firma, envío y estado, con
@@ -61,7 +64,8 @@ Construido y verificado (250 tests en verde dentro del contenedor):
 Pendiente: `caf_request.py` (pedir folios al SII sin intervención; hoy el
 scheduler solo alerta cuando quedan pocos), el RCOF diario de boletas, la
 verificación por folio de boletas tras una subida ambigua (hoy va a revisión
-manual), el formato 80 mm para impresora térmica y el envío del PDF por correo.
+manual) y el envío del PDF por correo. El ticket de 57/80 mm con timbre lo arma
+el backend desde el XML firmado (`backend/app/services/dte_impreso.py`).
 
 ## Puesta en marcha
 
