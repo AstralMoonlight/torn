@@ -1,7 +1,12 @@
 # Intercambio: casilla de correo, XML a los clientes y acuse de recibo
 
-> **Postergado (2026-09-25):** se ve al final, cuando haya una casilla de correo funcionando (servidor
-> propio o contratado). Antes era la prioridad P1 de [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md).
+> **Casilla lista (2026-09-25):** `xml@distribuidorajcb.cl`, en el hosting cPanel de JCB. Servidor
+> `mail.distribuidorajcb.cl`, IMAP 993 y SMTP 465, los dos con SSL/TLS y autenticación. La contraseña va
+> solo en el `.env` de dte-torn, nunca en el repo.
+>
+> **Entra al piloto:** el piloto emite facturas (ver [`lanzamiento.md`](lanzamiento.md)), así que la parte
+> a) es obligatoria antes de facturar a empresas. La parte b) puede esperar: si nadie responde, al octavo
+> día la factura recibida queda aceptada por presunción legal, igual que hoy.
 
 No existe nada: no hay correo (ni SMTP ni IMAP) en el repo, ni
 formatos de respuesta en dte-torn. Son dos partes:
@@ -51,16 +56,18 @@ no se hace.
 - El correo de intercambio del cliente. `customers.email` existe, pero es uno solo. ¿Se usa ese, o un
   campo aparte? El SII publica un listado de contribuyentes electrónicos con su correo de intercambio.
   Hay que ver su formato y si se carga como las nóminas de [autocompletar por RUT](autocompletar_rut_sii.md).
-- El servicio de correo, para enviar y recibir: servidor propio o contratado.
-- Nuestra propia casilla de intercambio registrada en el SII. Hoy apunta a Haulmer (ver `plan.md`); se
-  cambia cuando exista la de Torn.
+- ~~El servicio de correo~~: el hosting de JCB (arriba). Para Factureando se verá un correo del dominio propio.
+- Registrar `xml@distribuidorajcb.cl` como casilla de intercambio de JCB en el SII (hoy apunta a Haulmer,
+  ver `plan.md`). Lo hace el usuario. **Ojo:** desde ese momento los XML de los proveedores de JCB llegan a
+  la casilla nueva y no a Haulmer/Bsale; confirmar antes que JCB no dependa de recibirlos allá.
 - El reparto entre servicios: el XML, la firma y el web service del registro en dte-torn, y los clientes,
   las compras y la UI en el backend.
 
 **Tareas:**
 - [x] Bajar del SII los XSD y el instructivo de intercambio (`RespuestaDTE`, `EnvioRecibos`), igual que se
       hizo con los libros (source-driven-development).
-- [ ] Decidir el correo del cliente y el servicio de correo.
+- [ ] Decidir el correo del cliente (el servicio ya está: la casilla de JCB).
+- [ ] Probar SMTP e IMAP contra `mail.distribuidorajcb.cl` desde el contenedor de dte-torn.
 - [ ] dte-torn: sobre `EnvioDTE` para el receptor y su envío al correo tras la aceptación del SII, con reintentos.
 - [ ] Backend y frontend: estado del envío en la venta y botón de reenviar en el historial.
 - [ ] Recepción: leer la casilla, validar y guardar los documentos recibidos.

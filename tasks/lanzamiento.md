@@ -18,14 +18,13 @@ y el [intercambio](intercambio.md) cuando haya correo.
 
 ## 0. Decisiones que bloquean el piloto
 
-- [ ] **Qué documentos emite el piloto.** JCB vende sobre todo con boleta, y las boletas necesitan su
-      propia certificación (10 a 15 días hábiles solo para revisar la solicitud, según el SII). Las
-      facturas a empresas requieren enviarles el XML a su casilla de intercambio, que aún no existe
-      ([`intercambio.md`](intercambio.md), #56). Opciones:
-      a) esperar las boletas y partir con boletas en Torn y facturas en Bsale;
-      b) partir con facturas en Torn y hacer un intercambio mínimo (SMTP de un correo existente);
-      c) partir con todo en Torn cuando estén las dos cosas.
-- [ ] **Sistema operativo del PC** (Windows o Linux). Cambia cómo se arranca solo, el SSH y el respaldo.
+- [x] **Documentos del piloto (decidido 2026-09-25):** boleta (39), factura (33) y nota de crédito (61).
+      Nota de débito (56) muy rara, una al año. No se usan exenta (34, 41) ni guía (52): el POS del
+      personal no debería ofrecerlas. Por eso el piloto necesita las **dos** cosas:
+      - certificación de boletas ([`certificacion_boletas.md`](certificacion_boletas.md), #49);
+      - envío del XML a la casilla de los clientes que reciben factura ([`intercambio.md`](intercambio.md)
+        parte a, #56). La casilla de JCB ya existe: `xml@distribuidorajcb.cl`.
+- [x] **Sistema operativo:** Linux (decidido 2026-09-25). Distro: Ubuntu Desktop LTS (ver 1.3).
 - [ ] **Fecha de corte con Bsale por tipo de documento** (#55): nunca el mismo tipo en los dos a la vez.
 
 ## 1. Piloto en el local
@@ -46,14 +45,17 @@ y el [intercambio](intercambio.md) cuando haya correo.
 
 - [ ] Vaciar el tenant 35 de los datos de demostración que cargó `seed_jcb.py` (conservar la empresa,
       el emisor y su enlace con dte-torn: **nunca cambiar su id en dte-torn**).
-- [ ] Importar productos (código de barras, precio, stock, impuesto), clientes y proveedores desde una
-      exportación de Bsale. No existe importador: evaluar si basta un script o hace falta una pantalla.
+- [ ] Productos, clientes y proveedores: los carga el usuario por su cuenta (decidido 2026-09-25).
 - [ ] Toma de inventario inicial el día del corte.
 - [ ] Cuentas para la madre del usuario y la otra vendedora, con su rol. Borrar del `.env` las
       credenciales de admin de desarrollo (`TORN_ADMIN_EMAIL`/`TORN_ADMIN_PASSWORD`).
 
 ### 1.3 Instalación en el PC del local
 
+- [ ] Ubuntu Desktop LTS con Docker Engine (no Docker Desktop), actualizaciones de seguridad automáticas
+      (`unattended-upgrades`) y la impresora térmica por CUPS.
+- [ ] Una sola red de Docker para los dos compose (Torn y dte-torn): el backend habla con dte-torn por el
+      nombre del servicio y no por `host.docker.internal:8001`.
 - [ ] Frontend en modo producción: el compose usa `target: dev`; el `Dockerfile.frontend` ya tiene el
       target `runner`. Un compose (o override) de producción para el local.
 - [ ] Todo arranca solo al encender: Docker al iniciar sesión, `restart` en los servicios (ya existe) y
@@ -72,8 +74,12 @@ y el [intercambio](intercambio.md) cuando haya correo.
 
 ### 1.4 Respaldo (no existe nada hoy)
 
+- [ ] Servidor de respaldo (lo consigue el usuario antes de pasar a producción).
 - [ ] Respaldo diario automático de las **dos** bases (Torn y dte-torn) y del bucket de MinIO (XML
-      firmados, write-once), fuera del PC: disco externo y copia en la nube.
+      firmados, write-once), fuera del PC. Diseño propuesto el 2026-09-25: `restic` sobre SFTP, repositorio
+      cifrado, y un usuario SFTP que **no puede borrar** (así un PC comprometido no se lleva los respaldos).
+      Los XML ya van por empresa en MinIO (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`):
+      una carpeta por empresa sale sola; agregar un índice `tenant_id -> RUT y razón social`.
 - [ ] Los XML de los DTE hay que guardarlos por años (plazo del SII): el respaldo no es opcional.
 - [ ] La llave maestra de dte-torn (`DTE_MASTER_KEY`) respaldada **aparte** de los datos: sin ella los
       certificados y CAF cifrados no se pueden leer (ver "La llave maestra" en `dte-torn/README.md`).
@@ -83,12 +89,14 @@ y el [intercambio](intercambio.md) cuando haya correo.
 
 - [ ] Auditoría con `security-audit` sobre backend, frontend y dte-torn (modo completo, pedirlo así).
 - [ ] Puertos: el compose de Torn publica `5432`, `8000` y `3000` en todas las interfaces, así que son
-      visibles en la red del local (y en el wifi, si lo hay). Publicarlos solo en `127.0.0.1`. dte-torn
-      ya lo hace.
+      visibles en la red del local (y en el wifi, si lo hay). Todo corre en el mismo PC: las bases,
+      MinIO, Redis y dte-torn sin puertos publicados (solo red interna de Docker); el frontend y el
+      backend solo en `127.0.0.1`, porque el navegador llama al backend directo (`NEXT_PUBLIC_API_URL`).
 - [ ] `TORN_ENV=production`, `SECRET_KEY` nueva, contraseñas nuevas de Postgres y MinIO (hoy
       `minioadmin` por defecto en dte-torn).
-- [ ] Cifrado del disco (BitLocker o LUKS): el PC guarda el certificado digital de la empresa y la
-      llave que lo descifra.
+- [ ] Cifrado del disco (LUKS): el PC guarda el certificado digital de la empresa y la llave que lo
+      descifra. Por decidir cómo se desbloquea al encender: con clave, el personal la teclea cada mañana;
+      con TPM, arranca solo pero protege menos si se roban el PC entero.
 - [ ] Acceso remoto sin abrir puertos en el router del local: una VPN tipo Tailscale o un túnel, con
       SSH solo por llave (sin contraseña).
 - [ ] Actualizaciones del sistema operativo y de Docker fuera del horario de atención.
