@@ -5,7 +5,7 @@ Falta la declaración de cumplimiento de la representante legal (#48).
 
 **Orden (actualizado 2026-09-25 por el usuario):** primero las prioridades P2 y P3 de la sección 0.
 Después, sin orden fijo todavía: lo demás de este archivo, la [certificación de boletas](certificacion_boletas.md)
-y [autocompletar por RUT](autocompletar_rut_sii.md). El piloto en el local de JCB y el lanzamiento de
+y [autocompletar por RUT](autocompletar_rut_sii.md), que va antes del [plan de administración](administracion.md). El piloto en el local de JCB y el lanzamiento de
 Factureando están en [`lanzamiento.md`](lanzamiento.md) (seguridad incluida). El
 [intercambio](intercambio.md), cuando haya casilla de correo.
 

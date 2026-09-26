@@ -9,6 +9,9 @@ con los campos de todos los días a la vista y el resto en "Más opciones". No s
 esconde lo que no se usa a diario. Cuando el negocio tiene que elegir cómo trabajar, la elección vive en
 **Configuración → Mi negocio**, no en el código.
 
+**Orden:** primero el autocompletado por RUT ([`autocompletar_rut_sii.md`](autocompletar_rut_sii.md));
+de este plan, al menos C2 (fichas de Clientes y Proveedores) depende de él.
+
 ---
 
 ## 1. Qué es el kardex y cómo está
@@ -305,7 +308,6 @@ revisión con el usuario antes del piloto.
 
 Fuera de alcance: el POS.
 
-**Relacionado:** el autocompletado por RUT tiene su propio plan en
-[`autocompletar_rut_sii.md`](autocompletar_rut_sii.md) y cubre tres formularios en cascada: empresa nueva
-(saas-admin), cliente y proveedor. Busca primero en los clientes y proveedores de la misma empresa y
-después en la nómina del SII. Entra en las fichas de C2 a través de un campo `RutInput` común.
+**Orden:** antes de este plan, o al menos antes de C2, va el autocompletado por RUT
+([`autocompletar_rut_sii.md`](autocompletar_rut_sii.md)), que cubre empresa nueva (saas-admin), cliente y
+proveedor con un campo `RutInput` común. C2 lo reutiliza.

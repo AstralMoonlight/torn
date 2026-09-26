@@ -6,11 +6,12 @@ un RUT de empresa:
 | Formulario | Archivo | Qué se llena |
 |---|---|---|
 | Empresa nueva (superusuario) | `frontend/app/saas-admin/tenants/page.tsx` | Nombre, giro y actividades económicas (`economic_activities`, hoy se buscan a mano una por una) |
-| Cliente | `frontend/components/customers/CustomerForm.tsx` | Razón social, giro y, si ya es proveedor, el resto |
-| Proveedor | `frontend/components/providers/ProviderDialog.tsx` | Razón social, giro y, si ya es cliente, el resto |
+| Cliente | `frontend/components/customers/CustomerForm.tsx` | Razón social y giro |
+| Proveedor | `frontend/components/providers/ProviderDialog.tsx` | Razón social y giro |
 
-> **Prioridad (2026-09-25):** va después de las prioridades P2 y P3 de
-> [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md).
+> **Orden (2026-09-25):** esto va **antes** del plan de administración
+> ([`administracion.md`](administracion.md)), o al menos antes de lo que allá usa esta función: las fichas
+> de Clientes y Proveedores (tarea C2) se construyen sobre `RutInput`.
 
 ## Decisión (2026-09-25)
 
@@ -80,31 +81,17 @@ modo `--diario` (espera hasta las 04:00, sincroniza, vuelve a esperar), con
 `restart: always` como el resto. No corre dentro del proceso de uvicorn para
 que una carga pesada no frene las ventas.
 
-### Búsqueda en cascada (decidido 2026-09-25)
-
-Una sola búsqueda, que prueba las fuentes en orden y se queda con la primera que responde:
-
-1. **Datos propios de la empresa** (solo en Clientes y Proveedores): si el RUT ya está registrado como
-   cliente o como proveedor de esta misma empresa, se copian todos sus datos (dirección, comuna, ciudad,
-   email, teléfono). Un proveedor que también compra, o al revés, se escribe una sola vez.
-2. **Nómina del SII** (`contribuyentes_sii`): razón social, giro y actividades vigentes.
-3. Nada: se sigue a mano, sin mensaje de error.
-
-Nunca se busca en los clientes o proveedores de **otra** empresa (serían datos de otro tenant). En
-saas-admin no hay empresa elegida, así que solo aplica el paso 2.
-
 ### API y formularios
 
-- `GET /contribuyentes/{rut}` (autenticado): recorre la cascada y devuelve los campos encontrados y de qué
-  fuente salieron (`propio` o `sii`); 404 si no hay nada. El paso 1 usa el esquema del tenant de la
-  cabecera `X-Tenant-Id`; sin tenant (saas-admin, superusuario) salta al paso 2.
+- `GET /contribuyentes/{rut}` (autenticado, también para el superusuario sin empresa elegida): razón
+  social, giro y actividades vigentes desde `contribuyentes_sii`; 404 si no está.
 - Frontend: un solo campo `RutInput` (formatea, valida con `lib/rut.ts` y, al salir con un RUT válido,
   llama la búsqueda) que usan los tres formularios. Llena **solo los campos vacíos** (no pisa lo que el
-  usuario ya escribió) y muestra una línea chica: "Datos del SII" o "Ya registrado como proveedor".
+  usuario ya escribió) y muestra una línea chica: "Datos del SII". Si da 404, no muestra nada.
 - En saas-admin, las actividades vigentes quedan marcadas en `economic_activities`; se pueden quitar.
 - Clientes y Proveedores pasan a la ficha lateral en el plan de administración
-  ([`administracion.md`](administracion.md), tarea C2): `RutInput` entra ahí; si esta tarea llega antes,
-  se pone en los formularios actuales y se mueve con ellos.
+  ([`administracion.md`](administracion.md), tarea C2), que se construyen sobre `RutInput`. Por eso esto
+  va primero: se pone en los formularios actuales y C2 lo reutiliza.
 
 ## Tareas
 
@@ -116,8 +103,7 @@ saas-admin no hay empresa elegida, así que solo aplica el paso 2.
       transacción. Tests del parser con un recorte de cada archivo y de la
       detección de cambios (sin cambios no toca la tabla).
 - [ ] Modo `--diario` y servicio en `docker-compose.yml`.
-- [ ] Endpoint `GET /contribuyentes/{rut}` con la cascada + tests (propio gana a SII; sin tenant solo SII;
-      nunca devuelve datos de otro tenant).
+- [ ] Endpoint `GET /contribuyentes/{rut}` + tests (encontrado, 404, superusuario sin empresa).
 - [ ] `RutInput` y autocompletado en los tres formularios: empresa nueva (saas-admin), cliente y
       proveedor.
 - [ ] Documentar en `CLAUDE.md` el servicio nuevo y cómo forzar una sincronización.
