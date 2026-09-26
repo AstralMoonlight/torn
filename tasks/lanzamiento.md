@@ -19,8 +19,9 @@ y el [intercambio](intercambio.md) cuando haya correo.
 ## 0. Decisiones que bloquean el piloto
 
 - [x] **Documentos del piloto (decidido 2026-09-25):** boleta (39), factura (33) y nota de crédito (61).
-      Nota de débito (56) muy rara, una al año. No se usan exenta (34, 41) ni guía (52): el POS del
-      personal no debería ofrecerlas. Por eso el piloto necesita las **dos** cosas:
+      Nota de débito (56) muy rara, una al año. El POS sigue ofreciendo **todos** los tipos disponibles
+      (34, 41, 52 incluidos): si está disponible para trabajarse, se muestra (decidido 2026-09-25). El
+      piloto necesita las **dos** cosas:
       - certificación de boletas ([`certificacion_boletas.md`](certificacion_boletas.md), #49);
       - envío del XML a la casilla de los clientes que reciben factura ([`intercambio.md`](intercambio.md)
         parte a, #56). La casilla de JCB ya existe: `xml@distribuidorajcb.cl`.
@@ -81,7 +82,10 @@ y el [intercambio](intercambio.md) cuando haya correo.
       `rest-server --append-only`: el PC agrega pero no puede borrar (un PC comprometido no se lleva los
       respaldos) y la limpieza (`forget --prune`) corre en el servidor. Si es solo una cuenta SFTP, restic
       funciona igual pero sin esa protección. Los XML ya van por empresa en MinIO
-      (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`). Retención: 6 años.
+      (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`).
+- [ ] Bases de datos en el **mismo** respaldo: `pg_dump` de Torn y de dte-torn entra a restic por
+      `--stdin`, en la misma pasada que los XML, para que cada foto tenga bases y XML del mismo momento.
+      Retención (`restic forget`): 14 diarias, 8 semanales, 12 mensuales y 6 anuales (plazo del SII).
 - [ ] Los XML de los DTE hay que guardarlos por años (plazo del SII): el respaldo no es opcional.
 - [ ] La llave maestra de dte-torn (`DTE_MASTER_KEY`) respaldada **aparte** de los datos: sin ella los
       certificados y CAF cifrados no se pueden leer (ver "La llave maestra" en `dte-torn/README.md`).
