@@ -27,6 +27,46 @@ y el [intercambio](intercambio.md) cuando haya correo.
         parte a, #56). La casilla de JCB ya existe: `xml@distribuidorajcb.cl`.
 - [x] **Sistema operativo:** Linux (decidido 2026-09-25). Distro: Ubuntu Desktop LTS (ver 1.3).
 - [ ] **Fecha de corte con Bsale por tipo de documento** (#55): nunca el mismo tipo en los dos a la vez.
+- [x] **Bsale como respaldo (decidido 2026-09-26):** queda activo un mes más después del corte, con su
+      propio lote de folios. Factureando nunca usa ese lote.
+- [x] **Sin marcha blanca en paralelo con Bsale** (descartada 2026-09-26).
+
+## 0.1 Plan de trabajo antes del piloto (2026-09-26)
+
+Lo que falta en código para que el personal no tropiece el primer día. Una tarea = un commit con la
+suite verde. Los detalles de A1 a C1 están en [`administracion.md`](administracion.md). El resto de ese
+plan (lista + ficha, menú, Mi negocio) va **después** del piloto, con lo que ahí se aprenda.
+
+| # | Tarea | Por qué antes del piloto | Estado |
+|---|---|---|---|
+| 1 | Rotación de logs de Docker (driver `local` en los dos compose) | El `json-file` crece sin límite y llena el disco del PC | ✅ `2bfd862` |
+| 2 | **A1** "Sin marca" manda `null`; fuera "Sin impuesto (0%)" | Editar un producto fallaba al cargar el catálogo | ✅ `df4b4c6` |
+| 3 | **A5** El cierre de caja resta las devoluciones en efectivo | La primera devolución descuadra el arqueo por el doble | Hecho en la rama `fix/arqueo-devoluciones`, sin mergear |
+| 4 | **NC de una boleta sin cliente** (consumidor final) | dte-torn exige giro, dirección y comuna al receptor de una 61; sin esto no se devuelve el grueso de las ventas. Test en dte-torn y en el backend | |
+| 5 | **A3** Historial sin tope de 50 | Ver abajo | |
+| 6 | **K1 + K3** Ajuste de stock con kardex (Conteo, Merma, Stock inicial) y `PUT /products` sin `stock_actual` | La toma de inventario del día del corte tiene que quedar anotada | |
+| 7 | **C1** Pagos de clientes con crédito interno (saldo, registrar pago; si es efectivo, entra al cierre de caja) | JCB fía: hoy la deuda sube y nunca baja | |
+| 8 | Alertas por correo (0.2) | Nadie está mirando el PC | |
+
+**A3, decidido (2026-09-26):** el historial busca en **todas** las ventas, en el servidor, no dentro de
+las últimas 50. Por defecto muestra las de hoy; se cambia el día o el rango de fechas, y el buscador
+(folio, cliente o RUT) recorre todo sin importar la fecha, para encontrar la venta que se quiere devolver
+aunque sea de hace un mes. Resultados paginados.
+
+## 0.2 Alertas por correo (decidido 2026-09-26)
+
+Un revisor diario que manda correo solo cuando hay algo que hacer:
+
+| Alerta | Va a |
+|---|---|
+| Documentos que el SII no ha aceptado después de 24 horas (RECHAZADO, ERROR o sin respuesta) | El **cliente**, al correo registrado de la empresa |
+| El respaldo de la noche falló | El administrador de Factureando (el usuario) |
+| Disco sobre 80% | El administrador |
+| Pocos folios (`DTE_FOLIO_UMBRAL_ALERTA`) | El administrador |
+
+**Por decidir:** desde qué casilla salen los correos (en el piloto, ¿la de JCB?; en Factureando, una del
+dominio propio) y dónde corre el revisor (el scheduler de dte-torn ya revisa folios y certificados).
+Depende del respaldo (1.4) para la alerta de respaldo.
 
 ## 1. Piloto en el local
 
@@ -145,6 +185,15 @@ Ya estaba acordado: seguridad, luego servidor y release. Lo que agrega el lanzam
 - [ ] Intercambio con correo propio del dominio ([`intercambio.md`](intercambio.md)).
 - [ ] Alta de clientes nuevos: empresa, certificado, CAF, usuarios, en un flujo guiado.
 - [ ] Cobro: $33.333 mensual, packs de 6 y 12 meses con impresora (precio ya decidido).
+- [ ] **Administración del negocio de Factureando** (surgió el 2026-09-26, sin diseñar). Hoy saas-admin
+      solo crea empresas. Hace falta:
+      - suscripciones: plan, pack, fecha de inicio y de vencimiento de cada empresa;
+      - cobro con pasarela de pago (12 cuotas sin interés en los packs, ya considerado en el precio);
+      - cobranza: aviso antes del vencimiento, qué pasa si no paga (¿solo lectura?, ¿plazo de gracia?);
+      - facturación de Factureando a sus clientes, emitida por el mismo sistema como una empresa más,
+        con el RUT de la empresa propia (arriba).
+      No bloquea el piloto (JCB no paga), pero sí la venta al primer cliente externo. Merece su propio
+      plan en `tasks/`.
 - [ ] Términos de servicio y política de privacidad (datos de clientes finales de cada empresa).
 - [ ] Canal de soporte y horario.
 - [ ] Autocompletar por RUT ([`autocompletar_rut_sii.md`](autocompletar_rut_sii.md), #50).
