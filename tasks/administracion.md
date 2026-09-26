@@ -265,7 +265,8 @@ navegador; revisión `code-review-and-quality`.
 - [ ] **J2** Caja: botones Entró dinero / Salió dinero y movimientos del turno. S
 - [ ] **C1** `customer_payments` (migración), `POST /customers/{rut}/pagos` (baja `current_balance`; si es
       efectivo y hay control de caja, crea el INGRESO), `GET /customers/{rut}/cuenta`. Tests. M
-- [ ] **C2** Clientes y Proveedores en lista + ficha (3.1, 3.8). S
+- [ ] **C2** Clientes y Proveedores en lista + ficha (3.1, 3.8), con un solo `RutInput` para los dos
+      (lo usa el autocompletado de [`autocompletar_rut_sii.md`](autocompletar_rut_sii.md)). S
 - [ ] **V1** Compras: lista + ficha, `/compras/nueva` con lector y "Crear producto" (3.9). M
 - [ ] **V2** Ventas (ex Historial): lista + ficha con reimprimir y NC. S
 
@@ -302,5 +303,9 @@ revisión con el usuario antes del piloto.
 - Movimientos de caja: Entró dinero / Salió dinero (3.7).
 - Nueva compra como página propia (3.9).
 
-Fuera de alcance: el POS; autocompletar por RUT tiene su plan en
-[`autocompletar_rut_sii.md`](autocompletar_rut_sii.md).
+Fuera de alcance: el POS.
+
+**Relacionado:** el autocompletado por RUT tiene su propio plan en
+[`autocompletar_rut_sii.md`](autocompletar_rut_sii.md) y cubre tres formularios en cascada: empresa nueva
+(saas-admin), cliente y proveedor. Busca primero en los clientes y proveedores de la misma empresa y
+después en la nómina del SII. Entra en las fichas de C2 a través de un campo `RutInput` común.

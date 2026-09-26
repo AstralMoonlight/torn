@@ -1,9 +1,13 @@
-# Autocompletar cliente/proveedor por RUT
+# Autocompletar por RUT (empresas, clientes y proveedores)
 
-Al crear un cliente (`frontend/components/customers/CustomerForm.tsx`) o un
-proveedor (`frontend/components/providers/ProviderDialog.tsx`), escribir el RUT
-y que se llenen solos la **razón social** y el **giro**. La dirección no se
-busca: el usuario la escribe en el momento.
+Escribir un RUT y que se llenen solos los datos que ya se conocen, en los **tres** formularios que piden
+un RUT de empresa:
+
+| Formulario | Archivo | Qué se llena |
+|---|---|---|
+| Empresa nueva (superusuario) | `frontend/app/saas-admin/tenants/page.tsx` | Nombre, giro y actividades económicas (`economic_activities`, hoy se buscan a mano una por una) |
+| Cliente | `frontend/components/customers/CustomerForm.tsx` | Razón social, giro y, si ya es proveedor, el resto |
+| Proveedor | `frontend/components/providers/ProviderDialog.tsx` | Razón social, giro y, si ya es cliente, el resto |
 
 > **Prioridad (2026-09-25):** va después de las prioridades P2 y P3 de
 > [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md).
@@ -76,13 +80,31 @@ modo `--diario` (espera hasta las 04:00, sincroniza, vuelve a esperar), con
 `restart: always` como el resto. No corre dentro del proceso de uvicorn para
 que una carga pesada no frene las ventas.
 
+### Búsqueda en cascada (decidido 2026-09-25)
+
+Una sola búsqueda, que prueba las fuentes en orden y se queda con la primera que responde:
+
+1. **Datos propios de la empresa** (solo en Clientes y Proveedores): si el RUT ya está registrado como
+   cliente o como proveedor de esta misma empresa, se copian todos sus datos (dirección, comuna, ciudad,
+   email, teléfono). Un proveedor que también compra, o al revés, se escribe una sola vez.
+2. **Nómina del SII** (`contribuyentes_sii`): razón social, giro y actividades vigentes.
+3. Nada: se sigue a mano, sin mensaje de error.
+
+Nunca se busca en los clientes o proveedores de **otra** empresa (serían datos de otro tenant). En
+saas-admin no hay empresa elegida, así que solo aplica el paso 2.
+
 ### API y formularios
 
-- `GET` por RUT (autenticado, como el resto) que devuelve razón social, giro y
-  la lista de actividades; 404 si no está.
-- En ambos formularios, al salir del campo RUT válido: si la búsqueda trae
-  datos, llenar razón social y giro **solo si están vacíos** (no pisar lo que
-  el usuario ya escribió). Si da 404, no mostrar nada: se sigue a mano.
+- `GET /contribuyentes/{rut}` (autenticado): recorre la cascada y devuelve los campos encontrados y de qué
+  fuente salieron (`propio` o `sii`); 404 si no hay nada. El paso 1 usa el esquema del tenant de la
+  cabecera `X-Tenant-Id`; sin tenant (saas-admin, superusuario) salta al paso 2.
+- Frontend: un solo campo `RutInput` (formatea, valida con `lib/rut.ts` y, al salir con un RUT válido,
+  llama la búsqueda) que usan los tres formularios. Llena **solo los campos vacíos** (no pisa lo que el
+  usuario ya escribió) y muestra una línea chica: "Datos del SII" o "Ya registrado como proveedor".
+- En saas-admin, las actividades vigentes quedan marcadas en `economic_activities`; se pueden quitar.
+- Clientes y Proveedores pasan a la ficha lateral en el plan de administración
+  ([`administracion.md`](administracion.md), tarea C2): `RutInput` entra ahí; si esta tarea llega antes,
+  se pone en los formularios actuales y se mueve con ellos.
 
 ## Tareas
 
@@ -94,8 +116,10 @@ que una carga pesada no frene las ventas.
       transacción. Tests del parser con un recorte de cada archivo y de la
       detección de cambios (sin cambios no toca la tabla).
 - [ ] Modo `--diario` y servicio en `docker-compose.yml`.
-- [ ] Endpoint de búsqueda por RUT + test.
-- [ ] Autocompletado en `CustomerForm.tsx` y `ProviderDialog.tsx`.
+- [ ] Endpoint `GET /contribuyentes/{rut}` con la cascada + tests (propio gana a SII; sin tenant solo SII;
+      nunca devuelve datos de otro tenant).
+- [ ] `RutInput` y autocompletado en los tres formularios: empresa nueva (saas-admin), cliente y
+      proveedor.
 - [ ] Documentar en `CLAUDE.md` el servicio nuevo y cómo forzar una sincronización.
 
 ## Por decidir
