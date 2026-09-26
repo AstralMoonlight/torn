@@ -1,0 +1,136 @@
+# Lanzamiento: piloto en el local de JCB y después Factureando
+
+Decidido por el usuario el 2026-09-25:
+
+- El producto se llamará **Factureando**. El dominio `.cl` se compra en nic.cl en más o menos un mes.
+  "Torn" queda como nombre clave del repo.
+- Antes de eso, **piloto de 30 a 45 días** en el local de DISTRIBUIDORA JCB: un PC propio en el local, que
+  el personal enciende al abrir y apaga al cerrar. Se usa por `localhost`, sin dominio. Única empresa.
+- Soporte: el usuario entra por SSH o va en persona (10 minutos).
+- Quienes lo usan son personas de más de 60 años: **la facilidad de uso es requisito**, no un extra.
+- Seguridad con la skill `security-audit` de Cloudflare (instalada globalmente el 2026-09-25).
+
+Orden general (ver [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md)): prioridad P3,
+certificación de boletas ([`certificacion_boletas.md`](certificacion_boletas.md)), lo de este archivo,
+y el [intercambio](intercambio.md) cuando haya correo.
+
+---
+
+## 0. Decisiones que bloquean el piloto
+
+- [ ] **Qué documentos emite el piloto.** JCB vende sobre todo con boleta, y las boletas necesitan su
+      propia certificación (10 a 15 días hábiles solo para revisar la solicitud, según el SII). Las
+      facturas a empresas requieren enviarles el XML a su casilla de intercambio, que aún no existe
+      ([`intercambio.md`](intercambio.md), #56). Opciones:
+      a) esperar las boletas y partir con boletas en Torn y facturas en Bsale;
+      b) partir con facturas en Torn y hacer un intercambio mínimo (SMTP de un correo existente);
+      c) partir con todo en Torn cuando estén las dos cosas.
+- [ ] **Sistema operativo del PC** (Windows o Linux). Cambia cómo se arranca solo, el SSH y el respaldo.
+- [ ] **Fecha de corte con Bsale por tipo de documento** (#55): nunca el mismo tipo en los dos a la vez.
+
+## 1. Piloto en el local
+
+### 1.1 Paso a producción ante el SII
+
+- [ ] Declaración de cumplimiento de factura (#48), la hace la representante en maullín
+      (https://maullin.sii.cl/cvc_cgi/dte/pe_avance7).
+- [ ] Emisor de JCB en modo PROD con la **Res. 80 del 22-08-2014** (la de certificación era la 0 de 2020).
+- [ ] CAF de producción pedidos en palena, cargados en dte-torn. Pantalla de folios que avise si el CAF
+      no es del ambiente del emisor (#54). Alerta de pocos folios en el dashboard (#51).
+- [ ] Correos de contacto de la empresa en el SII: hoy apuntan a Haulmer (dte.haulmer.com). Cambiarlos
+      (lo hace el usuario en el SII).
+- [ ] Una venta real de cada tipo que se vaya a usar, verificada ACEPTADO en el SII (#47, adaptado a palena).
+- [ ] Retirar las tablas DTE locales del backend (#52) una vez confirmados los CAF en dte-torn.
+
+### 1.2 Datos reales de JCB
+
+- [ ] Vaciar el tenant 35 de los datos de demostración que cargó `seed_jcb.py` (conservar la empresa,
+      el emisor y su enlace con dte-torn: **nunca cambiar su id en dte-torn**).
+- [ ] Importar productos (código de barras, precio, stock, impuesto), clientes y proveedores desde una
+      exportación de Bsale. No existe importador: evaluar si basta un script o hace falta una pantalla.
+- [ ] Toma de inventario inicial el día del corte.
+- [ ] Cuentas para la madre del usuario y la otra vendedora, con su rol. Borrar del `.env` las
+      credenciales de admin de desarrollo (`TORN_ADMIN_EMAIL`/`TORN_ADMIN_PASSWORD`).
+
+### 1.3 Instalación en el PC del local
+
+- [ ] Frontend en modo producción: el compose usa `target: dev`; el `Dockerfile.frontend` ya tiene el
+      target `runner`. Un compose (o override) de producción para el local.
+- [ ] Todo arranca solo al encender: Docker al iniciar sesión, `restart` en los servicios (ya existe) y
+      el navegador abriendo el POS a pantalla completa. Inicio de sesión del sistema sin pasos extra
+      para el personal, sin dejar el PC sin contraseña.
+- [ ] Apagado diario: comprobar que apagar a mitad de un envío al SII no pierde nada (el scheduler de
+      dte-torn reconcilia contra Postgres al arrancar: probarlo apagando con documentos en cola).
+- [ ] **Sin internet**: comprobar qué pasa si se cae la conexión. dte-torn es local, así que la venta
+      debería firmarse y quedar en cola hasta que vuelva la red. Verificarlo y que la pantalla lo diga
+      en palabras simples.
+- [ ] Hora del PC en Chile (los contenedores corren en UTC; dte-torn ya usa `hoy_chile()`).
+- [ ] Impresora térmica: ancho real (57 u 80 mm), impresión sin el diálogo del navegador (modo kiosco),
+      y calibrar el timbre leyéndolo con un lector de verdad (`COLUMNAS_TIMBRE`, pendiente en `claude.md`).
+- [ ] Lector de código de barras probado con productos reales (`useBarcodeScanner`).
+- [ ] UPS o al menos regleta con protección: un corte de luz a mitad de venta es el caso más probable.
+
+### 1.4 Respaldo (no existe nada hoy)
+
+- [ ] Respaldo diario automático de las **dos** bases (Torn y dte-torn) y del bucket de MinIO (XML
+      firmados, write-once), fuera del PC: disco externo y copia en la nube.
+- [ ] Los XML de los DTE hay que guardarlos por años (plazo del SII): el respaldo no es opcional.
+- [ ] La llave maestra de dte-torn (`DTE_MASTER_KEY`) respaldada **aparte** de los datos: sin ella los
+      certificados y CAF cifrados no se pueden leer (ver "La llave maestra" en `dte-torn/README.md`).
+- [ ] Probar una restauración completa en otra máquina antes de empezar el piloto.
+
+### 1.5 Seguridad del piloto (con la skill `security-audit`)
+
+- [ ] Auditoría con `security-audit` sobre backend, frontend y dte-torn (modo completo, pedirlo así).
+- [ ] Puertos: el compose de Torn publica `5432`, `8000` y `3000` en todas las interfaces, así que son
+      visibles en la red del local (y en el wifi, si lo hay). Publicarlos solo en `127.0.0.1`. dte-torn
+      ya lo hace.
+- [ ] `TORN_ENV=production`, `SECRET_KEY` nueva, contraseñas nuevas de Postgres y MinIO (hoy
+      `minioadmin` por defecto en dte-torn).
+- [ ] Cifrado del disco (BitLocker o LUKS): el PC guarda el certificado digital de la empresa y la
+      llave que lo descifra.
+- [ ] Acceso remoto sin abrir puertos en el router del local: una VPN tipo Tailscale o un túnel, con
+      SSH solo por llave (sin contraseña).
+- [ ] Actualizaciones del sistema operativo y de Docker fuera del horario de atención.
+- [ ] Sesiones: cerrar sesión o bloquear al rato de inactividad, para que no quede el POS abierto con
+      el usuario administrador.
+
+### 1.6 Facilidad de uso para personas mayores
+
+Revisar cada flujo que ellas usan (vender, cobrar, boleta o factura, devolución, abrir y cerrar caja,
+buscar un producto, ver el día) con la skill `ui-ux-pro-max` y estos criterios:
+
+- [ ] Letra grande y alto contraste por defecto; botones grandes, con texto y no solo íconos.
+- [ ] Nada de jerga: "folio", "CAF", "DTE", "track" no aparecen en las pantallas del personal.
+- [ ] Mensajes de error que dicen qué hacer ("Revise la conexión a internet y vuelva a intentar"),
+      nunca códigos.
+- [ ] Confirmación antes de lo que no se deshace (anular, devolver, cerrar caja).
+- [ ] Menú del personal reducido a lo que usa; lo de administración queda para el usuario.
+- [ ] Una hoja impresa de una página por tarea, junto al PC ("Cómo vender", "Cómo cerrar la caja").
+- [ ] Capacitación en el local antes del primer día y acompañamiento el primer día de uso real.
+
+### 1.7 Durante el piloto (30 a 45 días)
+
+- [ ] Registro de opiniones y problemas: un archivo `tasks/piloto_jcb.md` con fecha, quién, qué pasó
+      y qué se decidió. Revisarlo cada semana con ellas.
+- [ ] Cómo se actualiza el PC: respaldo primero, luego `git pull` y `docker compose up -d --build` por
+      SSH fuera del horario, y verificar una venta de prueba en modo Desarrollador.
+- [ ] Revisar cada día los documentos RECHAZADO o en ERROR (el historial ya los muestra).
+- [ ] Al cierre del piloto: decidir qué cambia antes de abrir a otros clientes.
+
+## 2. Lanzamiento de Factureando (después del piloto)
+
+Ya estaba acordado: seguridad, luego servidor y release. Lo que agrega el lanzamiento comercial:
+
+- [ ] Marca: renombrar "Torn" en la interfaz, impresos y correos a Factureando.
+- [ ] Dominio `factureando.cl` en nic.cl.
+- [ ] Empresa propia constituida, con su RUT, e inscripción como proveedor de software en el SII
+      (hoy JCB está certificada como software propio). Averiguar qué exige el SII para que otras
+      empresas usen el sistema.
+- [ ] Servidor: TLS, backups, monitoreo, despliegue repetible, dte-torn sin puertos expuestos.
+- [ ] Intercambio con correo propio del dominio ([`intercambio.md`](intercambio.md)).
+- [ ] Alta de clientes nuevos: empresa, certificado, CAF, usuarios, en un flujo guiado.
+- [ ] Cobro: $33.333 mensual, packs de 6 y 12 meses con impresora (precio ya decidido).
+- [ ] Términos de servicio y política de privacidad (datos de clientes finales de cada empresa).
+- [ ] Canal de soporte y horario.
+- [ ] Autocompletar por RUT ([`autocompletar_rut_sii.md`](autocompletar_rut_sii.md), #50).

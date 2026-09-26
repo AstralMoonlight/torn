@@ -1,12 +1,13 @@
 # Alinear backend y frontend con dte-torn
 
-Estado al 2026-09-25. La certificación de factura está cerrada del lado de Torn: todo declarado y
-muestras enviadas, **esperando la validación del SII**.
+Estado al 2026-09-25. **Certificación de factura aprobada por el SII** (muestras impresas incluidas).
+Falta la declaración de cumplimiento de la representante legal (#48).
 
 **Orden (actualizado 2026-09-25 por el usuario):** primero las prioridades P2 y P3 de la sección 0.
-Después, sin orden fijo todavía: lo demás de este archivo, la certificación de boletas y
-[autocompletar por RUT](autocompletar_rut_sii.md). Al final, seguridad → servidor y release, y el
-[intercambio](intercambio.md) cuando haya casilla de correo.
+Después, sin orden fijo todavía: lo demás de este archivo, la [certificación de boletas](certificacion_boletas.md)
+y [autocompletar por RUT](autocompletar_rut_sii.md). El piloto en el local de JCB y el lanzamiento de
+Factureando están en [`lanzamiento.md`](lanzamiento.md) (seguridad incluida). El
+[intercambio](intercambio.md), cuando haya casilla de correo.
 
 ---
 
@@ -89,8 +90,8 @@ acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porc
 | Set guía de despacho | SOK | 0260086000 |
 | Libros de ventas, compras y guías | LOK / SOK | 0260088990 · 0260084758 · 0260086522 |
 | Simulación: 24 documentos reales de Bsale (17×33, 34, 2×52, 3×61, 56) | EPR 24/24, aprobada | 0260198860 |
-| Muestras impresas: 28 del set + 7 de simulación | Enviadas en la declaración, **esperando validación del SII** | reemplazo de simulación: 0260200310 |
-| Declaración de cumplimiento (representante legal) | Pendiente, tras la validación | - |
+| Muestras impresas: 28 del set + 7 de simulación | **Aprobadas (2026-09-25)** | reemplazo de simulación: 0260200310 |
+| Declaración de cumplimiento (representante legal) | Pendiente (#48) | - |
 
 Cambios de código de esta etapa (dte-torn):
 
@@ -173,7 +174,7 @@ Cada una se trabaja como un issue: commit, tests y verificación.
 
 ### Fuera de esta etapa
 
-- **Boletas (39/41):** su propia certificación.
+- **Boletas (39/41):** su propia certificación, en [`certificacion_boletas.md`](certificacion_boletas.md).
 - **Libros de compra/venta:** los reemplaza el RCV del SII. Solo se usaron en la certificación.
 
 ---

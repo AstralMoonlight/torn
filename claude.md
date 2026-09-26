@@ -7,7 +7,7 @@ Todo lo aquí descrito proviene de la inspección directa de los archivos locale
 
 ## 1. Descripción General
 
-**Torn** es un SaaS chileno de **facturación electrónica (DTE / SII) con motor de Punto de Venta (POS)**.
+**Torn** (nombre clave; el producto se llamará **Factureando**) es un SaaS chileno de **facturación electrónica (DTE / SII) con motor de Punto de Venta (POS)**.
 
 Según la lógica encontrada en `backend/app/`, el sistema cubre:
 
