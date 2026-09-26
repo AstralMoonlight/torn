@@ -85,7 +85,7 @@ y el [intercambio](intercambio.md) cuando haya correo.
       (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`).
 - [ ] Bases de datos en el **mismo** respaldo: `pg_dump` de Torn y de dte-torn entra a restic por
       `--stdin`, en la misma pasada que los XML, para que cada foto tenga bases y XML del mismo momento.
-      Retención (`restic forget`): 14 diarias, 8 semanales, 12 mensuales y 6 anuales (plazo del SII).
+      Retención (`restic forget`): 14 diarias, 8 semanales, 12 mensuales y 6 anuales (plazo del SII). **Plan aprobado por el usuario (2026-09-25).**
 - [ ] Los XML de los DTE hay que guardarlos por años (plazo del SII): el respaldo no es opcional.
 - [ ] La llave maestra de dte-torn (`DTE_MASTER_KEY`) respaldada **aparte** de los datos: sin ella los
       certificados y CAF cifrados no se pueden leer (ver "La llave maestra" en `dte-torn/README.md`).
@@ -101,8 +101,8 @@ y el [intercambio](intercambio.md) cuando haya correo.
 - [ ] `TORN_ENV=production`, `SECRET_KEY` nueva, contraseñas nuevas de Postgres y MinIO (hoy
       `minioadmin` por defecto en dte-torn).
 - [ ] Cifrado del disco (LUKS): el PC guarda el certificado digital de la empresa y la llave que lo
-      descifra. Por decidir cómo se desbloquea al encender: con clave, el personal la teclea cada mañana;
-      con TPM, arranca solo pero protege menos si se roban el PC entero.
+      descifra. **Decidido (2026-09-25): desbloqueo por TPM**, el PC arranca solo sin teclear nada. Protege
+      si sacan el disco; si se roban el PC entero, la barrera es la contraseña de inicio de Linux.
 - [ ] Acceso remoto sin abrir puertos en el router del local: una VPN tipo Tailscale o un túnel, con
       SSH solo por llave (sin contraseña).
 - [ ] Actualizaciones del sistema operativo y de Docker fuera del horario de atención.
