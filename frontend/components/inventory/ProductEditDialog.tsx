@@ -21,6 +21,10 @@ import { Product, updateProduct } from '@/services/products'
 import { getBrands, Brand } from '@/services/brands'
 import { type Tax } from '@/services/config'
 
+// Radix no admite "" como valor de un SelectItem; "Sin marca" usa este y se
+// manda como null (un 0 viola la FK de brands).
+const SIN_MARCA = 'ninguna'
+
 interface Props {
     open: boolean
     product: Product | null
@@ -52,7 +56,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
             setBaseName(product.nombre)
             setBaseSku(product.codigo_interno)
             setBaseDescription(product.descripcion || '')
-            setSelectedBrand(product.brand_id ? product.brand_id.toString() : '')
+            setSelectedBrand(product.brand_id ? product.brand_id.toString() : SIN_MARCA)
             setSelectedTax(product.tax_id ? product.tax_id.toString() : '')
             setControlStock(product.controla_stock)
 
@@ -81,7 +85,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 nombre: baseName,
                 codigo_interno: baseSku,
                 descripcion: baseDescription || null,
-                brand_id: selectedBrand ? parseInt(selectedBrand) : null,
+                brand_id: selectedBrand && selectedBrand !== SIN_MARCA ? parseInt(selectedBrand) : null,
                 tax_id: selectedTax ? parseInt(selectedTax) : null,
                 controla_stock: controlStock,
             }
@@ -169,7 +173,7 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                         <SelectValue placeholder="Seleccionar marca" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin marca</SelectItem>
+                                        <SelectItem value={SIN_MARCA}>Sin marca</SelectItem>
                                         {brands.map(b => (
                                             <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                                         ))}
@@ -191,10 +195,9 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                 <Label>Impuesto aplicado</Label>
                                 <Select value={selectedTax} onValueChange={setSelectedTax}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar impuesto" />
+                                        <SelectValue placeholder="IVA (por defecto)" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Sin impuesto (0%)</SelectItem>
                                         {taxes.map(t => (
                                             <SelectItem key={t.id} value={t.id.toString()}>
                                                 {t.name} ({(t.rate * 100).toFixed(0)}%)
