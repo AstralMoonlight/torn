@@ -1,7 +1,15 @@
+# Driver `local`: rota solo (5 archivos de 20 MB por contenedor, comprimidos).
+# El `json-file` por defecto crece sin límite y, en un PC que corre meses,
+# termina llenando el disco.
+x-logging: &logging
+  logging:
+    driver: local
+
 services:
   db:
     image: postgres:18-alpine
     container_name: torn_db
+    <<: *logging
     restart: always
     environment:
       # Se leen del .env, que no se versiona. Son las mismas TORN_DB_* que usa
@@ -28,6 +36,7 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     container_name: torn_backend
+    <<: *logging
     restart: always
     ports:
       - "8000:8000"
@@ -54,6 +63,7 @@ services:
       # incrusta las NEXT_PUBLIC_* en el bundle al compilar.
       target: dev
     container_name: torn_frontend
+    <<: *logging
     restart: always
     ports:
       - "3000:3000"

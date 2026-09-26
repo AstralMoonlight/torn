@@ -1,7 +1,14 @@
 name: dte-torn
 
+# Driver `local`: rota solo (5 archivos de 20 MB por contenedor). El `json-file`
+# por defecto crece sin límite y termina llenando el disco.
+x-logging: &logging
+  logging:
+    driver: local
+
 # Lo común a la API, los workers y el scheduler: misma imagen, mismo entorno.
 x-app: &app
+  <<: *logging
   build: .
   image: dte-torn-app
   env_file: .env
@@ -26,6 +33,7 @@ x-worker: &worker
 
 services:
   db:
+    <<: *logging
     restart: unless-stopped
     image: postgres:18-alpine
     environment:
@@ -48,6 +56,7 @@ services:
       retries: 10
 
   redis:
+    <<: *logging
     restart: unless-stopped
     image: redis:8-alpine
     command: ["redis-server", "--appendonly", "no"]
@@ -58,6 +67,7 @@ services:
       retries: 10
 
   minio:
+    <<: *logging
     restart: unless-stopped
     # quay.io y no Docker Hub: `minio/minio` en Hub ya no publica `latest` y el
     # pull falla con "pull access denied", que confunde porque parece un
