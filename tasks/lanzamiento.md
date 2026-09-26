@@ -76,10 +76,12 @@ y el [intercambio](intercambio.md) cuando haya correo.
 
 - [ ] Servidor de respaldo (lo consigue el usuario antes de pasar a producción).
 - [ ] Respaldo diario automático de las **dos** bases (Torn y dte-torn) y del bucket de MinIO (XML
-      firmados, write-once), fuera del PC. Diseño propuesto el 2026-09-25: `restic` sobre SFTP, repositorio
-      cifrado, y un usuario SFTP que **no puede borrar** (así un PC comprometido no se lleva los respaldos).
-      Los XML ya van por empresa en MinIO (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`):
-      una carpeta por empresa sale sola; agregar un índice `tenant_id -> RUT y razón social`.
+      firmados, write-once), fuera del PC. Diseño propuesto el 2026-09-25: `restic`, cifrado en el PC antes de
+      salir, **un repositorio por empresa** (`/respaldos/<RUT>/`). Si el servidor es un VPS propio, con
+      `rest-server --append-only`: el PC agrega pero no puede borrar (un PC comprometido no se lleva los
+      respaldos) y la limpieza (`forget --prune`) corre en el servidor. Si es solo una cuenta SFTP, restic
+      funciona igual pero sin esa protección. Los XML ya van por empresa en MinIO
+      (`{tenant_id}/dte/{tipo}/{folio}/...`, `dte-torn/app/core/almacen.py`). Retención: 6 años.
 - [ ] Los XML de los DTE hay que guardarlos por años (plazo del SII): el respaldo no es opcional.
 - [ ] La llave maestra de dte-torn (`DTE_MASTER_KEY`) respaldada **aparte** de los datos: sin ella los
       certificados y CAF cifrados no se pueden leer (ver "La llave maestra" en `dte-torn/README.md`).
