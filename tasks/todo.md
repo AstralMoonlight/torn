@@ -1,7 +1,7 @@
 # Tareas: set de pruebas SII completo
 
-> **Estado (2026-09-25):** todo declarado y muestras enviadas en la declaración. **Esperando la validación
-> del SII.** Lo que queda es su respuesta y, después, la declaración de cumplimiento del representante legal.
+> **Estado (2026-09-25):** **muestras impresas APROBADAS; certificación de factura terminada.** Falta solo
+> la Declaración de Cumplimiento de Requisitos, que hace el representante legal en el SII.
 > Lo siguiente está en [`alineacion_backend_frontend.md`](alineacion_backend_frontend.md) (prioridades).
 
 Plan y decisiones en [`plan.md`](plan.md). Tests de dte-torn:
@@ -156,7 +156,7 @@ impreso, las cifras llevan punto como separador de miles, y se generan tributari
 instructivo de formato.
 **Aceptación:**
 - [x] `certificacion muestras` genera los PDF de los 3 sets en `setDePruebas/muestras/`
-- [x] Revisión visual del usuario; 28 muestras del set enviadas en la declaración, esperando validación del SII
+- [x] Revisión visual del usuario; 28 muestras del set enviadas en la declaración. **APROBADAS por el SII (2026-09-25)**
 **Dependencias:** Checkpoint C · **Archivos:** `app/dte/pdf.py`, `app/scripts/certificacion.py`, `tests/test_pdf.py` · **Tamaño:** S
 
 ---
@@ -183,5 +183,6 @@ Detalle No Cuadran" (fix bdb1f9d). Guía y libro de guías ya están SOK.
 - [x] Envío único EPR, 24 aceptados, 0 reparos - **track 0260198860 (24-09-2026)**. CAF en `dte-torn/folios/`: 33 80-96, 34 107-108 (sobra el 108), 52 109-110, 61 81-83, 56 66
 - [x] Usuario declara el avance con el track ID
 - [ ] ~~Intercambio de información~~: el SII no lo exigió en esta certificación. Postergado hasta tener casilla de correo: [`intercambio.md`](intercambio.md)
-- [x] Muestras impresas: las del set de pruebas + 7 de la simulación (reemplazo 0260200310), enviadas; esperando validación del SII
+- [x] Muestras impresas: las del set de pruebas + 7 de la simulación (reemplazo 0260200310). **APROBADAS (2026-09-25)**
+- [ ] Declaración de Cumplimiento de Requisitos (representante legal, en el SII)
 - 2026-09-24: las muestras de la simulación 0260198860 no pasan el validador ("Fecha Firma del TED debe ser mayor o igual a la fecha del documento"): FchEmis 25-09 por UTC (fix 248851b). Se emitió un envío de reemplazo con 1 documento por tipo, EPR 5/5, **track 0260200310** (33 F97, 34 F108, 52 F111, 61 F84, 56 F67). Sus PDF están en `setDePruebas/subir_sii_simulacion/`.
