@@ -199,6 +199,28 @@ class CustomerOut(BaseModel):
     updated_at: Optional[datetime] = None
 
 
+class CustomerPaymentCreate(BaseModel):
+    """Pago de deuda de crédito interno."""
+    amount: Decimal = Field(gt=0)
+    payment_method_id: int
+    nota: Optional[str] = Field(default=None, max_length=200)
+
+
+class MovimientoCuenta(BaseModel):
+    """Una línea de la cuenta corriente del cliente: cargo sube la deuda, abono la baja."""
+    fecha: datetime
+    tipo: Literal["VENTA", "NOTA_CREDITO", "PAGO"]
+    detalle: str
+    cargo: Decimal = Decimal(0)
+    abono: Decimal = Decimal(0)
+    sale_id: Optional[int] = None
+
+
+class CuentaCliente(BaseModel):
+    saldo: Decimal
+    movimientos: List[MovimientoCuenta]
+
+
 # ── Product (Producto) ───────────────────────────────────────────────
 
 

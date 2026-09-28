@@ -9,6 +9,7 @@ from sqlalchemy import case, func, desc
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.cash import CashSession
+from app.models.customer import CustomerPayment
 from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
@@ -202,7 +203,13 @@ def close_session(
     total_vuelto = db.query(func.coalesce(func.sum(Sale.vuelto), 0))\
         .filter(Sale.id.in_(db.query(cash_sale_ids.c.id)))        .execution_options(todos_los_modos=True).scalar()
 
-    final_system = active_session.start_amount + total_sales_cash - total_vuelto
+    # Pagos de deuda en efectivo recibidos en este turno.
+    total_pagos_deuda = db.query(func.coalesce(func.sum(CustomerPayment.amount), 0))\
+        .join(PaymentMethod)\
+        .filter(CustomerPayment.cash_session_id == active_session.id, PaymentMethod.code == "EFECTIVO")\
+        .scalar()
+
+    final_system = active_session.start_amount + total_sales_cash - total_vuelto + total_pagos_deuda
     
     active_session.end_time = get_now()
     active_session.final_cash_system = final_system
