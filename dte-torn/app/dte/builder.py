@@ -187,10 +187,16 @@ class DatosDocumento(BaseModel):
         if self.tipo_dte not in BOLETAS:
             if self.receptor is None:
                 raise ValueError(f"El DTE {self.tipo_dte} requiere receptor")
+            # La nota de una boleta va al mismo receptor de la boleta, casi
+            # siempre el consumidor final, sin giro ni dirección (el XSD los
+            # deja opcionales).
+            de_boleta = self.tipo_dte in REQUIEREN_REFERENCIA and any(
+                r.tipo_doc in {str(t) for t in BOLETAS} for r in self.referencias
+            )
             faltan = [
                 campo
                 for campo in ("giro", "direccion", "comuna")
-                if not getattr(self.receptor, campo)
+                if not getattr(self.receptor, campo) and not de_boleta
             ]
             if faltan:
                 raise ValueError(

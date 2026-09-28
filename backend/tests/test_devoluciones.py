@@ -115,3 +115,33 @@ class TestValidacionDeDevoluciones:
 
         db.refresh(otro)
         assert otro.stock_actual == 4
+
+
+def test_nc_de_boleta_a_consumidor_final(client, db_session, fake_dte):
+    """La NC de una boleta va al consumidor final, sin giro ni dirección, y
+    referencia la boleta: dte-torn solo acepta ese receptor incompleto si la
+    referencia es a una 39 o 41."""
+    db_session.add(Customer(rut="66666666-6", razon_social="Cliente Final (Boleta)", giro="Particular"))
+    db_session.add(PaymentMethod(code="EFECTIVO", name="Efectivo"))
+    prod = Product(codigo_interno="B-1", nombre="Pan", precio_neto=1000, controla_stock=True, stock_actual=10)
+    db_session.add(prod)
+    db_session.commit()
+    assert client.post("/cash/open", json={"start_amount": 0}).status_code == 200
+    boleta = client.post("/sales/", json={
+        "rut_cliente": "66666666-6", "tipo_dte": 39,
+        "items": [{"product_id": prod.id, "cantidad": "1"}],
+        "payments": [{"payment_method_id": 1, "amount": "1190"}],
+    })
+    assert boleta.status_code == 201, boleta.text
+
+    resp = client.post("/sales/return", json={
+        "original_sale_id": boleta.json()["id"], "tipo_dte": 61,
+        "items": [{"product_id": prod.id, "cantidad": "1"}],
+        "reason": "Cambio", "return_method_id": 1,
+    })
+
+    assert resp.status_code == 201, resp.text
+    nc = fake_dte.documentos[-1]
+    assert nc["receptor"]["rut"] == "66666666-6"
+    assert nc["receptor"]["direccion"] is None
+    assert nc["referencias"][0]["tipo_doc"] == "39"
