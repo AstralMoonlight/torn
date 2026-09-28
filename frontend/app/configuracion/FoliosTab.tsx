@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import api, { getApiErrorDetail } from "@/services/api";
 import { AlertaError } from "@/components/ui/alerta-error";
+import { useSessionStore } from "@/lib/store/sessionStore";
 import { avisar } from "@/lib/store/uiStore";
 
 type FolioStock = {
@@ -47,7 +48,15 @@ const DTE_NAMES: Record<number, string> = {
  * Folios (CAF) y certificado digital. Ambos viven en dte-torn; el backend
  * solo reenvía (`backend/app/routers/folios.py`).
  */
+/** Dónde se piden los CAF según el modo del emisor: el SII no acepta folios de un ambiente en el otro. */
+const AYUDA_AMBIENTE: Record<'CERT' | 'PROD' | 'DEV', string> = {
+    CERT: "Modo Certificación: los CAF se piden en maullín (ambiente de certificación del SII). Los de producción se rechazan.",
+    PROD: "Modo Producción: los CAF se piden en palena (sitio del SII de producción). Los de certificación se rechazan.",
+    DEV: "Modo Desarrollador: los folios son de prueba y se generan solos; no se cargan CAF.",
+};
+
 export default function FoliosTab() {
+    const ambiente = useSessionStore((s) => s.availableTenants.find((t) => t.id === s.selectedTenantId)?.sii_ambiente);
     const [stocks, setStocks] = useState<FolioStock[]>([]);
     const [certificado, setCertificado] = useState<Certificado | null>(null);
     const [loading, setLoading] = useState(true);
@@ -126,11 +135,11 @@ export default function FoliosTab() {
                 <div>
                     <h2 className="text-xl font-semibold tracking-tight">Gestión de folios (CAF)</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Descarga el CAF desde el sitio del SII y cárgalo aquí.
+                        {AYUDA_AMBIENTE[ambiente ?? 'CERT']}
                     </p>
                 </div>
                 <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
-                <Button onClick={() => cafInput.current?.click()} disabled={subiendo}>
+                <Button onClick={() => cafInput.current?.click()} disabled={subiendo || ambiente === 'DEV'}>
                     {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
                     Cargar CAF
                 </Button>

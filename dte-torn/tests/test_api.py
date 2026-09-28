@@ -226,6 +226,19 @@ async def test_desarrollador_emite_con_folios_de_prueba_y_sin_sii(api) -> None:
     assert caf.status_code == 409
 
 
+async def test_caf_de_otro_ambiente_se_rechaza(api) -> None:
+    h = await _alta(api)  # en CERT
+    palena = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60, idk=300))})
+    assert palena.status_code == 422
+    assert "producción (palena)" in palena.json()["detail"]
+
+    await _cambiar_ambiente(api, h, "PROD")
+    maullin = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60))})
+    assert maullin.status_code == 422
+    assert "certificación (maullín)" in maullin.json()["detail"]
+    assert (await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60, idk=300))})).status_code == 201
+
+
 async def test_cada_ambiente_ve_sus_documentos_y_sus_folios(api) -> None:
     h = await _alta(api)
     assert (await api.post("/documents", json=FACTURA, headers=h)).json()["ambiente"] == "CERT"

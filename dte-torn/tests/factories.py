@@ -37,8 +37,11 @@ def caf_xml(
     fecha: str = "2026-09-01",
     llave: rsa.RSAPrivateKey | None = None,
     llave_publica_de: rsa.RSAPrivateKey | None = None,
+    idk: int = 100,
 ) -> bytes:
     """Arma un CAF con la estructura que entrega el SII.
+
+    `idk` 100 es un CAF de maullín (certificación); otro valor, de palena.
 
     Args:
         llave: Llave privada a poner en `<RSASK>`. Se genera una si no se pasa.
@@ -83,7 +86,7 @@ def caf_xml(
 <RNG><D>{desde}</D><H>{hasta}</H></RNG>
 <FA>{fecha}</FA>
 <RSAPK><M>{_b64_entero(publica.n)}</M><E>{_b64_entero(publica.e)}</E></RSAPK>
-<IDK>100</IDK>
+<IDK>{idk}</IDK>
 </DA>
 <FRMA algoritmo="SHA1withRSA">{frma}</FRMA>
 </CAF>
