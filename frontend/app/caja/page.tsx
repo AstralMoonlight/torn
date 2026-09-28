@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSessionStore } from '@/lib/store/sessionStore'
-import { openSession, closeSession, getSessionStatus, getAllSessions, type CashSessionWithUser } from '@/services/cash'
+import { openSession, closeSession, sincronizarCaja, getAllSessions, type CashSessionWithUser } from '@/services/cash'
 import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,7 @@ import PageHeader from '@/components/layout/PageHeader'
 
 
 export default function CajaPage() {
-    const { status, user, startAmount, startTime, setSession, setStatus, closeSession: clearSession } = useSessionStore()
+    const { status, user, startAmount, startTime, setSession, closeSession: clearSession } = useSessionStore()
     const [montoInicial, setMontoInicial] = useState('')
     const [efectivoContado, setEfectivoContado] = useState('')
     const [opening, setOpening] = useState(false)
@@ -63,20 +63,7 @@ export default function CajaPage() {
         }
     }
 
-    // Sync on mount
-    useEffect(() => {
-        if (!user?.id) return
-
-        getSessionStatus(user.id)
-            .then((s) => {
-                if (s.status === 'OPEN') {
-                    setSession(s.id, parseFloat(s.start_amount), s.start_time, s.user_id)
-                } else {
-                    setStatus('CLOSED')
-                }
-            })
-            .catch(() => setStatus('CLOSED'))
-    }, [setSession, setStatus, user?.id])
+    useEffect(() => { sincronizarCaja() }, [])
 
     const handleOpen = async () => {
         const monto = parseFloat(montoInicial)
