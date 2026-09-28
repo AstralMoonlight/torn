@@ -186,7 +186,7 @@ export default function CustomersPage() {
                 open={!!toDelete}
                 onOpenChange={(o) => !o && setToDelete(null)}
                 title="¿Eliminar cliente?"
-                description={toDelete?.razon_social}
+                description={toDelete ? `${toDelete.razon_social}. Deja de aparecer en la lista; sus ventas se conservan.` : undefined}
                 onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
             />
         </PageContainer>
