@@ -77,7 +77,7 @@ def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Deci
 
 
 def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str,
-                tipo_despacho: int | None = None) -> None:
+                tipo_despacho: int | None = None, forma_pago: int | None = None) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
@@ -90,6 +90,8 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         "items": items,
         "referencias": referencias,
     }
+    if forma_pago:
+        documento["forma_pago"] = forma_pago
     if sale.tipo_dte not in BOLETAS:
         documento["receptor"] = {
             "rut": customer.rut, "razon_social": customer.razon_social, "giro": customer.giro,
@@ -129,6 +131,18 @@ TRASLADOS_FACTURABLES = {1, 2, 3}
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
 #: SIMULADO: emitido en modo Desarrollador, nunca va al SII.
 ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION", "SIMULADO"}
+
+#: Facturas: las únicas que llevan forma de pago (`FmaPago`) en esta etapa.
+FACTURAS = {33, 34}
+
+
+def _forma_pago(db: Session, tipo: int, payments) -> int | None:
+    """1 contado o 2 crédito, solo en facturas. Con parte fiada va a crédito:
+    al emitirla no está pagada entera."""
+    if tipo not in FACTURAS:
+        return None
+    credito = {pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "CREDITO_INTERNO")}
+    return 2 if any(p.payment_method_id in credito for p in payments) else 1
 
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
@@ -548,7 +562,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
 
     # 6. Emitir en dte-torn (asigna el folio) y confirmar
     _emitir_dte(db, tenant_user.tenant, new_sale, customer, items_dte,
-                _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho)
+                _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho,
+                _forma_pago(db, tipo, sale_in.payments))
     for movement in stock_movements:
         movement.description = f"DTE {tipo} folio {new_sale.folio}"
     db.commit()
