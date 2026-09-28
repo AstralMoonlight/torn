@@ -1,7 +1,7 @@
 """costo del producto en cada línea de venta
 
 Revision ID: b4c5d6e7f8a9
-Revises: f2a3b4c5d6e7
+Revises: a3b4c5d6e7f8
 Create Date: 2026-09-28
 
 `sale_details.costo_unitario`: el costo al momento de vender, para que la
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'b4c5d6e7f8a9'
-down_revision: Union[str, Sequence[str], None] = 'f2a3b4c5d6e7'
+down_revision: Union[str, Sequence[str], None] = 'a3b4c5d6e7f8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
