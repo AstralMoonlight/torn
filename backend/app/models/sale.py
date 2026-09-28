@@ -91,6 +91,7 @@ class SaleDetail(Base):
         precio_unitario (Numeric): Precio al momento de la venta.
         descuento (Numeric): Monto de descuento aplicado.
         subtotal (Numeric): Total de la línea (precio * cantidad - descuento).
+        costo_unitario (Numeric): Costo del producto al momento de la venta.
     """
     __tablename__ = "sale_details"
 
@@ -101,6 +102,9 @@ class SaleDetail(Base):
     precio_unitario = Column(Numeric(15, 2), nullable=False)
     descuento = Column(Numeric(15, 2), default=0)
     subtotal = Column(Numeric(15, 2), nullable=False)
+    # Costo neto unitario al momento de vender: la utilidad de una venta pasada
+    # no cambia cuando cambia el costo del producto.
+    costo_unitario = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
 
     # Relaciones
     sale = relationship("Sale", back_populates="details")
