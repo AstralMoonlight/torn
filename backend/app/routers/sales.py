@@ -791,7 +791,7 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
         prueba=prueba, leyenda_prueba=dte_impreso.LEYENDA_PRUEBA,
         oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,
         resolucion_anio=(tenant.sii_resolucion_fecha or get_now()).year,
-        rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha,
+        rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha, pct=dte_impreso.formatear_porcentaje,
     )
     return HTMLResponse(html)
 

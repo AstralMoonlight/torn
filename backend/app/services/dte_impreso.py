@@ -6,6 +6,7 @@ recortado byte a byte del XML. Misma regla que `dte-torn/app/dte/pdf.py`, que
 arma la versión carta.
 """
 
+from decimal import Decimal
 import re
 import xml.etree.ElementTree as ET
 
@@ -120,6 +121,11 @@ def formatear_rut(rut: str) -> str:
     """`76398956-9` -> `76.398.956-9`."""
     cuerpo, _, dv = rut.replace(".", "").partition("-")
     return f"{int(cuerpo):,}".replace(",", ".") + f"-{dv}" if cuerpo.isdigit() else rut
+
+
+def formatear_porcentaje(valor: str) -> str:
+    """`10.50` -> `10,5`: sin ceros de sobra y con coma decimal."""
+    return format(Decimal(valor).normalize(), "f").replace(".", ",")
 
 
 def formatear_fecha(iso: str) -> str:
