@@ -10,6 +10,7 @@ import {
     Pencil,
     Trash2,
     Plus,
+    ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
@@ -29,6 +30,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 import ProductWizard from '@/components/inventory/ProductWizard'
 import ProductEditDialog from '@/components/inventory/ProductEditDialog'
+import AjusteStockDialog from '@/components/inventory/AjusteStockDialog'
 import { deleteProduct } from '@/services/products'
 import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
@@ -57,6 +59,7 @@ export default function InventarioPage() {
     const [wizardOpen, setWizardOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+    const [ajustando, setAjustando] = useState<Product | null>(null)
 
     const fetchProducts = () => {
         getProducts()
@@ -187,6 +190,9 @@ export default function InventarioPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
+                                            {p.controla_stock && p.variants.length === 0 && (
+                                                <AccionFila icon={ClipboardList} label="Ajustar stock" onClick={() => setAjustando(p)} />
+                                            )}
                                             <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(p)} />
                                             <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(p)} peligro />
                                         </div>
@@ -214,6 +220,7 @@ export default function InventarioPage() {
                     setEditDialogOpen(false)
                     if (refresh) loadProducts()
                 }}
+                onAjustarStock={setAjustando}
             />
             <ConfirmDialog
                 open={!!toDelete}
@@ -221,6 +228,13 @@ export default function InventarioPage() {
                 title="¿Eliminar producto?"
                 description={<>&quot;{toDelete?.full_name}&quot; se eliminará. Esta acción no se puede deshacer.</>}
                 onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
+            />
+            <AjusteStockDialog
+                product={ajustando}
+                onClose={(cambio) => {
+                    setAjustando(null)
+                    if (cambio) loadProducts()
+                }}
             />
         </PageContainer>
     )

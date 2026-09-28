@@ -21,6 +21,7 @@ from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
+from app.services.kardex import mover_stock
 from app.utils.formatters import format_clp, format_number
 from app.utils.pricing import resolve_unit_price
 from app.utils.dates import get_now
@@ -387,22 +388,10 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
                     detail=f"Stock insuficiente para {product.nombre}. Disponible: {product.stock_actual}, Solicitado: {cantidad}"
                 )
 
-            # Descontar Stock y Registrar Movimiento (se guardará al hacer commit de la venta)
-            product.stock_actual -= cantidad
-
-            # Importar localmente para evitar dependencias circulares
-            from app.models.inventory import StockMovement
-            
-            movement = StockMovement(
-                product_id=product.id,
-                user_id=seller_id_to_use, # Usuario caja
-                tipo="SALIDA",
-                motivo="GUIA" if tipo == GUIA_DESPACHO else "VENTA",
-                cantidad=cantidad,
-                description=f"Venta en proceso", 
-            )
-            # No hacemos db.add(movement) aquí, lo vinculamos a la venta
-            stock_movements.append(movement)
+            # Se guarda con la venta: queda colgado de `Sale.stock_movements`.
+            stock_movements.append(mover_stock(
+                product, -cantidad, "GUIA" if tipo == GUIA_DESPACHO else "VENTA", seller_id_to_use,
+            ))
 
         subtotal_bruto_linea = precio_unitario * cantidad
 
@@ -534,6 +523,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     # 6. Emitir en dte-torn (asigna el folio) y confirmar
     _emitir_dte(db, tenant_user.tenant, new_sale, customer, items_dte,
                 _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho)
+    for movement in stock_movements:
+        movement.description = f"DTE {tipo} folio {new_sale.folio}"
     db.commit()
 
     # Eager load para respuesta
@@ -635,17 +626,10 @@ def create_return(
 
         # Reingreso de Stock
         if product.controla_stock:
-            product.stock_actual += item.cantidad
-            from app.models.inventory import StockMovement
-            movement = StockMovement(
-                product_id=product.id,
-                user_id=user_id,
-                tipo="ENTRADA",
-                motivo="DEVOLUCION",
-                cantidad=item.cantidad,
-                description=f"Devolución venta f.{original_sale.folio}: {return_in.reason}"
-            )
-            stock_movements.append(movement)
+            stock_movements.append(mover_stock(
+                product, item.cantidad, "DEVOLUCION", user_id,
+                f"Devolución venta f.{original_sale.folio}: {return_in.reason}",
+            ))
         
         precio_unitario = product.precio_neto # Usamos precio actual o histórico? Ideal histórico.
         # Por simplicidad usamos precio actual del producto, pero DEBERIAMOS buscar precio venta original.
