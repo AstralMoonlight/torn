@@ -96,3 +96,24 @@ def test_carta_es_el_pdf_de_dte_torn(dte_torn):
 
 def test_venta_que_dte_torn_no_tiene_usa_la_plantilla_antigua(dte_torn):
     assert _impreso_dte(TENANT, SimpleNamespace(tipo_dte=33, folio=8), 80, cedible=False) is None
+
+
+def test_ticket_no_corta_razon_social_giro_ni_direccion(monkeypatch):
+    """Los largos máximos del SII: 100, 40 y 70 caracteres. Van completos y con salto de línea."""
+    razon = "COMERCIALIZADORA E IMPORTADORA DE ARTICULOS DE FERRETERIA Y MATERIALES DE CONSTRUCCION DEL SUR LIMI"
+    giro = "VENTA AL POR MAYOR DE MATERIALES DE CONS"
+    direccion = "AVENIDA LIBERTADOR BERNARDO O'HIGGINS 1234 DEPARTAMENTO 56 TORRE B PI"
+    xml = XML.replace(b"CLIENTE LTDA", razon.encode()).replace(b"SERVICIOS", giro.encode())
+    xml = xml.replace(b"<DirRecep>CALLE 2", f"<DirRecep>{direccion}".encode())
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    for papel in (57, 80):
+        html = _impreso_dte(TENANT, VENTA, papel, cedible=True).body.decode()
+        assert razon in html and giro in html
+        assert direccion.replace("'", "&#39;") in html
+        assert "overflow-wrap: anywhere" in html
