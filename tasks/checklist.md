@@ -98,3 +98,63 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   segunda tiene que cambiar su `down_revision` a la otra, o `alembic upgrade head` falla por dos heads.
 - **Visto de paso (no cambiado):** los reportes suman las NC como si fueran ventas (monto y utilidad
   positivos). Merece su propio arreglo.
+
+---
+
+## Brechas de `alineacion_backend_frontend.md` (issues abiertos)
+
+### [ ] 11. #51: aviso de pocos folios en el panel
+- **Rama:** `feat/alerta-pocos-folios`
+- **Qué:** dte-torn agrega `umbral_alerta` (`DTE_FOLIO_UMBRAL_ALERTA`, 100 por defecto) a `GET /folios`.
+  El backend marca `alerta` en `/folios/status` para los tipos que **alguna vez tuvieron CAF** y quedan
+  bajo el umbral (un tipo que nunca se cargó no se emite, no avisa), y nunca en modo Desarrollador. El
+  panel muestra **un** `Alert` con los tipos y lo que queda, y enlaza a Configuración con `?tab=folios`,
+  que ahora abre esa pestaña.
+- **Verificado:** dte-torn 315, backend con 2 tests nuevos. En el navegador con JCB (CERT, CAF de la
+  certificación agotados): el aviso lista Factura, Factura exenta, Guía, ND y NC en 0 y el enlace abre
+  Folios. Para verlo corrí una segunda API de dte-torn con el código de la rama en el puerto 8011; la
+  de siempre no se tocó.
+- **Revisar:** hoy JCB va a ver este aviso apenas se mergee (sus CAF de certificación están agotados).
+  Es lo esperado, pero se va a ver rojo hasta que carguen CAF de producción.
+
+### [ ] 12. #54: el CAF tiene que ser del ambiente del emisor
+- **Rama:** `feat/caf-ambiente`
+- **Qué:** dte-torn lee el `IDK` del CAF (100 = maullín, certificación) y rechaza con 422 un CAF de
+  maullín si el emisor está en PROD, o uno de palena si está en CERT ("Este CAF es de certificación
+  (maullín) y el emisor está en producción..."). En Desarrollador no aplica. Configuración > Folios dice
+  dónde se piden los CAF según el modo, y en Desarrollador desactiva "Cargar CAF".
+- **Verificado:** dte-torn 315 (test nuevo con los dos sentidos y el caso que sí entra).
+- **Revisar:** que IDK 100 = certificación sale de la práctica conocida (todos los CAF de maullín del
+  repo traen 100); no tengo un CAF de palena para confirmar el otro lado. El primer CAF de producción que
+  se cargue lo confirma: si lo rechaza, es esto.
+- No hice "mostrar el ambiente de cada CAF": la pantalla solo lista los del ambiente actual (dte-torn
+  filtra), y con esta validación no puede entrar uno del otro.
+
+### [ ] 13. #44: forma de pago en facturas fiadas (parcial)
+- **Rama:** `feat/forma-pago-credito`
+- **Qué:** las facturas (33, 34) mandan `forma_pago`: **2 (crédito)** si algún pago es crédito interno,
+  aunque sea una parte; **1 (contado)** si no. Boletas y notas no llevan. El PDF carta ya la imprime.
+- **Verificado:** 4 tests (`test_forma_pago.py`).
+- **Pendiente tuyo (por eso el commit dice "Refs #44" y el issue sigue abierto):** de dónde sale la
+  **fecha de vencimiento** (plazo por cliente, uno por defecto en Mi negocio o elegido en el POS). Y
+  confirmar que un pago mixto vaya como crédito.
+
+### [ ] 14. #46: el ticket no deja salir del papel un texto largo
+- **Rama:** `fix/ticket-textos-largos`
+- **Qué:** en el ticket 57/80 mm la razón social, el giro y la dirección ya saltaban de línea; lo que
+  faltaba era que una palabra sin espacios (un correo, un código) se partiera en vez de salirse del
+  ancho. La carta es el PDF de dte-torn, que ya se corrigió en `fa4f259`.
+- **Verificado:** test con los largos máximos del SII (100, 40 y 70) en 57 y 80 mm; y lo medí en el
+  navegador: 57 mm, la razón social en 7 líneas dentro del ancho.
+- **Revisar:** en 57 mm una razón social larga queda en una columna angosta a la derecha. Si prefieres,
+  el nombre puede ir debajo de "Señor(es):" a todo el ancho.
+
+### [ ] 15. #39: contrato de los totales
+- **Rama:** `test/contrato-totales`
+- **Qué:** `dte-torn/tests/casos_totales.json`: 16 casos calculados a mano (factura, exenta, boleta,
+  boleta exenta, mixtos, cantidades decimales, redondeos, y 6 con descuentos). Los corren
+  `calcular_totales` (dte-torn, 16/16), `totales_dte` + `_linea_dte` del backend (12, 4 pendientes: %
+  por línea y descuentos globales) y `totalesDte` del frontend (10, 6 pendientes: todo descuento).
+- El frontend no tenía tests: `npm test` usa `node:test` (sin dependencias), el archivo queda fuera de
+  `tsconfig` (el build de Docker no trae `dte-torn/`) y CI lo corre con Node 22. `npm run build` pasa.
+- **Revisar:** el cambio de CI (un paso nuevo con Node 22 en el job del frontend).
