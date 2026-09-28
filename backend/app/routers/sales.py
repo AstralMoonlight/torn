@@ -353,8 +353,9 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     elif sale_in.ind_traslado or sale_in.tipo_despacho:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo de traslado y de despacho son solo para guías (52).")
 
-    # (producto, cantidad, precio neto, descuento, mueve stock). Las líneas de
-    # guías que se facturan ya descontaron stock al emitir la guía.
+    # (producto, cantidad, precio neto, descuento, mueve stock, costo). Las
+    # líneas de guías que se facturan ya descontaron stock al emitir la guía, y
+    # conservan el costo de ese momento.
     lineas = []
     for item in sale_in.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -368,9 +369,11 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Producto {product.nombre} (SKU {product.codigo_interno}) no está activo",
             )
-        lineas.append((product, item.cantidad, resolve_unit_price(db, product, customer), item.descuento, True))
+        lineas.append((product, item.cantidad, resolve_unit_price(db, product, customer), item.descuento, True,
+                       product.costo_unitario))
     for guia in guias:
-        lineas.extend((d.product, d.cantidad, d.precio_unitario, d.descuento, False) for d in guia.details)
+        lineas.extend((d.product, d.cantidad, d.precio_unitario, d.descuento, False, d.costo_unitario)
+                      for d in guia.details)
 
     # 2. Validar Productos y Calcular Totales
     lineas_dte = []
@@ -378,7 +381,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     sale_details = []
     stock_movements = []
 
-    for product, cantidad, precio_unitario, descuento, mueve_stock in lineas:
+    for product, cantidad, precio_unitario, descuento, mueve_stock, costo in lineas:
         # Validar Stock
         if mueve_stock and product.controla_stock:
             if product.stock_actual < cantidad:
@@ -426,6 +429,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             precio_unitario=precio_unitario,
             subtotal=subtotal_linea,
             descuento=descuento,
+            costo_unitario=costo or 0,
         )
         sale_details.append(detail_obj)
 
@@ -654,8 +658,10 @@ def create_return(
             SaleDetail.sale_id == original_sale.id,
             SaleDetail.product_id == product.id
         ).first()
+        costo = product.costo_unitario
         if original_detail:
             precio_unitario = original_detail.precio_unitario
+            costo = original_detail.costo_unitario
         
         subtotal = precio_unitario * item.cantidad
         item_dte, monto, exenta = _linea_dte(
@@ -668,7 +674,8 @@ def create_return(
             product_id=product.id,
             cantidad=item.cantidad,
             precio_unitario=precio_unitario,
-            subtotal=subtotal
+            subtotal=subtotal,
+            costo_unitario=costo or 0,
         ))
 
     neto, exento, iva, total = totales_dte(tipo, lineas_dte)

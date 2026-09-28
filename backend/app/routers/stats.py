@@ -34,7 +34,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     # Calcular margen (Detalle por detalle para mayor precisión)
     # Margen = Suma(cantidad * (precio_unitario - costo_unitario))
     margin_total = db.query(
-        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario))
+        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario))
     ).join(Product, SaleDetail.product_id == Product.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
      .filter(Sale.fecha_emision >= start_date).scalar() or Decimal(0)
@@ -93,7 +93,7 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_t
             ParentProduct.nombre.label("parent_nombre"),
             func.sum(SaleDetail.cantidad).label("total_qty"),
             func.sum(SaleDetail.subtotal).label("total_sales"),
-            func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario)).label("total_margin")
+            func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario)).label("total_margin")
         ).join(Product, SaleDetail.product_id == Product.id)\
          .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
          .join(Sale, SaleDetail.sale_id == Sale.id)\
@@ -175,7 +175,7 @@ def get_report(
         func.sum(SaleDetail.cantidad).label("total_qty"),
         func.sum(SaleDetail.subtotal).label("total_sales"),
         # Utilidad = (Venta Neta - Costo Neta) * Cantidad
-        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario)).label("total_margin")
+        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario)).label("total_margin")
     ).join(Product, SaleDetail.product_id == Product.id)\
      .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
