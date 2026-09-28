@@ -1,0 +1,19 @@
+# Piloto en el PC del local (tasks/lanzamiento.md 1.5). Va encima del de
+# desarrollo:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.piloto.yml up -d --build
+#
+# Nada se publica en el host, ni siquiera en loopback: el backend de Torn entra
+# por la red `dte-torn_default` (ver docker-compose.piloto.yml en la raíz). Los
+# tests se corren en otra máquina o sin este override.
+#
+# El .env de dte-torn tiene que cambiar MINIO_ROOT_USER/MINIO_ROOT_PASSWORD
+# (minioadmin por defecto) y POSTGRES_PASSWORD.
+
+services:
+  db:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  api:
+    ports: !reset []

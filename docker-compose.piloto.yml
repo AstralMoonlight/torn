@@ -1,0 +1,45 @@
+# Piloto en el PC del local (tasks/lanzamiento.md 1.3 y 1.5). Va encima del de
+# desarrollo, que no cambia:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.piloto.yml up -d --build
+#
+# Antes hay que levantar dte-torn (con su propio override): su red
+# `dte-torn_default` es externa acá y el backend habla con él por el nombre del
+# servicio, sin puertos publicados.
+#
+# El .env necesita TORN_ENV=production (lo pone este archivo) y por lo tanto una
+# SECRET_KEY propia: sin ella el backend se niega a arrancar.
+
+services:
+  db:
+    # Solo la usa el backend, por la red interna de Docker.
+    ports: !reset []
+
+  backend:
+    # El navegador llama al backend directo (NEXT_PUBLIC_API_URL), pero desde el
+    # mismo PC: nada queda visible en la red del local.
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    environment:
+      TORN_ENV: production
+      # Con dos redes, "db" es ambiguo: dte-torn también tiene un servicio "db".
+      # El nombre del contenedor solo existe en la red de Torn.
+      TORN_DB_HOST: torn_db
+      TORN_DTE_URL: http://api:8000
+    extra_hosts: !reset []
+    networks:
+      - default
+      - dte
+
+  frontend:
+    build:
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports: !override
+      - "127.0.0.1:3000:3000"
+
+networks:
+  dte:
+    external: true
+    name: dte-torn_default
