@@ -1,8 +1,8 @@
 'use client'
 
 import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
-import { useEffect, useState, Fragment } from 'react'
-import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut } from '@/services/sales'
+import { useEffect, useRef, useState, Fragment } from 'react'
+import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
@@ -39,10 +39,12 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import { formatCLP } from '@/lib/format'
+import { formatCLP, getTodayChile } from '@/lib/format'
 import { SelectOpciones } from '@/components/ui/select-opciones'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 
+
+const POR_PAGINA = 50
 
 function DteBadge({ tipo }: { tipo: number }) {
     const map: Record<number, { label: string; color: string }> = {
@@ -90,17 +92,31 @@ export default function HistorialPage() {
     const [returnDteType, setReturnDteType] = useState<number>(61)
     const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
     const [facturarOpen, setFacturarOpen] = useState(false)
+    const [desde, setDesde] = useState(getTodayChile)
+    const [hasta, setHasta] = useState(getTodayChile)
+    const [hayMas, setHayMas] = useState(false)
+
+    // La búsqueda recorre todas las ventas en el servidor, sin importar las fechas.
+    const filtro = (): FiltroVentas => search.trim() ? { q: search.trim() } : { desde, hasta }
+
+    const traerVentas = async (skip = 0) => {
+        const pagina = await getSales({ ...filtro(), skip, limit: POR_PAGINA })
+        setHayMas(pagina.length === POR_PAGINA)
+        setSales(prev => skip === 0 ? pagina : [...prev, ...pagina])
+        return pagina
+    }
+
+    const recargarVentas = () => traerVentas().catch(() => avisar('No se pudo cargar el historial.'))
 
     const cargar = () => {
         setLoading(true)
         Promise.all([
             // Si dte-torn no responde, el historial se muestra igual con el último estado conocido.
-            actualizarEstadosDte().catch(() => null).then(() => getSales()),
+            actualizarEstadosDte().catch(() => null).then(() => traerVentas()),
             getPaymentMethods(),
             getFoliosStatus(),
         ])
             .then(([s, m, f]) => {
-                setSales(s)
                 const rechazadas = s.filter(v => v.dte_estado === 'RECHAZADO' || v.dte_estado === 'ERROR_VALIDACION')
                 if (rechazadas.length > 0) {
                     avisar(`El SII rechazó ${rechazadas.length} documento(s): folio ${rechazadas.map(v => v.folio).join(', ')}`)
@@ -119,20 +135,24 @@ export default function HistorialPage() {
             .finally(() => setLoading(false))
     }
 
-    useEffect(cargar, [])
+    const primeraCarga = useRef(true)
+    useEffect(() => {
+        if (primeraCarga.current) {
+            primeraCarga.current = false
+            cargar()
+            return
+        }
+        // Espera a que se deje de escribir antes de ir al servidor.
+        const t = setTimeout(() => {
+            setLoading(true)
+            recargarVentas().finally(() => setLoading(false))
+        }, 300)
+        return () => clearTimeout(t)
+    }, [search, desde, hasta]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const filtered = search.trim()
-        ? sales.filter((s) =>
-            s.folio.toString().includes(search) ||
-            s.customer?.razon_social?.toLowerCase().includes(search.toLowerCase())
-        )
-        : sales
-
-    // Sort and group by date
-    const sorted = [...filtered].sort((a, b) => new Date(b.fecha_emision).getTime() - new Date(a.fecha_emision).getTime())
-
+    // El servidor ya las devuelve de la más nueva a la más antigua.
     const groupedSales: Record<string, SaleOut[]> = {}
-    sorted.forEach((sale) => {
+    sales.forEach((sale) => {
         const dateKey = new Date(sale.fecha_emision).toLocaleDateString('es-CL', {
             weekday: 'long',
             year: 'numeric',
@@ -165,9 +185,7 @@ export default function HistorialPage() {
             })
             setReturnDialog(null)
             setReturnReason('')
-            // Refresh sales
-            const freshSales = await getSales()
-            setSales(freshSales)
+            await recargarVentas()
         } catch (err: unknown) {
             setErrorReturn(getApiErrorDetail(err, 'No se pudo emitir el documento de ajuste.'))
         } finally {
@@ -202,10 +220,31 @@ export default function HistorialPage() {
             <ListToolbar
                 busqueda={search}
                 onBusqueda={setSearch}
-                placeholder="Buscar por folio o cliente..."
-                visibles={filtered.length}
+                placeholder="Buscar por folio, cliente o RUT..."
+                visibles={sales.length}
                 total={sales.length}
                 unidad="documentos"
+                filtros={search.trim() ? (
+                    <span className="text-sm text-muted-foreground">Buscando en todas las fechas</span>
+                ) : (
+                    <>
+                        <Label className="flex items-center gap-2 text-sm font-normal">
+                            Desde
+                            <Input type="date" value={desde} max={hasta}
+                                onChange={(e) => e.target.value && setDesde(e.target.value)} className="h-9 w-auto" />
+                        </Label>
+                        <Label className="flex items-center gap-2 text-sm font-normal">
+                            Hasta
+                            <Input type="date" value={hasta} min={desde}
+                                onChange={(e) => e.target.value && setHasta(e.target.value)} className="h-9 w-auto" />
+                        </Label>
+                        {(desde !== getTodayChile() || hasta !== getTodayChile()) && (
+                            <Button variant="outline" size="sm" onClick={() => { setDesde(getTodayChile()); setHasta(getTodayChile()) }}>
+                                Hoy
+                            </Button>
+                        )}
+                    </>
+                )}
                 acciones={
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFacturarOpen(true)}>
                         <FileText className="h-4 w-4" /> Facturar guías
@@ -230,8 +269,10 @@ export default function HistorialPage() {
                     <TableBody className="divide-y divide-border">
                         {loading ? (
                             <TableEmpty colSpan={7} loading />
-                        ) : filtered.length === 0 ? (
-                            <TableEmpty colSpan={7}>Sin resultados</TableEmpty>
+                        ) : sales.length === 0 ? (
+                            <TableEmpty colSpan={7}>
+                                {search.trim() ? 'Ninguna venta coincide con la búsqueda' : 'Sin ventas en estas fechas'}
+                            </TableEmpty>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>
@@ -281,6 +322,13 @@ export default function HistorialPage() {
                     </TableBody>
                 </Table>
             </div>
+            {hayMas && !loading && (
+                <div className="flex justify-center">
+                    <Button variant="outline" onClick={() => traerVentas(sales.length).catch(() => avisar('No se pudo cargar el historial.'))}>
+                        Ver más
+                    </Button>
+                </div>
+            )}
 
             {/* Return Dialog */}
             <Dialog open={!!returnDialog} onOpenChange={() => { setReturnDialog(null); setErrorReturn(null) }}>
@@ -372,7 +420,7 @@ export default function HistorialPage() {
                 open={facturarOpen}
                 methods={methods}
                 onClose={() => setFacturarOpen(false)}
-                onFacturada={() => getSales().then(setSales)}
+                onFacturada={recargarVentas}
             />
         </PageContainer>
     )

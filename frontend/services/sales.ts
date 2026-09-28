@@ -107,8 +107,17 @@ export async function createSale(sale: SaleCreate): Promise<SaleOut> {
     return data
 }
 
-export async function getSales(skip = 0, limit = 50): Promise<SaleOut[]> {
-    const { data } = await api.get<SaleOut[]>('/sales/', { params: { skip, limit } })
+/** Días en `aaaa-mm-dd` (hora de Chile). Con `q` (folio, cliente o RUT) el backend ignora las fechas. */
+export interface FiltroVentas {
+    desde?: string
+    hasta?: string
+    q?: string
+    skip?: number
+    limit?: number
+}
+
+export async function getSales(filtro: FiltroVentas = {}): Promise<SaleOut[]> {
+    const { data } = await api.get<SaleOut[]>('/sales/', { params: filtro })
     return data
 }
 

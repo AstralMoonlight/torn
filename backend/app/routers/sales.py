@@ -1,6 +1,7 @@
 """Router para gestión de Ventas (Facturas)."""
 
 import logging
+from datetime import date, datetime, time, timedelta
 from urllib.parse import quote
 from decimal import Decimal
 from pathlib import Path
@@ -23,7 +24,7 @@ from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, Paymen
 from app.services import dte_client, dte_impreso
 from app.utils.formatters import format_clp, format_number
 from app.utils.pricing import resolve_unit_price
-from app.utils.dates import get_now
+from app.utils.dates import CHILE_TZ, get_now
 from app.utils.taxes import (
     BOLETAS, TASA_IVA_DTE, monto_linea_dte, precio_dte, quantize_money,
     resolve_tax_rate, round_to_nearest_ten, totales_dte,
@@ -157,16 +158,37 @@ def list_payment_methods(db: Session = Depends(get_tenant_db)):
 def list_sales(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    desde: date | None = Query(None, description="Primer día (hora de Chile), inclusive"),
+    hasta: date | None = Query(None, description="Último día (hora de Chile), inclusive"),
+    q: str | None = Query(None, description="Folio, razón social o RUT; busca en todas las fechas"),
     db: Session = Depends(get_tenant_db),
 ):
-    """Lista ventas paginadas, ordenadas por fecha descendente."""
+    """Lista ventas paginadas, ordenadas por fecha descendente.
+
+    Con `q` se ignoran las fechas: sirve para encontrar la venta a devolver
+    aunque sea de hace meses.
+    """
+    query = db.query(Sale)
+    q = (q or "").strip()
+    if q:
+        rut = q.replace(".", "").upper()
+        coincide = Customer.razon_social.ilike(f"%{q}%") | Customer.rut.ilike(f"%{rut}%")
+        if q.isdigit():
+            coincide = coincide | (Sale.folio == int(q))
+        query = query.join(Sale.customer).filter(coincide)
+    else:
+        if desde:
+            query = query.filter(Sale.fecha_emision >= datetime.combine(desde, time.min, tzinfo=CHILE_TZ))
+        if hasta:
+            query = query.filter(
+                Sale.fecha_emision < datetime.combine(hasta + timedelta(days=1), time.min, tzinfo=CHILE_TZ))
     sales = (
-        db.query(Sale)
+        query
         .options(
             joinedload(Sale.customer),
             joinedload(Sale.details).joinedload(SaleDetail.product),
         )
-        .order_by(Sale.created_at.desc())
+        .order_by(Sale.fecha_emision.desc(), Sale.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
