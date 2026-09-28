@@ -1,0 +1,12 @@
+[Unit]
+Description=Respaldo diario de Torn y dte-torn (restic)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/torn/respaldo.env
+ExecStart=/opt/torn/infra/respaldo/respaldo.sh
+# Que no le quite CPU al POS si corre en horario de atención.
+Nice=10
+IOSchedulingClass=idle

@@ -1,0 +1,13 @@
+[Unit]
+Description=Respaldo diario de Torn y dte-torn
+
+[Timer]
+# El PC se apaga al cerrar el local: a esta hora casi siempre está apagado.
+# Persistent=true lo corre al encender si esa pasada se perdió, y el retraso
+# deja que Docker levante las bases antes.
+OnCalendar=*-*-* 03:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
