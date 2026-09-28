@@ -6,6 +6,22 @@ mergee; si necesita cambios, anotarlos debajo del punto.
 
 Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al mergear.
 
+## Cómo mergear
+
+- **Todas juntas funcionan.** La rama `revision/todo-junto` es `main` con las 20 ramas mezcladas y los
+  conflictos resueltos: backend 153 tests (4 saltados: descuentos pendientes), dte-torn 335, frontend
+  `tsc`, lint (solo los 7 warnings que ya había), `npm test` y `npm run build`, migraciones encadenadas
+  sobre una copia de la base, y las pantallas tocadas cargando sin errores. Es de referencia: si una
+  rama cambia en la revisión, esa rama manda.
+- **Conflictos esperables** (todos de "dos ramas agregan en el mismo lugar", se resuelven dejando ambos
+  lados): `backend/tests/test_devoluciones.py` (NC de boleta y arqueo), `backend/tests/test_dte_impreso.py`
+  (tickets), y `backend/app/routers/sales.py` entre forma de pago, errores y kardex. En la llamada a
+  `_emitir_dte` de `_registrar_venta` queda **una** llamada con `_forma_pago(...)` y, debajo, el `for`
+  que pone la glosa a los movimientos.
+- **Alembic:** C1 (`a3b4c5d6e7f8`) y A6 (`b4c5d6e7f8a9`) salen las dos de `f2a3b4c5d6e7`. La que entre
+  segunda cambia su `down_revision` a la otra (en `revision/todo-junto`, A6 va después de C1).
+- **Orden sugerido:** A5 antes que C1 (C1 sale de A5).
+
 ---
 
 ## Plan antes del piloto (`lanzamiento.md` 0.1)
@@ -242,3 +258,36 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   agrega `TmstFirma` cada vez que se llama, inofensivo porque se llama una vez y los libros solo se
   usaron en la certificación).
 - **Al mergear:** marcar los Checkpoints B y C en `tasks/todo.md` y cerrar #57.
+
+### [ ] 22. Guía de instalación del PC del piloto
+- **Rama:** `docs/instalacion-piloto`
+- **Qué:** `infra/piloto/README.md` (sistema, `.env` nuevos, orden de arranque con los overrides,
+  soporte por Tailscale con SSH solo por llave, respaldo, cómo actualizar) y
+  `factureando-pos.desktop`, que abre Chrome en quiosco con impresión directa cuando el frontend responde.
+- **Sin probar:** no hay un Ubuntu a mano. Se valida al instalar el PC.
+
+---
+
+## Lo que falta (necesita que decidas o hagas algo)
+
+Trabajo detenido el 2026-09-28 a pedido. Nada de esto se empezó:
+
+| Pendiente | Qué falta | Dónde |
+|---|---|---|
+| **#40 descuentos** | Quién puede descontar y con qué tope. Bloquea #41 (ítem), #42 (global) y el resto de P3 | `alineacion_backend_frontend.md` P3 |
+| **#44 vencimiento** | De dónde sale la fecha de vencimiento de la factura fiada; confirmar que un pago mixto vaya a crédito | punto 13 |
+| **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor | `lanzamiento.md` 0.2 |
+| **Intercambio** (#56) | Qué correo del cliente se usa; probar SMTP/IMAP con la contraseña de `xml@distribuidorajcb.cl` | `intercambio.md` |
+| **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
+| **Certificación de boletas** (#49) | Pedir el set en el SII | `certificacion_boletas.md` |
+| **Paso a producción** | Declaración de cumplimiento (#48), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
+| **Piloto en el local** | Correr `vaciar_datos_demo.py --aplicar`, cuentas del personal, servidor de respaldo, instalar el PC, UPS, impresora y lector reales, probar apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
+| **1.5 sesiones** | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea | `lanzamiento.md` 1.5 |
+| **Auditoría de seguridad** | Correr `security-audit` completa (pedirla así) | `lanzamiento.md` 1.5 |
+
+Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
+(cuadratura del kardex viejo; tras vaciar JCB no hace falta), N1-N4, F1, P1-P4, J1-J2, C2, V1-V2, M1 de
+`administracion.md`, y el cierre de issues en GitHub (se cierran al mergear).
+
+**Visto de paso, sin tocar:** los reportes suman las NC como ventas (dejé una tarea sugerida para
+arreglarlo aparte) y el "Caja cerrada" falso al entrar al POS desde saas-admin (punto 20).
