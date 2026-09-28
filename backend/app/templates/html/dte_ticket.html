@@ -45,6 +45,9 @@
 
         .fila { display: flex; justify-content: space-between; gap: 4px; }
         .etiqueta { font-weight: bold; white-space: nowrap; }
+        /* El valor ocupa lo que queda y salta de línea; una palabra larga (un
+           correo, un código) se parte en vez de salirse del papel. */
+        .fila > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; border-bottom: 1px solid #000; font-size: 0.9em; }
