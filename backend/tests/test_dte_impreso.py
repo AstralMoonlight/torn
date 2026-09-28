@@ -94,6 +94,30 @@ def test_carta_es_el_pdf_de_dte_torn(dte_torn):
     assert resp.body.startswith(b"%PDF")
 
 
+def test_ticket_muestra_descuentos_por_linea_y_globales(monkeypatch):
+    """El set de pruebas del SII pide que los descuentos se vean en el impreso (#43)."""
+    # Descuento de línea en %, y dos globales (en $ y en %) después del detalle, como en el XML real.
+    xml = XML.replace(
+        b"<PrcItem>10000</PrcItem><MontoItem>20000</MontoItem></Detalle>",
+        b"<PrcItem>10000</PrcItem><DescuentoPct>12.50</DescuentoPct><DescuentoMonto>2500</DescuentoMonto>"
+        b"<MontoItem>17500</MontoItem></Detalle>"
+        b"<DscRcgGlobal><NroLinDR>1</NroLinDR><TpoMov>D</TpoMov><TpoValor>$</TpoValor><ValorDR>1500</ValorDR></DscRcgGlobal>"
+        b"<DscRcgGlobal><NroLinDR>2</NroLinDR><TpoMov>D</TpoMov><GlosaDR>Cliente frecuente</GlosaDR>"
+        b"<TpoValor>%</TpoValor><ValorDR>5.00</ValorDR></DscRcgGlobal>",
+    )
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, VENTA, 80, cedible=True).body.decode()
+    assert "Dcto 12,5%: -$2.500" in html
+    assert "<span>Descuento:</span><span>-$1.500</span>" in html
+    assert "<span>Cliente frecuente:</span><span>-5%</span>" in html
+
+
 def test_venta_que_dte_torn_no_tiene_usa_la_plantilla_antigua(dte_torn):
     assert _impreso_dte(TENANT, SimpleNamespace(tipo_dte=33, folio=8), 80, cedible=False) is None
 

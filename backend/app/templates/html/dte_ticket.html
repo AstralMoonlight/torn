@@ -110,7 +110,7 @@
                 <td>
                     {{ l.NmbItem }}{% if l.IndExe == '1' %} (exento){% endif %}<br>
                     {{ l.QtyItem or '1' }}{% if l.UnmdItem %} {{ l.UnmdItem }}{% endif %}{% if l.PrcItem %} x {{ l.PrcItem | clp }}{% endif %}
-                    {% if l.DescuentoMonto %}<br>Dcto: -{{ l.DescuentoMonto | clp }}{% endif %}
+                    {% if l.DescuentoMonto %}<br>Dcto{% if l.DescuentoPct %} {{ pct(l.DescuentoPct) }}%{% endif %}: -{{ l.DescuentoMonto | clp }}{% endif %}
                 </td>
                 <td class="der">{{ l.MontoItem | clp }}</td>
             </tr>
@@ -119,7 +119,7 @@
     </table>
 
     {% for d in doc.descuentos %}
-    <div class="fila"><span>{{ d.GlosaDR or ('Descuento' if d.TpoMov == 'D' else 'Recargo') }}{% if d.TpoValor == '%' %} {{ d.ValorDR }}%{% endif %}</span></div>
+    <div class="fila"><span>{{ d.GlosaDR or ('Descuento' if d.TpoMov == 'D' else 'Recargo') }}:</span><span>{% if d.TpoMov == 'D' %}-{% endif %}{% if d.TpoValor == '%' %}{{ pct(d.ValorDR) }}%{% else %}{{ d.ValorDR | clp }}{% endif %}</span></div>
     {% endfor %}
 
     <div class="sep"></div>
