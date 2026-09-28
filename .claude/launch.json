@@ -4,20 +4,43 @@
     {
       "name": "frontend-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "-p", "3001"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3001"
+      ],
       "port": 3001
     },
     {
       "name": "backend-rama",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "cd backend && set TORN_DB_HOST=localhost&& set TORN_AUTO_CREATE_TABLES=0&& ..\\.venv\\Scripts\\python -m uvicorn app.main:app --port 8010 --reload"],
+      "runtimeArgs": [
+        "/c",
+        "cd backend && set TORN_DB_HOST=localhost&& set TORN_AUTO_CREATE_TABLES=0&& ..\\.venv\\Scripts\\python -m uvicorn app.main:app --port 8010 --reload"
+      ],
       "port": 8010
     },
     {
       "name": "frontend-rama",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "set NEXT_PUBLIC_API_URL=http://localhost:8010&& npm --prefix frontend run dev -- -p 3001"],
+      "runtimeArgs": [
+        "/c",
+        "set NEXT_PUBLIC_API_URL=http://localhost:8010&& npm --prefix frontend run dev -- -p 3001"
+      ],
       "port": 3001
+    },
+    {
+      "name": "backend-rama-copia",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "cd backend && set TORN_DB_HOST=localhost&& set TORN_DB_NAME=torn_migtest&& set TORN_AUTO_CREATE_TABLES=0&& ..\\.venv\\Scripts\\python -m alembic upgrade head && ..\\.venv\\Scripts\\python -m uvicorn app.main:app --port 8010 --reload"
+      ],
+      "port": 8010
     }
   ]
 }
