@@ -240,6 +240,8 @@ class StockFolios(BaseModel):
     tipo_dte: int
     disponibles: int
     cafs: list[CafOut]
+    #: Bajo esta cantidad hay que avisar (`DTE_FOLIO_UMBRAL_ALERTA`).
+    umbral_alerta: int
 
 
 @router.get("/folios", response_model=list[StockFolios])
@@ -251,7 +253,11 @@ async def stock_folios(tenant: TenantDep) -> list[StockFolios]:
     por_tipo: dict[int, list[CafOut]] = {}
     for caf in cafs:
         por_tipo.setdefault(caf.tipo_dte, []).append(_caf_out(caf))
-    return [StockFolios(tipo_dte=t, disponibles=sum(c.disponibles for c in lista), cafs=lista) for t, lista in por_tipo.items()]
+    umbral = get_settings().folio_umbral_alerta
+    return [
+        StockFolios(tipo_dte=t, disponibles=sum(c.disponibles for c in lista), cafs=lista, umbral_alerta=umbral)
+        for t, lista in por_tipo.items()
+    ]
 
 
 # -------------------------------------------------------------- documentos ---

@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { getDashboard, type DashboardData } from '@/services/reports'
 import { getDashboardSummary, getTopProducts, type DashboardSummary, type TopProductsResponse } from '@/services/stats'
+import { getFoliosStatus, type FolioStockOut } from '@/services/sales'
+import Link from 'next/link'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
     BarChart3,
     DollarSign,
@@ -11,7 +14,8 @@ import {
     TrendingUp,
     Wallet,
     ArrowUpRight,
-    ArrowDownRight
+    ArrowDownRight,
+    AlertTriangle,
 } from 'lucide-react'
 import { avisar } from '@/lib/store/uiStore'
 import { formatCLP } from '@/lib/format'
@@ -88,12 +92,18 @@ function isPeriod(value: string): value is Period {
     return (PERIODS as readonly string[]).includes(value)
 }
 
+const NOMBRE_DTE: Record<number, string> = {
+    33: 'Factura', 34: 'Factura exenta', 39: 'Boleta', 41: 'Boleta exenta',
+    52: 'Guía de despacho', 56: 'Nota de débito', 61: 'Nota de crédito',
+}
+
 export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null)
     const [summary, setSummary] = useState<DashboardSummary | null>(null)
     const [topRanking, setTopRanking] = useState<TopProductsResponse | null>(null)
     const [loading, setLoading] = useState(true)
     const [selectedPeriod, setSelectedPeriod] = useState<Period>('daily')
+    const [pocosFolios, setPocosFolios] = useState<FolioStockOut[]>([])
 
     useEffect(() => {
         // loading ya arranca en `true` (useState(true) arriba); no hace falta
@@ -111,6 +121,8 @@ export default function DashboardPage() {
             })
             .catch(() => avisar('No se pudieron cargar los datos del dashboard.', { reintentar: () => window.location.reload() }))
             .finally(() => setLoading(false))
+        // Aparte: si dte-torn no responde, el resto del panel se muestra igual.
+        getFoliosStatus().then((f) => setPocosFolios(f.filter((x) => x.alerta))).catch(() => null)
     }, [])
 
     if (loading) {
@@ -144,6 +156,22 @@ export default function DashboardPage() {
                     </Tabs>
                 }
             />
+
+            {pocosFolios.length > 0 && (
+                <Alert variant="destructive" data-section="dashboard.pocos-folios">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Quedan pocos folios</AlertTitle>
+                    <AlertDescription>
+                        <p>
+                            {pocosFolios.map((f) => `${NOMBRE_DTE[f.dte_type] ?? `Documento ${f.dte_type}`}: ${f.available}`).join(' · ')}
+                        </p>
+                        <p className="mt-1">
+                            Sin folios no se puede emitir ese documento. Pida un CAF nuevo en el SII y cárguelo en{' '}
+                            <Link href="/configuracion?tab=folios" className="font-medium underline">Configuración, Folios</Link>.
+                        </p>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* main KPIs */}
             <div data-section="dashboard.indicadores" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

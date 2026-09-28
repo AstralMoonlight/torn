@@ -39,6 +39,8 @@ export interface FolioStockOut {
     latest_folio_hasta: number
     latest_folio_desde: number
     fecha_vencimiento?: string
+    /** Quedan menos folios que el umbral de dte-torn (nunca en modo Desarrollador). */
+    alerta: boolean
 }
 
 export interface SaleDetailOut {
