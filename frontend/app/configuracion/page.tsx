@@ -91,6 +91,12 @@ export default function ConfigurationPage() {
     const settings = useSettingsStore((s) => s.settings)
     const guardar = useSettingsStore((s) => s.guardar)
     const [taxes, setTaxes] = useState<Tax[]>([])
+    // `?tab=folios` abre esa pestaña (el aviso de pocos folios del panel enlaza ahí).
+    const [pestana, setPestana] = useState('general')
+    useEffect(() => {
+        const tab = new URLSearchParams(window.location.search).get('tab')
+        if (tab) setPestana(tab)
+    }, [])
     const [loadingTaxes, setLoadingTaxes] = useState(true)
     const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
     const setPosVariantDisplay = useUIStore((s) => s.setPosVariantDisplay)
@@ -179,7 +185,7 @@ export default function ConfigurationPage() {
                 description="Administra las preferencias generales y los parámetros del sistema."
             />
 
-            <Tabs defaultValue="general" className="space-y-6">
+            <Tabs value={pestana} onValueChange={setPestana} className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="general" className="gap-2">
                         <Settings className="h-4 w-4" /> General

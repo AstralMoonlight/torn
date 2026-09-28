@@ -33,8 +33,34 @@ def test_status_suma_los_caf_activos_por_tipo(client, monkeypatch):
         "dte_type": 33, "available": 12, "total": 20,
         "latest_folio_desde": 900, "latest_folio_hasta": 909,
         "fecha_vencimiento": "2026-12-01",  # el que se consume a continuación
+        "alerta": False,
     }
     assert por_tipo[39]["available"] == 0
+
+
+def test_alerta_de_pocos_folios(client, monkeypatch):
+    stock = [
+        {"tipo_dte": 39, "disponibles": 99, "umbral_alerta": 100, "cafs": [_caf(1, 200, 99)]},
+        {"tipo_dte": 33, "disponibles": 100, "umbral_alerta": 100, "cafs": [_caf(1, 100, 100)]},
+        {"tipo_dte": 61, "disponibles": 0, "umbral_alerta": 100, "cafs": [_caf(1, 10, 0, estado="AGOTADO")]},
+    ]
+    monkeypatch.setattr(dte_client, "request", lambda *a, **k: httpx.Response(200, json=stock))
+
+    alertas = {f["dte_type"] for f in client.get("/folios/status").json() if f["alerta"]}
+    # 52 nunca tuvo CAF: no se emite, no alerta. 61 se agotó: sí.
+    assert alertas == {39, 61}
+
+
+def test_en_desarrollador_no_alerta(client, monkeypatch):
+    from app.dependencies.tenant import get_current_tenant_user
+    from app.main import app
+
+    stock = [{"tipo_dte": 39, "disponibles": 5, "umbral_alerta": 100, "cafs": [_caf(1, 5, 5)]}]
+    monkeypatch.setattr(dte_client, "request", lambda *a, **k: httpx.Response(200, json=stock))
+    tenant_user = app.dependency_overrides[get_current_tenant_user]()
+    monkeypatch.setattr(tenant_user.tenant, "sii_ambiente", "DEV")
+
+    assert not any(f["alerta"] for f in client.get("/folios/status").json())
 
 
 def test_dte_torn_caido_responde_503(client, monkeypatch):
