@@ -48,6 +48,6 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   - Inventario: acción "Ajustar stock" (ícono de portapapeles) en productos simples que controlan
     stock; en el editor el stock se ve pero no se edita (botón "Ajustar" por variante).
 - **Verificado:** 7 tests (`test_kardex.py`, incluye la regla de oro tras vender, devolver, comprar y
-  borrar la compra); en el navegador: ajuste 50 → 48 → 50 del Post-it de demo, editor guarda sin stock.
+  borrar la compra); en el navegador: ajuste del Post-it de demo (la herramienta de pruebas tipeó dos veces y quedó en 4.848; se volvió a 50 con otro ajuste), editor guarda sin stock.
 - **Revisar:** en el tenant de demo quedaron 2 movimientos de prueba en el Post-it 3x3 (stock final 50,
   el mismo de antes). Los movimientos viejos sin saldo se ven en blanco: eso lo cuadra K5.
