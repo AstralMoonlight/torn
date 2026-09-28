@@ -839,7 +839,7 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
     doc = dte_impreso.leer_dte(xml)
     html = _html_env.get_template("dte_ticket.html").render(
         doc=doc, papel_mm=papel_mm, timbre=dte_impreso.timbre_svg(doc["ted"], papel_mm),
-        copias=([True] if cedible else [False, True]) if doc["tipo"] in dte_impreso.CEDIBLES else [False],
+        copias=([True] if cedible else [False, True]) if dte_impreso.es_cedible(doc) else [False],
         leyenda=dte_impreso.LEYENDA_PIE,
         prueba=prueba, leyenda_prueba=dte_impreso.LEYENDA_PRUEBA,
         oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,

@@ -118,6 +118,28 @@ def test_ticket_muestra_descuentos_por_linea_y_globales(monkeypatch):
     assert "<span>Cliente frecuente:</span><span>-5%</span>" in html
 
 
+@pytest.mark.parametrize("traslado, texto, copias", [
+    ("1", "Operación constituye venta", 2),   # guía de venta: copia cliente y cedible
+    ("5", "Traslado interno", 1),             # sin venta: el cedible es inoficioso
+])
+def test_ticket_de_guia(monkeypatch, traslado, texto, copias):
+    """El ticket de una guía decía "DOCUMENTO 52", sin el traslado y sin cedible (#57)."""
+    xml = XML.replace(b"<TipoDTE>33</TipoDTE><Folio>7</Folio><FchEmis>2026-09-23</FchEmis>",
+                      b"<TipoDTE>52</TipoDTE><Folio>7</Folio><FchEmis>2026-09-23</FchEmis>"
+                      b"<TipoDespacho>1</TipoDespacho><IndTraslado>" + traslado.encode() + b"</IndTraslado>")
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 52, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, SimpleNamespace(tipo_dte=52, folio=7, modo="CERT"), 80, cedible=False).body.decode()
+    assert "GUÍA DE DESPACHO ELECTRÓNICA" in html and texto in html
+    assert html.count('<section class="copia">') == copias
+    assert html.count("ACUSE DE RECIBO") == copias - 1
+
+
 def test_venta_que_dte_torn_no_tiene_usa_la_plantilla_antigua(dte_torn):
     assert _impreso_dte(TENANT, SimpleNamespace(tipo_dte=33, folio=8), 80, cedible=False) is None
 
