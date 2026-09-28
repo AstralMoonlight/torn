@@ -170,6 +170,10 @@ proceso (uvicorn, pytest, Docker, etc.).
   `backend` (build desde `Dockerfile.backend`, `env_file: .env`, override `TORN_DB_HOST: db`, puerto 8000,
   `depends_on: db healthy`) y `frontend` (build desde `Dockerfile.frontend` con contexto raíz, puerto 3000,
   `depends_on: backend`). El volumen `postgres_data` persiste la base.
+- **Piloto / producción**: `docker-compose.piloto.yml` (raíz y `dte-torn/`) va encima del de desarrollo con
+  `-f`. Frontend `runner`, `TORN_ENV=production`, puertos solo en `127.0.0.1` (la base y dte-torn sin
+  publicar) y el backend unido a la red `dte-torn_default` para llamar a `http://api:8000`. Ahí el backend
+  usa `TORN_DB_HOST=torn_db`: con las dos redes, `db` resuelve al Postgres de dte-torn.
 
 ### 3.3 Modificaciones locales previas a esta sesión
 
