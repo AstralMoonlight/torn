@@ -7,10 +7,12 @@ veces. Cada devolución reingresa stock, emite una NC y abona la cuenta corrient
 del cliente.
 """
 
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 
+from app.models.cash import CashSession
 from app.models.customer import Customer
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
@@ -145,3 +147,21 @@ def test_nc_de_boleta_a_consumidor_final(client, db_session, fake_dte):
     assert nc["receptor"]["rut"] == "66666666-6"
     assert nc["receptor"]["direccion"] is None
     assert nc["referencias"][0]["tipo_doc"] == "39"
+
+
+class TestDevolucionEnElArqueo:
+    def test_la_devolucion_en_efectivo_resta_del_cajon(self, client, venta):
+        """La NC guarda su pago EFECTIVO en positivo y el cierre lo sumaba: devolver
+        $2.380 hacía esperar $2.380 más en el cajón, un faltante de $4.760."""
+        assert _devolver(client, venta["sale_id"], venta["product"].id, 2).status_code == 201
+        # SQLite guarda created_at sin fracción de segundo: la venta hecha en el mismo
+        # segundo de la apertura quedaría "antes" del turno.
+        turno = venta["db"].query(CashSession).one()
+        turno.start_time = datetime(2000, 1, 1)
+        venta["db"].commit()
+
+        cierre = client.post("/cash/close", json={"final_cash_declared": 13570})
+        assert cierre.status_code == 200, cierre.text
+        # 10.000 inicial + 5.950 venta - 2.380 devueltos (2 x 1.000 + IVA)
+        assert Decimal(cierre.json()["final_cash_system"]) == 13570
+        assert Decimal(cierre.json()["difference"]) == 0

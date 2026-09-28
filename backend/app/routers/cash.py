@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, desc
+from sqlalchemy import case, func, desc
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.cash import CashSession
@@ -177,7 +177,9 @@ def close_session(
         Sale.seller_id == user_id,
         PaymentMethod.code == "EFECTIVO",
     )
-    total_sales_cash = db.query(func.coalesce(func.sum(SalePayment.amount), 0))\
+    # La NC guarda su pago en positivo, pero ese efectivo sale del cajón.
+    signo_pago = case((Sale.tipo_dte == 61, -SalePayment.amount), else_=SalePayment.amount)
+    total_sales_cash = db.query(func.coalesce(func.sum(signo_pago), 0))\
         .join(Sale)\
         .join(PaymentMethod)\
         .filter(*cash_sales_filter)        .execution_options(todos_los_modos=True).scalar()
