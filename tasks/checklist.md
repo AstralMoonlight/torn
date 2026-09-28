@@ -158,3 +158,57 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
 - El frontend no tenía tests: `npm test` usa `node:test` (sin dependencias), el archivo queda fuera de
   `tsconfig` (el build de Docker no trae `dte-torn/`) y CI lo corre con Node 22. `npm run build` pasa.
 - **Revisar:** el cambio de CI (un paso nuevo con Node 22 en el job del frontend).
+
+### [ ] 16. #43: el ticket muestra bien los descuentos (parcial)
+- **Rama:** `fix/ticket-descuentos`
+- **Qué:** en el ticket 57/80 mm, el descuento global en pesos salía sin su monto (solo "Descuento") y
+  el de línea en % no decía el porcentaje. Ahora: `Dcto 12,5%: -$2.500` en la línea y
+  `Descuento: -$1.500` / `Cliente frecuente: -5%` abajo, como el PDF carta (ese ya estaba bien: lo
+  aprobó el SII en las muestras).
+- **Verificado:** test con un XML con descuento de línea en % y dos globales.
+- **Pendiente:** #41 y #42 (dar descuentos desde el POS) esperan la decisión de **#40** (quién puede y
+  con qué tope); el propio issue pide decidirlo antes de hacer la pantalla.
+
+---
+
+## Piloto en el local (`lanzamiento.md` 1.2 a 1.5)
+
+### [ ] 17. 1.3 y 1.5: compose del piloto
+- **Rama:** `chore/compose-piloto`
+- **Qué:** `docker-compose.piloto.yml` en la raíz y en `dte-torn/`, que van **encima** de los de
+  desarrollo (que no cambian): frontend de producción (`runner`), `TORN_ENV=production`, backend y
+  frontend solo en `127.0.0.1`, las bases, MinIO y la API de dte-torn sin publicar. El backend se une a
+  la red `dte-torn_default` y llama a `http://api:8000` (ya no `host.docker.internal:8001`).
+- **Hallazgo verificado:** con las dos redes, el nombre `db` resolvía al **Postgres de dte-torn**. El
+  override usa `TORN_DB_HOST=torn_db`, que solo existe en la red de Torn. Lo probé con un contenedor
+  en las dos redes; también que `http://api:8000/health` responde por nombre.
+- **Verificado:** `docker compose config` de los dos (0 puertos publicados en dte-torn). **No** levanté
+  el stack del piloto: habría reemplazado tus contenedores de desarrollo.
+- **Revisar:** el orden de arranque (dte-torn primero: su red es externa para Torn) y que el `.env` del
+  piloto tenga `SECRET_KEY` (con `TORN_ENV=production` el backend no arranca sin ella) y contraseñas
+  nuevas de Postgres y MinIO. Una línea nueva en `claude.md` lo resume.
+
+### [ ] 18. 1.2: vaciar los datos de demostración de JCB
+- **Rama:** `chore/vaciar-datos-demo`
+- **Qué:** `backend/scripts/vaciar_datos_demo.py <esquema> [--aplicar]`. Borra ventas, compras,
+  catálogo, marcas, clientes (menos el consumidor final 66666666-6), proveedores, listas de precios y
+  turnos de caja. Deja empresa, emisor, usuarios, roles, medios de pago, impuestos y configuración; no
+  toca dte-torn (el id de la empresa no cambia). Sin `--aplicar` solo cuenta.
+- **Verificado:** sin `--aplicar` contra la base real de JCB (`tenant_763989569`: 16 ventas, 22
+  productos, 4 clientes...; no cambió nada) y con `--aplicar` sobre una copia.
+- **Pendiente tuyo:** correrlo con `--aplicar` cuando quieras. Ojo: borra también las 16 ventas de la
+  certificación (modo CERT); dte-torn las sigue teniendo.
+
+### [ ] 19. 1.4: respaldo diario
+- **Rama:** `feat/respaldo-diario`
+- **Qué:** `infra/respaldo/respaldo.sh`: vuelca las dos bases, copia el `/data` de MinIO y lo sube en
+  **una** foto de restic (cifrada en el PC). Timer de systemd a las 03:00 con `Persistent=true` (el PC
+  se apaga de noche: corre al encender). Deja la hora del último respaldo bueno en
+  `/var/lib/torn/ultimo-respaldo-ok` para la futura alerta. README con instalación, el `rest-server
+  --append-only`, la retención aprobada (14/8/12/6) y cómo restaurar.
+- **Verificado:** el script contra los contenedores reales con un `restic` simulado (2 volcados + 67 MB
+  de XML, limpia la carpeta), y un volcado de Torn restaurado en una base aparte (964 ventas iguales).
+- **Diferencia con el diseño:** los volcados pasan un momento por disco (`/var/tmp`) en vez de ir por
+  `--stdin`, para que bases y XML queden en la misma foto. El disco va cifrado (LUKS).
+- **Pendiente tuyo:** el servidor, `restic init`, guardar aparte `DTE_MASTER_KEY` y la clave del
+  repositorio, y probar la restauración completa en otra máquina.
