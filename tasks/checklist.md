@@ -51,3 +51,50 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   borrar la compra); en el navegador: ajuste del Post-it de demo (la herramienta de pruebas tipeó dos veces y quedó en 4.848; se volvió a 50 con otro ajuste), editor guarda sin stock.
 - **Revisar:** en el tenant de demo quedaron 2 movimientos de prueba en el Post-it 3x3 (stock final 50,
   el mismo de antes). Los movimientos viejos sin saldo se ven en blanco: eso lo cuadra K5.
+
+### [ ] 7. C1: pagos de clientes con crédito interno
+- **Rama:** `feat/pagos-credito-interno`, **sale de `fix/arqueo-devoluciones`** (los dos tocan el cierre
+  de caja): mergear A5 primero.
+- **Qué:**
+  - Tabla `customer_payments` (migración `a3b4c5d6e7f8`, por esquema de empresa).
+  - `POST /customers/{rut}/pagos` `{amount, payment_method_id, nota}`: baja `current_balance`. No deja
+    pagar más que la deuda ni pagar con crédito interno. En efectivo y con control de caja, exige turno
+    abierto (409 "Abra la caja...") y el pago queda en ese turno.
+  - El cierre de caja suma los pagos de deuda en efectivo del turno.
+  - `GET /customers/{rut}/cuenta`: saldo y movimientos (ventas fiadas, NC abonadas, pagos).
+  - Clientes: columna **Debe**, botón **Con deuda** y acción **Cuenta y pagos** (ícono de billetera) con
+    el saldo grande, "Registrar pago" (con atajo "Paga todo") y la lista de movimientos.
+- **Verificado:** 6 tests (`test_pagos_clientes.py`: el cierre espera 10.000 + 5.000 del pago, la
+  transferencia no entra a la caja, tope de la deuda, sin caja abierta, cuenta). Migración probada
+  arriba y abajo en una copia de la base de desarrollo (`torn_migtest`, no en la real). En el navegador,
+  contra esa copia: pago de $10.000 a un cliente con deuda de $25.000, queda en $15.000 y en el turno abierto.
+- **Revisar:**
+  - Hice que el pago en efectivo **exija caja abierta** cuando el control de caja está encendido (el
+    plan decía que "entra a la caja", pero no qué pasa sin turno). ¿De acuerdo?
+  - Es la opción chica de `administracion.md` 3.7: sin tabla `cash_movements` todavía (J1). Cuando se
+    haga J1, el pago pasa a ser un INGRESO del turno.
+  - La cuenta muestra las ventas del modo actual (DEV/CERT/PROD), pero el saldo es uno solo.
+
+### [ ] 8. A2: eliminar un cliente lo desactiva
+- **Rama:** `fix/cliente-desactivar`
+- **Qué:** `DELETE /customers/{rut}` pone `is_active = False` (antes borraba y chocaba con la FK si tenía
+  ventas). La lista y la búsqueda del POS muestran solo activos. Crear de nuevo ese RUT lo **reactiva**
+  con los datos nuevos (antes daría 409 con un cliente invisible). El diálogo de confirmación lo explica.
+- **Verificado:** 2 tests (`test_clientes_desactivar.py`).
+
+### [ ] 9. A4: borrar `updatePurchase`
+- **Rama:** `chore/borrar-update-purchase`
+- **Qué:** se borra la función del frontend (nadie la usa). `tsc` limpio.
+- **Revisar:** el endpoint `PUT /purchases/{id}` del backend sigue ahí, también sin uso. ¿Lo borro?
+
+### [ ] 10. A6: costo del momento en cada línea de venta
+- **Rama:** `fix/costo-en-venta`
+- **Qué:** `sale_details.costo_unitario` (migración `b4c5d6e7f8a9`; las líneas existentes toman el costo
+  actual del producto). Se llena al vender; la NC hereda el costo de la línea original y la factura de
+  guías el de la guía. `stats.py` (dashboard, top productos, reporte) usa ese costo.
+- **Verificado:** test de que cambiar el costo después de vender no cambia la utilidad. Migración
+  probada arriba y abajo en una copia (2.180 líneas del tenant de demo quedaron con el costo actual).
+- **Ojo al mergear:** esta migración y la de C1 salen las dos de `f2a3b4c5d6e7`. La que se mergee
+  segunda tiene que cambiar su `down_revision` a la otra, o `alembic upgrade head` falla por dos heads.
+- **Visto de paso (no cambiado):** los reportes suman las NC como si fueran ventas (monto y utilidad
+  positivos). Merece su propio arreglo.
