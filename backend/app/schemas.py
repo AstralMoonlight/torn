@@ -262,6 +262,36 @@ class ProductUpdate(BaseModel):
     brand_id: Optional[int] = None
     tax_id: Optional[int] = None
 
+    @field_validator("stock_actual")
+    @classmethod
+    def _stock_por_kardex(cls, v):
+        # Editarlo a mano cambiaba el stock sin dejar rastro en el kardex.
+        if v is not None:
+            raise ValueError("El stock no se edita: use POST /products/{id}/ajuste-stock")
+        return v
+
+
+class AjusteStock(BaseModel):
+    """Toma de inventario de un producto: cuántas hay ahora y por qué."""
+    cantidad_contada: Decimal = Field(ge=0)
+    motivo: Literal["CONTEO", "MERMA", "INICIAL", "AJUSTE"]
+    nota: Optional[str] = Field(default=None, max_length=200)
+
+
+class StockMovementOut(BaseModel):
+    """Una línea del kardex."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    fecha: Optional[datetime] = None
+    tipo: str
+    motivo: str
+    cantidad: Decimal
+    balance_after: Optional[Decimal] = None
+    description: Optional[str] = None
+    sale_id: Optional[int] = None
+    user_id: Optional[int] = None
+
 
 class ProductOut(BaseModel):
     """Representación de un producto devuelta por la API."""

@@ -6,14 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_current_local_user, get_tenant_db
+from app.models.inventory import StockMovement
 from app.models.product import Product
+from app.models.user import User
 from app.schemas import (
+    AjusteStock,
     ProductCreate,
     ProductCreateWithVariants,
     ProductOut,
     ProductUpdate,
+    StockMovementOut,
 )
+from app.services.kardex import mover_stock
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -68,9 +73,12 @@ def generate_ean13(product_id: int) -> str:
 @router.post("/", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto Simple",
              description="Agrega un nuevo producto al catálogo. SKU y código de barras se auto-generan si no se proporcionan.")
-def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db)):
+def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db),
+                   local_user: User = Depends(get_current_local_user)):
     """Registra un nuevo producto en la base de datos."""
     data = product.model_dump()
+    # El stock con que nace entra por el kardex, como INICIAL.
+    stock_inicial = data.pop("stock_actual")
 
     # Auto-generate SKU if not provided
     if not data.get("codigo_interno"):
@@ -86,8 +94,11 @@ def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db))
             detail=f"Ya existe un producto con código {data['codigo_interno']}",
         )
 
-    db_product = Product(**data)
+    db_product = Product(**data, stock_actual=0)
     db.add(db_product)
+    db.flush()
+    if stock_inicial:
+        db.add(mover_stock(db_product, stock_inicial, "INICIAL", local_user.id, "Stock al crear el producto"))
     db.commit()
     db.refresh(db_product)
 
@@ -103,7 +114,8 @@ def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db))
 @router.post("/with-variants", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto con Variantes",
              description="Crea un producto padre y sus variantes en un solo request.")
-def create_product_with_variants(payload: ProductCreateWithVariants, db: Session = Depends(get_tenant_db)):
+def create_product_with_variants(payload: ProductCreateWithVariants, db: Session = Depends(get_tenant_db),
+                                 local_user: User = Depends(get_current_local_user)):
     """Crea un producto padre con variantes simplificadas."""
 
     # 1. Create parent product
@@ -155,13 +167,16 @@ def create_product_with_variants(payload: ProductCreateWithVariants, db: Session
                 descripcion=v.descripcion,
                 precio_neto=v.precio_neto,
                 controla_stock=payload.controla_stock,  # Inherited from parent
-                stock_actual=v.stock_actual,
+                stock_actual=0,
                 stock_minimo=0,
                 parent_id=parent.id,
                 brand_id=payload.brand_id,
                 tax_id=payload.tax_id,  # Inherited from parent
             )
             db.add(variant)
+            db.flush()
+            if v.stock_actual:
+                db.add(mover_stock(variant, v.stock_actual, "INICIAL", local_user.id, "Stock al crear el producto"))
             db.commit()
             db.refresh(variant)
 
@@ -217,6 +232,35 @@ def update_product(product_id: int, product_in: ProductUpdate, db: Session = Dep
     db.commit()
     db.refresh(product)
     return product
+
+
+@router.post("/{product_id}/ajuste-stock", response_model=ProductOut,
+             summary="Ajustar stock",
+             description="Anota en el kardex la diferencia entre lo contado y lo que dice el sistema.")
+def ajustar_stock(product_id: int, ajuste: AjusteStock, db: Session = Depends(get_tenant_db),
+                  local_user: User = Depends(get_current_local_user)):
+    """Deja el stock en `cantidad_contada`; el movimiento es la diferencia."""
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+    if not product.controla_stock:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Este producto no controla stock.")
+    diferencia = ajuste.cantidad_contada - product.stock_actual
+    if diferencia:
+        db.add(mover_stock(product, diferencia, ajuste.motivo, local_user.id, ajuste.nota))
+        db.commit()
+        db.refresh(product)
+    return product
+
+
+@router.get("/{product_id}/movimientos", response_model=List[StockMovementOut],
+            summary="Kardex del producto", description="Movimientos de stock, el más nuevo primero.")
+def movimientos(product_id: int, limit: int = 100, db: Session = Depends(get_tenant_db)):
+    return (
+        db.query(StockMovement).filter(StockMovement.product_id == product_id)
+        .order_by(StockMovement.id.desc()).limit(min(limit, 500)).all()
+    )
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT,

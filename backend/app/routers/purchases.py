@@ -9,10 +9,11 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_current_local_user, get_tenant_db
 from app.models.purchase import Purchase, PurchaseDetail
 from app.models.product import Product
-from app.models.inventory import StockMovement
+from app.models.user import User
+from app.services.kardex import mover_stock
 from app.models.issuer import Issuer
 from app.models.settings import SystemSettings
 from app.schemas import PurchaseCreate, PurchaseOut
@@ -33,7 +34,8 @@ _html_env.filters["number"] = format_number
 
 
 @router.post("/", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)
-def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db)):
+def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db),
+                    local_user: User = Depends(get_current_local_user)):
     """Registra una compra y actualiza stock/costos de forma atómica."""
     
     # 1. Crear encabezado
@@ -95,18 +97,8 @@ def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenan
         product.costo_unitario = item.precio_costo_unitario
         
         if product.controla_stock:
-            product.stock_actual += item.cantidad
-            
-            # Registrar Movimiento de Inventario
-            movement = StockMovement(
-                product_id=product.id,
-                tipo="ENTRADA",
-                motivo="COMPRA",
-                cantidad=item.cantidad,
-                balance_after=product.stock_actual,
-                description=f"Compra Folio {db_purchase.folio or 'S/N'}"
-            )
-            db.add(movement)
+            db.add(mover_stock(product, item.cantidad, "COMPRA", local_user.id,
+                               f"Compra Folio {db_purchase.folio or 'S/N'}"))
 
     # 3. Finalizar totales. El IVA sale del impuesto de cada producto, no de una
     # tasa fija: un producto exento no debe sumar impuesto ni siquiera en factura.
@@ -129,7 +121,8 @@ def get_purchase(purchase_id: int, db: Session = Depends(get_tenant_db)):
 
 
 @router.put("/{purchase_id}", response_model=PurchaseOut)
-def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db)):
+def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db),
+                    local_user: User = Depends(get_current_local_user)):
     """Actualiza una compra y ajusta el stock según la diferencia."""
     db_purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
     if not db_purchase:
@@ -142,16 +135,9 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
     for product_id, old_qty in old_items_map.items():
         prod = db.query(Product).filter(Product.id == product_id).first()
         if prod and prod.controla_stock:
-            prod.stock_actual -= old_qty
-            # Registrar movimiento de ajuste (reverso temporal)
-            db.add(StockMovement(
-                product_id=prod.id,
-                tipo="SALIDA",
-                motivo="AJUSTE",
-                cantidad=old_qty,
-                balance_after=prod.stock_actual,
-                description=f"Ajuste por edición de Compra #{db_purchase.id}"
-            ))
+            # Reverso de lo que entró; los ítems nuevos entran abajo.
+            db.add(mover_stock(prod, -old_qty, "AJUSTE", local_user.id,
+                               f"Ajuste por edición de Compra #{db_purchase.id}"))
 
     # 3. Limpiar detalles antiguos
     for d in db_purchase.details:
@@ -194,15 +180,8 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
         # Actualizar stock y costo
         product.costo_unitario = item.precio_costo_unitario
         if product.controla_stock:
-            product.stock_actual += item.cantidad
-            db.add(StockMovement(
-                product_id=product.id,
-                tipo="ENTRADA",
-                motivo="COMPRA",
-                cantidad=item.cantidad,
-                balance_after=product.stock_actual,
-                description=f"Actualización Compra #{db_purchase.id} (Folio {db_purchase.folio or 'S/N'})"
-            ))
+            db.add(mover_stock(product, item.cantidad, "COMPRA", local_user.id,
+                               f"Actualización Compra #{db_purchase.id} (Folio {db_purchase.folio or 'S/N'})"))
 
     # 6. Recalcular totales (ver nota sobre el IVA por línea en create_purchase)
     db_purchase.monto_neto = total_neto
@@ -215,7 +194,8 @@ def update_purchase(purchase_id: int, purchase_in: PurchaseCreate, db: Session =
 
 
 @router.delete("/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_purchase(purchase_id: int, db: Session = Depends(get_tenant_db)):
+def delete_purchase(purchase_id: int, db: Session = Depends(get_tenant_db),
+                    local_user: User = Depends(get_current_local_user)):
     """Elimina una compra y reversa el stock."""
     db_purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
     if not db_purchase:
@@ -225,16 +205,8 @@ def delete_purchase(purchase_id: int, db: Session = Depends(get_tenant_db)):
     for detail in db_purchase.details:
         product = db.query(Product).filter(Product.id == detail.product_id).first()
         if product and product.controla_stock:
-            product.stock_actual -= detail.cantidad
-            # Registrar salida por eliminación
-            db.add(StockMovement(
-                product_id=product.id,
-                tipo="SALIDA",
-                motivo="AJUSTE",
-                cantidad=detail.cantidad,
-                balance_after=product.stock_actual,
-                description=f"Eliminación Compra #{db_purchase.id} (Folio {db_purchase.folio or 'S/N'})"
-            ))
+            db.add(mover_stock(product, -detail.cantidad, "AJUSTE", local_user.id,
+                               f"Eliminación Compra #{db_purchase.id} (Folio {db_purchase.folio or 'S/N'})"))
 
     db.delete(db_purchase)
     db.commit()
