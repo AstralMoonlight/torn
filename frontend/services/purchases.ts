@@ -56,11 +56,6 @@ export async function createPurchase(purchase: PurchaseCreate): Promise<Purchase
     return data
 }
 
-export async function updatePurchase(id: number, purchase: PurchaseCreate): Promise<Purchase> {
-    const { data } = await api.put<Purchase>(`/purchases/${id}`, purchase)
-    return data
-}
-
 export async function deletePurchase(id: number): Promise<void> {
     await api.delete(`/purchases/${id}`)
 }
