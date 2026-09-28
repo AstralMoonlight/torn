@@ -83,15 +83,20 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
     entrega un documento sin folio autorizado.
     """
+    hoy = get_now().date()
     documento = {
         "external_id": f"venta-{sale.id}",
         "tipo_dte": sale.tipo_dte,
-        "fecha_emision": get_now().date().isoformat(),
+        "fecha_emision": hoy.isoformat(),
         "items": items,
         "referencias": referencias,
     }
     if forma_pago:
         documento["forma_pago"] = forma_pago
+    if forma_pago == CREDITO:
+        settings = db.query(SystemSettings).first()
+        dias = settings.dias_credito if settings else 30
+        documento["fecha_vencimiento"] = (hoy + timedelta(days=dias)).isoformat()
     if sale.tipo_dte not in BOLETAS:
         documento["receptor"] = {
             "rut": customer.rut, "razon_social": customer.razon_social, "giro": customer.giro,
@@ -135,6 +140,7 @@ ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VAL
 
 #: Facturas: las únicas que llevan forma de pago (`FmaPago`) en esta etapa.
 FACTURAS = {33, 34}
+CONTADO, CREDITO = 1, 2
 
 
 def _forma_pago(db: Session, tipo: int, payments) -> int | None:
@@ -143,7 +149,7 @@ def _forma_pago(db: Session, tipo: int, payments) -> int | None:
     if tipo not in FACTURAS:
         return None
     credito = {pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "CREDITO_INTERNO")}
-    return 2 if any(p.payment_method_id in credito for p in payments) else 1
+    return CREDITO if any(p.payment_method_id in credito for p in payments) else CONTADO
 
 
 NOMBRES_DTE = {33: "factura", 34: "factura exenta", 39: "boleta", 41: "boleta exenta",

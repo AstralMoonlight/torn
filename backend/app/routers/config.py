@@ -63,7 +63,7 @@ def get_settings(db: Session = Depends(get_tenant_db)):
     return settings
 
 #: Ajustes que afectan a toda la empresa y solo cambia el administrador.
-SOLO_ADMIN = {"control_caja", "color_mode", "color_primario"}
+SOLO_ADMIN = {"control_caja", "color_mode", "color_primario", "dias_credito"}
 
 
 @router.put("/settings/", response_model=SettingsOut)

@@ -38,6 +38,8 @@ TRASLADOS = {
     "6": "Otros traslados sin venta",
     "7": "Guía de devolución",
 }
+#: FmaPago, como el PDF carta.
+FORMAS_PAGO = {"1": "Contado", "2": "Crédito", "3": "Sin costo"}
 CODIGOS_REFERENCIA = {"1": "Anula documento", "2": "Corrige texto", "3": "Corrige montos"}
 
 #: Nivel de corrección de errores del PDF417 que pide el SII.
@@ -82,6 +84,8 @@ def leer_dte(xml: bytes) -> dict:
         "nombre": NOMBRES.get(tipo, f"DOCUMENTO {tipo}"),
         "folio": int(id_doc["Folio"]),
         "fecha": id_doc.get("FchEmis", ""),
+        "forma_pago": FORMAS_PAGO.get(id_doc.get("FmaPago", ""), ""),
+        "vencimiento": id_doc.get("FchVenc", ""),
         "ind_traslado": id_doc.get("IndTraslado", ""),
         "traslado": TRASLADOS.get(id_doc.get("IndTraslado", ""), id_doc.get("IndTraslado", "")),
         "emisor": emisor,

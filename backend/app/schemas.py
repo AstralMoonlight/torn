@@ -130,6 +130,7 @@ class SettingsBase(BaseModel):
     control_caja: bool = True
     color_mode: Literal["empresa", "usuario"] = "empresa"
     color_primario: ColorPrimario = "azul"
+    dias_credito: int = Field(default=30, ge=0, le=365)
 
 class SettingsUpdate(SettingsBase):
     pass

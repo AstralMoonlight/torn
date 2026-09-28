@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { AlertaError } from '@/components/ui/alerta-error'
-import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2 } from 'lucide-react'
+import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2, CalendarClock } from 'lucide-react'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { useSettingsStore } from '@/lib/store/settingsStore'
@@ -103,6 +103,7 @@ export default function ConfigurationPage() {
     const [impresion, seguirImpresion] = useGuardado()
     const [caja, seguirCaja] = useGuardado()
     const [color, seguirColor] = useGuardado()
+    const [credito, seguirCredito] = useGuardado()
 
     const isAdmin = useSessionStore((s) =>
         s.user?.is_superuser === true ||
@@ -308,6 +309,37 @@ export default function ConfigurationPage() {
                                     </div>
                                 </div>
                                 {caja?.tipo === 'error' && <AlertaError mensaje={caja.mensaje} />}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {isAdmin && (
+                        <Card data-section="configuracion.general.credito">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Ventas a crédito</CardTitle>
+                                <CardDescription>La factura que se paga con crédito interno sale como crédito y con esta fecha de vencimiento.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-4 py-3">
+                                    <Label htmlFor="dias-credito">Plazo de pago (días)</Label>
+                                    <div className="flex items-center gap-3">
+                                        <MarcaGuardado estado={credito} />
+                                        <Input
+                                            id="dias-credito"
+                                            key={settings.dias_credito}
+                                            type="number"
+                                            min={0}
+                                            max={365}
+                                            defaultValue={settings.dias_credito}
+                                            className="w-24 text-right"
+                                            onBlur={(e) => {
+                                                const dias = Number(e.target.value)
+                                                if (dias !== settings.dias_credito) seguirCredito(guardar({ dias_credito: dias }))
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {credito?.tipo === 'error' && <AlertaError mensaje={credito.mensaje} />}
                             </CardContent>
                         </Card>
                     )}

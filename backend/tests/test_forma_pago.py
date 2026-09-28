@@ -1,10 +1,13 @@
 """Forma de pago de la factura: fiada (crédito interno) va como crédito (FmaPago 2)."""
 
+from datetime import timedelta
+
 import pytest
 
 from app.models.customer import Customer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
+from app.utils.dates import get_now
 
 EFECTIVO, CREDITO = 1, 2
 
@@ -42,3 +45,17 @@ def test_factura_lleva_forma_de_pago(client, pos, fake_dte, pagos, forma):
 def test_boleta_no_lleva_forma_de_pago(client, pos, fake_dte):
     _vender(client, 39, [(CREDITO, "1190")])
     assert "forma_pago" not in fake_dte.documentos[-1]
+
+
+def test_factura_fiada_vence_segun_el_plazo_de_mi_negocio(client, pos, fake_dte):
+    """#44: FchVenc = hoy + dias_credito (30 por defecto); al contado no lleva."""
+    hoy = get_now().date()
+    _vender(client, 33, [(CREDITO, "1190")])
+    assert fake_dte.documentos[-1]["fecha_vencimiento"] == (hoy + timedelta(days=30)).isoformat()
+
+    assert client.put("/config/settings/", json={"dias_credito": 45}).status_code == 200
+    _vender(client, 33, [(EFECTIVO, "500"), (CREDITO, "690")])
+    assert fake_dte.documentos[-1]["fecha_vencimiento"] == (hoy + timedelta(days=45)).isoformat()
+
+    _vender(client, 33, [(EFECTIVO, "1190")])
+    assert "fecha_vencimiento" not in fake_dte.documentos[-1]

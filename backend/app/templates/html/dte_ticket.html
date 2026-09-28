@@ -92,6 +92,8 @@
 
     <div class="sep"></div>
     <div class="fila"><span class="etiqueta">Fecha:</span><span>{{ fecha(doc.fecha) }}</span></div>
+    {% if doc.forma_pago %}<div class="fila"><span class="etiqueta">Forma de pago:</span><span class="der">{{ doc.forma_pago }}</span></div>{% endif %}
+    {% if doc.vencimiento %}<div class="fila"><span class="etiqueta">Vencimiento:</span><span>{{ fecha(doc.vencimiento) }}</span></div>{% endif %}
     {% if doc.traslado %}<div class="fila"><span class="etiqueta">Traslado:</span><span class="der">{{ doc.traslado }}</span></div>{% endif %}
     {% if doc.receptor and doc.receptor.RUTRecep and doc.receptor.RUTRecep != '66666666-6' %}
     <div class="fila"><span class="etiqueta">Señor(es):</span><span class="der">{{ doc.receptor.RznSocRecep }}</span></div>
