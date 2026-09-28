@@ -108,7 +108,8 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         emitido = dte_client.emitir(tenant, documento, actor)
     except dte_client.DteError as exc:
         db.rollback()
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        log.warning("Venta %s: dte-torn respondió %s: %s", sale.id, exc.status_code, exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=_mensaje_emision(exc, sale.tipo_dte)) from exc
 
     sale.folio = emitido["folio"]
     sale.modo = tenant.sii_ambiente
@@ -127,6 +128,29 @@ TRASLADOS_FACTURABLES = {1, 2, 3}
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
 #: SIMULADO: emitido en modo Desarrollador, nunca va al SII.
 ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION", "SIMULADO"}
+
+NOMBRES_DTE = {33: "factura", 34: "factura exenta", 39: "boleta", 41: "boleta exenta",
+               52: "guía de despacho", 56: "nota de débito", 61: "nota de crédito"}
+
+
+def _mensaje_emision(exc: "dte_client.DteError", tipo: int) -> str:
+    """Lo que ve quien vende: qué pasó y qué hacer, sin jerga (lanzamiento.md 1.6).
+
+    El texto técnico de dte-torn queda en el log. Lo que no se reconoce pasa tal cual.
+    """
+    doc = NOMBRES_DTE.get(tipo, "el documento")
+    detalle = exc.detail or ""
+    if isinstance(exc, dte_client.DteNoDisponible):
+        return ("No se pudo emitir: el sistema de facturación no responde. Espere un minuto y vuelva a "
+                "intentar; si sigue igual, avise al administrador.")
+    if detalle.startswith("Sin folios"):
+        return f"Se acabaron los números autorizados por el SII para {doc}. Avise al administrador para que cargue más."
+    if "requiere del receptor" in detalle:
+        faltan = detalle.split(":", 1)[-1].strip().replace("direccion", "dirección")
+        return f"Para emitir {doc} faltan datos del cliente: {faltan}. Complételos en Clientes y vuelva a intentar."
+    if "certificado" in detalle.lower():
+        return "Falta el certificado digital de la empresa. Avise al administrador."
+    return detalle
 
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
@@ -318,7 +342,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     if control_caja and not active_session and sale_in.tipo_dte != GUIA_DESPACHO:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"El vendedor (ID {seller_id_to_use}) no tiene turno de caja abierto."
+            detail="No hay un turno de caja abierto: abra la caja antes de vender.",
         )
 
     # 1. Validar Cliente

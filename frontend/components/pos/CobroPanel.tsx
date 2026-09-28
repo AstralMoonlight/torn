@@ -183,7 +183,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
 
     const bloqueo =
         items.length === 0 ? 'El ticket está vacío.'
-            : !hayFolios ? `No quedan folios de ${NOMBRE_DOC[tipoDte] ?? 'este documento'}. Solicítalos al SII.`
+            : !hayFolios ? `Se acabaron los números autorizados por el SII para ${(NOMBRE_DOC[tipoDte] ?? 'este documento').toLowerCase()}. Avise al administrador.`
                 : pideCliente && !customer ? 'Elige el cliente.'
                     : isGuia ? null
                         : falta > 0 ? `Faltan ${formatCLP(falta)}.`
@@ -339,7 +339,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                                         <button key={tipo} type="button" onClick={() => setTipoDte(tipo)} aria-pressed={tipoDte === tipo}
                                             className={cn('h-10 rounded-lg border px-4 text-sm font-medium transition-colors cursor-pointer',
                                                 tipoDte === tipo ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/40')}>
-                                            {label}{sinFolios && <span className="ml-1.5 text-xs opacity-70">(sin folios)</span>}
+                                            {label}{sinFolios && <span className="ml-1.5 text-xs opacity-70" title={AYUDA_AGOTADO}>(agotado)</span>}
                                         </button>
                                     )
                                 })}
@@ -499,6 +499,9 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     )
 }
 
+/** "Sin folios" en palabras del mostrador (lanzamiento.md 1.6). */
+const AYUDA_AGOTADO = 'Se acabaron los números autorizados por el SII para este documento. Avise al administrador.'
+
 function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
     activa: boolean; sinFolios?: boolean; fila?: boolean; onClick: () => void; children: React.ReactNode
 }) {
@@ -511,7 +514,7 @@ function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
                 activa ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/40',
             )}>
             {children}
-            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive">sin folios</span>}
+            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive" title={AYUDA_AGOTADO}>agotado</span>}
         </button>
     )
 }
