@@ -212,3 +212,33 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   `--stdin`, para que bases y XML queden en la misma foto. El disco va cifrado (LUKS).
 - **Pendiente tuyo:** el servidor, `restic init`, guardar aparte `DTE_MASTER_KEY` y la clave del
   repositorio, y probar la restauración completa en otra máquina.
+
+### [ ] 20. 1.6: errores en palabras simples en el POS
+- **Rama:** `fix/errores-en-palabras-simples`
+- **Qué:** el backend traduce los rechazos conocidos de dte-torn a qué pasó y qué hacer, y deja el texto
+  técnico en el log: sin folios → "Se acabaron los números autorizados por el SII para boleta. Avise al
+  administrador"; dte-torn caído (antes salía "... no respondió: [Errno 111] Connection refused") →
+  "el sistema de facturación no responde. Espere un minuto y vuelva a intentar..."; datos del cliente
+  que faltan → "faltan datos del cliente: giro, dirección. Complételos en Clientes..."; sin
+  certificado. Caja cerrada: "No hay un turno de caja abierto: abra la caja antes de vender" (antes
+  "El vendedor (ID 1)..."). En el POS, la marca "sin folios" pasa a "agotado" con una ayuda.
+- **Verificado:** 5 tests de los mensajes; en el navegador, el cobro de una boleta sin números muestra
+  el texto nuevo.
+- **Visto de paso:** al entrar al POS desde saas-admin, a veces dice "Caja cerrada" con la caja
+  abierta (se arregla al ir a Caja y volver). No lo investigué.
+
+---
+
+## Revisión de código (#57)
+
+### [ ] 21. Fases 3 (guía) y 4 (libros) de la certificación
+- **Rama:** `fix/ticket-guia` (lo único que hubo que corregir)
+- **Hallazgo corregido:** el ticket 57/80 mm de una **guía** decía "DOCUMENTO 52", no imprimía el tipo
+  de traslado y nunca sacaba la copia cedible. Ahora sigue la regla del PDF carta: nombre, "Traslado:
+  Operación constituye venta" (o el que sea) y cedible con acuse de recibo solo si es venta. 2 tests.
+- **Revisado sin cambios:** `builder.py` (52: `IndTraslado`, `TipoDespacho`, líneas sin precio y
+  traslado interno al propio emisor, cubiertos por los tests contra el XSD), `pdf.py` (cedible solo
+  en guías de venta), `libros.py` (resumen y detalle salen de los mismos montos; `firmar_libro`
+  agrega `TmstFirma` cada vez que se llama, inofensivo porque se llama una vez y los libros solo se
+  usaron en la certificación).
+- **Al mergear:** marcar los Checkpoints B y C en `tasks/todo.md` y cerrar #57.
