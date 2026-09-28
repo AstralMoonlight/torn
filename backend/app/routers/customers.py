@@ -38,6 +38,14 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_d
 
     # Verificar que el RUT no exista
     existing = db.query(Customer).filter(Customer.rut == customer.rut).first()
+    if existing and not existing.is_active:
+        # Se había eliminado (desactivado): vuelve con los datos nuevos.
+        for campo, valor in customer.model_dump().items():
+            setattr(existing, campo, valor)
+        existing.is_active = True
+        db.commit()
+        db.refresh(existing)
+        return existing
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -55,8 +63,8 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_d
              summary="Listar Clientes",
              description="Obtiene todos los clientes registrados.")
 def list_customers(db: Session = Depends(get_tenant_db)):
-    """Lista todos los clientes."""
-    return db.query(Customer).order_by(Customer.razon_social).all()
+    """Lista los clientes activos (los eliminados quedan desactivados)."""
+    return db.query(Customer).filter(Customer.is_active.is_(True)).order_by(Customer.razon_social).all()
 
 
 @router.get("/search", response_model=list[CustomerOut], summary="Buscar Clientes (Predictivo)")
@@ -69,6 +77,7 @@ def search_customers(q: str = "", db: Session = Depends(get_tenant_db)):
     clean_q = q.replace(".", "").replace("-", "")
     
     query = db.query(Customer).filter(
+        Customer.is_active.is_(True),
         (Customer.rut.ilike(f"%{clean_q}%")) |
         (Customer.razon_social.ilike(f"%{q}%"))
     ).limit(10)
@@ -196,9 +205,9 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
 
 @router.delete("/{rut}", status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Cliente",
-               description="Elimina un cliente por su RUT.")
+               description="Desactiva un cliente: deja de aparecer, pero sus ventas y su deuda se conservan.")
 def delete_customer(rut: str, db: Session = Depends(get_tenant_db)):
-    """Elimina un cliente."""
+    """Desactiva un cliente. Borrarlo chocaba con la FK de sus ventas."""
     db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
         raise HTTPException(
@@ -206,6 +215,6 @@ def delete_customer(rut: str, db: Session = Depends(get_tenant_db)):
             detail=f"Cliente con RUT {rut} no encontrado"
         )
     
-    db.delete(db_customer)
+    db_customer.is_active = False
     db.commit()
     return None
