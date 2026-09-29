@@ -232,7 +232,7 @@ export default function DailyReportPage() {
             {/* Disclaimer & Tech Info */}
             <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-xs text-muted-foreground border-t border-border print:border-black print:text-black">
                 <div className="max-w-xs italic text-left">
-                    * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
+                    * La utilidad se calcula con el costo de cada producto al momento de la venta. Los documentos rechazados por el SII no se cuentan.
                 </div>
                 <div className="text-right space-y-1">
                     <p className="font-bold print:hidden">TORN - SISTEMA DE GESTIÓN POS</p>
