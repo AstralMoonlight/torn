@@ -205,29 +205,33 @@ Una tarea = un commit verificado, suite verde (`cd backend && pytest -q`, `cd fr
 && npm run build`). Backend antes que frontend en cada fase. Migraciones que recorren esquemas (patrón
 `c9d0e1f2a3b4`), columnas JSON con `sa.JSON`.
 
+> **2026-09-29:** A1-A6, K1, K3 y C1 hechos y mergeados (`checklist.md` puntos 2 a 10). K4 a medias:
+> existe `GET /products/{id}/movimientos`, falta el de todo el negocio y la pantalla. El resto va
+> después del piloto.
+
 ### Fase 0: defectos
 
-- [ ] **A1** D1 y D2: "Sin marca" manda `null`; quitar la opción "Sin impuesto (0%)" (el exento se elige
+- [x] **A1** D1 y D2: "Sin marca" manda `null`; quitar la opción "Sin impuesto (0%)" (el exento se elige
       como impuesto). `ProductEditDialog.tsx`. XS
-- [ ] **A2** D4: `delete_customer` desactiva y `GET /customers` filtra activos. Test: borrar un cliente con
+- [x] **A2** D4: `delete_customer` desactiva y `GET /customers` filtra activos. Test: borrar un cliente con
       ventas responde 204 y las ventas siguen. S
-- [ ] **A3** D5: `GET /sales` acepta `desde`/`hasta` y `q` (folio o cliente); Historial filtra por día (hoy
+- [x] **A3** D5: `GET /sales` acepta `desde`/`hasta` y `q` (folio o cliente); Historial filtra por día (hoy
       por defecto) en vez de las últimas 50. Test. S
-- [ ] **A4** D7: borrar `updatePurchase` de `services/purchases.ts`. XS
-- [ ] **A5** D8: el cierre de caja resta las devoluciones en efectivo. Test: abrir con 10.000, vender
+- [x] **A4** D7: borrar `updatePurchase` de `services/purchases.ts`. XS
+- [x] **A5** D8: el cierre de caja resta las devoluciones en efectivo. Test: abrir con 10.000, vender
       5.000 en efectivo, devolver 2.000 en efectivo, el sistema espera 13.000. S
-- [ ] **A6** D9: columna `SaleDetail.costo_unitario` (migración; las ventas existentes toman el costo
+- [x] **A6** D9: columna `SaleDetail.costo_unitario` (migración; las ventas existentes toman el costo
       actual del producto), se llena al vender y `stats.py` la usa. Test: cambiar el costo después de
       vender no cambia la utilidad. S
 
 ### Fase 1: kardex correcto (backend)
 
-- [ ] **K1** Función única `mover_stock(db, producto, cantidad, motivo, user_id, sale_id=None,
+- [x] **K1** Función única `mover_stock(db, producto, cantidad, motivo, user_id, sale_id=None,
       purchase_id=None, glosa)` en `backend/app/services/`: cambia `stock_actual`, escribe `balance_after`
       y crea el `StockMovement`. Ventas, NC y compras la usan. Test: tras vender, devolver, comprar y
       borrar la compra, `stock_actual` = suma de movimientos y cada `balance_after` es el saldo corrido. M
 - [ ] **K2** Columna `purchase_id` en `stock_movements` (migración) para enlazar el documento. S
-- [ ] **K3** `PUT /products/{id}` rechaza `stock_actual` (422). `POST /products/{id}/ajuste-stock
+- [x] **K3** `PUT /products/{id}` rechaza `stock_actual` (422). `POST /products/{id}/ajuste-stock
       {cantidad_contada, motivo, nota}` anota AJUSTE o INICIAL. Crear con stock > 0 anota INICIAL. Tests. S
 - [ ] **K4** `GET /products/{id}/movimientos` y `GET /inventory/movimientos?fecha&motivo` (todo el
       negocio), más nuevo primero, con folio y usuario. Tests. S
@@ -266,7 +270,7 @@ navegador; revisión `code-review-and-quality`.
 
 - [ ] **J1** `cash_movements` + endpoints de ingreso/retiro + cierre con la fórmula de 3.7. Tests. M
 - [ ] **J2** Caja: botones Entró dinero / Salió dinero y movimientos del turno. S
-- [ ] **C1** `customer_payments` (migración), `POST /customers/{rut}/pagos` (baja `current_balance`; si es
+- [x] **C1** `customer_payments` (migración), `POST /customers/{rut}/pagos` (baja `current_balance`; si es
       efectivo y hay control de caja, crea el INGRESO), `GET /customers/{rut}/cuenta`. Tests. M
 - [ ] **C2** Clientes y Proveedores en lista + ficha (3.1, 3.8), con un solo `RutInput` para los dos
       (lo usa el autocompletado de [`autocompletar_rut_sii.md`](autocompletar_rut_sii.md)). S

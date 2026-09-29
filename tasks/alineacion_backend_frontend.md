@@ -82,7 +82,8 @@ acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porc
       personal hasta `descuento_maximo` % del total de la venta (10% por defecto, Configuración >
       General > Descuentos; 0 = solo el administrador). Pasarse se bloquea, sin autorización de supervisor.
       Lo valida el backend. Quien vendió queda en la venta.
-- [ ] Probar en el POS con Docker arriba y cerrar #40, #41, #42 y #43.
+- [ ] Probar una factura con descuento en el POS y cerrar #40, #41 y #42 (#43 ya se cerró; boletas
+      probadas en el punto 26 de `checklist.md`).
 
 ---
 
@@ -147,10 +148,10 @@ Cada una se trabaja como un issue: commit, tests y verificación.
    referencia con tipo 52, cobra con un medio de pago y no vuelve a mover stock (`sales.ind_traslado`,
    `sales.facturada_por_id`, migración `d0e1f2a3b4c5`). **Pendiente:** emitir una real en maullín (JCB no
    tiene CAF 52 vigentes).
-4. **NC que corrige texto (código 2).** Hoy la devolución solo reingresa stock. Falta un flujo de NC sin
+4. **NC que corrige texto (código 2).** Hecho en rama (`feat/nc-corrige-texto`, `checklist.md` punto 28). Hoy la devolución solo reingresa stock. Falta un flujo de NC sin
    montos, con el detalle en la forma "donde dice… debe decir…", como pide el manual. Sirve, por ejemplo,
    para corregir el giro o la dirección del cliente.
-5. **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
+5. ✅ **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
    `fecha_vencimiento`. Hecho en ramas (`feat/forma-pago-credito` y `feat/vencimiento-credito`): el
    vencimiento es hoy + el plazo del cliente (decidido 2026-09-29: plazo por cliente; sin plazo no
    compra fiado; lo asigna el administrador). Mergeado a `main` el 2026-09-29.
@@ -159,7 +160,8 @@ Cada una se trabaja como un issue: commit, tests y verificación.
 
 6. → Pasó a **P2** (modo del emisor). Para JCB en producción corresponde la **Res. 80 del 22-08-2014**, la
    que imprime Bsale. El número 0 de 2020 es el de certificación.
-7. **CAF de producción.** Se piden en palena, no en maullín. La pantalla de Folios (`FoliosTab.tsx`) debería
+7. **CAF de producción.** El rechazo del CAF de otro ambiente ya está (punto 12); falta mostrar el
+   ambiente de cada CAF (#54). Se piden en palena, no en maullín. La pantalla de Folios (`FoliosTab.tsx`) debería
    mostrar el ambiente del CAF y alertar si no coincide con el del emisor. Con PROD no se aceptan CAF de maullín.
 8. **Convivencia con Bsale.** No emitir el mismo tipo de documento en ambos sistemas a la vez: son rangos de
    folio distintos, pero el SII los ve todos. Hay que documentar la fecha de corte por tipo.
@@ -167,9 +169,9 @@ Cada una se trabaja como un issue: commit, tests y verificación.
 ### C. Mejoras de uso
 
 9. → Pasó a **P3** (descuentos).
-10. **Reimpresión.** Revisar que la reimpresión de cedible (`_impreso_dte`) y el ticket 57/80 mm
+10. ✅ **Reimpresión.** (punto 14) Revisar que la reimpresión de cedible (`_impreso_dte`) y el ticket 57/80 mm
     (`backend/app/services/dte_impreso.py`) no corten la razón social, como pasaba en el PDF carta.
-11. **Stock de folios.** Mostrar la alerta de pocos folios (`DTE_FOLIO_UMBRAL_ALERTA`) en el dashboard.
+11. ✅ **Stock de folios.** (punto 11) Mostrar la alerta de pocos folios (`DTE_FOLIO_UMBRAL_ALERTA`) en el dashboard.
 
 ### D. Deuda técnica que toca esta etapa
 

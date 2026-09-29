@@ -212,7 +212,7 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
-- Suite Pytest de integración: **104 passed** corriendo `pytest -q` parado en `backend/` (verificado 2026-09-25).
+- Suite Pytest de integración: **172 passed** corriendo `pytest -q` parado en `backend/` (en `main`, 2026-09-29).
   dte-torn se sustituye por un fake (`FakeDte` en `backend/tests/conftest.py`).
 - Contenerización completa (backend + frontend + PostgreSQL) vía Docker Compose.
 
@@ -226,7 +226,8 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   `folio_request_logs` de cada esquema. Hay que volver a cargar en dte-torn los CAF con folios libres antes de
   correrlo con `--aplicar`.
 - **Totales replicados en tres lugares**: `calcular_totales` (dte-torn), `totales_dte`
-  (`backend/app/utils/taxes.py`) y `totalesDte` (`frontend/lib/taxes.ts`). Si cambia uno, cambian los tres.
+  (`backend/app/utils/taxes.py`) y `totalesDte` (`frontend/lib/taxes.ts`). Si cambia uno, cambian los tres;
+  los amarra el contrato `dte-torn/tests/casos_totales.json` (#39), que corren los tres.
 - **`backend/requirements.txt` sin versiones**: por decisión explícita del proyecto; implica builds no reproducibles.
 - **`bcrypt` pineado fuera de `backend/requirements.txt`**: `Dockerfile.backend` instala `bcrypt==4.0.1` aparte, lo que
   duplica la gestión de dependencias.

@@ -98,5 +98,4 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
 - Pedir el set otra vez **anula el anterior**, aunque ya esté enviado (pasó con la factura el 2026-09-24).
 - El servidor de certificación de boletas se llama distinto al de facturas: no mezclar URLs ni tokens.
-- Una boleta de consumidor final va sin receptor; una NC de esa boleta hoy falla en dte-torn, que exige
-  giro, dirección y comuna del receptor en todo tipo no-boleta (pendiente conocido).
+- ~~Una NC de una boleta a consumidor final fallaba en dte-torn~~: resuelto (punto 4 de `checklist.md`).

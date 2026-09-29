@@ -76,7 +76,8 @@ Depende del respaldo (1.4) para la alerta de respaldo.
       (https://maullin.sii.cl/cvc_cgi/dte/pe_avance7).
 - [ ] Emisor de JCB en modo PROD con la **Res. 80 del 22-08-2014** (la de certificación era la 0 de 2020).
 - [ ] CAF de producción pedidos en palena, cargados en dte-torn. Pantalla de folios que avise si el CAF
-      no es del ambiente del emisor (#54). Alerta de pocos folios en el dashboard (#51).
+      no es del ambiente del emisor (#54: el rechazo está, falta mostrarlo). Alerta de pocos folios en el
+      dashboard: hecha (#51).
 - [ ] Correos de contacto de la empresa en el SII: hoy apuntan a Haulmer (dte.haulmer.com). Cambiarlos
       (lo hace el usuario en el SII).
 - [ ] Una venta real de cada tipo que se vaya a usar, verificada ACEPTADO en el SII (#47, adaptado a palena).
@@ -88,16 +89,17 @@ Depende del respaldo (1.4) para la alerta de respaldo.
       el emisor y su enlace con dte-torn: **nunca cambiar su id en dte-torn**).
 - [ ] Productos, clientes y proveedores: los carga el usuario por su cuenta (decidido 2026-09-25).
 - [ ] Toma de inventario inicial el día del corte.
-- [ ] Cuentas para la madre del usuario y la otra vendedora, con su rol. Borrar del `.env` las
+- [ ] Cuentas para la madre del usuario y la otra vendedora, con su rol (con el punto 32 de
+      `checklist.md` el rol VENDEDOR ya trae su menú). Borrar del `.env` las
       credenciales de admin de desarrollo (`TORN_ADMIN_EMAIL`/`TORN_ADMIN_PASSWORD`).
 
 ### 1.3 Instalación en el PC del local
 
 - [ ] Ubuntu Desktop LTS con Docker Engine (no Docker Desktop), actualizaciones de seguridad automáticas
       (`unattended-upgrades`) y la impresora térmica por CUPS.
-- [ ] Una sola red de Docker para los dos compose (Torn y dte-torn): el backend habla con dte-torn por el
+- [x] Una sola red de Docker para los dos compose (Torn y dte-torn): el backend habla con dte-torn por el
       nombre del servicio y no por `host.docker.internal:8001`.
-- [ ] Frontend en modo producción: el compose usa `target: dev`; el `Dockerfile.frontend` ya tiene el
+- [x] Frontend en modo producción (`docker-compose.piloto.yml`, punto 17): el compose usa `target: dev`; el `Dockerfile.frontend` ya tiene el
       target `runner`. Un compose (o override) de producción para el local.
 - [ ] Todo arranca solo al encender: Docker al iniciar sesión, `restart` en los servicios (ya existe) y
       el navegador abriendo el POS a pantalla completa. Inicio de sesión del sistema sin pasos extra
@@ -134,7 +136,7 @@ Depende del respaldo (1.4) para la alerta de respaldo.
 ### 1.5 Seguridad del piloto (con la skill `security-audit`)
 
 - [ ] Auditoría con `security-audit` sobre backend, frontend y dte-torn (modo completo, pedirlo así).
-- [ ] Puertos: el compose de Torn publica `5432`, `8000` y `3000` en todas las interfaces, así que son
+- [x] Puertos (override del piloto, punto 17): el compose de Torn publica `5432`, `8000` y `3000` en todas las interfaces, así que son
       visibles en la red del local (y en el wifi, si lo hay). Todo corre en el mismo PC: las bases,
       MinIO, Redis y dte-torn sin puertos publicados (solo red interna de Docker); el frontend y el
       backend solo en `127.0.0.1`, porque el navegador llama al backend directo (`NEXT_PUBLIC_API_URL`).
@@ -156,11 +158,12 @@ Revisar cada flujo que ellas usan (vender, cobrar, boleta o factura, devolución
 buscar un producto, ver el día) con la skill `ui-ux-pro-max` y estos criterios:
 
 - [ ] Letra grande y alto contraste por defecto; botones grandes, con texto y no solo íconos.
-- [ ] Nada de jerga: "folio", "CAF", "DTE", "track" no aparecen en las pantallas del personal.
-- [ ] Mensajes de error que dicen qué hacer ("Revise la conexión a internet y vuelva a intentar"),
+- [ ] Nada de jerga (el POS ya está limpio; Historial dice N° y devolver no pregunta el código del SII): "folio", "CAF", "DTE", "track" no aparecen en las pantallas del personal.
+- [x] Mensajes de error que dicen qué hacer (puntos 20 y 29) ("Revise la conexión a internet y vuelva a intentar"),
       nunca códigos.
-- [ ] Confirmación antes de lo que no se deshace (anular, devolver, cerrar caja).
-- [ ] Menú del personal reducido a lo que usa; lo de administración queda para el usuario.
+- [x] Confirmación antes de lo que no se deshace: devolver es un diálogo y cerrar caja confirma el
+      monto (puntos 30 y 31).
+- [x] Menú del personal reducido a lo que usa (POS, Caja, Historial, Clientes: punto 32).
 - [ ] Una hoja impresa de una página por tarea, junto al PC ("Cómo vender", "Cómo cerrar la caja").
 - [ ] Capacitación en el local antes del primer día y acompañamiento el primer día de uso real.
 

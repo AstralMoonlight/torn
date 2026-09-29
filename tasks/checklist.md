@@ -1,6 +1,8 @@
-# Checklist de revisión (2026-09-28, segunda tanda 2026-09-29)
+# Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
 
-> **Mergeado a `main` el 2026-09-29** (merge de `revision/todo-junto`, las 24 ramas juntas). En `main`:
+> **Tercera tanda (puntos 27 a 34), sin mergear:** ver su sección y `revision/tanda-3`.
+>
+> **Puntos 1 a 26: mergeados a `main` el 2026-09-29** (merge de `revision/todo-junto`, las 24 ramas juntas). En `main`:
 > backend 172 tests, dte-torn en verde, frontend `tsc`, lint (los 7 warnings de siempre), contrato de
 > totales 17/17 y `npm run build`. Las ramas locales se borraron. Lo de abajo queda como registro de
 > qué cambió y qué mirar; los `[ ]` son para marcar lo que vayas revisando en uso. Lo que sigue
@@ -364,31 +366,141 @@ configurable (vencimiento y descuentos). Revisar sobre todo esas decisiones.
 
 ---
 
+## Tercera tanda (2026-09-29): lo que faltaba de todos los archivos de `tasks/`
+
+Salió de revisar todos los `.md` de `tasks/` contra los issues abiertos y el código. Ramas sin mergear;
+**`revision/tanda-3`** es `main` con las 8 juntas y los conflictos resueltos (dos ramas agregando en
+el mismo lugar: `sales.py`, `schemas.py`, `services/sales.ts` e Historial). Ahí: backend **188** en
+verde, dte-torn completo en verde, `tsc`, lint (los 7 warnings de siempre), contrato de totales 17/17
+y `npm run build`. **Alembic:** `d6e7f8a9b0c1` -> `e7f8a9b0c1d2` (permisos, punto 32) ->
+`f8a9b0c1d2e3` (intercambio, punto 33); dte-torn `0004` -> `0005`. **Orden:** la 30 sale de la 28 y
+la 33 de la 32: mergear esas primero.
+
+Verificado en el navegador con `revision/tanda-3` contra la copia de la base (`torn_migtest`) y la
+empresa de demo pasada **un rato** a Desarrollador (en la copia y en dte-torn; quedó de vuelta en CERT).
+Configuraciones `backend-tanda3` (puerto 8012) y `frontend-tanda3` (3003) en `.claude/launch.json`,
+sin versionar.
+
+### [ ] 27. Los rechazados por el SII no cuentan en los reportes
+- **Rama:** `fix/reportes-sin-rechazados`
+- **Decidido contigo (2026-09-29):** no se contabilizan, porque se vuelven a emitir; solo se informan.
+- **Qué:** RECHAZADO y ERROR_VALIDACION (el criterio del Historial) quedan fuera de panel, ranking,
+  Reportes y `/reports/dashboard` (`CUENTA` en `stats.py`). `/stats/report` y `/reports/dashboard`
+  devuelven cuántos hay y por cuánto; el Panel (hoy) y Reportes (el periodo) lo avisan con un `Alert`
+  que enlaza a Historial. La nota al pie de Reportes ya no dice que la utilidad usa el costo de hoy.
+- **Verificado:** test con dos ventas, una rechazada (reporte, resumen, ranking y dashboard); en el
+  navegador, Reportes del 17-09 con una boleta rechazada: "Un documento rechazado... Suman $6.724".
+- **Revisar:** hoy no hay forma de "volver a emitir" un rechazado: se hace otra venta, y el stock de la
+  rechazada ya salió. Ver "Lo que falta".
+
+### [ ] 28. #45: nota de crédito que corrige texto
+- **Rama:** `feat/nc-corrige-texto`
+- **Hallazgo:** Historial ya ofrecía "2 - Corrige Texto" en la devolución, pero esa ruta reingresaba
+  stock y emitía la NC **con montos**.
+- **Qué:** `POST /sales/{id}/corrige-texto {donde_dice, debe_decir}`: NC 61 con una línea "Corrige texto"
+  a $0 y la corrección en la descripción, referencia código 2 (como la aceptó el SII en la
+  certificación). No mueve stock, caja ni deuda. `/sales/return` ya no acepta el 2. Historial: acción
+  "Corregir un dato (giro, dirección...)" en facturas, con "Dónde dice / Debe decir".
+- **Verificado:** 3 tests; dte-torn: caso XSD nuevo. En el navegador (DEV): NC N° 2 por $0, el XML
+  firmado trae `MntTotal` 0, `DscItem` con la corrección y `CodRef` 2, y el PDF carta sale.
+- **Revisar:** ante el SII se confirma recién enviándola. Cerrar #45 al mergear.
+
+### [ ] 29. El error de dte-torn llega como texto (pendiente del punto 20)
+- **Rama:** `fix/mensaje-error-dte`
+- **Causa:** un 422 de validación de FastAPI trae `detail` como lista con el pedido entero; `dte_client`
+  lo pasaba por `str()` y "faltan datos del cliente" mostraba el volcado. Ahora deja solo los `msg`.
+- **Verificado:** test con la respuesta real de FastAPI.
+
+### [ ] 30. Devolver una parte, en palabras simples (`lanzamiento.md` 1.6)
+- **Rama:** `feat/devolucion-simple` (**sale de la 28**)
+- **Hallazgo:** Historial siempre devolvía la venta **entera**: no había cómo devolver 1 de 5.
+- **Qué:** diálogo nuevo "Devolver productos": ¿Qué vuelve? (cantidad por producto, Todo / Nada),
+  ¿Por qué?, ¿Cómo se devuelve el dinero? Sin tipo de documento ni "Razón SII": el backend pone
+  código 1 si vuelve toda la venta de una vez y 3 si no. `/sales/return` solo emite 61 (una ND por ahí
+  reingresaba stock y devolvía plata) y exige cantidades mayores que 0 (una negativa pasaba y sacaba
+  stock). El exceso se explica con el nombre del producto. Historial dice "N°" en vez de "Folio".
+- **Verificado:** 5 tests; en el navegador (DEV): de una factura con 2 diccionarios y 3 Post-it se
+  devolvió 1 diccionario: NC por $12.000 con código 3.
+- **Revisar:** el diálogo parte con **todo** marcado. Las ND (56) quedan sin pantalla (una al año,
+  `lanzamiento.md` 0).
+
+### [ ] 31. Confirmar antes de cerrar la caja (`lanzamiento.md` 1.6)
+- **Rama:** `feat/confirmar-cierre-caja`
+- **Qué:** "Cerrar caja" pregunta "¿Cerrar la caja con $X contados?": un cero de más dejaba el arqueo
+  mal para siempre (no hay cómo reabrir).
+- **Verificado:** en el navegador, con $150.000.
+
+### [ ] 32. La vendedora ve su menú
+- **Rama:** `fix/permisos-vendedor`
+- **Hallazgo (bloqueaba el piloto):** el rol VENDEDOR nacía con `{"sales", "cash"}`, pero el menú y el
+  guardián leen "Terminal POS", "Caja"... En la base de JCB está así: las vendedoras entraban al POS
+  **sin menú**, sin llegar a Caja, Historial ni Clientes. "Personal" usaba la clave "Vendedores", que el
+  editor de roles nunca pone. Y el superusuario que entra a una empresa (soporte) veía el menú vacío.
+- **Qué:** el rol nace con Terminal POS, Caja, Historial y Clientes; la migración `e7f8a9b0c1d2` cambia
+  los VENDEDOR que siguen con el valor de fábrica (uno editado en Personal no se toca). El guardián deja
+  entrar solo con el permiso en `true` y cubre Historial, Reportes y Listas de precios. El superusuario
+  ve todo.
+- **Verificado:** migración arriba y abajo en la copia (esquemas con `json` y `jsonb`). En el navegador,
+  con una vendedora de prueba creada en la copia: menú Terminal POS, Caja, Clientes e Historial;
+  `/configuracion` y `/dashboard` la mandan a "acceso denegado".
+- **Revisar:** el menú de la vendedora (¿algo más que esos cuatro?). El backend no revisa esos permisos
+  en cada endpoint (solo `require_admin` en algunos): para la auditoría de seguridad.
+
+### [ ] 33. #56 parte a: el XML aceptado va al correo del cliente
+- **Rama:** `feat/intercambio-envio` (**sale de la 32**: migraciones encadenadas)
+- **Qué (dte-torn):** un 33/34/52/56/61 **de producción** que el SII acepta queda con el XML
+  PENDIENTE (o SIN_CORREO); en certificación y Desarrollador no sale solo, y boletas y consumidor final
+  nunca. La tarea `intercambiar` (worker de estado) manda un `EnvioDTE` dirigido al RUT del cliente,
+  firmado, más el PDF, por SMTP (`smtplib`, sin dependencias nuevas), con reintentos; dirección
+  rechazada o intentos agotados, ERROR con dead letter. Sin `DTE_SMTP_HOST` no se manda nada.
+  `POST /documents/{id}/intercambio` lo manda a mano, también en certificación, a otro correo si se
+  indica. Migración `0005`; variables en `.env.example`; nota en `DESIGN.md`.
+- **Qué (backend y Historial):** `sales.intercambio_estado` (migración `f8a9b0c1d2e3`), el refresco
+  sigue las ventas con el XML pendiente, `POST /sales/{id}/reenviar-xml`. Historial: "XML enviado /
+  por enviar / Sin correo / no enviado" junto al estado del SII, y "Mandar el XML al cliente".
+- **Verificado:** dte-torn 7 tests (sobre dirigido al cliente con firmas que verifican, CERT no sale,
+  sin correo, reintento y dirección rechazada, sin servidor, reenvío por API), migración 0005 arriba y
+  abajo en `dte_test` (tu `dte` sigue en 0004); backend 4 tests; en el navegador el estado "XML
+  enviado" y la acción. **No se mandó ningún correo real.**
+- **Decisión que tomé:** va al `email` de la ficha del cliente (el que ya viaja como `CorreoRecep`);
+  el reenvío acepta otro. **Pendiente tuyo:** ver "Lo que falta".
+
+### [ ] 34. En Desarrollador ningún documento aparece agotado
+- **Rama:** `fix/folios-desarrollador`
+- **Causa:** dte-torn crea el CAF de prueba con la primera emisión de cada tipo; antes, `/folios/status`
+  decía 0: el POS lo marcaba agotado y el Historial no ofrecía devolver. Lo vi al probar.
+
+**Visto de paso (arreglado sin rama):** las pruebas de la tanda anterior dejaron en dte-torn
+`venta-979` y `venta-980` (desde la copia), y la próxima venta de tu base de desarrollo en la empresa
+de demo iba a ser la 979: dte-torn la habría rechazado por "payload distinto". Se adelantó la secuencia
+de `tenant_167603513.sales` a 1000 en tu base y a 50000 en la copia, para que no vuelvan a chocar.
+En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA" y tres documentos DEV.
+
+---
+
 ## Lo que falta (necesita que decidas o hagas algo)
 
-Actualizado el 2026-09-29. #40 y #44 salieron de esta tabla: los decidí con un valor por defecto
-(puntos 25 y 26), revisar la decisión. Nada de lo que sigue se empezó:
+Actualizado el 2026-09-29 (tercera tanda). Nada de lo que sigue se empezó salvo lo que dice:
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
-| **#54 abierto** | Falta que Configuración > Folios muestre el ambiente de cada CAF (primer criterio del issue). El rechazo en dte-torn ya está (punto 12). Decidir si hace falta: la pantalla solo lista los CAF del ambiente actual | punto 12 |
-| **Probar descuentos en el POS** | Boletas probadas; falta una factura con descuento y la NC con el punto 4 mergeado. Después cerrar #40, #41 y #42 (#44 ya se cerró) | punto 26 |
-| **Mensaje de error de la NC** | Con el dte-torn viejo, "faltan datos del cliente" mostró el volcado técnico de dte-torn entero en vez de la lista de campos (punto 20). Revisar el parseo de `_mensaje_emision` con ese formato | punto 20 |
-| **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor | `lanzamiento.md` 0.2 |
-| **Intercambio** (#56) | Qué correo del cliente se usa; probar SMTP/IMAP con la contraseña de `xml@distribuidorajcb.cl` | `intercambio.md` |
+| **Revisar la tercera tanda** | Mergear las 8 ramas (orden: 28 antes de 30, 32 antes de 33) y cerrar #45 | puntos 27 a 34 |
+| **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
+| **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
+| **Volver a emitir un rechazado** | Hoy se hace otra venta y el stock sale dos veces. ¿Un botón "Emitir de nuevo" que reuse la venta, o la NC de la rechazada? | punto 27 |
+| **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
+| **#54** | Mostrar el ambiente de cada CAF en Folios; decidir si hace falta (la pantalla solo lista los del ambiente actual) | punto 12 |
+| **#53** | Usar el total de dte-torn como fuente de verdad. Con el contrato de totales (#39) propongo cerrarlo sin hacer | `alineacion` D.12 |
+| **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
-| **Certificación de boletas** (#49) | Pedir el set en el SII | `certificacion_boletas.md` |
+| **Certificación de boletas** (#49) | Pedir el set en el SII (estaba para la semana del 28-09). Después: lector del set, envío por REST y la verificación por folio de boletas ambiguas (`pipeline.py`, hoy va a revisión manual), que se prueba contra el SII con esas boletas | `certificacion_boletas.md` |
 | **Paso a producción** | Declaración de cumplimiento (#48), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
-| **Piloto en el local** | Correr `vaciar_datos_demo.py --aplicar`, cuentas del personal, servidor de respaldo, instalar el PC, UPS, impresora y lector reales, probar apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
+| **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor de respaldo, instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
 | **1.5 sesiones** | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
+| **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
 | **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
-| **Auditoría de seguridad** | Correr `security-audit` completa (pedirla así) | `lanzamiento.md` 1.5 |
+| **Auditoría de seguridad** | Correr `security-audit` completa (pedirla así). Incluir que el backend no revisa los permisos del menú | `lanzamiento.md` 1.5, punto 32 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
 (cuadratura del kardex viejo; tras vaciar JCB no hace falta), N1-N4, F1, P1-P4, J1-J2, C2, V1-V2, M1 de
-`administracion.md`, y el cierre de issues en GitHub (se cierran al mergear).
-
-**Visto de paso:** los dos de la primera tanda (reportes con NC y "Caja cerrada" falso) quedaron
-arreglados en los puntos 23 y 24. La copia de la base para probar ramas (`torn_migtest`) se volvió a
-crear el 2026-09-28 desde la de desarrollo y quedó con las migraciones de la segunda tanda aplicadas
-hasta `c5d6e7f8a9b0`.
+`administracion.md`, y todo `lanzamiento.md` 2 (Factureando).
