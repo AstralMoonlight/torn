@@ -40,6 +40,7 @@ export default function CajaPage() {
     const [errorApertura, setErrorApertura] = useState<string | null>(null)
     const [errorCierre, setErrorCierre] = useState<string | null>(null)
     const [forzar, setForzar] = useState<number | null>(null)
+    const [confirmarCierre, setConfirmarCierre] = useState(false)
     const controlCaja = useControlCaja()
     const [closeResult, setCloseResult] = useState<{
         final_cash_system: number
@@ -103,13 +104,19 @@ export default function CajaPage() {
         }
     }
 
-    const handleClose = async () => {
+    // Cerrar no se deshace: primero se confirma el monto contado.
+    const pedirCierre = () => {
         const declared = parseFloat(efectivoContado)
         setErrorCierre(null)
         if (isNaN(declared) || declared < 0) {
             setErrorCierre('Ingresa el efectivo contado.')
             return
         }
+        setConfirmarCierre(true)
+    }
+
+    const handleClose = async () => {
+        const declared = parseFloat(efectivoContado)
         setClosing(true)
         try {
             const result = await closeSession(declared)
@@ -248,7 +255,7 @@ export default function CajaPage() {
                                 size="lg"
                                 variant="destructive"
                                 className="w-full gap-2 text-sm"
-                                onClick={handleClose}
+                                onClick={pedirCierre}
                                 disabled={closing}
                             >
                                 {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorClosed className="h-4 w-4" />}
@@ -367,6 +374,14 @@ export default function CajaPage() {
                     </div>
                 </TabsContent>
             </Tabs>
+            <ConfirmDialog
+                open={confirmarCierre}
+                onOpenChange={setConfirmarCierre}
+                title={`¿Cerrar la caja con ${formatCLP(parseFloat(efectivoContado) || 0)} contados?`}
+                description="Revisa el monto. Una vez cerrada, la caja no se puede reabrir ni corregir."
+                confirmLabel="Sí, cerrar caja"
+                onConfirm={handleClose}
+            />
             <ConfirmDialog
                 open={forzar !== null}
                 onOpenChange={(o) => !o && setForzar(null)}
