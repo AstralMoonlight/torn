@@ -311,7 +311,7 @@ export default function DashboardPage() {
                         </AlertTitle>
                         <AlertDescription>
                             {cobranza.num_vencidos === 1 ? 'Un cliente' : `${cobranza.num_vencidos} clientes`} con deuda pasada de su plazo.
-                            {' '}El más atrasado: {cobranza.deudores[0]?.razon_social} ({cobranza.deudores[0]?.dias} días).{' '}
+                            {' '}La mayor: {cobranza.deudores[0]?.razon_social}, {formatCLP(cobranza.deudores[0]?.vencido)} con {cobranza.deudores[0]?.dias} días de atraso.{' '}
                             <Link href="/clientes" className="font-medium underline">Ver clientes</Link>.
                         </AlertDescription>
                     </Alert>
@@ -359,9 +359,9 @@ export default function DashboardPage() {
                     color="green"
                 />
                 <KPICard
-                    title="IVA estimado del mes"
+                    title="IVA del mes"
                     value={formatCLP(iva.a_pagar)}
-                    subtitle={`Ventas ${formatCLP(iva.debito)} - compras ${formatCLP(iva.credito)} · F29 vence el ${formatDate(iva.vence)}`}
+                    subtitle={`Estimado: ventas ${formatCLP(iva.debito)} - compras ${formatCLP(iva.credito)}. El F29 vence el ${formatDate(iva.vence)}`}
                     icon={Receipt}
                     color="amber"
                 />
@@ -422,7 +422,7 @@ export default function DashboardPage() {
                             : <p className="text-sm text-muted-foreground">Ningún cliente tiene deuda de crédito interno.</p>}
                         {cobranza.deudores.length > 0 && (
                             <div>
-                                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Más atrasados</p>
+                                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Mayor deuda vencida</p>
                                 <ul className="divide-y divide-border text-xs">
                                     {cobranza.deudores.map((d) => (
                                         <li key={d.rut} className="flex items-center gap-3 py-2">
