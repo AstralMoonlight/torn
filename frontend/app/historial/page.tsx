@@ -29,6 +29,7 @@ import {
     Loader2,
     Receipt,
     FileText,
+    PencilLine,
 } from 'lucide-react'
 import {
     Table,
@@ -42,6 +43,7 @@ import {
 import { formatCLP, getTodayChile } from '@/lib/format'
 import { SelectOpciones } from '@/components/ui/select-opciones'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
+import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
 
 
 const POR_PAGINA = 50
@@ -90,7 +92,8 @@ export default function HistorialPage() {
     const [errorReturn, setErrorReturn] = useState<string | null>(null)
     const [availableAdjustments, setAvailableAdjustments] = useState<FolioStockOut[]>([])
     const [returnDteType, setReturnDteType] = useState<number>(61)
-    const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
+    const [siiReasonCode, setSiiReasonCode] = useState<1 | 3>(1)
+    const [corregirDialog, setCorregirDialog] = useState<SaleOut | null>(null)
     const [facturarOpen, setFacturarOpen] = useState(false)
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
@@ -312,6 +315,9 @@ export default function HistorialPage() {
                                                     {![52, 56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
                                                         <AccionFila icon={RotateCcw} label="Generar nota (ajuste)" onClick={() => setReturnDialog(sale)} peligro />
                                                     )}
+                                                    {[33, 34].includes(sale.tipo_dte) && availableAdjustments.some((a) => a.dte_type === 61) && (
+                                                        <AccionFila icon={PencilLine} label="Corregir un dato (giro, dirección...)" onClick={() => setCorregirDialog(sale)} />
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -357,11 +363,10 @@ export default function HistorialPage() {
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Razón SII *</Label>
                                 <SelectOpciones className="h-9 text-xs" value={siiReasonCode}
-                                    onChange={(v) => setSiiReasonCode(Number(v))}
+                                    onChange={(v) => setSiiReasonCode(Number(v) === 3 ? 3 : 1)}
                                     opciones={[
-                                        { value: 1, label: '1 - Anula Documento' },
-                                        { value: 2, label: '2 - Corrige Texto' },
-                                        { value: 3, label: '3 - Corrige Monto' },
+                                        { value: 1, label: '1 - Anula documento' },
+                                        { value: 3, label: '3 - Corrige monto' },
                                     ]} />
                             </div>
                         </div>
@@ -416,6 +421,11 @@ export default function HistorialPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <CorregirTextoDialog
+                venta={corregirDialog}
+                onClose={() => setCorregirDialog(null)}
+                onEmitida={recargarVentas}
+            />
             <FacturarGuiasDialog
                 open={facturarOpen}
                 methods={methods}

@@ -150,6 +150,15 @@ FACTURAS = {
         items=[_item(nombre="Devolución")],
         referencias=[Referencia(tipo_doc="33", folio="1000", fecha=HOY, codigo=1, razon="Anula")],
     ),
+    # Lo que manda el backend en una NC que corrige texto (#45): total 0.
+    "61 que corrige texto": DatosDocumento(
+        tipo_dte=61,
+        fecha_emision=HOY,
+        receptor=RECEPTOR,
+        items=[_item(nombre="Corrige texto", precio=Decimal(0),
+                     descripcion="Donde dice: Giro: Ferreteria. Debe decir: Giro: Ferreteria y pinturas.")],
+        referencias=[Referencia(tipo_doc="33", folio="1000", fecha=HOY, codigo=2, razon="Corrige texto")],
+    ),
     "61 de una boleta a consumidor final": DatosDocumento(
         tipo_dte=61,
         fecha_emision=HOY,

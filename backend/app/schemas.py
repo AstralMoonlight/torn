@@ -482,10 +482,23 @@ class ReturnItem(BaseModel):
 class ReturnCreate(BaseModel):
     original_sale_id: int
     tipo_dte: int = 61
-    sii_reason_code: int = 1
+    #: 1 anula, 3 corrige montos. El 2 (corrige texto) no devuelve nada: va por
+    #: `POST /sales/{id}/corrige-texto`.
+    sii_reason_code: Literal[1, 3] = 1
     items: List[ReturnItem]
     reason: str
     return_method_id: int # ID de medio de pago para devolución (Caja o Credito)
+
+
+class CorrigeTextoCreate(BaseModel):
+    """NC que corrige texto: qué dice el documento y qué debería decir."""
+    donde_dice: str = Field(min_length=1, max_length=400)
+    debe_decir: str = Field(min_length=1, max_length=400)
+
+    @field_validator("donde_dice", "debe_decir", mode="before")
+    @classmethod
+    def _sin_espacios(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
 
 # ── Medios de Pago ───────────────────────────────────────────────────

@@ -20,7 +20,7 @@ from app.models.customer import Customer
 from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
+from app.schemas import CorrigeTextoCreate, FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
 from app.services.kardex import mover_stock
 from app.utils.formatters import format_clp, format_number
@@ -903,6 +903,55 @@ def create_return(
                 _referencias_dte(referencias_json), global_user.email, descuentos_globales=globales)
     db.commit()
     return nc_sale
+
+
+@router.post("/{sale_id}/corrige-texto", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+             summary="NC que corrige texto")
+def create_nc_corrige_texto(
+    sale_id: int,
+    datos: CorrigeTextoCreate,
+    db: Session = Depends(get_tenant_db),
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Nota de crédito código 2 (#45): corrige un dato escrito, como el giro o la
+    dirección, sin tocar montos. Una línea con la corrección y total 0, como la
+    aceptó el SII en la certificación: no mueve stock, caja ni la deuda del
+    cliente, y no cuenta como devolución."""
+    original = db.get(Sale, sale_id)
+    if not original:
+        raise HTTPException(status_code=404, detail="Venta original no encontrada")
+    correccion = f"Donde dice: {datos.donde_dice}. Debe decir: {datos.debe_decir}."
+    referencias = [{
+        "tipo_documento": str(original.tipo_dte),
+        "folio": str(original.folio),
+        "fecha": original.fecha_emision.strftime("%Y-%m-%d"),
+        "sii_reason_code": 2,
+        "razon": "Corrige texto",
+    }]
+    nc = Sale(
+        customer_id=original.customer_id,
+        folio=0,  # provisorio: _emitir_dte pone el real antes del commit
+        tipo_dte=61,
+        monto_neto=0,
+        iva=0,
+        monto_total=0,
+        descripcion=f"Corrige texto de la venta #{original.folio}: {correccion}"[:500],
+        user_id=local_user.id,
+        seller_id=local_user.id,
+        related_sale_id=original.id,
+        referencias=referencias,
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None,
+    )
+    db.add(nc)
+    db.flush()
+    item = {"nombre": "Corrige texto", "descripcion": correccion, "cantidad": "1", "precio": "0",
+            "descuento": 0, "exento": False}
+    _emitir_dte(db, tenant_user.tenant, nc, original.customer, [item],
+                _referencias_dte(referencias), global_user.email)
+    db.commit()
+    return nc
 
 
 # ── PDF Preview ──────────────────────────────────────────────────────

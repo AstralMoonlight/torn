@@ -104,7 +104,8 @@ export interface PaymentMethod {
 export interface ReturnCreate {
     original_sale_id: number
     tipo_dte: number
-    sii_reason_code: number
+    /** 1 anula, 3 corrige montos. Corregir texto va por `corregirTexto`. */
+    sii_reason_code: 1 | 3
     items: { product_id: number; cantidad: number }[]
     reason: string
     return_method_id: number
@@ -147,6 +148,12 @@ export async function facturarGuias(guia_ids: number[], tipo_dte: number, paymen
 
 export async function createReturn(ret: ReturnCreate): Promise<SaleOut> {
     const { data } = await api.post<SaleOut>('/sales/return', ret)
+    return data
+}
+
+/** NC que corrige texto (código 2): sin montos, no devuelve nada. */
+export async function corregirTexto(saleId: number, donde_dice: string, debe_decir: string): Promise<SaleOut> {
+    const { data } = await api.post<SaleOut>(`/sales/${saleId}/corrige-texto`, { donde_dice, debe_decir })
     return data
 }
 
