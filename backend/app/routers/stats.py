@@ -82,10 +82,19 @@ def get_dashboard_summary(db: Session = Depends(get_tenant_db)):
     # Hace 30 días
     month_start = now - timedelta(days=30)
     
+    def con_anterior(start: datetime, largo: timedelta) -> StatPeriod:
+        # El mismo tramo del periodo anterior: hoy hasta ahora contra ayer hasta esta hora.
+        stats = get_period_stats(db, start)
+        stats.sales_total_prev = db.query(func.sum(SIGNO * Sale.monto_total)).filter(
+            Sale.fecha_emision >= start - largo, Sale.fecha_emision < now - largo,
+            Sale.tipo_dte.in_(TIPOS_REPORTE),
+        ).scalar() or Decimal(0)
+        return stats
+
     return DashboardSummary(
-        daily=get_period_stats(db, today_start),
-        weekly=get_period_stats(db, week_start),
-        monthly=get_period_stats(db, month_start)
+        daily=con_anterior(today_start, timedelta(days=1)),
+        weekly=con_anterior(week_start, timedelta(days=7)),
+        monthly=con_anterior(month_start, timedelta(days=30)),
     )
 
 
