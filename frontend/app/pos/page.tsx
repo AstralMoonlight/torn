@@ -134,6 +134,9 @@ export default function POSPage() {
 
     const unidades = cartItems.reduce((s, i) => s + i.quantity, 0)
 
+    // UNKNOWN: AppShell todavía está preguntando al servidor; no se muestra "Caja cerrada" antes de saberlo.
+    if (controlCaja && sessionStatus === 'UNKNOWN') return null
+
     if (controlCaja && sessionStatus !== 'OPEN') {
         return (
             <div data-section="pos.caja-cerrada" className="flex h-full items-center justify-center p-6">

@@ -1,4 +1,5 @@
 import api from './api'
+import { useSessionStore } from '@/lib/store/sessionStore'
 
 export interface CashSession {
     id: number
@@ -26,6 +27,19 @@ export async function getSessionStatus(userId?: number): Promise<CashSession> {
         params: { user_id: userId }
     })
     return data
+}
+
+/** Trae el turno del servidor al store. El estado guardado en el navegador puede
+ * ser de otra empresa o de antes de que alguien abriera la caja en otra pestaña. */
+export async function sincronizarCaja(): Promise<void> {
+    const { setSession, setStatus } = useSessionStore.getState()
+    try {
+        const s = await getSessionStatus()
+        if (s.status === 'OPEN') setSession(s.id, parseFloat(s.start_amount), s.start_time, s.user_id)
+        else setStatus('CLOSED')
+    } catch {
+        setStatus('CLOSED')
+    }
 }
 
 export async function closeSession(finalCashDeclared: number): Promise<CashSession> {

@@ -89,7 +89,8 @@ export const useSessionStore = create<SessionState>()(
                 selectedTenantId: (tenants.length === 1 && tenants[0].is_active) ? tenants[0].id : null
             }),
 
-            selectTenant: (tenantId) => set({ selectedTenantId: tenantId }),
+            // El turno de caja guardado es de la empresa anterior: AppShell lo vuelve a pedir.
+            selectTenant: (tenantId) => set({ selectedTenantId: tenantId, sessionId: null, status: 'UNKNOWN' }),
 
             logout: () => set({
                 token: null,

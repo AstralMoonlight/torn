@@ -9,7 +9,7 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useColorEfectivo, useControlCaja, useSettingsStore } from '@/lib/store/settingsStore'
 import { aplicarColor, leerColorUsuario } from '@/lib/colores'
-import { getSessionStatus } from '@/services/cash'
+import { sincronizarCaja } from '@/services/cash'
 import { validateSession } from '@/services/auth'
 import { useHydrated } from '@/lib/hooks/useHydrated'
 
@@ -31,10 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const router = useRouter()
     const pathname = usePathname()
 
-    const setSession = useSessionStore((s) => s.setSession)
-    const setStatus = useSessionStore((s) => s.setStatus)
     const syncSession = useSessionStore((s) => s.syncSession)
-    const userId = useSessionStore((s) => s.userId)
     const token = useSessionStore((s) => s.token)
     const userPayload = useSessionStore((s) => s.user)
     const availableTenants = useSessionStore((s) => s.availableTenants)
@@ -168,22 +165,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             .catch(err => console.error('[AppShell] Error syncing profile:', err))
     }, [token, syncSession])
 
-    // Sync cash session with backend on mount
+    // El turno de caja se pide al servidor al entrar y al cambiar de empresa. No
+    // depende de un usuario guardado: el superusuario que llega desde saas-admin
+    // no lo tiene, y el POS quedaba en "Caja cerrada" con la caja abierta.
     useEffect(() => {
-        if (!token || !userId || !selectedTenantId) return
-
-        getSessionStatus(userId)
-            .then((session) => {
-                if (session.status === 'OPEN') {
-                    setSession(session.id, parseFloat(session.start_amount), session.start_time, session.user_id)
-                } else {
-                    setStatus('CLOSED')
-                }
-            })
-            .catch(() => {
-                setStatus('CLOSED')
-            })
-    }, [setSession, setStatus, userId, token, selectedTenantId])
+        if (token && selectedTenantId) sincronizarCaja()
+    }, [token, selectedTenantId])
 
     // Ctrl+Alt+S muestra el nombre de cada contenedor (atributo data-section), para
     // poder pedir cambios concretos: "en pos.carrito.documento, ...". Se recuerda.
