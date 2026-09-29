@@ -87,8 +87,10 @@ export default function Sidebar() {
     const roleForCurrentTenant = currentTenant?.role_name || ''
 
     const permissions = currentTenant?.permissions || {}
-    const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR'
     const isSuperadmin = userPayload?.is_superuser === true
+    // El superusuario entra a una empresa sin rol en ella (soporte): ve todo,
+    // igual que el guardián de rutas de AppShell lo deja entrar a todo.
+    const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR' || isSuperadmin
 
     return (
         <aside data-section="menu-lateral"
