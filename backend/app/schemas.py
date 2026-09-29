@@ -130,7 +130,6 @@ class SettingsBase(BaseModel):
     control_caja: bool = True
     color_mode: Literal["empresa", "usuario"] = "empresa"
     color_primario: ColorPrimario = "azul"
-    dias_credito: int = Field(default=30, ge=0, le=365)
     descuento_maximo: int = Field(default=10, ge=0, le=100)
 
 class SettingsUpdate(SettingsBase):
@@ -153,6 +152,8 @@ class CustomerCreate(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+    #: Plazo de pago de lo fiado, en días. Vacío: sin crédito (no compra fiado).
+    dias_credito: Optional[int] = Field(default=None, ge=1, le=365)
 
     @field_validator("rut")
     @classmethod
@@ -170,6 +171,7 @@ class CustomerUpdate(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+    dias_credito: Optional[int] = Field(default=None, ge=1, le=365)
 
     @field_validator("rut")
     @classmethod
@@ -193,6 +195,7 @@ class CustomerOut(BaseModel):
     ciudad: Optional[str] = None
     email: Optional[str] = None
     current_balance: Optional[Decimal] = Decimal(0)
+    dias_credito: Optional[int] = None
     #: Lista de precios asignada. Sin este campo el POS no puede aplicarla: se
     #: la pedía al cliente devuelto por la API y nunca venía.
     price_list_id: Optional[int] = None

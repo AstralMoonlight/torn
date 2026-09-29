@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_current_local_user, get_tenant_db
+from app.dependencies.tenant import es_admin, get_current_local_user, get_current_tenant_user, get_tenant_db
+from app.models.saas import TenantUser
 from app.models.cash import CashSession
 from app.models.customer import Customer, CustomerPayment
 from app.models.payment import PaymentMethod, SalePayment
@@ -17,10 +18,18 @@ from app.schemas import (
 router = APIRouter(prefix="/customers", tags=["customers"])
 
 
+def _solo_admin_da_credito(tenant_user: TenantUser, cambia_plazo: bool) -> None:
+    """El plazo de crédito decide a quién se fía: lo pone el administrador."""
+    if cambia_plazo and not es_admin(tenant_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Solo el administrador puede dar o quitar crédito a un cliente.")
+
+
 @router.post("/", response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Cliente",
              description="Registra un nuevo cliente/contribuyente.")
-def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_db)):
+def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_db),
+                    tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Registra un nuevo cliente / contribuyente en la base de datos.
     
     Valida que el RUT no esté duplicado.
@@ -35,6 +44,8 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_d
     Raises:
         HTTPException(409): Si ya existe un cliente con ese RUT.
     """
+
+    _solo_admin_da_credito(tenant_user, customer.dias_credito is not None)
 
     # Verificar que el RUT no exista
     existing = db.query(Customer).filter(Customer.rut == customer.rut).first()
@@ -184,7 +195,8 @@ def cuenta(rut: str, db: Session = Depends(get_tenant_db)):
 @router.put("/{rut}", response_model=CustomerOut,
              summary="Actualizar Cliente",
              description="Actualiza datos de un cliente existente.")
-def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_tenant_db)):
+def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_tenant_db),
+                    tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Actualiza un cliente."""
     db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
@@ -195,6 +207,7 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
     
     # Update fields
     update_data = customer_update.model_dump(exclude_unset=True)
+    _solo_admin_da_credito(tenant_user, update_data.get("dias_credito", db_customer.dias_credito) != db_customer.dias_credito)
     for key, value in update_data.items():
         setattr(db_customer, key, value)
     

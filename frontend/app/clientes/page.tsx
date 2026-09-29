@@ -47,7 +47,8 @@ export default function CustomersPage() {
         direccion: editingCustomer.direccion || '',
         comuna: editingCustomer.comuna || '',
         ciudad: editingCustomer.ciudad || '',
-        email: editingCustomer.email || ''
+        email: editingCustomer.email || '',
+        dias_credito: editingCustomer.dias_credito,
     } : undefined, [editingCustomer])
 
     useEffect(() => {
