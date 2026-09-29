@@ -328,6 +328,13 @@ reprograman `next_action_at` en vez de golpear.
   documento no se encola en cada ciclo mientras su tarea espera en la cola.
 - Un `ENVIANDO` colgado va a `VERIFICAR` (la subida pudo llegar), nunca de
   vuelta a `FIRMADO`. Un `FIRMANDO` colgado vuelve a `PENDIENTE`.
+- **Intercambio (2026-09-29):** en vez de la cola `notifica`, la tarea
+  `intercambiar` corre en el worker de `estado`. Un 33/34/52/56/61 de
+  producción que queda ACEPTADO o REPAROS pasa a `intercambio_estado =
+  PENDIENTE` (o `SIN_CORREO`), y la reconciliación lo encola con el mismo lease
+  (`intercambio_next_at`) solo si hay `DTE_SMTP_HOST`. Manda un `EnvioDTE`
+  dirigido al RUT del receptor, firmado, más el PDF. En certificación no sale
+  solo: `POST /documents/{id}/intercambio` lo manda a mano, a cualquier correo.
 
 ---
 

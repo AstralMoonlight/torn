@@ -52,7 +52,7 @@ const navGroups = [
         items: [
             { href: '/clientes', label: 'Clientes', icon: Globe, permissionKey: 'Clientes' },
             { href: '/proveedores', label: 'Proveedores', icon: Truck, permissionKey: 'Proveedores' },
-            { href: '/personal', label: 'Personal', icon: Users, permissionKey: 'Vendedores' },
+            { href: '/personal', label: 'Personal', icon: Users, permissionKey: 'Personal' },
         ]
     },
     {
@@ -87,8 +87,10 @@ export default function Sidebar() {
     const roleForCurrentTenant = currentTenant?.role_name || ''
 
     const permissions = currentTenant?.permissions || {}
-    const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR'
     const isSuperadmin = userPayload?.is_superuser === true
+    // El superusuario entra a una empresa sin rol en ella (soporte): ve todo,
+    // igual que el guardián de rutas de AppShell lo deja entrar a todo.
+    const isAdmin = roleForCurrentTenant === 'ADMINISTRADOR' || isSuperadmin
 
     return (
         <aside data-section="menu-lateral"

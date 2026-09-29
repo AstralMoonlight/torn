@@ -63,6 +63,20 @@ def test_en_desarrollador_no_alerta(client, monkeypatch):
     assert not any(f["alerta"] for f in client.get("/folios/status").json())
 
 
+def test_en_desarrollador_nunca_se_agota(client, monkeypatch):
+    """El CAF de prueba nace con la primera emisión: sin él, igual se puede emitir."""
+    from app.dependencies.tenant import get_current_tenant_user
+    from app.main import app
+
+    stock = [{"tipo_dte": 39, "disponibles": 7, "cafs": [_caf(1, 10, 7)]}]
+    monkeypatch.setattr(dte_client, "request", lambda *a, **k: httpx.Response(200, json=stock))
+    tenant_user = app.dependency_overrides[get_current_tenant_user]()
+    monkeypatch.setattr(tenant_user.tenant, "sii_ambiente", "DEV")
+
+    por_tipo = {f["dte_type"]: f["available"] for f in client.get("/folios/status").json()}
+    assert por_tipo[39] == 7 and por_tipo[61] == 100_000
+
+
 def test_dte_torn_caido_responde_503(client, monkeypatch):
     def caido(*args, **kwargs):
         raise dte_client.DteNoDisponible("no respondió")

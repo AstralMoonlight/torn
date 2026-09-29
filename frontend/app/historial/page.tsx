@@ -2,22 +2,12 @@
 
 import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
 import { useEffect, useRef, useState, Fragment } from 'react'
-import { getSales, actualizarEstadosDte, getPaymentMethods, createReturn, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
+import { getSales, actualizarEstadosDte, getPaymentMethods, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { AlertaError } from '@/components/ui/alerta-error'
 import { avisar } from '@/lib/store/uiStore'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -26,9 +16,9 @@ import {
     History,
     RotateCcw,
     ExternalLink,
-    Loader2,
-    Receipt,
     FileText,
+    PencilLine,
+    Mail,
 } from 'lucide-react'
 import {
     Table,
@@ -40,8 +30,10 @@ import {
     TableEmpty,
 } from '@/components/ui/table'
 import { formatCLP, getTodayChile } from '@/lib/format'
-import { SelectOpciones } from '@/components/ui/select-opciones'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
+import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
+import DevolucionDialog from '@/components/pos/DevolucionDialog'
+import ReenviarXmlDialog, { ESTADOS_XML } from '@/components/pos/ReenviarXmlDialog'
 
 
 const POR_PAGINA = 50
@@ -59,7 +51,7 @@ function DteBadge({ tipo }: { tipo: number }) {
         111: { label: 'ND Export.', color: 'bg-indigo-500' },
         112: { label: 'NC Export.', color: 'bg-pink-500' },
     }
-    const info = map[tipo] || { label: `DTE ${tipo}`, color: 'bg-muted-foreground' }
+    const info = map[tipo] || { label: `Documento ${tipo}`, color: 'bg-muted-foreground' }
     return <Badge className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
 }
 
@@ -83,15 +75,12 @@ export default function HistorialPage() {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [returnDialog, setReturnDialog] = useState<SaleOut | null>(null)
-    const [returnReason, setReturnReason] = useState('')
     const [methods, setMethods] = useState<PaymentMethod[]>([])
-    const [returnMethodId, setReturnMethodId] = useState<number>(0)
-    const [submittingReturn, setSubmittingReturn] = useState(false)
-    const [errorReturn, setErrorReturn] = useState<string | null>(null)
-    const [availableAdjustments, setAvailableAdjustments] = useState<FolioStockOut[]>([])
-    const [returnDteType, setReturnDteType] = useState<number>(61)
-    const [siiReasonCode, setSiiReasonCode] = useState<number>(1)
+    // Sin números de nota de crédito no se ofrece devolver ni corregir.
+    const [hayNotasCredito, setHayNotasCredito] = useState(false)
+    const [corregirDialog, setCorregirDialog] = useState<SaleOut | null>(null)
     const [facturarOpen, setFacturarOpen] = useState(false)
+    const [xmlDialog, setXmlDialog] = useState<SaleOut | null>(null)
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
     const [hayMas, setHayMas] = useState(false)
@@ -119,17 +108,10 @@ export default function HistorialPage() {
             .then(([s, m, f]) => {
                 const rechazadas = s.filter(v => v.dte_estado === 'RECHAZADO' || v.dte_estado === 'ERROR_VALIDACION')
                 if (rechazadas.length > 0) {
-                    avisar(`El SII rechazó ${rechazadas.length} documento(s): folio ${rechazadas.map(v => v.folio).join(', ')}`)
+                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}`)
                 }
                 setMethods(m)
-                if (m.length > 0) setReturnMethodId(m[0].id)
-
-                const adjs = f.filter(d => [56, 61, 111, 112].includes(d.dte_type) && d.available > 0)
-                setAvailableAdjustments(adjs)
-                if (adjs.length > 0) {
-                    const nc = adjs.find(a => a.dte_type === 61)
-                    setReturnDteType(nc ? 61 : adjs[0].dte_type)
-                }
+                setHayNotasCredito(f.some((d: FolioStockOut) => d.dte_type === 61 && d.available > 0))
             })
             .catch(() => avisar('No se pudo cargar el historial.', { reintentar: cargar }))
             .finally(() => setLoading(false))
@@ -164,35 +146,6 @@ export default function HistorialPage() {
         groupedSales[dateKey].push(sale)
     })
 
-    const handleReturn = async () => {
-        setErrorReturn(null)
-        if (!returnDialog || !returnReason.trim()) {
-            setErrorReturn('Ingresa un motivo.')
-            return
-        }
-        setSubmittingReturn(true)
-        try {
-            await createReturn({
-                original_sale_id: returnDialog.id,
-                tipo_dte: returnDteType,
-                sii_reason_code: siiReasonCode,
-                items: returnDialog.details.map((d) => ({
-                    product_id: d.product_id,
-                    cantidad: Number(d.cantidad),
-                })),
-                reason: returnReason,
-                return_method_id: returnMethodId,
-            })
-            setReturnDialog(null)
-            setReturnReason('')
-            await recargarVentas()
-        } catch (err: unknown) {
-            setErrorReturn(getApiErrorDetail(err, 'No se pudo emitir el documento de ajuste.'))
-        } finally {
-            setSubmittingReturn(false)
-        }
-    }
-
     const verPdf = async (saleId: number) => {
         try {
             // PDF (carta, de dte-torn): diálogo de impresión con vista previa.
@@ -220,7 +173,7 @@ export default function HistorialPage() {
             <ListToolbar
                 busqueda={search}
                 onBusqueda={setSearch}
-                placeholder="Buscar por folio, cliente o RUT..."
+                placeholder="Buscar por número, cliente o RUT..."
                 visibles={sales.length}
                 total={sales.length}
                 unidad="documentos"
@@ -257,7 +210,7 @@ export default function HistorialPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-b border-border">
-                            <TableHead>Folio</TableHead>
+                            <TableHead>N°</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>SII</TableHead>
                             <TableHead className="hidden sm:table-cell text-center">Hora</TableHead>
@@ -296,6 +249,11 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <SiiBadge estado={sale.dte_estado} glosa={sale.dte_glosa} />
+                                                {sale.intercambio_estado && ESTADOS_XML[sale.intercambio_estado] && (
+                                                    <Badge className={`${ESTADOS_XML[sale.intercambio_estado].color} ml-1 text-xs px-1.5`}>
+                                                        {ESTADOS_XML[sale.intercambio_estado].label}
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
@@ -309,8 +267,14 @@ export default function HistorialPage() {
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <AccionFila icon={ExternalLink} label="Ver PDF" onClick={() => verPdf(sale.id)} />
-                                                    {![52, 56, 61, 111, 112].includes(sale.tipo_dte) && availableAdjustments.length > 0 && (
-                                                        <AccionFila icon={RotateCcw} label="Generar nota (ajuste)" onClick={() => setReturnDialog(sale)} peligro />
+                                                    {[33, 34, 52, 56, 61].includes(sale.tipo_dte) && ['ACEPTADO', 'REPAROS'].includes(sale.dte_estado ?? '') && (
+                                                        <AccionFila icon={Mail} label="Mandar el XML al cliente" onClick={() => setXmlDialog(sale)} />
+                                                    )}
+                                                    {[33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && (
+                                                        <AccionFila icon={RotateCcw} label="Devolver productos" onClick={() => setReturnDialog(sale)} peligro />
+                                                    )}
+                                                    {[33, 34].includes(sale.tipo_dte) && hayNotasCredito && (
+                                                        <AccionFila icon={PencilLine} label="Corregir un dato (giro, dirección...)" onClick={() => setCorregirDialog(sale)} />
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -330,92 +294,18 @@ export default function HistorialPage() {
                 </div>
             )}
 
-            {/* Return Dialog */}
-            <Dialog open={!!returnDialog} onOpenChange={() => { setReturnDialog(null); setErrorReturn(null) }}>
-                <DialogContent data-section="historial.nota-ajuste" className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-base">
-                            <RotateCcw className="h-4 w-4 text-destructive" />
-                            Generar nota de ajuste
-                        </DialogTitle>
-                        <DialogDescription>
-                            Folio #{returnDialog?.folio} - {formatCLP(parseFloat(String(returnDialog?.monto_total || 0)))}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs">Tipo de documento *</Label>
-                                <SelectOpciones className="h-9 text-xs" value={returnDteType}
-                                    onChange={(v) => setReturnDteType(Number(v))}
-                                    opciones={availableAdjustments.map((a) => ({
-                                        value: a.dte_type,
-                                        label: a.dte_type === 61 ? 'N. Crédito (61)' : a.dte_type === 56 ? 'N. Débito (56)' : a.dte_type === 111 ? 'ND Export. (111)' : `DTE ${a.dte_type}`,
-                                    }))} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs">Razón SII *</Label>
-                                <SelectOpciones className="h-9 text-xs" value={siiReasonCode}
-                                    onChange={(v) => setSiiReasonCode(Number(v))}
-                                    opciones={[
-                                        { value: 1, label: '1 - Anula Documento' },
-                                        { value: 2, label: '2 - Corrige Texto' },
-                                        { value: 3, label: '3 - Corrige Monto' },
-                                    ]} />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs">Motivo descriptivo *</Label>
-                            <Input
-                                placeholder="Ej: Error en digitación"
-                                value={returnReason}
-                                onChange={(e) => setReturnReason(e.target.value)}
-                                className="h-9 text-sm"
-                            />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs">Medio de devolución</Label>
-                            <SelectOpciones className="h-9 text-xs" value={returnMethodId}
-                                onChange={(v) => setReturnMethodId(Number(v))}
-                                opciones={methods.map((m) => ({ value: m.id, label: m.name }))} />
-                        </div>
-
-                        {returnDialog && (
-                            <>
-                                <Separator />
-                                <div className="space-y-1 text-xs">
-                                    <p className="text-muted-foreground font-medium">Ítems a devolver:</p>
-                                    {returnDialog.details.map((d) => (
-                                        <div key={d.product_id} className="flex justify-between">
-                                            <span className="text-muted-foreground dark:text-muted-foreground truncate flex-1">{d.product?.nombre || `ID #${d.product_id}`}</span>
-                                            <span className="font-tabular text-muted-foreground ml-2">×{Number(d.cantidad)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    <AlertaError mensaje={errorReturn} />
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setReturnDialog(null)} className="text-xs">
-                            Cancelar
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleReturn}
-                            disabled={submittingReturn || !returnReason.trim()}
-                            className="gap-1.5 text-xs"
-                        >
-                            {submittingReturn ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
-                            Emitir Documento
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <DevolucionDialog
+                venta={returnDialog}
+                methods={methods}
+                onClose={() => setReturnDialog(null)}
+                onDevuelta={recargarVentas}
+            />
+            <CorregirTextoDialog
+                venta={corregirDialog}
+                onClose={() => setCorregirDialog(null)}
+                onEmitida={recargarVentas}
+            />
+            <ReenviarXmlDialog venta={xmlDialog} onClose={() => setXmlDialog(null)} onEnviado={recargarVentas} />
             <FacturarGuiasDialog
                 open={facturarOpen}
                 methods={methods}

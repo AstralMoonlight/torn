@@ -6,7 +6,7 @@ Tres colas, una por tipo de trabajo, cada una con su worker:
 |--------------|-------------------------|----------------------------------------|
 | `dte:firma`  | `firmar`                | CPU: pool de procesos                  |
 | `dte:envio`  | `enviar` (y verificar)  | semáforo por RUT + circuit breaker     |
-| `dte:estado` | `consultar`             | nada: solo lee del SII                 |
+| `dte:estado` | `consultar`, `intercambiar` | nada: lee del SII o manda un correo |
 
 Las tareas no guardan estado propio: cada una llama a un paso del pipeline, que
 reclama el documento en Postgres y es idempotente. Por eso encolar dos veces lo
@@ -36,6 +36,7 @@ from taskiq_redis import ListQueueBroker
 
 from app.core.almacen import Almacen
 from app.core.config import get_settings
+from app.core.correo import Correo
 from app.db import control_session, get_engine, tenant_session
 from app.dte import pipeline
 from app.dte.sii_client import Canal, crear_http
@@ -86,6 +87,7 @@ def contexto() -> pipeline.Contexto:
             redis=Redis.from_url(s.redis_url),
             almacen=Almacen(s),
             ttl_token=s.sii_token_ttl_segundos,
+            correo=Correo.desde(s),
         )
     return _ctx
 
@@ -269,6 +271,12 @@ async def _enviar(tenant_id: str, doc_id: str) -> str:
 async def consultar(tenant_id: str, doc_id: str) -> str:
     """ENVIADO → ACEPTADO | REPAROS | RECHAZADO, o reprograma la consulta."""
     return await _medir("consultar", pipeline.consultar(contexto(), uuid.UUID(tenant_id), uuid.UUID(doc_id)))
+
+
+@estado.task(task_name="dte.intercambiar")
+async def intercambiar(tenant_id: str, doc_id: str) -> str:
+    """Intercambio PENDIENTE → ENVIADO: el XML y el PDF al correo del receptor."""
+    return await _medir("intercambiar", pipeline.intercambiar(contexto(), uuid.UUID(tenant_id), uuid.UUID(doc_id)))
 
 
 _TAREA_POR_ESTADO = {

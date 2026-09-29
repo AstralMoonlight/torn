@@ -17,7 +17,7 @@ from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
 from app.dependencies.tenant import get_tenant_db, require_admin
-from app.routers.stats import TIPOS_VENTA
+from app.routers.stats import CUENTA, RECHAZADOS, TIPOS_REPORTE, TIPOS_VENTA
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -37,6 +37,7 @@ def get_dashboard(
         Sale.fecha_emision >= start,
         Sale.fecha_emision <= end,
         Sale.tipo_dte.in_(TIPOS_VENTA),
+        CUENTA,
     )
 
     all_sales = sales_query.all()
@@ -51,9 +52,20 @@ def get_dashboard(
         Sale.fecha_emision >= start,
         Sale.fecha_emision <= end,
         Sale.tipo_dte == 61,
+        CUENTA,
     )
     num_nc = nc_query.count()
     total_nc = sum(float(s.monto_total) for s in nc_query.all())
+
+    # Rechazados por el SII: no suman, solo se informan.
+    num_rechazados, total_rechazados = db.query(
+        func.count(Sale.id), func.coalesce(func.sum(Sale.monto_total), 0)
+    ).filter(
+        Sale.fecha_emision >= start,
+        Sale.fecha_emision <= end,
+        Sale.tipo_dte.in_(TIPOS_REPORTE),
+        Sale.dte_estado.in_(RECHAZADOS),
+    ).one()
 
     # ── Ventas por hora ──────────────────────────────────────────────
     hourly = (
@@ -66,6 +78,7 @@ def get_dashboard(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
             Sale.tipo_dte.in_(TIPOS_VENTA),
+            CUENTA,
         )
         .group_by(extract("hour", Sale.fecha_emision))
         .order_by(extract("hour", Sale.fecha_emision))
@@ -90,6 +103,7 @@ def get_dashboard(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
             Sale.tipo_dte.in_(TIPOS_VENTA),
+            CUENTA,
         )
         .group_by(Product.id, Product.nombre, Product.codigo_interno)
         .order_by(desc(func.sum(SaleDetail.subtotal)))
@@ -120,6 +134,7 @@ def get_dashboard(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
             Sale.tipo_dte.in_(TIPOS_VENTA),
+            CUENTA,
         )
         .group_by(PaymentMethod.id, PaymentMethod.name, PaymentMethod.code)
         .all()
@@ -154,6 +169,8 @@ def get_dashboard(
             "ticket_promedio": round(ticket_promedio),
             "num_notas_credito": num_nc,
             "total_notas_credito": total_nc,
+            "num_rechazados": num_rechazados,
+            "total_rechazados": float(total_rechazados),
         },
         "ventas_por_hora": ventas_por_hora,
         "top_productos": top,

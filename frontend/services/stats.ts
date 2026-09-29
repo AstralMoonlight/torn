@@ -59,6 +59,9 @@ export interface ReportOut {
     total_iva: number
     total_utilidad: number
     items: ReportItem[]
+    /** Rechazados por el SII en el periodo: fuera de los totales, solo se informan. */
+    rechazados: number
+    monto_rechazado: number
 }
 
 export async function getReport(period: string = 'day', date?: string): Promise<ReportOut> {

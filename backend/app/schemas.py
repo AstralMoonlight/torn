@@ -459,6 +459,7 @@ class SaleOut(BaseModel):
     referencias: Optional[List[DocumentReferenceOut]] = None
     dte_estado: Optional[str] = None
     dte_glosa: Optional[str] = None
+    intercambio_estado: Optional[str] = None
     ind_traslado: Optional[int] = None
     facturada_por_id: Optional[int] = None
 
@@ -476,16 +477,37 @@ class FacturarGuias(BaseModel):
 
 class ReturnItem(BaseModel):
     product_id: int
-    cantidad: Decimal
+    cantidad: Decimal = Field(gt=0)
 
 
 class ReturnCreate(BaseModel):
     original_sale_id: int
-    tipo_dte: int = 61
-    sii_reason_code: int = 1
+    #: Devolver es siempre una nota de crédito. Una ND por esta ruta reingresaba
+    #: stock y devolvía dinero.
+    tipo_dte: Literal[61] = 61
+    #: 1 anula, 3 corrige montos. Sin él, lo decide el backend: 1 si se devuelve
+    #: toda la venta de una vez, 3 si no. El 2 (corrige texto) no devuelve nada:
+    #: va por `POST /sales/{id}/corrige-texto`.
+    sii_reason_code: Optional[Literal[1, 3]] = None
     items: List[ReturnItem]
     reason: str
     return_method_id: int # ID de medio de pago para devolución (Caja o Credito)
+
+
+class ReenviarXml(BaseModel):
+    #: Otro correo para este envío; sin él, el del cliente.
+    correo: Optional[str] = Field(default=None, max_length=80, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class CorrigeTextoCreate(BaseModel):
+    """NC que corrige texto: qué dice el documento y qué debería decir."""
+    donde_dice: str = Field(min_length=1, max_length=400)
+    debe_decir: str = Field(min_length=1, max_length=400)
+
+    @field_validator("donde_dice", "debe_decir", mode="before")
+    @classmethod
+    def _sin_espacios(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
 
 # ── Medios de Pago ───────────────────────────────────────────────────
@@ -740,3 +762,6 @@ class ReportOut(BaseModel):
     total_iva: Decimal = Decimal(0)
     total_utilidad: Decimal
     items: List[ReportItem]
+    #: Documentos que el SII rechazó: no están en los totales, solo se informan.
+    rechazados: int = 0
+    monto_rechazado: Decimal = Decimal(0)

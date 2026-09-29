@@ -13,17 +13,20 @@ import { sincronizarCaja } from '@/services/cash'
 import { validateSession } from '@/services/auth'
 import { useHydrated } from '@/lib/hooks/useHydrated'
 
-// Definición de grupos para el guardián de rutas
+// Guardián de rutas: las mismas claves que el menú (`Sidebar.tsx`) y que el
+// editor de roles (`app/personal/page.tsx`). Lo que no se ve en el menú
+// tampoco se abre por URL.
 const NAV_PERMISSION_MAP = [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Terminal POS', path: '/pos' },
-    { label: 'Caja', path: '/caja' },
     { label: 'Productos', path: '/inventario' },
+    { label: 'Productos', path: '/listas-precios' },
     { label: 'Marcas', path: '/marcas' },
     { label: 'Compras', path: '/compras' },
     { label: 'Clientes', path: '/clientes' },
     { label: 'Proveedores', path: '/proveedores' },
     { label: 'Personal', path: '/personal' },
+    { label: 'Historial', path: '/historial' },
+    { label: 'Reportes de Ventas', path: '/reporte-diario' },
     { label: 'Configuración', path: '/configuracion' },
 ]
 
@@ -104,7 +107,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     pathname === m.path || pathname.startsWith(m.path + '/')
                 )
 
-                if (restrictedMenu && permissions[restrictedMenu.label] === false) {
+                if (restrictedMenu && permissions[restrictedMenu.label] !== true) {
                     console.warn(`[RouteGuard] Access denied for ${pathname}. Redirecting to /access-denied`)
                     router.push('/access-denied')
                 }

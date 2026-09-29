@@ -143,7 +143,7 @@ def provision_new_tenant(
             (id, name, description, permissions, can_manage_users, can_view_reports, can_edit_products, can_perform_sales, can_perform_returns)
             VALUES 
                 (1, 'ADMINISTRADOR', 'Acceso total al sistema', '{{"all": true}}'::jsonb, true, true, true, true, true),
-                (2, 'VENDEDOR', 'Rol para generar ventas y administrar caja', '{{"sales": true, "cash": true}}'::jsonb, false, false, true, true, false)
+                (2, 'VENDEDOR', 'Rol para generar ventas y administrar caja', '{{"Terminal POS": true, "Caja": true, "Historial": true, "Clientes": true}}'::jsonb, false, false, true, true, false)
         """)
         connection.execute(insert_roles_sql)
         connection.execute(text(f"SELECT setval('\"{safe_schema_name(schema_name)}\".roles_id_seq', 2)"))

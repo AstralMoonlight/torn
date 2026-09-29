@@ -77,7 +77,7 @@ class TestValidacionDeDevoluciones:
     def test_rechaza_devolver_mas_de_lo_vendido(self, client, venta):
         resp = _devolver(client, venta["sale_id"], venta["product"].id, 6)
         assert resp.status_code == 409
-        assert "disponible" in resp.json()["detail"]
+        assert "quedan 5 por devolver" in resp.json()["detail"]
 
         venta["db"].refresh(venta["product"])
         assert venta["product"].stock_actual == 5, "El stock no debe moverse"
@@ -165,3 +165,40 @@ class TestDevolucionEnElArqueo:
         # 10.000 inicial + 5.950 venta - 2.380 devueltos (2 x 1.000 + IVA)
         assert Decimal(cierre.json()["final_cash_system"]) == 13570
         assert Decimal(cierre.json()["difference"]) == 0
+
+
+class TestDevolucionSimple:
+    """La devolución decide sola el código del SII (lanzamiento.md 1.6)."""
+
+    def test_devolver_todo_anula_y_una_parte_corrige_montos(self, client, venta, fake_dte):
+        parcial = _devolver(client, venta["sale_id"], venta["product"].id, 2)
+        assert parcial.status_code == 201, parcial.text
+        assert fake_dte.documentos[-1]["referencias"][0]["codigo"] == 3
+
+        # El resto completa la venta, pero ya no la anula: hubo una nota antes.
+        resto = _devolver(client, venta["sale_id"], venta["product"].id, 3)
+        assert resto.status_code == 201, resto.text
+        assert fake_dte.documentos[-1]["referencias"][0]["codigo"] == 3
+
+    def test_devolver_todo_de_una_vez_anula(self, client, venta, fake_dte):
+        resp = _devolver(client, venta["sale_id"], venta["product"].id, 5)
+        assert resp.status_code == 201, resp.text
+        assert fake_dte.documentos[-1]["referencias"][0]["codigo"] == 1
+
+    @pytest.mark.parametrize("cantidad", [0, -1])
+    def test_la_cantidad_tiene_que_ser_positiva(self, client, venta, cantidad):
+        """Una cantidad negativa pasaba el control y sacaba stock."""
+        assert _devolver(client, venta["sale_id"], venta["product"].id, cantidad).status_code == 422
+
+    def test_solo_emite_notas_de_credito(self, client, venta):
+        resp = client.post("/sales/return", json={
+            "original_sale_id": venta["sale_id"], "tipo_dte": 56,
+            "items": [{"product_id": venta["product"].id, "cantidad": "1"}],
+            "reason": "x", "return_method_id": 1,
+        })
+        assert resp.status_code == 422
+
+    def test_el_exceso_se_explica_con_el_nombre_del_producto(self, client, venta):
+        resp = _devolver(client, venta["sale_id"], venta["product"].id, 6)
+        assert resp.status_code == 409
+        assert "Producto" in resp.json()["detail"] and "quedan 5" in resp.json()["detail"]

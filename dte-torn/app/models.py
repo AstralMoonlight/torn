@@ -74,6 +74,17 @@ ESTADOS_TERMINALES = frozenset(
 )
 
 
+class EstadoIntercambio(StrEnum):
+    """Envío del XML a la casilla del receptor (intercambio), tras la aceptación del SII."""
+
+    PENDIENTE = "PENDIENTE"
+    ENVIADO = "ENVIADO"
+    #: El receptor no tiene correo: se reenvía a mano con uno.
+    SIN_CORREO = "SIN_CORREO"
+    #: Agotó los reintentos o el servidor rechazó la dirección.
+    ERROR = "ERROR"
+
+
 class EstadoCAF(StrEnum):
     """Estados de un CAF."""
 
@@ -337,6 +348,15 @@ class Document(TenantMixin, Base):
     glosa_sii: Mapped[str | None] = mapped_column(Text)
     pdf_key: Mapped[str | None] = mapped_column(Text)
 
+    #: Intercambio: el XML al correo del receptor. NULL = no aplica (boletas,
+    #: consumidor final, certificación y Desarrollador, salvo reenvío a mano).
+    intercambio_estado: Mapped[str | None] = mapped_column(String(12))
+    intercambio_correo: Mapped[str | None] = mapped_column(String(80))
+    intercambio_intentos: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    intercambio_next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    intercambio_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    intercambio_error: Mapped[str | None] = mapped_column(Text)
+
     intentos: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     #: Motor de reintentos y de reconciliación tras perder Redis.
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -362,6 +382,11 @@ class Document(TenantMixin, Base):
             postgresql_where=text(
                 "estado NOT IN ('ACEPTADO','REPAROS','RECHAZADO','ANULADO','ERROR_VALIDACION','SIMULADO')"
             ),
+        ),
+        Index(
+            "ix_documents_intercambio",
+            "intercambio_next_at",
+            postgresql_where=text("intercambio_estado = 'PENDIENTE'"),
         ),
     )
 

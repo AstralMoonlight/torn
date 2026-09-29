@@ -10,6 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.issuer import Issuer
@@ -20,7 +21,7 @@ from app.models.customer import Customer
 from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
+from app.schemas import CorrigeTextoCreate, FacturarGuias, ReenviarXml, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
 from app.services.kardex import mover_stock
 from app.utils.formatters import format_clp, format_number
@@ -252,6 +253,7 @@ def _mensaje_emision(exc: "dte_client.DteError", tipo: int) -> str:
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
     sale.dte_estado = doc["estado"]
+    sale.intercambio_estado = doc.get("intercambio_estado")
     glosa = doc.get("glosa_sii") or doc.get("ultimo_error")
     sale.dte_glosa = glosa[:500] if glosa else None
 
@@ -322,12 +324,14 @@ def actualizar_estados_dte(
     db: Session = Depends(get_tenant_db),
     tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
-    """Refresca `dte_estado` de las ventas pendientes. Devuelve cuántas cambiaron."""
+    """Refresca `dte_estado` (y el envío del XML al cliente) de las ventas
+    pendientes. Devuelve cuántas cambiaron."""
     # ponytail: una llamada por venta pendiente; casi siempre son pocas porque el
     # SII responde en minutos. Si crece, pedir a dte-torn un listado por external_id.
     pendientes = (
         db.query(Sale)
-        .filter(Sale.dte_estado.isnot(None), Sale.dte_estado.notin_(ESTADOS_DTE_FINALES))
+        .filter(Sale.dte_estado.isnot(None), or_(
+            Sale.dte_estado.notin_(ESTADOS_DTE_FINALES), Sale.intercambio_estado == "PENDIENTE"))
         .limit(100)
         .all()
     )
@@ -339,7 +343,7 @@ def actualizar_estados_dte(
             if exc.status_code == 404:
                 continue
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-        if doc["estado"] != sale.dte_estado:
+        if (doc["estado"], doc.get("intercambio_estado")) != (sale.dte_estado, sale.intercambio_estado):
             cambiadas += 1
         _guardar_estado(sale, doc)
     db.commit()
@@ -752,9 +756,10 @@ def create_return(
     # venta varias veces: cada devolución reingresa stock, emite una NC y abona
     # la cuenta corriente del cliente, así que el exceso se traduce en
     # inventario y dinero inventados.
-    vendido = {}
+    vendido, nombres = {}, {}
     for d in original_sale.details:
         vendido[d.product_id] = vendido.get(d.product_id, Decimal("0")) + d.cantidad
+        nombres[d.product_id] = d.product.nombre if d.product else f"producto {d.product_id}"
 
     devuelto = {}
     notas_previas = db.query(Sale).filter(Sale.related_sale_id == original_sale.id).all()
@@ -762,19 +767,22 @@ def create_return(
         for d in nc.details:
             devuelto[d.product_id] = devuelto.get(d.product_id, Decimal("0")) + d.cantidad
 
+    pedido = {}
     for item in return_in.items:
-        disponible = vendido.get(item.product_id, Decimal("0")) - devuelto.get(
-            item.product_id, Decimal("0")
-        )
-        if item.cantidad > disponible:
+        pedido[item.product_id] = pedido.get(item.product_id, Decimal("0")) + item.cantidad
+    for product_id, cantidad in pedido.items():
+        disponible = vendido.get(product_id, Decimal("0")) - devuelto.get(product_id, Decimal("0"))
+        if cantidad > disponible:
+            nombre = nombres.get(product_id, "ese producto")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    f"No se puede devolver {item.cantidad} unidad(es) del producto "
-                    f"{item.product_id}: la venta #{original_sale.folio} tiene "
-                    f"{disponible} disponible(s) para devolución."
+                    f"No se pueden devolver {cantidad.normalize():f} de {nombre}: de esa venta "
+                    f"quedan {disponible.normalize():f} por devolver."
                 ),
             )
+    # Devolver toda la venta de una vez la anula ante el SII; una parte corrige montos.
+    codigo_sii = return_in.sii_reason_code or (1 if not notas_previas and pedido == vendido else 3)
 
     # 2. Calcular Montos de Devolución
     # La NC hereda el tipo de DTE del documento original para efectos de IVA:
@@ -838,17 +846,13 @@ def create_return(
     neto, exento, iva, total = totales_dte(tipo, lineas_dte, globales)
     total_neto = neto + exento
 
-    # 3. Registrar Documento de Ajuste
-    ADJUSTMENT_DTES = [56, 61, 111, 112]
-    if tipo not in ADJUSTMENT_DTES:
-        raise HTTPException(status_code=400, detail="El tipo de DTE para ajuste debe ser 56, 61, 111 o 112.")
-
+    # 3. Registrar la nota de crédito
     # Generar la referencia al documento original automáticamente
     referencias_json = [{
         "tipo_documento": str(original_sale.tipo_dte),
         "folio": str(original_sale.folio),
         "fecha": original_sale.fecha_emision.strftime("%Y-%m-%d"),
-        "sii_reason_code": return_in.sii_reason_code,
+        "sii_reason_code": codigo_sii,
         "razon": return_in.reason[:90],
     }]
 
@@ -903,6 +907,77 @@ def create_return(
                 _referencias_dte(referencias_json), global_user.email, descuentos_globales=globales)
     db.commit()
     return nc_sale
+
+
+@router.post("/{sale_id}/reenviar-xml", response_model=SaleOut, summary="Mandar el XML al cliente")
+def reenviar_xml(
+    sale_id: int,
+    datos: ReenviarXml,
+    db: Session = Depends(get_tenant_db),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Manda (o vuelve a mandar) el XML y el PDF al correo del cliente: el de su
+    ficha, u otro. Lo hace dte-torn cuando el SII ya aceptó el documento."""
+    sale = db.get(Sale, sale_id)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    try:
+        doc = dte_client.request("POST", f"/documents/venta-{sale.id}/intercambio", tenant_user.tenant,
+                                 json={"correo": datos.correo} if datos.correo else {}).json()
+    except dte_client.DteError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    _guardar_estado(sale, doc)
+    db.commit()
+    return sale
+
+
+@router.post("/{sale_id}/corrige-texto", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+             summary="NC que corrige texto")
+def create_nc_corrige_texto(
+    sale_id: int,
+    datos: CorrigeTextoCreate,
+    db: Session = Depends(get_tenant_db),
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Nota de crédito código 2 (#45): corrige un dato escrito, como el giro o la
+    dirección, sin tocar montos. Una línea con la corrección y total 0, como la
+    aceptó el SII en la certificación: no mueve stock, caja ni la deuda del
+    cliente, y no cuenta como devolución."""
+    original = db.get(Sale, sale_id)
+    if not original:
+        raise HTTPException(status_code=404, detail="Venta original no encontrada")
+    correccion = f"Donde dice: {datos.donde_dice}. Debe decir: {datos.debe_decir}."
+    referencias = [{
+        "tipo_documento": str(original.tipo_dte),
+        "folio": str(original.folio),
+        "fecha": original.fecha_emision.strftime("%Y-%m-%d"),
+        "sii_reason_code": 2,
+        "razon": "Corrige texto",
+    }]
+    nc = Sale(
+        customer_id=original.customer_id,
+        folio=0,  # provisorio: _emitir_dte pone el real antes del commit
+        tipo_dte=61,
+        monto_neto=0,
+        iva=0,
+        monto_total=0,
+        descripcion=f"Corrige texto de la venta #{original.folio}: {correccion}"[:500],
+        user_id=local_user.id,
+        seller_id=local_user.id,
+        related_sale_id=original.id,
+        referencias=referencias,
+        audit_metadata={"saas_admin_email": global_user.email} if local_user.is_system_user else None,
+    )
+    db.add(nc)
+    db.flush()
+    item = {"nombre": "Corrige texto", "descripcion": correccion, "cantidad": "1", "precio": "0",
+            "descuento": 0, "exento": False}
+    _emitir_dte(db, tenant_user.tenant, nc, original.customer, [item],
+                _referencias_dte(referencias), global_user.email)
+    db.commit()
+    return nc
 
 
 # ── PDF Preview ──────────────────────────────────────────────────────

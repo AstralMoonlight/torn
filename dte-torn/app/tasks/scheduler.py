@@ -29,7 +29,7 @@ from sqlalchemy import case, func, or_, select, update
 from app.core.config import get_settings
 from app.db import control_session, tenant_session
 from app.dte.signer import ZONA_CHILE
-from app.models import CAF, Ambiente, Certificate, Document, EstadoCAF, EstadoDocumento, Tenant
+from app.models import CAF, Ambiente, Certificate, Document, EstadoCAF, EstadoDocumento, EstadoIntercambio, Tenant
 from app.tasks import colas
 
 E = EstadoDocumento
@@ -103,7 +103,37 @@ async def reconciliar(limite: int = 500) -> int:
                 continue
             ENCOLADOS.labels(estado_doc).inc()
             total += 1
+        if get_settings().smtp_host:
+            total += await _intercambios(tenant_id, limite)
     return total
+
+
+async def _intercambios(tenant_id: uuid.UUID, limite: int) -> int:
+    """Encola el envío del XML al receptor de lo aceptado, con el mismo lease.
+    Sin servidor de correo configurado no se llama: quedan PENDIENTE."""
+    ahora = datetime.now(timezone.utc)
+    async with tenant_session(tenant_id) as s:
+        vencidos = (
+            select(Document.id)
+            .where(Document.intercambio_estado == EstadoIntercambio.PENDIENTE,
+                   or_(Document.intercambio_next_at.is_(None), Document.intercambio_next_at <= ahora))
+            .limit(limite)
+            .with_for_update(skip_locked=True)
+        )
+        ids = (await s.execute(
+            update(Document).where(Document.id.in_(vencidos))
+            .values(intercambio_next_at=ahora + LEASE).returning(Document.id)
+        )).scalars().all()
+    n = 0
+    for doc_id in ids:
+        try:
+            await colas.intercambiar.kiq(str(tenant_id), str(doc_id))
+        except Exception:  # noqa: BLE001 - el lease lo reintenta
+            log.exception("No se pudo encolar el intercambio de %s", doc_id)
+            continue
+        ENCOLADOS.labels("INTERCAMBIO").inc()
+        n += 1
+    return n
 
 
 async def vigilar() -> dict[str, dict]:

@@ -6,7 +6,9 @@ import { formatCLP, formatDate, getTodayChile } from '@/lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Printer, Info, Wallet, BarChart2 } from 'lucide-react'
+import { Printer, Info, Wallet, BarChart2, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -121,6 +123,17 @@ export default function DailyReportPage() {
                 />
             </div>
 
+            {report && report.rechazados > 0 && (
+                <Alert className="print:hidden" data-section="reporte-diario.rechazados">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>{report.rechazados === 1 ? 'Un documento rechazado' : `${report.rechazados} documentos rechazados`} por el SII en este periodo</AlertTitle>
+                    <AlertDescription>
+                        Suman {formatCLP(report.monto_rechazado)} y no se cuentan en estas cifras, porque se vuelven a emitir.
+                        Revíselos en <Link href="/historial" className="font-medium underline">Historial</Link>.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Print Only Header */}
             <div className="hidden print:block text-left border-b-2 border-black pb-4 mb-8">
                 <h1 className="text-xl font-bold uppercase tracking-tighter">{getReportTitle()}</h1>
@@ -219,7 +232,7 @@ export default function DailyReportPage() {
             {/* Disclaimer & Tech Info */}
             <div className="flex flex-col md:flex-row justify-between pt-8 items-end gap-4 text-xs text-muted-foreground border-t border-border print:border-black print:text-black">
                 <div className="max-w-xs italic text-left">
-                    * La utilidad mostrada es un cálculo bruto basado en el costo unitario configurado al momento del reporte.
+                    * La utilidad se calcula con el costo de cada producto al momento de la venta. Los documentos rechazados por el SII no se cuentan.
                 </div>
                 <div className="text-right space-y-1">
                     <p className="font-bold print:hidden">TORN - SISTEMA DE GESTIÓN POS</p>
