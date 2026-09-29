@@ -51,6 +51,14 @@ class CafDeOtroEmisorError(CafInvalidoError):
     """
 
 
+class CafDeOtroAmbienteError(CafInvalidoError):
+    """CAF de certificación (maullín) en un emisor en producción, o al revés."""
+
+
+#: `IDK` de los CAF que entrega maullín (certificación). Palena usa otro.
+IDK_CERTIFICACION = 100
+
+
 class RangoSolapadoError(CafInvalidoError):
     """El rango se cruza con otro CAF ya cargado del mismo tipo.
 
@@ -70,6 +78,8 @@ class CafParseado:
     folio_desde: int
     folio_hasta: int
     fecha_autorizacion: date | None
+    #: `IDK` 100: lo entregó maullín y sus folios solo valen en certificación.
+    de_certificacion: bool
     #: El nodo `<CAF>` tal como viene en el archivo, byte a byte.
     nodo_caf: bytes
     #: La llave privada del timbre, en PEM.
@@ -180,6 +190,7 @@ def parsear_caf(xml: bytes) -> CafParseado:
         folio_desde=desde,
         folio_hasta=hasta,
         fecha_autorizacion=date.fromisoformat(autorizacion) if autorizacion else None,
+        de_certificacion=_texto(raiz, ".//DA/IDK") == str(IDK_CERTIFICACION),
         nodo_caf=_recortar_nodo_caf(xml),
         llave_ted_pem=llave_bytes,
     )
@@ -203,6 +214,7 @@ async def guardar_caf(
 
     Raises:
         CafDeOtroEmisorError: El RUT del CAF no es el del tenant.
+        CafDeOtroAmbienteError: CAF de maullín con el tenant en PROD, o de palena en CERT.
         RangoSolapadoError: El rango se cruza con otro CAF ya cargado.
         CafInvalidoError: El archivo no es un CAF utilizable.
     """
@@ -215,6 +227,13 @@ async def guardar_caf(
         raise CafDeOtroEmisorError(
             f"El CAF está autorizado a {caf.rut_emisor} y este emisor es "
             f"{normalizar_rut(tenant.rut_emisor)}"
+        )
+    # Los folios de maullín no existen para palena, y al revés.
+    if tenant.ambiente != Ambiente.DEV and caf.de_certificacion != (tenant.ambiente == Ambiente.CERT):
+        origen, destino = ("certificación (maullín)", "producción") if caf.de_certificacion else (
+            "producción (palena)", "certificación")
+        raise CafDeOtroAmbienteError(
+            f"Este CAF es de {origen} y el emisor está en {destino}: pida los folios en el ambiente del emisor."
         )
 
     solapado = (

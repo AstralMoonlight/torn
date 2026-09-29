@@ -29,9 +29,11 @@ interface Props {
     open: boolean
     product: Product | null
     onClose: (refresh?: boolean) => void
+    /** El stock no se edita aquí: se ajusta con su motivo, para que quede en el kardex. */
+    onAjustarStock: (product: Product) => void
 }
 
-export default function ProductEditDialog({ open, product, onClose }: Props) {
+export default function ProductEditDialog({ open, product, onClose, onAjustarStock }: Props) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [baseName, setBaseName] = useState('')
@@ -43,7 +45,6 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
 
     // For simple products (no variants)
     const [simplePrice, setSimplePrice] = useState(0)
-    const [simpleStock, setSimpleStock] = useState(0)
     const [simpleBarcode, setSimpleBarcode] = useState('')
 
     // Variants state (local copy for editing)
@@ -66,7 +67,6 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                 setVariants([])
                 // Init simple product fields
                 setSimplePrice(parseFloat(product.precio_neto) || 0)
-                setSimpleStock(parseFloat(product.stock_actual) || 0)
                 setSimpleBarcode(product.codigo_barras || '')
             }
 
@@ -91,9 +91,8 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
             }
 
             if (!isParent) {
-                // If simple product, include price/stock/barcode in the main update
+                // Producto simple: precio y código de barras van en el mismo update.
                 mainPayload.precio_neto = simplePrice.toString()
-                mainPayload.stock_actual = simpleStock.toString()
                 mainPayload.codigo_barras = simpleBarcode || null
             }
 
@@ -106,7 +105,6 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                         nombre: v.nombre,
                         codigo_interno: v.codigo_interno,
                         precio_neto: v.precio_neto,
-                        stock_actual: v.stock_actual,
                         codigo_barras: v.codigo_barras || null,
                         controla_stock: controlStock,
                         tax_id: selectedTax ? parseInt(selectedTax) : null,
@@ -272,17 +270,14 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                                             className="h-8 w-24 text-xs text-right font-tabular"
                                                         />
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            value={v.stock_actual.toString()}
-                                                            onChange={(e) => {
-                                                                const newVariants = [...variants]
-                                                                newVariants[i] = { ...v, stock_actual: e.target.value }
-                                                                setVariants(newVariants)
-                                                            }}
-                                                            className="h-8 w-20 text-xs text-center font-tabular"
-                                                        />
+                                                    <TableCell className="whitespace-nowrap">
+                                                        <span className="font-tabular text-sm mr-2">{Number(v.stock_actual)}</span>
+                                                        {controlStock && (
+                                                            <Button variant="outline" size="sm" className="h-8 text-xs"
+                                                                onClick={() => { onClose(); onAjustarStock(v) }}>
+                                                                Ajustar
+                                                            </Button>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <Input
@@ -324,12 +319,15 @@ export default function ProductEditDialog({ open, product, onClose }: Props) {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Stock actual</Label>
-                                        <Input
-                                            type="number"
-                                            value={simpleStock.toString()}
-                                            onChange={(e) => setSimpleStock(parseFloat(e.target.value) || 0)}
-                                            className="font-tabular"
-                                        />
+                                        <div className="flex h-10 items-center gap-3">
+                                            <span className="font-tabular text-lg">{Number(product.stock_actual)}</span>
+                                            {product.controla_stock && (
+                                                <Button variant="outline" size="sm"
+                                                    onClick={() => { onClose(); onAjustarStock(product) }}>
+                                                    Ajustar stock
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Código de barras</Label>

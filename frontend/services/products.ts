@@ -94,3 +94,29 @@ export async function createProductWithVariants(payload: ProductWithVariantsPayl
     const { data } = await api.post<Product>('/products/with-variants', payload)
     return data
 }
+
+/** Motivos del ajuste de stock (kardex). AJUSTE = "Otro". */
+export type MotivoAjuste = 'CONTEO' | 'MERMA' | 'INICIAL' | 'AJUSTE'
+
+export interface StockMovement {
+    id: number
+    fecha: string | null
+    tipo: 'ENTRADA' | 'SALIDA'
+    motivo: string
+    cantidad: string
+    balance_after: string | null
+    description: string | null
+    sale_id: number | null
+    user_id: number | null
+}
+
+/** Deja el stock en lo contado; el backend anota la diferencia en el kardex. */
+export async function ajustarStock(id: number, cantidad_contada: number, motivo: MotivoAjuste, nota?: string): Promise<Product> {
+    const { data } = await api.post<Product>(`/products/${id}/ajuste-stock`, { cantidad_contada, motivo, nota: nota || null })
+    return data
+}
+
+export async function getMovimientos(id: number): Promise<StockMovement[]> {
+    const { data } = await api.get<StockMovement[]>(`/products/${id}/movimientos`)
+    return data
+}

@@ -150,6 +150,13 @@ FACTURAS = {
         items=[_item(nombre="Devolución")],
         referencias=[Referencia(tipo_doc="33", folio="1000", fecha=HOY, codigo=1, razon="Anula")],
     ),
+    "61 de una boleta a consumidor final": DatosDocumento(
+        tipo_dte=61,
+        fecha_emision=HOY,
+        receptor=Receptor(rut="66666666-6", razon_social="Cliente Final"),
+        items=[_item(nombre="Devolución")],
+        referencias=[Referencia(tipo_doc="39", folio="1000", fecha=HOY, codigo=1, razon="Devolución")],
+    ),
     "52 guía de venta": DatosDocumento(
         tipo_dte=52, fecha_emision=HOY, receptor=RECEPTOR, ind_traslado=1, tipo_despacho=1, items=[_item()],
     ),

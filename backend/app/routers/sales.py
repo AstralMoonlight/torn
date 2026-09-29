@@ -1,6 +1,7 @@
 """Router para gestión de Ventas (Facturas)."""
 
 import logging
+from datetime import date, datetime, time, timedelta
 from urllib.parse import quote
 from decimal import Decimal
 from pathlib import Path
@@ -21,15 +22,16 @@ from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
 from app.schemas import FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
+from app.services.kardex import mover_stock
 from app.utils.formatters import format_clp, format_number
 from app.utils.pricing import resolve_unit_price
-from app.utils.dates import get_now
+from app.utils.dates import CHILE_TZ, get_now
 from app.utils.taxes import (
     BOLETAS, TASA_IVA_DTE, monto_linea_dte, precio_dte, quantize_money,
     resolve_tax_rate, round_to_nearest_ten, totales_dte,
 )
 from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
-from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user, es_admin
 from app.models.saas import TenantUser, SaaSUser
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -46,7 +48,7 @@ _html_env.filters["number"] = format_number
 
 
 def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Decimal, descuento: Decimal,
-               tipo_impuesto: int | None = None):
+               tipo_impuesto: int | None = None, descuento_pct: Decimal | None = None):
     """Línea tal como va a dte-torn, con su `MontoItem` y si es exenta.
 
     `tipo_impuesto`: tipo de DTE que decide el IVA, si no es `tipo` (una NC
@@ -61,33 +63,59 @@ def _linea_dte(tipo: int, product: Product, cantidad: Decimal, precio_neto: Deci
     precio = precio_dte(tipo, precio_neto, rate)
     if tipo in BOLETAS:
         descuento = descuento * (1 + rate)
-    monto = monto_linea_dte(cantidad, precio, descuento)
+    monto = monto_linea_dte(cantidad, precio, descuento, descuento_pct)
     item = {
         "nombre": product.nombre,
         "codigo": product.codigo_interno,
         "unidad": product.unidad_medida,
         "cantidad": str(cantidad),
         "precio": str(precio),
-        "descuento": int(quantize_money(descuento)),
+        "descuento": 0 if descuento_pct else int(quantize_money(descuento)),
         "exento": rate == 0,
     }
+    if descuento_pct:
+        item["descuento_pct"] = str(descuento_pct)
     return item, monto, rate == 0
 
 
+def _descuento_global_dte(tipo: int, valor: Decimal, porcentaje: bool, lineas_dte: list) -> tuple:
+    """`(valor, es_porcentaje, sobre_exento)` tal como va a dte-torn.
+
+    Va sobre lo afecto; si el documento no tiene nada afecto, sobre lo exento. En
+    pesos llega neto, como el de línea: en boletas, sobre lo afecto, va bruto.
+    """
+    sobre_exento = all(exenta for _, exenta in lineas_dte)
+    if not porcentaje:
+        valor = quantize_money(valor * (1 + TASA_IVA_DTE) if tipo in BOLETAS and not sobre_exento else valor)
+    return valor, porcentaje, sobre_exento
+
+
 def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str,
-                tipo_despacho: int | None = None) -> None:
+                tipo_despacho: int | None = None, forma_pago: int | None = None,
+                descuentos_globales: list = ()) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
     entrega un documento sin folio autorizado.
     """
+    hoy = get_now().date()
     documento = {
         "external_id": f"venta-{sale.id}",
         "tipo_dte": sale.tipo_dte,
-        "fecha_emision": get_now().date().isoformat(),
+        "fecha_emision": hoy.isoformat(),
         "items": items,
         "referencias": referencias,
     }
+    if forma_pago:
+        documento["forma_pago"] = forma_pago
+    if descuentos_globales:
+        documento["descuentos_globales"] = [
+            {"valor": str(v), "porcentaje": pct, "exento": ex, "glosa": "Descuento"}
+            for v, pct, ex in descuentos_globales
+        ]
+    if forma_pago == CREDITO:
+        # `_validar_credito` ya exigió el plazo del cliente.
+        documento["fecha_vencimiento"] = (hoy + timedelta(days=customer.dias_credito)).isoformat()
     if sale.tipo_dte not in BOLETAS:
         documento["receptor"] = {
             "rut": customer.rut, "razon_social": customer.razon_social, "giro": customer.giro,
@@ -108,7 +136,8 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         emitido = dte_client.emitir(tenant, documento, actor)
     except dte_client.DteError as exc:
         db.rollback()
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        log.warning("Venta %s: dte-torn respondió %s: %s", sale.id, exc.status_code, exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=_mensaje_emision(exc, sale.tipo_dte)) from exc
 
     sale.folio = emitido["folio"]
     sale.modo = tenant.sii_ambiente
@@ -127,6 +156,98 @@ TRASLADOS_FACTURABLES = {1, 2, 3}
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
 #: SIMULADO: emitido en modo Desarrollador, nunca va al SII.
 ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION", "SIMULADO"}
+
+#: Facturas: las únicas que llevan forma de pago (`FmaPago`) en esta etapa.
+FACTURAS = {33, 34}
+CONTADO, CREDITO = 1, 2
+
+
+def _validar_credito(db: Session, customer: Customer, payments) -> None:
+    """Solo se fía a un cliente con plazo de crédito en su ficha."""
+    credito = {pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "CREDITO_INTERNO")}
+    if customer.dias_credito is None and any(p.payment_method_id in credito for p in payments):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{customer.razon_social} no tiene crédito: el administrador le asigna un plazo de pago "
+            "en Clientes. Mientras tanto, cobre con otro medio de pago.",
+        )
+
+
+def _forma_pago(db: Session, tipo: int, payments) -> int | None:
+    """1 contado o 2 crédito, solo en facturas. Con parte fiada va a crédito:
+    al emitirla no está pagada entera."""
+    if tipo not in FACTURAS:
+        return None
+    credito = {pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "CREDITO_INTERNO")}
+    return CREDITO if any(p.payment_method_id in credito for p in payments) else CONTADO
+
+
+def _descuento_global_nc(tipo: int, original: Sale, lineas_nc: list) -> list:
+    """El descuento al total de la venta, en la parte que toca a lo devuelto.
+
+    Un porcentaje se repite. En pesos, se prorratea por la base sobre la que se
+    aplicó (lo afecto, o lo exento si la venta no tenía nada afecto): devolver
+    todo devuelve el descuento entero.
+    """
+    if not original.descuento_global:
+        return []
+    valor = original.descuento_global
+    if not original.descuento_global_pct:
+        lineas_orig = [
+            _linea_dte(tipo, d.product, d.cantidad, d.precio_unitario, d.descuento,
+                       tipo_impuesto=original.tipo_dte, descuento_pct=d.descuento_pct)[1:]
+            for d in original.details
+        ]
+        sobre_exento = all(ex for _, ex in lineas_orig)
+        base_orig = sum((m for m, ex in lineas_orig if ex == sobre_exento), Decimal("0"))
+        base_nc = sum((m for m, ex in lineas_nc if ex == sobre_exento), Decimal("0"))
+        valor = valor * base_nc / base_orig if base_orig else Decimal("0")
+    if not valor:
+        return []
+    return [_descuento_global_dte(tipo, valor, original.descuento_global_pct, lineas_nc)]
+
+
+def _validar_tope_descuento(db: Session, tenant_user: TenantUser, tipo: int, items_dte: list,
+                            neto: Decimal, exento: Decimal, total: Decimal) -> None:
+    """Quien no es administrador descuenta hasta `descuento_maximo` % del total (#40).
+
+    Se mide en las unidades del DTE: lo que suman las líneas sin descuento contra
+    lo que queda antes del IVA (bruto en boletas, neto en el resto).
+    """
+    base = sum((quantize_money(Decimal(i["cantidad"]) * Decimal(i["precio"])) for i in items_dte), Decimal("0"))
+    queda = total if tipo in BOLETAS else neto + exento
+    if base <= 0 or queda >= base or es_admin(tenant_user):
+        return
+    settings = db.query(SystemSettings).first()
+    maximo = settings.descuento_maximo if settings else 10
+    if (base - queda) * 100 > base * maximo:
+        detalle = (f"El descuento supera el {maximo}% que puede dar el personal."
+                   if maximo else "Solo el administrador puede hacer descuentos.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"{detalle} Pida al administrador que haga la venta.")
+
+
+NOMBRES_DTE = {33: "factura", 34: "factura exenta", 39: "boleta", 41: "boleta exenta",
+               52: "guía de despacho", 56: "nota de débito", 61: "nota de crédito"}
+
+
+def _mensaje_emision(exc: "dte_client.DteError", tipo: int) -> str:
+    """Lo que ve quien vende: qué pasó y qué hacer, sin jerga (lanzamiento.md 1.6).
+
+    El texto técnico de dte-torn queda en el log. Lo que no se reconoce pasa tal cual.
+    """
+    doc = NOMBRES_DTE.get(tipo, "el documento")
+    detalle = exc.detail or ""
+    if isinstance(exc, dte_client.DteNoDisponible):
+        return ("No se pudo emitir: el sistema de facturación no responde. Espere un minuto y vuelva a "
+                "intentar; si sigue igual, avise al administrador.")
+    if detalle.startswith("Sin folios"):
+        return f"Se acabaron los números autorizados por el SII para {doc}. Avise al administrador para que cargue más."
+    if "requiere del receptor" in detalle:
+        faltan = detalle.split(":", 1)[-1].strip().replace("direccion", "dirección")
+        return f"Para emitir {doc} faltan datos del cliente: {faltan}. Complételos en Clientes y vuelva a intentar."
+    if "certificado" in detalle.lower():
+        return "Falta el certificado digital de la empresa. Avise al administrador."
+    return detalle
 
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
@@ -157,16 +278,37 @@ def list_payment_methods(db: Session = Depends(get_tenant_db)):
 def list_sales(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    desde: date | None = Query(None, description="Primer día (hora de Chile), inclusive"),
+    hasta: date | None = Query(None, description="Último día (hora de Chile), inclusive"),
+    q: str | None = Query(None, description="Folio, razón social o RUT; busca en todas las fechas"),
     db: Session = Depends(get_tenant_db),
 ):
-    """Lista ventas paginadas, ordenadas por fecha descendente."""
+    """Lista ventas paginadas, ordenadas por fecha descendente.
+
+    Con `q` se ignoran las fechas: sirve para encontrar la venta a devolver
+    aunque sea de hace meses.
+    """
+    query = db.query(Sale)
+    q = (q or "").strip()
+    if q:
+        rut = q.replace(".", "").upper()
+        coincide = Customer.razon_social.ilike(f"%{q}%") | Customer.rut.ilike(f"%{rut}%")
+        if q.isdigit():
+            coincide = coincide | (Sale.folio == int(q))
+        query = query.join(Sale.customer).filter(coincide)
+    else:
+        if desde:
+            query = query.filter(Sale.fecha_emision >= datetime.combine(desde, time.min, tzinfo=CHILE_TZ))
+        if hasta:
+            query = query.filter(
+                Sale.fecha_emision < datetime.combine(hasta + timedelta(days=1), time.min, tzinfo=CHILE_TZ))
     sales = (
-        db.query(Sale)
+        query
         .options(
             joinedload(Sale.customer),
             joinedload(Sale.details).joinedload(SaleDetail.product),
         )
-        .order_by(Sale.created_at.desc())
+        .order_by(Sale.fecha_emision.desc(), Sale.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
@@ -265,7 +407,8 @@ def facturar_guias(
 
     # El pago cubre justo el total: se calcula igual que lo hará `_registrar_venta`.
     lineas = [
-        _linea_dte(datos.tipo_dte, d.product, d.cantidad, d.precio_unitario, d.descuento)[1:]
+        _linea_dte(datos.tipo_dte, d.product, d.cantidad, d.precio_unitario, d.descuento,
+                   descuento_pct=d.descuento_pct)[1:]
         for g in guias for d in g.details
     ]
     total = totales_dte(datos.tipo_dte, lineas)[3]
@@ -318,7 +461,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     if control_caja and not active_session and sale_in.tipo_dte != GUIA_DESPACHO:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"El vendedor (ID {seller_id_to_use}) no tiene turno de caja abierto."
+            detail="No hay un turno de caja abierto: abra la caja antes de vender.",
         )
 
     # 1. Validar Cliente
@@ -328,6 +471,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Cliente con RUT {sale_in.rut_cliente} no encontrado",
         )
+
+    _validar_credito(db, customer, sale_in.payments)
 
     # 1.5 Validar Referencias para Documentos de Ajuste
     ADJUSTMENT_DTES = [56, 61, 111, 112]
@@ -352,9 +497,13 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "La guía no se cobra: se cobra al facturarla.")
     elif sale_in.ind_traslado or sale_in.tipo_despacho:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo de traslado y de despacho son solo para guías (52).")
+    if tipo == GUIA_DESPACHO and sale_in.descuento_global:
+        # La factura de guías copia sus líneas: un descuento al total de la guía se perdería.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La guía no lleva descuento al total: descuente por línea.")
 
-    # (producto, cantidad, precio neto, descuento, mueve stock). Las líneas de
-    # guías que se facturan ya descontaron stock al emitir la guía.
+    # (producto, cantidad, precio neto, descuento, mueve stock, costo). Las
+    # líneas de guías que se facturan ya descontaron stock al emitir la guía, y
+    # conservan el costo de ese momento.
     lineas = []
     for item in sale_in.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -368,9 +517,11 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Producto {product.nombre} (SKU {product.codigo_interno}) no está activo",
             )
-        lineas.append((product, item.cantidad, resolve_unit_price(db, product, customer), item.descuento, True))
+        lineas.append((product, item.cantidad, resolve_unit_price(db, product, customer), item.descuento,
+                       item.descuento_pct, True, product.costo_unitario))
     for guia in guias:
-        lineas.extend((d.product, d.cantidad, d.precio_unitario, d.descuento, False) for d in guia.details)
+        lineas.extend((d.product, d.cantidad, d.precio_unitario, d.descuento, d.descuento_pct, False,
+                       d.costo_unitario) for d in guia.details)
 
     # 2. Validar Productos y Calcular Totales
     lineas_dte = []
@@ -378,7 +529,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     sale_details = []
     stock_movements = []
 
-    for product, cantidad, precio_unitario, descuento, mueve_stock in lineas:
+    for product, cantidad, precio_unitario, descuento, descuento_pct, mueve_stock, costo in lineas:
         # Validar Stock
         if mueve_stock and product.controla_stock:
             if product.stock_actual < cantidad:
@@ -387,24 +538,15 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
                     detail=f"Stock insuficiente para {product.nombre}. Disponible: {product.stock_actual}, Solicitado: {cantidad}"
                 )
 
-            # Descontar Stock y Registrar Movimiento (se guardará al hacer commit de la venta)
-            product.stock_actual -= cantidad
-
-            # Importar localmente para evitar dependencias circulares
-            from app.models.inventory import StockMovement
-            
-            movement = StockMovement(
-                product_id=product.id,
-                user_id=seller_id_to_use, # Usuario caja
-                tipo="SALIDA",
-                motivo="GUIA" if tipo == GUIA_DESPACHO else "VENTA",
-                cantidad=cantidad,
-                description=f"Venta en proceso", 
-            )
-            # No hacemos db.add(movement) aquí, lo vinculamos a la venta
-            stock_movements.append(movement)
+            # Se guarda con la venta: queda colgado de `Sale.stock_movements`.
+            stock_movements.append(mover_stock(
+                product, -cantidad, "GUIA" if tipo == GUIA_DESPACHO else "VENTA", seller_id_to_use,
+            ))
 
         subtotal_bruto_linea = precio_unitario * cantidad
+        if descuento_pct:
+            # Se guarda también en pesos netos: subtotal y reportes no cambian.
+            descuento = (subtotal_bruto_linea * descuento_pct / 100).quantize(Decimal("0.01"))
 
         if descuento> subtotal_bruto_linea:
             raise HTTPException(
@@ -416,7 +558,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             )
         subtotal_linea = subtotal_bruto_linea - descuento
 
-        item_dte, monto, exenta = _linea_dte(tipo, product, cantidad, precio_unitario, descuento)
+        item_dte, monto, exenta = _linea_dte(tipo, product, cantidad, precio_unitario, descuento,
+                                             descuento_pct=descuento_pct)
         items_dte.append(item_dte)
         lineas_dte.append((monto, exenta))
 
@@ -426,11 +569,20 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             precio_unitario=precio_unitario,
             subtotal=subtotal_linea,
             descuento=descuento,
+            descuento_pct=descuento_pct,
+            costo_unitario=costo or 0,
         )
         sale_details.append(detail_obj)
 
     # 3. Totales con las reglas del DTE (ver `totales_dte`)
-    neto, exento, iva, total = totales_dte(tipo, lineas_dte)
+    globales = []
+    if sale_in.descuento_global:
+        g = sale_in.descuento_global
+        globales.append(_descuento_global_dte(tipo, g.valor, g.porcentaje, lineas_dte))
+    neto, exento, iva, total = totales_dte(tipo, lineas_dte, globales)
+    if neto < 0 or exento < 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El descuento al total supera el monto de la venta.")
+    _validar_tope_descuento(db, tenant_user, tipo, items_dte, neto, exento, total)
     total_neto = neto + exento
 
     cash_method_ids = {
@@ -489,6 +641,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
 
     # 5. Crear Venta
     new_sale = Sale(
+        descuento_global=sale_in.descuento_global.valor if sale_in.descuento_global else 0,
+        descuento_global_pct=bool(sale_in.descuento_global and sale_in.descuento_global.porcentaje),
         customer_id=customer.id,
         folio=0,  # provisorio: _emitir_dte pone el real antes del commit
         tipo_dte=tipo,
@@ -533,7 +687,10 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
 
     # 6. Emitir en dte-torn (asigna el folio) y confirmar
     _emitir_dte(db, tenant_user.tenant, new_sale, customer, items_dte,
-                _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho)
+                _referencias_dte(referencias_json), global_user.email, sale_in.tipo_despacho,
+                _forma_pago(db, tipo, sale_in.payments), globales)
+    for movement in stock_movements:
+        movement.description = f"DTE {tipo} folio {new_sale.folio}"
     db.commit()
 
     # Eager load para respuesta
@@ -635,17 +792,10 @@ def create_return(
 
         # Reingreso de Stock
         if product.controla_stock:
-            product.stock_actual += item.cantidad
-            from app.models.inventory import StockMovement
-            movement = StockMovement(
-                product_id=product.id,
-                user_id=user_id,
-                tipo="ENTRADA",
-                motivo="DEVOLUCION",
-                cantidad=item.cantidad,
-                description=f"Devolución venta f.{original_sale.folio}: {return_in.reason}"
-            )
-            stock_movements.append(movement)
+            stock_movements.append(mover_stock(
+                product, item.cantidad, "DEVOLUCION", user_id,
+                f"Devolución venta f.{original_sale.folio}: {return_in.reason}",
+            ))
         
         precio_unitario = product.precio_neto # Usamos precio actual o histórico? Ideal histórico.
         # Por simplicidad usamos precio actual del producto, pero DEBERIAMOS buscar precio venta original.
@@ -654,12 +804,22 @@ def create_return(
             SaleDetail.sale_id == original_sale.id,
             SaleDetail.product_id == product.id
         ).first()
+        costo = product.costo_unitario
         if original_detail:
             precio_unitario = original_detail.precio_unitario
+            costo = original_detail.costo_unitario
         
-        subtotal = precio_unitario * item.cantidad
+        # La NC devuelve lo cobrado: el mismo % de la línea, o su descuento en
+        # pesos en proporción a lo que se devuelve.
+        descuento_pct = original_detail.descuento_pct if original_detail else None
+        descuento = Decimal("0")
+        if original_detail and original_detail.descuento and not descuento_pct:
+            descuento = (original_detail.descuento * item.cantidad / original_detail.cantidad).quantize(Decimal("0.01"))
+        bruto = precio_unitario * item.cantidad
+        descuento_neto = (bruto * descuento_pct / 100).quantize(Decimal("0.01")) if descuento_pct else descuento
         item_dte, monto, exenta = _linea_dte(
-            tipo, product, item.cantidad, precio_unitario, Decimal("0"), tipo_impuesto=original_sale.tipo_dte
+            tipo, product, item.cantidad, precio_unitario, descuento, tipo_impuesto=original_sale.tipo_dte,
+            descuento_pct=descuento_pct,
         )
         items_dte.append(item_dte)
         lineas_dte.append((monto, exenta))
@@ -668,10 +828,14 @@ def create_return(
             product_id=product.id,
             cantidad=item.cantidad,
             precio_unitario=precio_unitario,
-            subtotal=subtotal
+            subtotal=bruto - descuento_neto,
+            descuento=descuento_neto,
+            descuento_pct=descuento_pct,
+            costo_unitario=costo or 0,
         ))
 
-    neto, exento, iva, total = totales_dte(tipo, lineas_dte)
+    globales = _descuento_global_nc(tipo, original_sale, lineas_dte)
+    neto, exento, iva, total = totales_dte(tipo, lineas_dte, globales)
     total_neto = neto + exento
 
     # 3. Registrar Documento de Ajuste
@@ -736,7 +900,7 @@ def create_return(
     
     # 5. Emitir en dte-torn y confirmar
     _emitir_dte(db, tenant_user.tenant, nc_sale, original_sale.customer, items_dte,
-                _referencias_dte(referencias_json), global_user.email)
+                _referencias_dte(referencias_json), global_user.email, descuentos_globales=globales)
     db.commit()
     return nc_sale
 
@@ -786,12 +950,12 @@ def _impreso_dte(tenant, sale: Sale, papel_mm: int | None, cedible: bool) -> Res
     doc = dte_impreso.leer_dte(xml)
     html = _html_env.get_template("dte_ticket.html").render(
         doc=doc, papel_mm=papel_mm, timbre=dte_impreso.timbre_svg(doc["ted"], papel_mm),
-        copias=([True] if cedible else [False, True]) if doc["tipo"] in dte_impreso.CEDIBLES else [False],
+        copias=([True] if cedible else [False, True]) if dte_impreso.es_cedible(doc) else [False],
         leyenda=dte_impreso.LEYENDA_PIE,
         prueba=prueba, leyenda_prueba=dte_impreso.LEYENDA_PRUEBA,
         oficina_sii=tenant.sii_oficina, resolucion_numero=tenant.sii_resolucion_numero,
         resolucion_anio=(tenant.sii_resolucion_fecha or get_now()).year,
-        rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha,
+        rut=dte_impreso.formatear_rut, fecha=dte_impreso.formatear_fecha, pct=dte_impreso.formatear_porcentaje,
     )
     return HTMLResponse(html)
 

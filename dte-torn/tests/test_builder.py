@@ -252,6 +252,21 @@ def test_factura_con_receptor_incompleto_se_rechaza() -> None:
         _factura([Item(nombre="A", precio=Decimal("1"))], receptor=incompleto)
 
 
+def test_nota_de_credito_de_boleta_a_consumidor_final() -> None:
+    final = Receptor(rut="66666666-6", razon_social="Cliente Final")
+    ref = Referencia(tipo_doc="39", folio="15", fecha=date(2026, 9, 23), codigo=1, razon="Devolución")
+    dte = construir_dte(EMISOR, _factura([Item(nombre="A", precio=Decimal("1000"))], tipo_dte=61,
+                                         receptor=final, referencias=[ref]), 1)
+    assert _hijos(dte, ".//s:Receptor") == ["RUTRecep", "RznSocRecep"]
+
+
+def test_nota_de_credito_de_factura_exige_receptor_completo() -> None:
+    incompleto = Receptor(rut="77777777-7", razon_social="Cliente")
+    ref = Referencia(tipo_doc="33", folio="15", fecha=date(2026, 9, 23), codigo=1)
+    with pytest.raises(ValidationError, match="giro, direccion, comuna"):
+        _factura([Item(nombre="A", precio=Decimal("1"))], tipo_dte=61, receptor=incompleto, referencias=[ref])
+
+
 def test_nota_de_credito_sin_referencia_se_rechaza() -> None:
     with pytest.raises(ValidationError, match="referencia"):
         _factura([Item(nombre="A", precio=Decimal("1"))], tipo_dte=61)

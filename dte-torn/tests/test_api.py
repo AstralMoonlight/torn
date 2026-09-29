@@ -13,6 +13,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.db import tenant_session
 from app.dte import pipeline
 from app.main import app
@@ -99,6 +100,12 @@ async def test_vigencia_del_certificado_sin_material_sensible(api) -> None:
     r = await api.post("/certificates", headers=h, files={"archivo": ("c.pfx", pfx(rut="11111111-1"))},
                        data={"password": "mala"})
     assert r.status_code == 422
+
+
+async def test_stock_trae_el_umbral_de_alerta(api) -> None:
+    h = await _alta(api)
+    stock = (await api.get("/folios", headers=h)).json()
+    assert stock[0]["umbral_alerta"] == get_settings().folio_umbral_alerta
 
 
 async def test_caf_solapado_o_de_otra_empresa(api) -> None:
@@ -217,6 +224,19 @@ async def test_desarrollador_emite_con_folios_de_prueba_y_sin_sii(api) -> None:
 
     caf = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, tipo_dte=33, desde=50, hasta=60))})
     assert caf.status_code == 409
+
+
+async def test_caf_de_otro_ambiente_se_rechaza(api) -> None:
+    h = await _alta(api)  # en CERT
+    palena = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60, idk=300))})
+    assert palena.status_code == 422
+    assert "producción (palena)" in palena.json()["detail"]
+
+    await _cambiar_ambiente(api, h, "PROD")
+    maullin = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60))})
+    assert maullin.status_code == 422
+    assert "certificación (maullín)" in maullin.json()["detail"]
+    assert (await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60, idk=300))})).status_code == 201
 
 
 async def test_cada_ambiente_ve_sus_documentos_y_sus_folios(api) -> None:

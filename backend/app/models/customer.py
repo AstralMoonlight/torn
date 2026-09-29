@@ -22,6 +22,8 @@ class Customer(Base):
     ciudad = Column(String(100))
     email = Column(String(150))
     current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente")
+    # Plazo de pago de lo fiado (días). NULL: sin crédito, no puede comprar fiado.
+    dias_credito = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -33,3 +35,22 @@ class Customer(Base):
 
     def __repr__(self) -> str:
         return f"<Customer(rut='{self.rut}', razon_social='{self.razon_social}')>"
+
+
+class CustomerPayment(Base):
+    """Pago que baja la deuda de crédito interno de un cliente (`current_balance`).
+
+    Si es en efectivo y hay caja abierta, queda en ese turno y entra a su cierre.
+    """
+    __tablename__ = "customer_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False, index=True)
+    amount = Column(Numeric(15, 2), nullable=False)
+    payment_method_id = Column(Integer, ForeignKey("payment_methods.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cash_session_id = Column(Integer, ForeignKey("cash_sessions.id"), nullable=True, index=True)
+    nota = Column(String(200))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    payment_method = relationship("PaymentMethod")

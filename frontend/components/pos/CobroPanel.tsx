@@ -5,7 +5,7 @@ import {
     ArrowLeft, Banknote, CreditCard, Landmark, Wallet, Receipt, FileText, FileStack,
     CheckCircle2, Printer, Loader2, Plus, Trash2, ChevronDown, ChevronRight,
 } from 'lucide-react'
-import { useCartStore } from '@/lib/store/cartStore'
+import { descuentosParaVenta, useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getApiErrorDetail, getApiErrorStatus, fetchBlob, printPdf } from '@/services/api'
 import {
@@ -116,12 +116,19 @@ function Paso({ n, titulo, extra, children }: { n: number; titulo: string; extra
 export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const {
         items, totalFinal, tipoDte, setTipoDte, customer, setCustomer,
-        referencias, setReferencias, guia, setGuia, clear,
+        referencias, setReferencias, guia, setGuia, clear, descuentoGlobal,
     } = useCartStore()
     const { userId } = useSessionStore()
 
     const [folios, setFolios] = useState<FolioStockOut[] | null>(null)
-    const [methods, setMethods] = useState<PaymentMethod[]>([])
+    const [todosLosMedios, setMethods] = useState<PaymentMethod[]>([])
+    // Solo se fía a un cliente con plazo de crédito en su ficha (el backend lo exige).
+    const conCredito = !!customer?.dias_credito
+    const methods = useMemo(
+        () => todosLosMedios.filter((m) => m.code !== 'CREDITO_INTERNO' || conCredito),
+        [todosLosMedios, conCredito],
+    )
+    const hayCreditoInterno = todosLosMedios.some((m) => m.code === 'CREDITO_INTERNO')
     const [pagos, setPagos] = useState<LineaPago[]>([])
     const [dividir, setDividir] = useState(false)
     const [verOtros, setVerOtros] = useState(false)
@@ -165,6 +172,15 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
         }))
     }, [totalFinal, dividir, methods])
 
+    // Cambiar a un cliente sin crédito saca el crédito interno del pago.
+    useEffect(() => {
+        if (conCredito || !pagos.some((p) => p.method.code === 'CREDITO_INTERNO')) return
+        const efectivo = methods.find((m) => m.code === 'EFECTIVO') ?? methods[0]
+        setDividir(false)
+        if (efectivo) setPagos([{ method: efectivo, amount: efectivo.code === 'EFECTIVO' ? roundCash(totalFinal) : totalFinal }])
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando cambia el cliente
+    }, [conCredito])
+
     const elegirMetodo = (method: PaymentMethod) => {
         recibidoEditado.current = false
         setDividir(false)
@@ -183,7 +199,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
 
     const bloqueo =
         items.length === 0 ? 'El ticket está vacío.'
-            : !hayFolios ? `No quedan folios de ${NOMBRE_DOC[tipoDte] ?? 'este documento'}. Solicítalos al SII.`
+            : !hayFolios ? `Se acabaron los números autorizados por el SII para ${(NOMBRE_DOC[tipoDte] ?? 'este documento').toLowerCase()}. Avise al administrador.`
                 : pideCliente && !customer ? 'Elige el cliente.'
                     : isGuia ? null
                         : falta > 0 ? `Faltan ${formatCLP(falta)}.`
@@ -203,6 +219,20 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
         setCustomer(c)
     }
 
+    // Mismas líneas y descuento al total con que el carrito calculó el total.
+    const ventaConDescuentos = () => {
+        const { lineas, globales } = descuentosParaVenta(items, tipoDte, descuentoGlobal)
+        return {
+            items: items.map((i, n) => ({
+                product_id: i.product.id,
+                cantidad: i.quantity,
+                ...(lineas[n].descuentoPct ? { descuento_pct: lineas[n].descuentoPct } : {}),
+                ...(lineas[n].descuento ? { descuento: lineas[n].descuento } : {}),
+            })),
+            ...(globales.length ? { descuento_global: globales[0] } : {}),
+        }
+    }
+
     const confirmar = async () => {
         if (bloqueo || enviando) return
         setEnviando(true)
@@ -211,7 +241,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             const sale = await createSale({
                 rut_cliente: customer?.rut || GENERIC_RUT,
                 tipo_dte: tipoDte,
-                items: items.map((i) => ({ product_id: i.product.id, cantidad: i.quantity })),
+                ...ventaConDescuentos(),
                 ...(isGuia ? { ind_traslado: guia.indTraslado, tipo_despacho: guia.tipoDespacho ?? undefined } : {}),
                 payments: isGuia ? [] : pagos.filter((p) => p.amount > 0).map((p) => ({ payment_method_id: p.method.id, amount: p.amount })),
                 seller_id: userId || undefined,
@@ -339,7 +369,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                                         <button key={tipo} type="button" onClick={() => setTipoDte(tipo)} aria-pressed={tipoDte === tipo}
                                             className={cn('h-10 rounded-lg border px-4 text-sm font-medium transition-colors cursor-pointer',
                                                 tipoDte === tipo ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/40')}>
-                                            {label}{sinFolios && <span className="ml-1.5 text-xs opacity-70">(sin folios)</span>}
+                                            {label}{sinFolios && <span className="ml-1.5 text-xs opacity-70" title={AYUDA_AGOTADO}>(agotado)</span>}
                                         </button>
                                     )
                                 })}
@@ -396,6 +426,11 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                                         )
                                     })}
                                 </div>
+                                {customer && !conCredito && hayCreditoInterno && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Sin crédito interno: {customer.razon_social} no tiene plazo de crédito (se asigna en Clientes).
+                                    </p>
+                                )}
                                 {metodo?.code === 'EFECTIVO' && (
                                     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                         <div className="flex items-end gap-4">
@@ -499,6 +534,9 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     )
 }
 
+/** "Sin folios" en palabras del mostrador (lanzamiento.md 1.6). */
+const AYUDA_AGOTADO = 'Se acabaron los números autorizados por el SII para este documento. Avise al administrador.'
+
 function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
     activa: boolean; sinFolios?: boolean; fila?: boolean; onClick: () => void; children: React.ReactNode
 }) {
@@ -511,7 +549,7 @@ function OpcionGrande({ activa, sinFolios, fila, onClick, children }: {
                 activa ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/40',
             )}>
             {children}
-            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive">sin folios</span>}
+            {sinFolios && <span className="absolute right-2 top-2 rounded bg-destructive/10 px-1.5 text-xs font-medium text-destructive" title={AYUDA_AGOTADO}>agotado</span>}
         </button>
     )
 }

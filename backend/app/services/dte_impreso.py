@@ -6,6 +6,7 @@ recortado byte a byte del XML. Misma regla que `dte-torn/app/dte/pdf.py`, que
 arma la versión carta.
 """
 
+from decimal import Decimal
 import re
 import xml.etree.ElementTree as ET
 
@@ -19,11 +20,26 @@ NOMBRES = {
     34: "FACTURA NO AFECTA O EXENTA ELECTRÓNICA",
     39: "BOLETA ELECTRÓNICA",
     41: "BOLETA NO AFECTA O EXENTA ELECTRÓNICA",
+    52: "GUÍA DE DESPACHO ELECTRÓNICA",
     56: "NOTA DE DÉBITO ELECTRÓNICA",
     61: "NOTA DE CRÉDITO ELECTRÓNICA",
 }
-#: Facturas: llevan copia cedible con acuse de recibo (Ley 19.983).
+#: Facturas: llevan copia cedible con acuse de recibo (Ley 19.983). La guía
+#: también, pero solo si el traslado es una venta: ver `es_cedible`.
 CEDIBLES = frozenset({33, 34})
+GUIA_DESPACHO = 52
+#: IndTraslado, con los textos del PDF carta de dte-torn (`app/dte/pdf.py`).
+TRASLADOS = {
+    "1": "Operación constituye venta",
+    "2": "Venta por efectuar",
+    "3": "Consignación",
+    "4": "Promoción o donación",
+    "5": "Traslado interno",
+    "6": "Otros traslados sin venta",
+    "7": "Guía de devolución",
+}
+#: FmaPago, como el PDF carta.
+FORMAS_PAGO = {"1": "Contado", "2": "Crédito", "3": "Sin costo"}
 CODIGOS_REFERENCIA = {"1": "Anula documento", "2": "Corrige texto", "3": "Corrige montos"}
 
 #: Nivel de corrección de errores del PDF417 que pide el SII.
@@ -68,6 +84,10 @@ def leer_dte(xml: bytes) -> dict:
         "nombre": NOMBRES.get(tipo, f"DOCUMENTO {tipo}"),
         "folio": int(id_doc["Folio"]),
         "fecha": id_doc.get("FchEmis", ""),
+        "forma_pago": FORMAS_PAGO.get(id_doc.get("FmaPago", ""), ""),
+        "vencimiento": id_doc.get("FchVenc", ""),
+        "ind_traslado": id_doc.get("IndTraslado", ""),
+        "traslado": TRASLADOS.get(id_doc.get("IndTraslado", ""), id_doc.get("IndTraslado", "")),
         "emisor": emisor,
         "receptor": _hijos(doc.find("s:Encabezado/s:Receptor", NS)),
         "totales": _hijos(doc.find("s:Encabezado/s:Totales", NS)),
@@ -82,6 +102,13 @@ def leer_dte(xml: bytes) -> dict:
         ],
         "ted": ted.group(0),
     }
+
+
+def es_cedible(doc: dict) -> bool:
+    """Una guía que no es venta no se cede: el SII dice que su cedible es inoficioso."""
+    if doc["tipo"] == GUIA_DESPACHO:
+        return doc["ind_traslado"] == "1"
+    return doc["tipo"] in CEDIBLES
 
 
 def codigos_timbre(ted: bytes, papel_mm: int) -> list[list[int]]:
@@ -120,6 +147,11 @@ def formatear_rut(rut: str) -> str:
     """`76398956-9` -> `76.398.956-9`."""
     cuerpo, _, dv = rut.replace(".", "").partition("-")
     return f"{int(cuerpo):,}".replace(",", ".") + f"-{dv}" if cuerpo.isdigit() else rut
+
+
+def formatear_porcentaje(valor: str) -> str:
+    """`10.50` -> `10,5`: sin ceros de sobra y con coma decimal."""
+    return format(Decimal(valor).normalize(), "f").replace(".", ",")
 
 
 def formatear_fecha(iso: str) -> str:

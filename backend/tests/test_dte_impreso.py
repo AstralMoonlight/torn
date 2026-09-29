@@ -94,5 +94,86 @@ def test_carta_es_el_pdf_de_dte_torn(dte_torn):
     assert resp.body.startswith(b"%PDF")
 
 
+def test_ticket_muestra_descuentos_por_linea_y_globales(monkeypatch):
+    """El set de pruebas del SII pide que los descuentos se vean en el impreso (#43)."""
+    # Descuento de línea en %, y dos globales (en $ y en %) después del detalle, como en el XML real.
+    xml = XML.replace(
+        b"<PrcItem>10000</PrcItem><MontoItem>20000</MontoItem></Detalle>",
+        b"<PrcItem>10000</PrcItem><DescuentoPct>12.50</DescuentoPct><DescuentoMonto>2500</DescuentoMonto>"
+        b"<MontoItem>17500</MontoItem></Detalle>"
+        b"<DscRcgGlobal><NroLinDR>1</NroLinDR><TpoMov>D</TpoMov><TpoValor>$</TpoValor><ValorDR>1500</ValorDR></DscRcgGlobal>"
+        b"<DscRcgGlobal><NroLinDR>2</NroLinDR><TpoMov>D</TpoMov><GlosaDR>Cliente frecuente</GlosaDR>"
+        b"<TpoValor>%</TpoValor><ValorDR>5.00</ValorDR></DscRcgGlobal>",
+    )
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, VENTA, 80, cedible=True).body.decode()
+    assert "Dcto 12,5%: -$2.500" in html
+    assert "<span>Descuento:</span><span>-$1.500</span>" in html
+    assert "<span>Cliente frecuente:</span><span>-5%</span>" in html
+
+
+@pytest.mark.parametrize("traslado, texto, copias", [
+    ("1", "Operación constituye venta", 2),   # guía de venta: copia cliente y cedible
+    ("5", "Traslado interno", 1),             # sin venta: el cedible es inoficioso
+])
+def test_ticket_de_guia(monkeypatch, traslado, texto, copias):
+    """El ticket de una guía decía "DOCUMENTO 52", sin el traslado y sin cedible (#57)."""
+    xml = XML.replace(b"<TipoDTE>33</TipoDTE><Folio>7</Folio><FchEmis>2026-09-23</FchEmis>",
+                      b"<TipoDTE>52</TipoDTE><Folio>7</Folio><FchEmis>2026-09-23</FchEmis>"
+                      b"<TipoDespacho>1</TipoDespacho><IndTraslado>" + traslado.encode() + b"</IndTraslado>")
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 52, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, SimpleNamespace(tipo_dte=52, folio=7, modo="CERT"), 80, cedible=False).body.decode()
+    assert "GUÍA DE DESPACHO ELECTRÓNICA" in html and texto in html
+    assert html.count('<section class="copia">') == copias
+    assert html.count("ACUSE DE RECIBO") == copias - 1
+
+
 def test_venta_que_dte_torn_no_tiene_usa_la_plantilla_antigua(dte_torn):
     assert _impreso_dte(TENANT, SimpleNamespace(tipo_dte=33, folio=8), 80, cedible=False) is None
+
+
+def test_ticket_no_corta_razon_social_giro_ni_direccion(monkeypatch):
+    """Los largos máximos del SII: 100, 40 y 70 caracteres. Van completos y con salto de línea."""
+    razon = "COMERCIALIZADORA E IMPORTADORA DE ARTICULOS DE FERRETERIA Y MATERIALES DE CONSTRUCCION DEL SUR LIMI"
+    giro = "VENTA AL POR MAYOR DE MATERIALES DE CONS"
+    direccion = "AVENIDA LIBERTADOR BERNARDO O'HIGGINS 1234 DEPARTAMENTO 56 TORRE B PI"
+    xml = XML.replace(b"CLIENTE LTDA", razon.encode()).replace(b"SERVICIOS", giro.encode())
+    xml = xml.replace(b"<DirRecep>CALLE 2", f"<DirRecep>{direccion}".encode())
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    for papel in (57, 80):
+        html = _impreso_dte(TENANT, VENTA, papel, cedible=True).body.decode()
+        assert razon in html and giro in html
+        assert direccion.replace("'", "&#39;") in html
+        assert "overflow-wrap: anywhere" in html
+
+
+def test_ticket_de_factura_fiada_muestra_forma_de_pago_y_vencimiento(monkeypatch):
+    xml = XML.replace(b"<FchEmis>2026-09-23</FchEmis>",
+                      b"<FchEmis>2026-09-23</FchEmis><FmaPago>2</FmaPago><FchVenc>2026-10-23</FchVenc>")
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, VENTA, 80, cedible=False).body.decode()
+    assert "Crédito" in html and "Vencimiento:" in html and "23-10-2026" in html

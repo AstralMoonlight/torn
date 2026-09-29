@@ -24,6 +24,8 @@ class SystemSettings(Base):
         color_mode (str): 'empresa' (el administrador fija el color para todos) o
             'usuario' (cada usuario elige el suyo en su navegador).
         color_primario (str): Clave de la paleta (`COLORES_PRIMARIOS` en `app/schemas.py`).
+        descuento_maximo (int): Tope del descuento de una venta, en % de su total, para quien no
+            es administrador (el administrador no tiene tope). 0: solo el administrador descuenta.
     """
     __tablename__ = "system_settings"
 
@@ -37,6 +39,7 @@ class SystemSettings(Base):
     control_caja = Column(Boolean, nullable=False, default=True, server_default=true())
     color_mode = Column(String(10), nullable=False, default="empresa", server_default="empresa")
     color_primario = Column(String(20), nullable=False, default="azul", server_default="azul")
+    descuento_maximo = Column(Integer, nullable=False, default=10, server_default="10")
 
     def __repr__(self) -> str:
         return f"<SystemSettings(print_format='{self.print_format}')>"

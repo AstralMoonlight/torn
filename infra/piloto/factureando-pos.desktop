@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Factureando POS
+Comment=Abre el punto de venta en pantalla completa al iniciar sesión
+# Espera hasta 2 minutos a que el frontend responda (Docker levanta al encender),
+# y abre Chrome en modo quiosco con impresión directa a la impresora predeterminada.
+Exec=sh -c 'for i in $(seq 60); do curl -sf -o /dev/null http://localhost:3000 && break; sleep 2; done; exec google-chrome --kiosk --kiosk-printing --no-first-run --disable-session-crashed-bubble http://localhost:3000/pos'
+X-GNOME-Autostart-enabled=true

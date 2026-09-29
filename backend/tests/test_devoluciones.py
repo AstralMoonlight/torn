@@ -7,10 +7,12 @@ veces. Cada devolución reingresa stock, emite una NC y abona la cuenta corrient
 del cliente.
 """
 
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 
+from app.models.cash import CashSession
 from app.models.customer import Customer
 from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
@@ -115,3 +117,51 @@ class TestValidacionDeDevoluciones:
 
         db.refresh(otro)
         assert otro.stock_actual == 4
+
+
+def test_nc_de_boleta_a_consumidor_final(client, db_session, fake_dte):
+    """La NC de una boleta va al consumidor final, sin giro ni dirección, y
+    referencia la boleta: dte-torn solo acepta ese receptor incompleto si la
+    referencia es a una 39 o 41."""
+    db_session.add(Customer(rut="66666666-6", razon_social="Cliente Final (Boleta)", giro="Particular"))
+    db_session.add(PaymentMethod(code="EFECTIVO", name="Efectivo"))
+    prod = Product(codigo_interno="B-1", nombre="Pan", precio_neto=1000, controla_stock=True, stock_actual=10)
+    db_session.add(prod)
+    db_session.commit()
+    assert client.post("/cash/open", json={"start_amount": 0}).status_code == 200
+    boleta = client.post("/sales/", json={
+        "rut_cliente": "66666666-6", "tipo_dte": 39,
+        "items": [{"product_id": prod.id, "cantidad": "1"}],
+        "payments": [{"payment_method_id": 1, "amount": "1190"}],
+    })
+    assert boleta.status_code == 201, boleta.text
+
+    resp = client.post("/sales/return", json={
+        "original_sale_id": boleta.json()["id"], "tipo_dte": 61,
+        "items": [{"product_id": prod.id, "cantidad": "1"}],
+        "reason": "Cambio", "return_method_id": 1,
+    })
+
+    assert resp.status_code == 201, resp.text
+    nc = fake_dte.documentos[-1]
+    assert nc["receptor"]["rut"] == "66666666-6"
+    assert nc["receptor"]["direccion"] is None
+    assert nc["referencias"][0]["tipo_doc"] == "39"
+
+
+class TestDevolucionEnElArqueo:
+    def test_la_devolucion_en_efectivo_resta_del_cajon(self, client, venta):
+        """La NC guarda su pago EFECTIVO en positivo y el cierre lo sumaba: devolver
+        $2.380 hacía esperar $2.380 más en el cajón, un faltante de $4.760."""
+        assert _devolver(client, venta["sale_id"], venta["product"].id, 2).status_code == 201
+        # SQLite guarda created_at sin fracción de segundo: la venta hecha en el mismo
+        # segundo de la apertura quedaría "antes" del turno.
+        turno = venta["db"].query(CashSession).one()
+        turno.start_time = datetime(2000, 1, 1)
+        venta["db"].commit()
+
+        cierre = client.post("/cash/close", json={"final_cash_declared": 13570})
+        assert cierre.status_code == 200, cierre.text
+        # 10.000 inicial + 5.950 venta - 2.380 devueltos (2 x 1.000 + IVA)
+        assert Decimal(cierre.json()["final_cash_system"]) == 13570
+        assert Decimal(cierre.json()["difference"]) == 0

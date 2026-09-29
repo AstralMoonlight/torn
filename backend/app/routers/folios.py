@@ -28,6 +28,9 @@ class FolioStockOut(BaseModel):
     latest_folio_hasta: int
     latest_folio_desde: int
     fecha_vencimiento: Optional[date] = None
+    #: Quedan menos folios que el umbral de dte-torn. Solo en tipos que alguna
+    #: vez tuvieron CAF (los demás no se emiten) y nunca en modo Desarrollador.
+    alerta: bool = False
 
 
 def _llamar(method: str, path: str, tenant, actor: str | None = None, **kwargs):
@@ -47,13 +50,16 @@ def get_folios_status(tenant_user: TenantUser = Depends(get_current_tenant_user)
         ultimo = cafs[-1] if cafs else None
         # Vence primero el que se consume a continuación: el más antiguo con folios libres.
         en_uso = next((c for c in cafs if c["disponibles"] > 0), ultimo)
+        disponibles = sum(c["disponibles"] for c in cafs)
         result.append(FolioStockOut(
             dte_type=tipo,
-            available=sum(c["disponibles"] for c in cafs),
+            available=disponibles,
             total=sum(c["folio_hasta"] - c["folio_desde"] + 1 for c in cafs),
             latest_folio_desde=ultimo["folio_desde"] if ultimo else 0,
             latest_folio_hasta=ultimo["folio_hasta"] if ultimo else 0,
             fecha_vencimiento=en_uso["fecha_vencimiento"] if en_uso else None,
+            alerta=(tipo in stock and tenant_user.tenant.sii_ambiente != "DEV"
+                    and disponibles < stock[tipo].get("umbral_alerta", 0)),
         ))
     return result
 

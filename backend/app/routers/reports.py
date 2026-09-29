@@ -17,6 +17,7 @@ from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
 from app.dependencies.tenant import get_tenant_db, require_admin
+from app.routers.stats import TIPOS_VENTA
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -35,7 +36,7 @@ def get_dashboard(
     sales_query = db.query(Sale).filter(
         Sale.fecha_emision >= start,
         Sale.fecha_emision <= end,
-        Sale.tipo_dte.in_([33, 39]),  # Facturas y Boletas
+        Sale.tipo_dte.in_(TIPOS_VENTA),
     )
 
     all_sales = sales_query.all()
@@ -64,7 +65,7 @@ def get_dashboard(
         .filter(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
-            Sale.tipo_dte.in_([33, 39]),
+            Sale.tipo_dte.in_(TIPOS_VENTA),
         )
         .group_by(extract("hour", Sale.fecha_emision))
         .order_by(extract("hour", Sale.fecha_emision))
@@ -88,7 +89,7 @@ def get_dashboard(
         .filter(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
-            Sale.tipo_dte.in_([33, 39]),
+            Sale.tipo_dte.in_(TIPOS_VENTA),
         )
         .group_by(Product.id, Product.nombre, Product.codigo_interno)
         .order_by(desc(func.sum(SaleDetail.subtotal)))
@@ -118,7 +119,7 @@ def get_dashboard(
         .filter(
             Sale.fecha_emision >= start,
             Sale.fecha_emision <= end,
-            Sale.tipo_dte.in_([33, 39]),
+            Sale.tipo_dte.in_(TIPOS_VENTA),
         )
         .group_by(PaymentMethod.id, PaymentMethod.name, PaymentMethod.code)
         .all()

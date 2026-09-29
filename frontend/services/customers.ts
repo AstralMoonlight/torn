@@ -10,6 +10,8 @@ export interface Customer {
     ciudad: string | null
     email: string | null
     current_balance: string
+    /** Plazo de pago de lo fiado, en días. null: sin crédito, no compra fiado. */
+    dias_credito: number | null
     /** Lista de precios asignada, si el cliente tiene una. */
     price_list_id: number | null
     is_active: boolean
@@ -23,6 +25,7 @@ export interface CustomerCreate {
     comuna?: string
     ciudad?: string
     email?: string
+    dias_credito?: number | null
 }
 
 export interface CustomerUpdate {
@@ -33,6 +36,7 @@ export interface CustomerUpdate {
     comuna?: string
     ciudad?: string
     email?: string
+    dias_credito?: number | null
 }
 
 export async function getCustomers(): Promise<Customer[]> {
@@ -61,5 +65,30 @@ export async function deleteCustomer(rut: string): Promise<void> {
 
 export async function searchCustomers(query: string): Promise<Customer[]> {
     const { data } = await api.get<Customer[]>(`/customers/search?q=${encodeURIComponent(query)}`)
+    return data
+}
+
+export interface MovimientoCuenta {
+    fecha: string
+    tipo: 'VENTA' | 'NOTA_CREDITO' | 'PAGO'
+    detalle: string
+    cargo: string
+    abono: string
+    sale_id: number | null
+}
+
+export interface CuentaCliente {
+    saldo: string
+    movimientos: MovimientoCuenta[]
+}
+
+export async function getCuenta(rut: string): Promise<CuentaCliente> {
+    const { data } = await api.get<CuentaCliente>(`/customers/${rut}/cuenta`)
+    return data
+}
+
+/** Baja la deuda de crédito interno; el pago en efectivo entra a la caja abierta. */
+export async function registrarPago(rut: string, amount: number, payment_method_id: number, nota?: string): Promise<Customer> {
+    const { data } = await api.post<Customer>(`/customers/${rut}/pagos`, { amount, payment_method_id, nota: nota || null })
     return data
 }

@@ -95,3 +95,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # node:test corre el .ts directo (Node 22.18+ quita los tipos solo).
+      # Lee la tabla de dte-torn/tests: el checkout trae el repo entero.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tests (contrato de totales)
+        run: npm test

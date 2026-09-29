@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 from app.utils.validators import validar_rut
@@ -130,6 +130,7 @@ class SettingsBase(BaseModel):
     control_caja: bool = True
     color_mode: Literal["empresa", "usuario"] = "empresa"
     color_primario: ColorPrimario = "azul"
+    descuento_maximo: int = Field(default=10, ge=0, le=100)
 
 class SettingsUpdate(SettingsBase):
     pass
@@ -151,6 +152,8 @@ class CustomerCreate(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+    #: Plazo de pago de lo fiado, en días. Vacío: sin crédito (no compra fiado).
+    dias_credito: Optional[int] = Field(default=None, ge=1, le=365)
 
     @field_validator("rut")
     @classmethod
@@ -168,6 +171,7 @@ class CustomerUpdate(BaseModel):
     comuna: Optional[str] = None
     ciudad: Optional[str] = None
     email: Optional[str] = None
+    dias_credito: Optional[int] = Field(default=None, ge=1, le=365)
 
     @field_validator("rut")
     @classmethod
@@ -191,12 +195,35 @@ class CustomerOut(BaseModel):
     ciudad: Optional[str] = None
     email: Optional[str] = None
     current_balance: Optional[Decimal] = Decimal(0)
+    dias_credito: Optional[int] = None
     #: Lista de precios asignada. Sin este campo el POS no puede aplicarla: se
     #: la pedía al cliente devuelto por la API y nunca venía.
     price_list_id: Optional[int] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+
+class CustomerPaymentCreate(BaseModel):
+    """Pago de deuda de crédito interno."""
+    amount: Decimal = Field(gt=0)
+    payment_method_id: int
+    nota: Optional[str] = Field(default=None, max_length=200)
+
+
+class MovimientoCuenta(BaseModel):
+    """Una línea de la cuenta corriente del cliente: cargo sube la deuda, abono la baja."""
+    fecha: datetime
+    tipo: Literal["VENTA", "NOTA_CREDITO", "PAGO"]
+    detalle: str
+    cargo: Decimal = Decimal(0)
+    abono: Decimal = Decimal(0)
+    sale_id: Optional[int] = None
+
+
+class CuentaCliente(BaseModel):
+    saldo: Decimal
+    movimientos: List[MovimientoCuenta]
 
 
 # ── Product (Producto) ───────────────────────────────────────────────
@@ -262,6 +289,36 @@ class ProductUpdate(BaseModel):
     brand_id: Optional[int] = None
     tax_id: Optional[int] = None
 
+    @field_validator("stock_actual")
+    @classmethod
+    def _stock_por_kardex(cls, v):
+        # Editarlo a mano cambiaba el stock sin dejar rastro en el kardex.
+        if v is not None:
+            raise ValueError("El stock no se edita: use POST /products/{id}/ajuste-stock")
+        return v
+
+
+class AjusteStock(BaseModel):
+    """Toma de inventario de un producto: cuántas hay ahora y por qué."""
+    cantidad_contada: Decimal = Field(ge=0)
+    motivo: Literal["CONTEO", "MERMA", "INICIAL", "AJUSTE"]
+    nota: Optional[str] = Field(default=None, max_length=200)
+
+
+class StockMovementOut(BaseModel):
+    """Una línea del kardex."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    fecha: Optional[datetime] = None
+    tipo: str
+    motivo: str
+    cantidad: Decimal
+    balance_after: Optional[Decimal] = None
+    description: Optional[str] = None
+    sale_id: Optional[int] = None
+    user_id: Optional[int] = None
+
 
 class ProductOut(BaseModel):
     """Representación de un producto devuelta por la API."""
@@ -304,7 +361,22 @@ class SaleItem(BaseModel):
 
     product_id: int
     cantidad: Decimal
+    #: Descuento de la línea en pesos netos (en boletas el backend lo pasa a bruto)...
     descuento: Decimal = Field(default=Decimal("0"), ge=0)
+    #: ...o en porcentaje. No los dos.
+    descuento_pct: Optional[Decimal] = Field(default=None, gt=0, le=100)
+
+    @model_validator(mode="after")
+    def _un_solo_descuento(self):
+        if self.descuento and self.descuento_pct:
+            raise ValueError("Descuento en pesos o en porcentaje, no ambos.")
+        return self
+
+
+class DescuentoGlobal(BaseModel):
+    """Descuento al total: porcentaje, o pesos netos como el de línea."""
+    valor: Decimal = Field(gt=0)
+    porcentaje: bool = True
 
 
 class SalePaymentCreate(BaseModel):
@@ -337,6 +409,7 @@ class SaleCreate(BaseModel):
     ind_traslado: Optional[int] = Field(None, ge=1, le=9)
     # 1 por cuenta del receptor, 2 del emisor a instalaciones del cliente, 3 del emisor a otras.
     tipo_despacho: Optional[int] = Field(None, ge=1, le=3)
+    descuento_global: Optional[DescuentoGlobal] = None
 
     @field_validator("rut_cliente")
     @classmethod
@@ -353,6 +426,7 @@ class SaleDetailOut(BaseModel):
     cantidad: Decimal
     precio_unitario: Decimal
     descuento: Decimal
+    descuento_pct: Optional[Decimal] = None
     subtotal: Decimal
     product: ProductOut  # Nested product details
 

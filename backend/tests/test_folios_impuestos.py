@@ -112,6 +112,29 @@ class TestEmisionEnDte:
         assert db.query(Sale).count() == 0
         assert db.get(Product, prod.id).stock_actual == 5
 
+    @pytest.mark.parametrize("error, mensaje", [
+        (dte_client.DteError(409, "Sin folios disponibles para el tipo 33"),
+         "Se acabaron los números autorizados por el SII para factura. Avise al administrador"),
+        (dte_client.DteNoDisponible("El servicio de facturación electrónica no respondió: [Errno 111]"),
+         "el sistema de facturación no responde. Espere un minuto"),
+        (dte_client.DteError(422, "El DTE 33 requiere del receptor: giro, direccion"),
+         "faltan datos del cliente: giro, dirección. Complételos en Clientes"),
+        (dte_client.DteError(404, "La empresa no tiene certificado cargado"),
+         "Falta el certificado digital de la empresa"),
+        (dte_client.DteError(422, "Otro problema"), "Otro problema"),
+    ])
+    def test_el_error_de_emision_dice_que_hacer(self, client, entorno_venta, fake_dte, error, mensaje):
+        """Quien vende no entiende "folios" ni "Errno 111" (lanzamiento.md 1.6)."""
+        db = entorno_venta
+        prod = Product(codigo_interno="P-3", nombre="Producto", precio_neto=1000)
+        db.add(prod)
+        db.commit()
+        fake_dte.error = error
+
+        resp = _vender(client, prod.id, 33, 1190)
+        assert resp.status_code == error.status_code
+        assert mensaje in resp.json()["detail"]
+
     def test_boleta_manda_precio_bruto_y_cobra_la_suma_de_lineas(self, client, entorno_venta, fake_dte):
         """950 neto -> 1.131 bruto por unidad (1.130,5 redondeado). Dos unidades
         en líneas distintas suman 2.262, que es lo que declara el DTE; el cálculo

@@ -21,8 +21,10 @@ import { AccionFila } from '@/components/ui/accion-fila'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { avisar } from '@/lib/store/uiStore'
-import { Pencil, Trash2, Plus, Globe } from 'lucide-react'
+import { Pencil, Trash2, Plus, Globe, Wallet } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
+import CuentaClienteDialog from '@/components/customers/CuentaClienteDialog'
+import { formatCLP } from '@/lib/format'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -32,6 +34,8 @@ export default function CustomersPage() {
     const [customers, setCustomers] = useState<Customer[]>([])
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState('')
+    const [conDeuda, setConDeuda] = useState(false)
+    const [cuentaDe, setCuentaDe] = useState<Customer | null>(null)
 
     // Dialog state
     const [open, setOpen] = useState(false)
@@ -43,7 +47,8 @@ export default function CustomersPage() {
         direccion: editingCustomer.direccion || '',
         comuna: editingCustomer.comuna || '',
         ciudad: editingCustomer.ciudad || '',
-        email: editingCustomer.email || ''
+        email: editingCustomer.email || '',
+        dias_credito: editingCustomer.dias_credito,
     } : undefined, [editingCustomer])
 
     useEffect(() => {
@@ -64,8 +69,10 @@ export default function CustomersPage() {
     }
 
     const filteredCustomers = customers.filter(c =>
-        c.razon_social.toLowerCase().includes(filter.toLowerCase()) ||
-        c.rut.includes(filter)
+        (!conDeuda || Number(c.current_balance) > 0) && (
+            c.razon_social.toLowerCase().includes(filter.toLowerCase()) ||
+            c.rut.includes(filter)
+        )
     )
 
     const handleOpenCreate = () => {
@@ -122,6 +129,12 @@ export default function CustomersPage() {
                 visibles={filteredCustomers.length}
                 total={customers.length}
                 unidad="clientes"
+                filtros={
+                    <Button variant={conDeuda ? 'default' : 'outline'} size="sm" aria-pressed={conDeuda}
+                        onClick={() => setConDeuda(!conDeuda)}>
+                        Con deuda
+                    </Button>
+                }
             />
 
             <div data-section="clientes.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -132,14 +145,15 @@ export default function CustomersPage() {
                             <TableHead>Razón social</TableHead>
                             <TableHead className="hidden md:table-cell">Giro</TableHead>
                             <TableHead className="hidden md:table-cell">Email</TableHead>
+                            <TableHead className="text-right">Debe</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableEmpty colSpan={5} loading />
+                            <TableEmpty colSpan={6} loading />
                         ) : filteredCustomers.length === 0 ? (
-                            <TableEmpty colSpan={5}>No se encontraron clientes.</TableEmpty>
+                            <TableEmpty colSpan={6}>No se encontraron clientes.</TableEmpty>
                         ) : (
                             filteredCustomers.map((customer) => (
                                 <TableRow key={customer.id} className="hover:bg-accent/50 transition-colors">
@@ -156,8 +170,14 @@ export default function CustomersPage() {
                                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                                         {customer.email}
                                     </TableCell>
+                                    <TableCell className="text-right font-tabular text-sm">
+                                        {Number(customer.current_balance) > 0 && (
+                                            <span className="font-semibold text-destructive">{formatCLP(customer.current_balance)}</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
+                                            <AccionFila icon={Wallet} label="Cuenta y pagos" onClick={() => setCuentaDe(customer)} />
                                             <AccionFila icon={Pencil} label="Editar" onClick={() => handleOpenEdit(customer)} />
                                             <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(customer)} peligro />
                                         </div>
@@ -182,11 +202,18 @@ export default function CustomersPage() {
                     />
                 </DialogContent>
             </Dialog>
+            <CuentaClienteDialog
+                customer={cuentaDe}
+                onClose={(actualizado) => {
+                    setCuentaDe(null)
+                    if (actualizado) setCustomers(customers.map(c => c.id === actualizado.id ? actualizado : c))
+                }}
+            />
             <ConfirmDialog
                 open={!!toDelete}
                 onOpenChange={(o) => !o && setToDelete(null)}
                 title="¿Eliminar cliente?"
-                description={toDelete?.razon_social}
+                description={toDelete ? `${toDelete.razon_social}. Deja de aparecer en la lista; sus ventas se conservan.` : undefined}
                 onConfirm={async () => { if (toDelete) await handleDelete(toDelete) }}
             />
         </PageContainer>

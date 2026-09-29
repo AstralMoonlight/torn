@@ -20,7 +20,8 @@ class TestWorldClass:
         db_session.add(issuer)
         
         # Cliente
-        customer = Customer(rut="12345678-5", razon_social="Cliente Fiador", email="fiado@test.com", current_balance=0)
+        customer = Customer(rut="12345678-5", razon_social="Cliente Fiador", email="fiado@test.com", current_balance=0,
+                            dias_credito=30)
         db_session.add(customer)
         
         # Cajero

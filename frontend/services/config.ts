@@ -34,6 +34,8 @@ export interface SystemSettings {
     control_caja: boolean
     color_mode: ColorMode
     color_primario: string
+    /** Tope del descuento de una venta (%) para quien no es administrador. 0: solo el administrador. */
+    descuento_maximo: number
 }
 
 export type SettingsUpdate = Partial<Omit<SystemSettings, 'id'>>

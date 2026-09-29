@@ -10,6 +10,10 @@ export interface SalePaymentCreate {
 export interface SaleItem {
     product_id: number
     cantidad: number
+    /** Pesos netos (en boletas el backend los pasa a bruto)... */
+    descuento?: number
+    /** ...o porcentaje. No los dos. */
+    descuento_pct?: number
 }
 
 /** Referencia a documento previo (OC, Guía, etc.) para Factura Electrónica. */
@@ -30,6 +34,8 @@ export interface SaleCreate {
     /** Solo guía de despacho (52): IndTraslado y TipoDespacho del SII. */
     ind_traslado?: number
     tipo_despacho?: number
+    /** Descuento al total: porcentaje, o pesos netos como el de línea. */
+    descuento_global?: { valor: number; porcentaje: boolean }
 }
 
 export interface FolioStockOut {
@@ -39,6 +45,8 @@ export interface FolioStockOut {
     latest_folio_hasta: number
     latest_folio_desde: number
     fecha_vencimiento?: string
+    /** Quedan menos folios que el umbral de dte-torn (nunca en modo Desarrollador). */
+    alerta: boolean
 }
 
 export interface SaleDetailOut {
@@ -107,8 +115,17 @@ export async function createSale(sale: SaleCreate): Promise<SaleOut> {
     return data
 }
 
-export async function getSales(skip = 0, limit = 50): Promise<SaleOut[]> {
-    const { data } = await api.get<SaleOut[]>('/sales/', { params: { skip, limit } })
+/** Días en `aaaa-mm-dd` (hora de Chile). Con `q` (folio, cliente o RUT) el backend ignora las fechas. */
+export interface FiltroVentas {
+    desde?: string
+    hasta?: string
+    q?: string
+    skip?: number
+    limit?: number
+}
+
+export async function getSales(filtro: FiltroVentas = {}): Promise<SaleOut[]> {
+    const { data } = await api.get<SaleOut[]>('/sales/', { params: filtro })
     return data
 }
 

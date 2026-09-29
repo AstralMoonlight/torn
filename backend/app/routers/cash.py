@@ -5,10 +5,11 @@ from decimal import Decimal
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, desc
+from sqlalchemy import case, func, desc
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.cash import CashSession
+from app.models.customer import CustomerPayment
 from app.models.payment import SalePayment, PaymentMethod
 from app.models.sale import Sale
 from app.models.user import User
@@ -177,7 +178,9 @@ def close_session(
         Sale.seller_id == user_id,
         PaymentMethod.code == "EFECTIVO",
     )
-    total_sales_cash = db.query(func.coalesce(func.sum(SalePayment.amount), 0))\
+    # La NC guarda su pago en positivo, pero ese efectivo sale del cajón.
+    signo_pago = case((Sale.tipo_dte == 61, -SalePayment.amount), else_=SalePayment.amount)
+    total_sales_cash = db.query(func.coalesce(func.sum(signo_pago), 0))\
         .join(Sale)\
         .join(PaymentMethod)\
         .filter(*cash_sales_filter)        .execution_options(todos_los_modos=True).scalar()
@@ -200,7 +203,13 @@ def close_session(
     total_vuelto = db.query(func.coalesce(func.sum(Sale.vuelto), 0))\
         .filter(Sale.id.in_(db.query(cash_sale_ids.c.id)))        .execution_options(todos_los_modos=True).scalar()
 
-    final_system = active_session.start_amount + total_sales_cash - total_vuelto
+    # Pagos de deuda en efectivo recibidos en este turno.
+    total_pagos_deuda = db.query(func.coalesce(func.sum(CustomerPayment.amount), 0))\
+        .join(PaymentMethod)\
+        .filter(CustomerPayment.cash_session_id == active_session.id, PaymentMethod.code == "EFECTIVO")\
+        .scalar()
+
+    final_system = active_session.start_amount + total_sales_cash - total_vuelto + total_pagos_deuda
     
     active_session.end_time = get_now()
     active_session.final_cash_system = final_system

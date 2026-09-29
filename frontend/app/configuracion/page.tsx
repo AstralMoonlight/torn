@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2 } from 'lucide-react'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
-import { useSessionStore } from '@/lib/store/sessionStore'
+import { useEsAdmin } from '@/lib/store/sessionStore'
 import { useSettingsStore } from '@/lib/store/settingsStore'
 import { cn } from '@/lib/utils'
 import FoliosTab from './FoliosTab'
@@ -91,16 +91,21 @@ export default function ConfigurationPage() {
     const settings = useSettingsStore((s) => s.settings)
     const guardar = useSettingsStore((s) => s.guardar)
     const [taxes, setTaxes] = useState<Tax[]>([])
+    // `?tab=folios` abre esa pestaña (el aviso de pocos folios del panel enlaza ahí).
+    const [pestana, setPestana] = useState('general')
+    useEffect(() => {
+        const tab = new URLSearchParams(window.location.search).get('tab')
+        if (tab) setPestana(tab)
+    }, [])
     const [loadingTaxes, setLoadingTaxes] = useState(true)
     const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
     const setPosVariantDisplay = useUIStore((s) => s.setPosVariantDisplay)
     const [impresion, seguirImpresion] = useGuardado()
     const [caja, seguirCaja] = useGuardado()
     const [color, seguirColor] = useGuardado()
+    const [descuentos, seguirDescuentos] = useGuardado()
 
-    const isAdmin = useSessionStore((s) =>
-        s.user?.is_superuser === true ||
-        s.availableTenants.find((t) => t.id === s.selectedTenantId)?.role_name === 'ADMINISTRADOR')
+    const isAdmin = useEsAdmin()
 
     // New Tax Form State
     const [newTax, setNewTax] = useState({ name: '', rate: 19 })
@@ -179,7 +184,7 @@ export default function ConfigurationPage() {
                 description="Administra las preferencias generales y los parámetros del sistema."
             />
 
-            <Tabs defaultValue="general" className="space-y-6">
+            <Tabs value={pestana} onValueChange={setPestana} className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="general" className="gap-2">
                         <Settings className="h-4 w-4" /> General
@@ -302,6 +307,42 @@ export default function ConfigurationPage() {
                                     </div>
                                 </div>
                                 {caja?.tipo === 'error' && <AlertaError mensaje={caja.mensaje} />}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {isAdmin && (
+                        <Card data-section="configuracion.general.descuentos">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Percent className="h-5 w-5" /> Descuentos</CardTitle>
+                                <CardDescription>Cuánto puede descontar el personal en el POS.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-4 py-3">
+                                    <div>
+                                        <Label htmlFor="descuento-maximo">Descuento máximo del personal (%)</Label>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            El administrador descuenta sin tope. Con 0, solo él puede hacer descuentos.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <MarcaGuardado estado={descuentos} />
+                                        <Input
+                                            id="descuento-maximo"
+                                            key={settings.descuento_maximo}
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            defaultValue={settings.descuento_maximo}
+                                            className="w-24 shrink-0 text-right"
+                                            onBlur={(e) => {
+                                                const pct = Number(e.target.value)
+                                                if (pct !== settings.descuento_maximo) seguirDescuentos(guardar({ descuento_maximo: pct }))
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {descuentos?.tipo === 'error' && <AlertaError mensaje={descuentos.mensaje} />}
                             </CardContent>
                         </Card>
                     )}

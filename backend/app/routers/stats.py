@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, case
 
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
@@ -16,28 +16,40 @@ from app.dependencies.tenant import get_tenant_db, require_admin
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
+# Documentos que son una venta. En los reportes la ND (56) suma y la NC (61)
+# resta; la guía (52) no cuenta: la venta es la factura que la cobra.
+TIPOS_VENTA = (33, 34, 39, 41)
+TIPOS_REPORTE = TIPOS_VENTA + (56, 61)
+SIGNO = case((Sale.tipo_dte == 61, -1), else_=1)
+
+
+def _signo(sale: Sale) -> int:
+    return -1 if sale.tipo_dte == 61 else 1
+
 
 def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     """Calcula totales de venta y margen para un periodo dado."""
     
     # Ventas en el periodo
-    sales = db.query(Sale).filter(Sale.fecha_emision >= start_date).all()
+    sales = db.query(Sale).filter(
+        Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE)
+    ).all()
     
-    total_sales = sum(s.monto_total for s in sales)
+    total_sales = sum(_signo(s) * s.monto_total for s in sales)
     # Neto e IVA se acumulan desde lo registrado en cada venta. Derivarlos de
     # `total_sales` asumiendo 19% da cifras falsas en cuanto hay documentos
     # exentos o productos con otra tasa.
-    total_net = sum(s.monto_neto or Decimal(0) for s in sales)
-    total_tax = sum(s.iva or Decimal(0) for s in sales)
-    count_sales = len(sales)
+    total_net = sum(_signo(s) * (s.monto_neto or Decimal(0)) for s in sales)
+    total_tax = sum(_signo(s) * (s.iva or Decimal(0)) for s in sales)
+    count_sales = sum(1 for s in sales if s.tipo_dte in TIPOS_VENTA)
     
     # Calcular margen (Detalle por detalle para mayor precisión)
     # Margen = Suma(cantidad * (precio_unitario - costo_unitario))
     margin_total = db.query(
-        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario))
+        func.sum(SIGNO * SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario))
     ).join(Product, SaleDetail.product_id == Product.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
-     .filter(Sale.fecha_emision >= start_date).scalar() or Decimal(0)
+     .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE)).scalar() or Decimal(0)
 
     period_name = "Personalizado"
     now = get_now()
@@ -91,13 +103,13 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_t
             SaleDetail.product_id,
             Product.nombre.label("product_nombre"),
             ParentProduct.nombre.label("parent_nombre"),
-            func.sum(SaleDetail.cantidad).label("total_qty"),
-            func.sum(SaleDetail.subtotal).label("total_sales"),
-            func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario)).label("total_margin")
+            func.sum(SIGNO * SaleDetail.cantidad).label("total_qty"),
+            func.sum(SIGNO * SaleDetail.subtotal).label("total_sales"),
+            func.sum(SIGNO * SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario)).label("total_margin")
         ).join(Product, SaleDetail.product_id == Product.id)\
          .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
          .join(Sale, SaleDetail.sale_id == Sale.id)\
-         .filter(Sale.fecha_emision >= start_date)\
+         .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE))\
          .group_by(SaleDetail.product_id, Product.nombre, ParentProduct.nombre)
 
     # 1. Top por Cantidad
@@ -172,14 +184,15 @@ def get_report(
         SaleDetail.product_id,
         Product.nombre.label("product_nombre"),
         ParentProduct.nombre.label("parent_nombre"),
-        func.sum(SaleDetail.cantidad).label("total_qty"),
-        func.sum(SaleDetail.subtotal).label("total_sales"),
+        func.sum(SIGNO * SaleDetail.cantidad).label("total_qty"),
+        func.sum(SIGNO * SaleDetail.subtotal).label("total_sales"),
         # Utilidad = (Venta Neta - Costo Neta) * Cantidad
-        func.sum(SaleDetail.cantidad * (SaleDetail.precio_unitario - Product.costo_unitario)).label("total_margin")
+        func.sum(SIGNO * SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario)).label("total_margin")
     ).join(Product, SaleDetail.product_id == Product.id)\
      .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
-     .filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date)\
+     .filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
+             Sale.tipo_dte.in_(TIPOS_REPORTE))\
      .group_by(SaleDetail.product_id, Product.nombre, ParentProduct.nombre)\
      .all()
 
@@ -200,10 +213,13 @@ def get_report(
     # En el reporte anterior usabamos sum(s.monto_total), que es bruto.
     # Mantengamos consistencia con el Daily Report anterior: Total Bruto.
     
-    sales_period = db.query(Sale).filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date).all()
-    total_ventas = sum(s.monto_total for s in sales_period)
-    total_neto = sum(s.monto_neto or Decimal(0) for s in sales_period)
-    total_iva = sum(s.iva or Decimal(0) for s in sales_period)
+    sales_period = db.query(Sale).filter(
+        Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
+        Sale.tipo_dte.in_(TIPOS_REPORTE),
+    ).all()
+    total_ventas = sum(_signo(s) * s.monto_total for s in sales_period)
+    total_neto = sum(_signo(s) * (s.monto_neto or Decimal(0)) for s in sales_period)
+    total_iva = sum(_signo(s) * (s.iva or Decimal(0)) for s in sales_period)
     total_utilidad = sum(item.utilidad for item in items)
 
     return ReportOut(
