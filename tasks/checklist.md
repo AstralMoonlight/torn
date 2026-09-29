@@ -371,7 +371,8 @@ Actualizado el 2026-09-29. #40 y #44 salieron de esta tabla: los decidí con un 
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
-| **Probar descuentos en el POS** | Boletas probadas; falta una factura con descuento y la NC con el punto 4 mergeado. Después cerrar #40, #41, #42 y #44 | punto 26 |
+| **#54 abierto** | Falta que Configuración > Folios muestre el ambiente de cada CAF (primer criterio del issue). El rechazo en dte-torn ya está (punto 12). Decidir si hace falta: la pantalla solo lista los CAF del ambiente actual | punto 12 |
+| **Probar descuentos en el POS** | Boletas probadas; falta una factura con descuento y la NC con el punto 4 mergeado. Después cerrar #40, #41 y #42 (#44 ya se cerró) | punto 26 |
 | **Mensaje de error de la NC** | Con el dte-torn viejo, "faltan datos del cliente" mostró el volcado técnico de dte-torn entero en vez de la lista de campos (punto 20). Revisar el parseo de `_mensaje_emision` con ese formato | punto 20 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor | `lanzamiento.md` 0.2 |
 | **Intercambio** (#56) | Qué correo del cliente se usa; probar SMTP/IMAP con la contraseña de `xml@distribuidorajcb.cl` | `intercambio.md` |
