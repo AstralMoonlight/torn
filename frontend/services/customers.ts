@@ -10,6 +10,8 @@ export interface Customer {
     ciudad: string | null
     email: string | null
     current_balance: string
+    /** Plazo de pago de lo fiado, en días. null: sin crédito, no compra fiado. */
+    dias_credito: number | null
     /** Lista de precios asignada, si el cliente tiene una. */
     price_list_id: number | null
     is_active: boolean
@@ -23,6 +25,7 @@ export interface CustomerCreate {
     comuna?: string
     ciudad?: string
     email?: string
+    dias_credito?: number | null
 }
 
 export interface CustomerUpdate {
@@ -33,6 +36,7 @@ export interface CustomerUpdate {
     comuna?: string
     ciudad?: string
     email?: string
+    dias_credito?: number | null
 }
 
 export async function getCustomers(): Promise<Customer[]> {

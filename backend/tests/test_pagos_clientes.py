@@ -23,7 +23,7 @@ def fiado(client, db_session):
         PaymentMethod(id=EFECTIVO, code="EFECTIVO", name="Efectivo"),
         PaymentMethod(id=CREDITO, code="CREDITO_INTERNO", name="Crédito interno"),
         PaymentMethod(id=TRANSFERENCIA, code="TRANSFERENCIA", name="Transferencia"),
-        Customer(rut="12345678-5", razon_social="Don Pedro", giro="G", direccion="D", comuna="C"),
+        Customer(rut="12345678-5", razon_social="Don Pedro", giro="G", direccion="D", comuna="C", dias_credito=30),
         Product(codigo_interno="P-1", nombre="Saco", precio_neto=10000),
     ])
     db_session.commit()

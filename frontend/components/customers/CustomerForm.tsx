@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react'
 import { CustomerCreate } from '@/services/customers'
 import { getApiErrorDetail } from '@/services/api'
 import { formatRut, validateRut } from '@/lib/rut'
+import { useEsAdmin } from '@/lib/store/sessionStore'
 
 const customerSchema = z.object({
     rut: z.string().min(1, 'El RUT es obligatorio').refine(validateRut, 'RUT inválido: revisa el dígito verificador'),
@@ -20,11 +21,15 @@ const customerSchema = z.object({
     comuna: z.string(),
     ciudad: z.string(),
     email: z.string().email('Email inválido').or(z.literal('')),
+    dias_credito: z.string().refine(
+        (v) => v.trim() === '' || (/^\d+$/.test(v.trim()) && Number(v) >= 1 && Number(v) <= 365),
+        'Entre 1 y 365 días, o vacío si no tiene crédito',
+    ),
 })
 
 type CustomerFormValues = z.infer<typeof customerSchema>
 
-const VACIO: CustomerFormValues = { rut: '', razon_social: '', giro: '', direccion: '', comuna: '', ciudad: '', email: '' }
+const VACIO: CustomerFormValues = { rut: '', razon_social: '', giro: '', direccion: '', comuna: '', ciudad: '', email: '', dias_credito: '' }
 
 interface CustomerFormProps {
     initialData?: CustomerCreate
@@ -36,14 +41,18 @@ interface CustomerFormProps {
 
 export default function CustomerForm({ initialData, onSubmit, onCancel, isEditing }: CustomerFormProps) {
     const form = useForm<CustomerFormValues>({ resolver: zodResolver(customerSchema), defaultValues: VACIO })
+    // El plazo decide a quién se fía: lo pone el administrador (el backend lo exige).
+    const esAdmin = useEsAdmin()
 
     useEffect(() => {
-        form.reset(initialData ? { ...VACIO, ...initialData } : VACIO)
+        form.reset(initialData
+            ? { ...VACIO, ...initialData, dias_credito: initialData.dias_credito ? String(initialData.dias_credito) : '' }
+            : VACIO)
     }, [initialData, form])
 
     const guardar = async (values: CustomerFormValues) => {
         try {
-            await onSubmit(values)
+            await onSubmit({ ...values, dias_credito: values.dias_credito.trim() ? Number(values.dias_credito) : null })
         } catch (error) {
             form.setError('root', { message: getApiErrorDetail(error, 'No se pudo guardar el cliente.') })
         }
@@ -86,6 +95,13 @@ export default function CustomerForm({ initialData, onSubmit, onCancel, isEditin
                 <div className="grid grid-cols-2 gap-4">
                     {campo('comuna', 'Comuna')}
                     {campo('ciudad', 'Ciudad')}
+                </div>
+                <div className="space-y-1.5">
+                    {campo('dias_credito', 'Plazo de crédito (días)', 'Vacío: sin crédito', { disabled: !esAdmin })}
+                    <p className="text-xs text-muted-foreground">
+                        Con plazo, el cliente puede comprar fiado y su factura vence esos días después.
+                        {!esAdmin && ' Solo el administrador lo cambia.'}
+                    </p>
                 </div>
 
                 <AlertaError mensaje={errors.root?.message} />

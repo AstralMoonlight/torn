@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { AlertaError } from '@/components/ui/alerta-error'
-import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2, CalendarClock } from 'lucide-react'
+import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2 } from 'lucide-react'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useEsAdmin } from '@/lib/store/sessionStore'
 import { useSettingsStore } from '@/lib/store/settingsStore'
@@ -103,7 +103,7 @@ export default function ConfigurationPage() {
     const [impresion, seguirImpresion] = useGuardado()
     const [caja, seguirCaja] = useGuardado()
     const [color, seguirColor] = useGuardado()
-    const [credito, seguirCredito] = useGuardado()
+    const [descuentos, seguirDescuentos] = useGuardado()
 
     const isAdmin = useEsAdmin()
 
@@ -312,36 +312,12 @@ export default function ConfigurationPage() {
                     )}
 
                     {isAdmin && (
-                        <Card data-section="configuracion.general.credito">
+                        <Card data-section="configuracion.general.descuentos">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Ventas</CardTitle>
-                                <CardDescription>Plazo de las facturas fiadas y descuentos en el POS.</CardDescription>
+                                <CardTitle className="flex items-center gap-2"><Percent className="h-5 w-5" /> Descuentos</CardTitle>
+                                <CardDescription>Cuánto puede descontar el personal en el POS.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-4 py-3">
-                                    <div>
-                                        <Label htmlFor="dias-credito">Plazo de pago de la factura fiada (días)</Label>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Con crédito interno, la factura sale a crédito y vence este número de días después.
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <MarcaGuardado estado={credito} />
-                                        <Input
-                                            id="dias-credito"
-                                            key={settings.dias_credito}
-                                            type="number"
-                                            min={0}
-                                            max={365}
-                                            defaultValue={settings.dias_credito}
-                                            className="w-24 text-right"
-                                            onBlur={(e) => {
-                                                const dias = Number(e.target.value)
-                                                if (dias !== settings.dias_credito) seguirCredito(guardar({ dias_credito: dias }))
-                                            }}
-                                        />
-                                    </div>
-                                </div>
                                 <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-4 py-3">
                                     <div>
                                         <Label htmlFor="descuento-maximo">Descuento máximo del personal (%)</Label>
@@ -349,21 +325,24 @@ export default function ConfigurationPage() {
                                             El administrador descuenta sin tope. Con 0, solo él puede hacer descuentos.
                                         </p>
                                     </div>
-                                    <Input
-                                        id="descuento-maximo"
-                                        key={settings.descuento_maximo}
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        defaultValue={settings.descuento_maximo}
-                                        className="w-24 shrink-0 text-right"
-                                        onBlur={(e) => {
-                                            const pct = Number(e.target.value)
-                                            if (pct !== settings.descuento_maximo) seguirCredito(guardar({ descuento_maximo: pct }))
-                                        }}
-                                    />
+                                    <div className="flex items-center gap-3">
+                                        <MarcaGuardado estado={descuentos} />
+                                        <Input
+                                            id="descuento-maximo"
+                                            key={settings.descuento_maximo}
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            defaultValue={settings.descuento_maximo}
+                                            className="w-24 shrink-0 text-right"
+                                            onBlur={(e) => {
+                                                const pct = Number(e.target.value)
+                                                if (pct !== settings.descuento_maximo) seguirDescuentos(guardar({ descuento_maximo: pct }))
+                                            }}
+                                        />
+                                    </div>
                                 </div>
-                                {credito?.tipo === 'error' && <AlertaError mensaje={credito.mensaje} />}
+                                {descuentos?.tipo === 'error' && <AlertaError mensaje={descuentos.mensaje} />}
                             </CardContent>
                         </Card>
                     )}

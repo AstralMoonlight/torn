@@ -22,6 +22,8 @@ class Customer(Base):
     ciudad = Column(String(100))
     email = Column(String(150))
     current_balance = Column(Numeric(15, 2), default=0, comment="Saldo de Cuenta Corriente")
+    # Plazo de pago de lo fiado (días). NULL: sin crédito, no puede comprar fiado.
+    dias_credito = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

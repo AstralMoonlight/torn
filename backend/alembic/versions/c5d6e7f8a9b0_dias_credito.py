@@ -1,11 +1,12 @@
-"""plazo de pago de las facturas a credito
+"""plazo de credito de cada cliente
 
 Revision ID: c5d6e7f8a9b0
 Revises: b4c5d6e7f8a9
 Create Date: 2026-09-28
 
-`system_settings.dias_credito`: la factura fiada vence a esos dias de emitida
-(FchVenc). Por esquema de empresa, con SQL calificado (ver e1f2a3b4c5d6).
+`customers.dias_credito`: la factura fiada a ese cliente vence a esos dias de
+emitida (FchVenc). NULL: el cliente no tiene credito y no puede comprar fiado.
+Por esquema de empresa, con SQL calificado (ver e1f2a3b4c5d6).
 """
 from typing import Sequence, Union
 
@@ -19,18 +20,17 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _esquemas_con_settings() -> list[str]:
+def _esquemas() -> list[str]:
     return list(op.get_bind().execute(sa.text(
-        "SELECT table_schema FROM information_schema.tables WHERE table_name = 'system_settings'"
+        "SELECT table_schema FROM information_schema.tables WHERE table_name = 'customers'"
     )).scalars())
 
 
 def upgrade() -> None:
-    for esquema in _esquemas_con_settings():
-        op.execute(f'ALTER TABLE "{esquema}".system_settings '
-                   "ADD COLUMN IF NOT EXISTS dias_credito INTEGER NOT NULL DEFAULT 30")
+    for esquema in _esquemas():
+        op.execute(f'ALTER TABLE "{esquema}".customers ADD COLUMN IF NOT EXISTS dias_credito INTEGER')
 
 
 def downgrade() -> None:
-    for esquema in _esquemas_con_settings():
-        op.execute(f'ALTER TABLE "{esquema}".system_settings DROP COLUMN IF EXISTS dias_credito')
+    for esquema in _esquemas():
+        op.execute(f'ALTER TABLE "{esquema}".customers DROP COLUMN IF EXISTS dias_credito')
