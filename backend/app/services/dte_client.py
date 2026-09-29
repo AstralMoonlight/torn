@@ -68,8 +68,17 @@ def request(method: str, path: str, tenant=None, actor: str | None = None, **kwa
             detail = resp.json().get("detail", resp.text)
         except ValueError:
             detail = resp.text
-        raise DteError(resp.status_code, detail if isinstance(detail, str) else str(detail))
+        raise DteError(resp.status_code, _texto(detail))
     return resp
+
+
+def _texto(detail) -> str:
+    """El `detail` de dte-torn como texto. Un 422 de validación de FastAPI trae una
+    lista con el pedido entero en `input`: se deja solo el mensaje de cada error."""
+    if isinstance(detail, list):
+        mensajes = [e.get("msg", "") if isinstance(e, dict) else str(e) for e in detail]
+        return "; ".join(m.removeprefix("Value error, ") for m in mensajes)
+    return detail if isinstance(detail, str) else str(detail)
 
 
 def emitir(tenant, documento: dict, actor: str | None = None) -> dict:
