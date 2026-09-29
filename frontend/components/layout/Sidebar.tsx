@@ -52,7 +52,7 @@ const navGroups = [
         items: [
             { href: '/clientes', label: 'Clientes', icon: Globe, permissionKey: 'Clientes' },
             { href: '/proveedores', label: 'Proveedores', icon: Truck, permissionKey: 'Proveedores' },
-            { href: '/personal', label: 'Personal', icon: Users, permissionKey: 'Vendedores' },
+            { href: '/personal', label: 'Personal', icon: Users, permissionKey: 'Personal' },
         ]
     },
     {
