@@ -12,7 +12,7 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   los conflictos resueltos. Primera tanda (20 ramas): backend 153 tests, dte-torn 335, frontend `tsc`,
   lint (solo los 7 warnings que ya había), `npm test` y `npm run build`, migraciones encadenadas sobre
   una copia de la base, y las pantallas tocadas cargando sin errores. Con la segunda tanda (puntos 23
-  a 26): backend **165** en verde (5 saltados: piden Postgres real y Docker estaba apagado), contrato de
+  a 26, con el plazo por cliente): backend **172** en verde, dte-torn en verde, contrato de
   totales 17/17 en el frontend, `tsc` limpio. Es de referencia: si una rama cambia en la revisión, esa
   rama manda.
 - **Conflictos esperables** (todos de "dos ramas agregan en el mismo lugar", se resuelven dejando ambos
@@ -155,7 +155,7 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
 - **Qué:** las facturas (33, 34) mandan `forma_pago`: **2 (crédito)** si algún pago es crédito interno,
   aunque sea una parte; **1 (contado)** si no. Boletas y notas no llevan. El PDF carta ya la imprime.
 - **Verificado:** 4 tests (`test_forma_pago.py`).
-- **Vencimiento:** hecho en el punto 25 (plazo de la empresa, 30 días por defecto). Falta confirmar que
+- **Vencimiento:** hecho en el punto 25 (plazo de cada cliente). Falta confirmar que
   un pago mixto vaya como crédito (así quedó).
 
 ### [ ] 14. #46: el ticket no deja salir del papel un texto largo
@@ -297,23 +297,33 @@ configurable (vencimiento y descuentos). Revisar sobre todo esas decisiones.
 - **Verificado:** en el navegador (frontend de la rama contra el backend de Docker): con el estado
   guardado en "cerrada" y sin `userId`, el POS consultó el servidor y mostró los productos.
 
-### [ ] 25. #44: vencimiento de la factura fiada
+### [ ] 25. #44: plazo de crédito de cada cliente y vencimiento de la factura fiada
 - **Rama:** `feat/vencimiento-credito` (sale de `revision/todo-junto`)
-- **Decisión que tomé:** el plazo es de la **empresa**: `system_settings.dias_credito`, **30 días** por
-  defecto, en Configuración > General > Ventas ("Plazo de pago de la factura fiada"). Con forma de pago
-  crédito (algún pago con crédito interno, aunque sea una parte), el DTE lleva `FchVenc` = hoy + plazo.
+- **Decidido contigo (2026-09-29):** el plazo es **de cada cliente** (`customers.dias_credito`, en su
+  ficha: "Plazo de crédito (días)"). **Sin plazo, el cliente no puede comprar fiado**: el POS no le
+  ofrece "Crédito interno" (dice por qué) y el backend lo rechaza (409: "... no tiene crédito: el
+  administrador le asigna un plazo de pago en Clientes. Mientras tanto, cobre con otro medio de pago.").
+  No hay plazo general de la empresa. Con forma de pago crédito (algún pago con crédito interno, aunque
+  sea una parte), el DTE lleva `FchVenc` = hoy + el plazo del cliente.
+- **Decisión que tomé:** solo el **administrador** pone o quita el plazo (403 para el resto; el campo
+  aparece deshabilitado): el plazo decide a quién se fía, y si no cualquiera se lo daría editando la ficha.
 - **Qué más:** el ticket 57/80 mm muestra "Forma de pago" y "Vencimiento", como el PDF carta.
-  Migración `c5d6e7f8a9b0`.
-- **Verificado:** tests del vencimiento (30 por defecto, 45 tras cambiarlo, sin vencimiento al contado)
-  y del ticket; en el navegador, el campo guarda (45) contra una copia de la base (`torn_migtest`).
-- **Revisar:** ¿plazo por cliente? (JCB puede tener clientes a 30 y a 60). Sería una columna en
-  `customers` que, si está, manda sobre la de la empresa. No lo hice.
+  Migración `c5d6e7f8a9b0` (columna en `customers`; la primera versión la ponía en `system_settings`,
+  nunca llegó a `main`).
+- **Verificado:** tests del vencimiento (45 y 60 días según el cliente, sin vencimiento al contado),
+  cliente sin plazo que no puede fiar pero sí pagar en efectivo, vendedor que no puede dar crédito
+  (403) pero sí editar el email; ticket con forma de pago y vencimiento. En el navegador contra la copia:
+  el plazo se guarda desde la ficha del cliente, y en el cobro de JCB aparece "Crédito Interno" para un
+  cliente con plazo y no para uno sin plazo, con el aviso.
+- **Ojo al mergear:** los clientes que hoy deben (fiados antes de esto) quedan sin plazo y no pueden
+  seguir comprando fiado hasta que se les asigne uno. En JCB se vacían los datos antes del piloto, así
+  que no debería pesar; si no, hay que cargar sus plazos.
 
 ### [ ] 26. #40, #41, #42: descuentos en el POS
 - **Rama:** `feat/descuentos` (**sale de la 25**: las dos migraciones van encadenadas)
 - **Decisión que tomé (#40):** el **administrador descuenta sin tope**; el resto del personal, hasta
   `descuento_maximo` % del total de la venta (**10%** por defecto, configurable en Configuración >
-  General > Ventas; **0 = solo el administrador**). Pasarse se **bloquea** (403: "El descuento supera el
+  General > Descuentos; **0 = solo el administrador**). Pasarse se **bloquea** (403: "El descuento supera el
   10% que puede dar el personal. Pida al administrador que haga la venta."); no hay autorización de un
   supervisor. Quién vendió ya queda en la venta (`seller_id`).
 - **Qué:**

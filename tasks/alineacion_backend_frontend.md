@@ -80,7 +80,7 @@ acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porc
       el carta ya los mostraba.
 - [x] **Decidido (2026-09-29, por revisar):** el administrador descuenta sin tope; el resto del
       personal hasta `descuento_maximo` % del total de la venta (10% por defecto, Configuración >
-      General > Ventas; 0 = solo el administrador). Pasarse se bloquea, sin autorización de supervisor.
+      General > Descuentos; 0 = solo el administrador). Pasarse se bloquea, sin autorización de supervisor.
       Lo valida el backend. Quien vendió queda en la venta.
 - [ ] Probar en el POS con Docker arriba y cerrar #40, #41, #42 y #43.
 
@@ -152,7 +152,8 @@ Cada una se trabaja como un issue: commit, tests y verificación.
    para corregir el giro o la dirección del cliente.
 5. **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
    `fecha_vencimiento`. Hecho en ramas (`feat/forma-pago-credito` y `feat/vencimiento-credito`): el
-   vencimiento es hoy + el plazo de la empresa (30 días por defecto). Falta mergear y cerrar #44.
+   vencimiento es hoy + el plazo del cliente (decidido 2026-09-29: plazo por cliente; sin plazo no
+   compra fiado; lo asigna el administrador). Falta mergear y cerrar #44.
 
 ### B. Paso a producción (postergado por el usuario, salvo el selector de P2)
 
