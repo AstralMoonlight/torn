@@ -1,5 +1,5 @@
 {
-  "_nota": "Contrato de los totales del DTE (issue #39). Montos calculados a mano, nunca con el codigo que se prueba. Lo leen calcular_totales (dte-torn), totales_dte (backend) y totalesDte (frontend). precio_neto y descuento son lo que recibe el POS; precio_dte y descuento_dte, lo que va a dte-torn (bruto al peso en boletas). exento es la tasa ya resuelta (tasa 0). 'pendiente' lista los calculos que todavia no soportan el caso: se saltan hasta implementarlo.",
+  "_nota": "Contrato de los totales del DTE (issue #39). Montos calculados a mano, nunca con el codigo que se prueba. Lo leen calcular_totales (dte-torn), totales_dte (backend) y totalesDte (frontend). precio_neto y descuento son lo que recibe el POS; precio_dte y descuento_dte, lo que va a dte-torn (bruto al peso en boletas). exento es la tasa ya resuelta (tasa 0). El valor de un descuento global en pesos es neto, como el de linea; valor_dte es lo que va a dte-torn cuando difiere. 'pendiente' lista los calculos que todavia no soportan el caso: se saltan hasta implementarlo.",
   "casos": [
     {"id": "factura simple", "tipo_dte": 33,
      "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1000"}],
@@ -34,29 +34,33 @@
                 {"precio_neto": "500", "cantidad": "1", "exento": true, "precio_dte": "500"}],
      "esperado": {"neto": 1000, "exento": 500, "iva": 190, "total": 1690}},
 
-    {"id": "factura descuento por linea en pesos", "tipo_dte": 33, "pendiente": ["frontend"],
+    {"id": "factura descuento por linea en pesos", "tipo_dte": 33,
      "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1000",
                  "descuento": "300", "descuento_dte": 300}],
      "esperado": {"neto": 1700, "exento": 0, "iva": 323, "total": 2023}},
-    {"id": "boleta descuento por linea: 100 neto son 119 brutos", "tipo_dte": 39, "pendiente": ["frontend"],
+    {"id": "boleta descuento por linea: 100 neto son 119 brutos", "tipo_dte": 39,
      "lineas": [{"precio_neto": "1000", "cantidad": "1", "exento": false, "precio_dte": "1190",
                  "descuento": "100", "descuento_dte": 119}],
      "esperado": {"neto": 900, "exento": 0, "iva": 171, "total": 1071}},
-    {"id": "factura descuento por linea 10%", "tipo_dte": 33, "pendiente": ["backend", "frontend"],
+    {"id": "factura descuento por linea 10%", "tipo_dte": 33,
      "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1000", "descuento_pct": "10"}],
      "esperado": {"neto": 1800, "exento": 0, "iva": 342, "total": 2142}},
-    {"id": "factura descuento global en pesos", "tipo_dte": 33, "pendiente": ["backend", "frontend"],
+    {"id": "factura descuento global en pesos", "tipo_dte": 33,
      "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1000"}],
      "descuentos_globales": [{"valor": "500", "porcentaje": false}],
      "esperado": {"neto": 1500, "exento": 0, "iva": 285, "total": 1785}},
-    {"id": "factura descuento global 10% sobre lo afecto", "tipo_dte": 33, "pendiente": ["backend", "frontend"],
+    {"id": "factura descuento global 10% sobre lo afecto", "tipo_dte": 33,
      "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1000"},
                 {"precio_neto": "500", "cantidad": "1", "exento": true, "precio_dte": "500"}],
      "descuentos_globales": [{"valor": "10", "porcentaje": true}],
      "esperado": {"neto": 1800, "exento": 500, "iva": 342, "total": 2642}},
-    {"id": "boleta descuento global 10%", "tipo_dte": 39, "pendiente": ["backend", "frontend"],
+    {"id": "boleta descuento global 10%", "tipo_dte": 39,
      "lineas": [{"precio_neto": "1000", "cantidad": "1", "exento": false, "precio_dte": "1190"}],
      "descuentos_globales": [{"valor": "10", "porcentaje": true}],
-     "esperado": {"neto": 900, "exento": 0, "iva": 171, "total": 1071}}
+     "esperado": {"neto": 900, "exento": 0, "iva": 171, "total": 1071}},
+    {"id": "boleta descuento global en pesos: 420,17 neto son 500 brutos", "tipo_dte": 39,
+     "lineas": [{"precio_neto": "1000", "cantidad": "2", "exento": false, "precio_dte": "1190"}],
+     "descuentos_globales": [{"valor": "420.17", "valor_dte": "500", "porcentaje": false}],
+     "esperado": {"neto": 1580, "exento": 0, "iva": 300, "total": 1880}}
   ]
 }

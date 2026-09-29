@@ -1,6 +1,6 @@
 """Modelos de Venta y Detalle de Venta."""
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, JSON
+from sqlalchemy import Boolean, Column, Integer, String, Numeric, DateTime, ForeignKey, JSON, false
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -60,6 +60,9 @@ class Sale(Base):
     # Modo del emisor al emitirla (CERT, PROD o DEV). Solo se ve en ese modo:
     # ver `filtrar_por_modo` en app/dependencies/tenant.py.
     modo = Column(String(4), nullable=False, default="CERT", server_default="CERT")
+    # Descuento al total: pesos netos o porcentaje. La NC lo devuelve en proporción.
+    descuento_global = Column(Numeric(15, 2), nullable=False, default=0, server_default="0")
+    descuento_global_pct = Column(Boolean, nullable=False, default=False, server_default=false())
 
     # Relaciones
     related_sale_id = Column(Integer, ForeignKey("sales.id"), nullable=True, comment="Venta origen para NC/ND")
@@ -101,6 +104,8 @@ class SaleDetail(Base):
     cantidad = Column(Numeric(15, 4), nullable=False, default=1)
     precio_unitario = Column(Numeric(15, 2), nullable=False)
     descuento = Column(Numeric(15, 2), default=0)
+    # Con porcentaje, `descuento` guarda los pesos netos que resultan y la NC repite el %.
+    descuento_pct = Column(Numeric(5, 2), nullable=True)
     subtotal = Column(Numeric(15, 2), nullable=False)
     # Costo neto unitario al momento de vender: la utilidad de una venta pasada
     # no cambia cuando cambia el costo del producto.

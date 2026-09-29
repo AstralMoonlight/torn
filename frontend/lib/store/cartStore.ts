@@ -6,8 +6,14 @@ import type { Product } from '@/services/products'
 import type { Customer } from '@/services/customers'
 import type { DocumentReference } from '@/services/sales'
 import { resolvePrice, type PriceListRead } from '@/services/price_lists'
-import { precioBruto, productTaxRate, totalesDte } from '@/lib/taxes'
+import { DEFAULT_TAX_RATE, precioBruto, productTaxRate, totalesDte, type LineaDte } from '@/lib/taxes'
 import { avisar } from './uiStore'
+
+/** Descuento tal como lo escribe quien vende: % o pesos del precio que ve (bruto). */
+export interface Descuento {
+    tipo: 'pct' | 'monto'
+    valor: number
+}
 
 export interface CartItem {
     product: Product
@@ -16,6 +22,7 @@ export interface CartItem {
     precio_bruto: number
     subtotal: number
     price_source: 'base_price' | 'price_list'
+    descuento?: Descuento | null
 }
 
 interface CartState {
@@ -35,6 +42,10 @@ interface CartState {
     setPriceList: (list: PriceListRead | null) => void
     setReferencias: (referencias: DocumentReference[]) => void
     setGuia: (guia: { indTraslado: number; tipoDespacho: number | null }) => void
+    /** Descuento al total de la venta. */
+    descuentoGlobal: Descuento | null
+    setDescuentoItem: (productId: number, descuento: Descuento | null) => void
+    setDescuentoGlobal: (descuento: Descuento | null) => void
     addItem: (product: Product, qty?: number) => Promise<void>
     removeItem: (productId: number) => void
     updateQuantity: (productId: number, qty: number) => void
@@ -44,6 +55,8 @@ interface CartState {
     totalNeto: number
     totalIva: number
     totalFinal: number
+    /** Total sin ningún descuento: la diferencia con `totalFinal` es lo descontado. */
+    totalSinDescuento: number
 }
 
 /**
@@ -57,15 +70,39 @@ export function isExemptDte(tipoDte: number): boolean {
     return EXEMPT_DTES.includes(tipoDte)
 }
 
-function recalcTotals(items: CartItem[], tipoDte: number) {
+/** Pesos brutos (los que ve quien vende) a netos, como los recibe el backend. */
+function aNeto(bruto: number, rate: number): number {
+    return Math.round(bruto / (1 + rate) * 100) / 100
+}
+
+/** Líneas y descuento al total como los recibe el backend (y `totalesDte`). */
+export function descuentosParaVenta(items: CartItem[], tipoDte: number, global: Descuento | null) {
+    const lineas: LineaDte[] = items.map((i) => {
+        const rate = isExemptDte(tipoDte) ? 0 : productTaxRate(i.product)
+        const d = i.descuento
+        return {
+            precioNeto: i.precio_neto,
+            cantidad: i.quantity,
+            rate,
+            descuento: d?.tipo === 'monto' ? aNeto(d.valor, rate) : 0,
+            descuentoPct: d?.tipo === 'pct' ? d.valor : undefined,
+        }
+    })
+    const sobreExento = lineas.every((l) => l.rate === 0)
+    const globales = global ? [{
+        valor: global.tipo === 'pct' ? global.valor : aNeto(global.valor, sobreExento ? 0 : DEFAULT_TAX_RATE),
+        porcentaje: global.tipo === 'pct',
+    }] : []
+    return { lineas, globales }
+}
+
+function recalcTotals(items: CartItem[], tipoDte: number, global: Descuento | null = null) {
     // Las reglas del DTE (lib/taxes.ts): en boletas el precio va bruto al peso
     // y el total es la suma de líneas; en facturas el IVA va sobre el neto.
-    const { neto, iva, total } = totalesDte(tipoDte, items.map((i) => ({
-        precioNeto: i.precio_neto,
-        cantidad: i.quantity,
-        rate: isExemptDte(tipoDte) ? 0 : productTaxRate(i.product),
-    })))
-    return { totalNeto: neto, totalIva: iva, totalFinal: total }
+    const { lineas, globales } = descuentosParaVenta(items, tipoDte, global)
+    const { neto, iva, total } = totalesDte(tipoDte, lineas, globales)
+    const sinDescuento = totalesDte(tipoDte, lineas.map((l) => ({ ...l, descuento: 0, descuentoPct: undefined }))).total
+    return { totalNeto: neto, totalIva: iva, totalFinal: total, totalSinDescuento: sinDescuento }
 }
 
 export const useCartStore = create<CartState>()(
@@ -81,6 +118,17 @@ export const useCartStore = create<CartState>()(
             totalNeto: 0,
             totalIva: 0,
             totalFinal: 0,
+            totalSinDescuento: 0,
+            descuentoGlobal: null,
+
+            setDescuentoItem: (productId, descuento) =>
+                set((state) => {
+                    const newItems = state.items.map((i) => (i.product.id === productId ? { ...i, descuento } : i))
+                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte, state.descuentoGlobal) }
+                }),
+
+            setDescuentoGlobal: (descuento) =>
+                set((state) => ({ descuentoGlobal: descuento, ...recalcTotals(state.items, state.tipoDte, descuento) })),
 
             setCustomer: async (customer, autoSwitchList = null) => {
                 set({ customer, priceList: autoSwitchList })
@@ -90,7 +138,7 @@ export const useCartStore = create<CartState>()(
             },
 
             setTipoDte: (tipoDte) =>
-                set((state) => ({ tipoDte, ...recalcTotals(state.items, tipoDte) })),
+                set((state) => ({ tipoDte, ...recalcTotals(state.items, tipoDte, state.descuentoGlobal) })),
 
             setReferencias: (referencias) => set({ referencias }),
             setGuia: (guia) => set({ guia }),
@@ -164,35 +212,35 @@ export const useCartStore = create<CartState>()(
                     ]
                 }
 
-                set({ items: newItems, ...recalcTotals(newItems, get().tipoDte) })
+                set({ items: newItems, ...recalcTotals(newItems, get().tipoDte, get().descuentoGlobal) })
             },
 
             removeItem: (productId) =>
                 set((state) => {
                     const newItems = state.items.filter((i) => i.product.id !== productId)
-                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
+                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte, state.descuentoGlobal) }
                 }),
 
             updateQuantity: (productId, qty) =>
                 set((state) => {
                     if (qty <= 0) {
                         const newItems = state.items.filter((i) => i.product.id !== productId)
-                        return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
+                        return { items: newItems, ...recalcTotals(newItems, state.tipoDte, state.descuentoGlobal) }
                     }
                     const newItems = state.items.map((i) =>
                         i.product.id === productId
                             ? { ...i, quantity: qty, subtotal: qty * i.precio_neto }
                             : i
                     )
-                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte) }
+                    return { items: newItems, ...recalcTotals(newItems, state.tipoDte, state.descuentoGlobal) }
                 }),
 
             clear: () =>
-                set({ items: [], customer: null, priceList: null, referencias: [], guia: { indTraslado: 1, tipoDespacho: null }, totalNeto: 0,totalIva: 0, totalFinal: 0 }),
+                set({ items: [], customer: null, priceList: null, referencias: [], guia: { indTraslado: 1, tipoDespacho: null }, descuentoGlobal: null, totalNeto: 0, totalIva: 0, totalFinal: 0, totalSinDescuento: 0 }),
         }),
         {
             name: 'torn-cart',
-            partialize: (state) => ({ items: state.items, customer: state.customer, priceList: state.priceList }),
+            partialize: (state) => ({ items: state.items, customer: state.customer, priceList: state.priceList, descuentoGlobal: state.descuentoGlobal }),
         }
     )
 )
@@ -237,7 +285,7 @@ async function recalculatePrices(
             }
         })
 
-        set({ items: newItems, ...recalcTotals(newItems, state.tipoDte) })
+        set({ items: newItems, ...recalcTotals(newItems, state.tipoDte, state.descuentoGlobal) })
     } catch (err) {
         console.error('Failed to recalculate prices', err)
         avisar('No se pudieron recalcular los precios con la lista elegida.')

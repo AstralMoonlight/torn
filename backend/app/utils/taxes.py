@@ -146,16 +146,31 @@ def precio_dte(tipo_dte: int, precio_neto: Decimal, rate: Decimal) -> Decimal:
     return precio_neto
 
 
-def monto_linea_dte(cantidad: Decimal, precio: Decimal, descuento: Decimal) -> Decimal:
-    """`MontoItem`: cantidad por precio redondeado al peso, menos el descuento."""
-    return quantize_money(cantidad * precio) - quantize_money(descuento)
+def monto_linea_dte(cantidad: Decimal, precio: Decimal, descuento: Decimal,
+                    descuento_pct: Decimal | None = None) -> Decimal:
+    """`MontoItem`: cantidad por precio redondeado al peso, menos el descuento
+    (en pesos, o en porcentaje de ese monto redondeado al peso)."""
+    bruto = quantize_money(cantidad * precio)
+    if descuento_pct:
+        return bruto - quantize_money(bruto * descuento_pct / 100)
+    return bruto - quantize_money(descuento)
 
 
-def totales_dte(tipo_dte: int, lineas: list[tuple[Decimal, bool]]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
-    """(neto, exento, iva, total) a partir de `(monto_linea, es_exenta)`."""
+def totales_dte(tipo_dte: int, lineas: list[tuple[Decimal, bool]],
+                descuentos_globales=()) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """(neto, exento, iva, total) a partir de `(monto_linea, es_exenta)`.
+
+    `descuentos_globales`: `(valor, es_porcentaje, sobre_exento)` en las unidades
+    del DTE. Se restan de su base antes del IVA, como `calcular_totales`.
+    """
     documento_exento = tipo_dte in EXEMPT_DTES
     afecto = sum((m for m, ex in lineas if not (ex or documento_exento)), Decimal("0"))
     exento = sum((m for m, ex in lineas if ex or documento_exento), Decimal("0"))
+    for valor, porcentaje, sobre_exento in descuentos_globales:
+        if sobre_exento or documento_exento:
+            exento -= quantize_money(exento * valor / 100) if porcentaje else quantize_money(valor)
+        else:
+            afecto -= quantize_money(afecto * valor / 100) if porcentaje else quantize_money(valor)
     if tipo_dte in BOLETAS:
         neto = quantize_money(afecto / (1 + TASA_IVA_DTE)) if afecto else Decimal("0")
         return neto, exento, afecto - neto, afecto + exento

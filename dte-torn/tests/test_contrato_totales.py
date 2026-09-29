@@ -21,7 +21,7 @@ def test_calcular_totales_cumple_el_contrato(caso: dict) -> None:
              descuento_pct=Decimal(l["descuento_pct"]) if "descuento_pct" in l else None)
         for l in caso["lineas"]
     ]
-    globales = [DescuentoGlobal(valor=Decimal(d["valor"]), porcentaje=d["porcentaje"])
+    globales = [DescuentoGlobal(valor=Decimal(d.get("valor_dte", d["valor"])), porcentaje=d["porcentaje"])
                 for d in caso.get("descuentos_globales", [])]
     t = calcular_totales(caso["tipo_dte"], items, globales)
     assert {"neto": t.neto, "exento": t.exento, "iva": t.iva, "total": t.total} == caso["esperado"]
