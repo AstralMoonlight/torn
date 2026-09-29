@@ -404,7 +404,7 @@ sin versionar.
   "Corregir un dato (giro, dirección...)" en facturas, con "Dónde dice / Debe decir".
 - **Verificado:** 3 tests; dte-torn: caso XSD nuevo. En el navegador (DEV): NC N° 2 por $0, el XML
   firmado trae `MntTotal` 0, `DscItem` con la corrección y `CodRef` 2, y el PDF carta sale.
-- **Revisar:** ante el SII se confirma recién enviándola. Cerrar #45 al mergear.
+- **Revisar:** #45 sigue abierto: su último criterio es verla ACEPTADA en maullín (junto con #47).
 
 ### [ ] 29. El error de dte-torn llega como texto (pendiente del punto 20)
 - **Rama:** `fix/mensaje-error-dte`
