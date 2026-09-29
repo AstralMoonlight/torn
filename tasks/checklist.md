@@ -481,27 +481,28 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 
 ## Lo que falta (necesita que decidas o hagas algo)
 
-Actualizado el 2026-09-29 (tercera tanda). Nada de lo que sigue se empezó salvo lo que dice:
+Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo día: #53 y #54 cerrados, #59 a #62 nuevos). Nada de lo que sigue se empezó salvo lo que dice:
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
-| **Volver a emitir un rechazado** | Hoy se hace otra venta y el stock sale dos veces. ¿Un botón "Emitir de nuevo" que reuse la venta, o la NC de la rechazada? | punto 27 |
+| **Volver a emitir un rechazado** (#62) | Hoy se hace otra venta y el stock sale dos veces. ¿Un botón "Emitir de nuevo" que reuse la venta, o la NC de la rechazada? | punto 27 |
 | **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
-| **#54** | Mostrar el ambiente de cada CAF en Folios; decidir si hace falta (la pantalla solo lista los del ambiente actual) | punto 12 |
-| **#53** | Usar el total de dte-torn como fuente de verdad. Con el contrato de totales (#39) propongo cerrarlo sin hacer | `alineacion` D.12 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
 | **Certificación de boletas** (#49) | Pedir el set en el SII (estaba para la semana del 28-09). Después: lector del set, envío por REST y la verificación por folio de boletas ambiguas (`pipeline.py`, hoy va a revisión manual), que se prueba contra el SII con esas boletas | `certificacion_boletas.md` |
-| **Paso a producción** | Declaración de cumplimiento (#48), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
-| **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor de respaldo, instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
-| **1.5 sesiones** | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
+| **Paso a producción** | Declaración de cumplimiento (#48; las muestras ya están aprobadas), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
+| **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor y respaldo diario (#59), instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
+| **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
 | **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
-| **Auditoría de seguridad** | Correr `security-audit` completa (pedirla así). Incluir que el backend no revisa los permisos del menú | `lanzamiento.md` 1.5, punto 32 |
+| **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Incluir que el backend no revisa los permisos del menú | `lanzamiento.md` 1.5, punto 32 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
 (cuadratura del kardex viejo; tras vaciar JCB no hace falta), N1-N4, F1, P1-P4, J1-J2, C2, V1-V2, M1 de
 `administracion.md`, y todo `lanzamiento.md` 2 (Factureando).
+
+Cerrados sin trabajo pendiente: #53 (lo cubre el contrato de totales de #39) y #54 (la validación del
+ambiente del CAF basta; mostrar el ambiente de cada CAF se descartó).
