@@ -752,9 +752,10 @@ def create_return(
     # venta varias veces: cada devolución reingresa stock, emite una NC y abona
     # la cuenta corriente del cliente, así que el exceso se traduce en
     # inventario y dinero inventados.
-    vendido = {}
+    vendido, nombres = {}, {}
     for d in original_sale.details:
         vendido[d.product_id] = vendido.get(d.product_id, Decimal("0")) + d.cantidad
+        nombres[d.product_id] = d.product.nombre if d.product else f"producto {d.product_id}"
 
     devuelto = {}
     notas_previas = db.query(Sale).filter(Sale.related_sale_id == original_sale.id).all()
@@ -762,19 +763,22 @@ def create_return(
         for d in nc.details:
             devuelto[d.product_id] = devuelto.get(d.product_id, Decimal("0")) + d.cantidad
 
+    pedido = {}
     for item in return_in.items:
-        disponible = vendido.get(item.product_id, Decimal("0")) - devuelto.get(
-            item.product_id, Decimal("0")
-        )
-        if item.cantidad > disponible:
+        pedido[item.product_id] = pedido.get(item.product_id, Decimal("0")) + item.cantidad
+    for product_id, cantidad in pedido.items():
+        disponible = vendido.get(product_id, Decimal("0")) - devuelto.get(product_id, Decimal("0"))
+        if cantidad > disponible:
+            nombre = nombres.get(product_id, "ese producto")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    f"No se puede devolver {item.cantidad} unidad(es) del producto "
-                    f"{item.product_id}: la venta #{original_sale.folio} tiene "
-                    f"{disponible} disponible(s) para devolución."
+                    f"No se pueden devolver {cantidad.normalize():f} de {nombre}: de esa venta "
+                    f"quedan {disponible.normalize():f} por devolver."
                 ),
             )
+    # Devolver toda la venta de una vez la anula ante el SII; una parte corrige montos.
+    codigo_sii = return_in.sii_reason_code or (1 if not notas_previas and pedido == vendido else 3)
 
     # 2. Calcular Montos de Devolución
     # La NC hereda el tipo de DTE del documento original para efectos de IVA:
@@ -838,17 +842,13 @@ def create_return(
     neto, exento, iva, total = totales_dte(tipo, lineas_dte, globales)
     total_neto = neto + exento
 
-    # 3. Registrar Documento de Ajuste
-    ADJUSTMENT_DTES = [56, 61, 111, 112]
-    if tipo not in ADJUSTMENT_DTES:
-        raise HTTPException(status_code=400, detail="El tipo de DTE para ajuste debe ser 56, 61, 111 o 112.")
-
+    # 3. Registrar la nota de crédito
     # Generar la referencia al documento original automáticamente
     referencias_json = [{
         "tipo_documento": str(original_sale.tipo_dte),
         "folio": str(original_sale.folio),
         "fecha": original_sale.fecha_emision.strftime("%Y-%m-%d"),
-        "sii_reason_code": return_in.sii_reason_code,
+        "sii_reason_code": codigo_sii,
         "razon": return_in.reason[:90],
     }]
 

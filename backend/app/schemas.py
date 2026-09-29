@@ -476,15 +476,18 @@ class FacturarGuias(BaseModel):
 
 class ReturnItem(BaseModel):
     product_id: int
-    cantidad: Decimal
+    cantidad: Decimal = Field(gt=0)
 
 
 class ReturnCreate(BaseModel):
     original_sale_id: int
-    tipo_dte: int = 61
-    #: 1 anula, 3 corrige montos. El 2 (corrige texto) no devuelve nada: va por
-    #: `POST /sales/{id}/corrige-texto`.
-    sii_reason_code: Literal[1, 3] = 1
+    #: Devolver es siempre una nota de crédito. Una ND por esta ruta reingresaba
+    #: stock y devolvía dinero.
+    tipo_dte: Literal[61] = 61
+    #: 1 anula, 3 corrige montos. Sin él, lo decide el backend: 1 si se devuelve
+    #: toda la venta de una vez, 3 si no. El 2 (corrige texto) no devuelve nada:
+    #: va por `POST /sales/{id}/corrige-texto`.
+    sii_reason_code: Optional[Literal[1, 3]] = None
     items: List[ReturnItem]
     reason: str
     return_method_id: int # ID de medio de pago para devolución (Caja o Credito)

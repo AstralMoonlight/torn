@@ -103,9 +103,11 @@ export interface PaymentMethod {
 
 export interface ReturnCreate {
     original_sale_id: number
-    tipo_dte: number
-    /** 1 anula, 3 corrige montos. Corregir texto va por `corregirTexto`. */
-    sii_reason_code: 1 | 3
+    /** Siempre nota de crédito (61). */
+    tipo_dte?: 61
+    /** 1 anula, 3 corrige montos. Sin él lo decide el backend según lo que vuelve.
+     *  Corregir texto va por `corregirTexto`. */
+    sii_reason_code?: 1 | 3
     items: { product_id: number; cantidad: number }[]
     reason: string
     return_method_id: number
