@@ -40,6 +40,10 @@ def _llamar(method: str, path: str, tenant, actor: str | None = None, **kwargs):
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
+#: Tamaño del CAF de prueba que genera dte-torn (`FOLIOS_CAF_PRUEBA` en dte-torn/app/dte/caf.py).
+FOLIOS_CAF_PRUEBA = 100_000
+
+
 @router.get("/status", response_model=List[FolioStockOut], summary="Estado del Stock de Folios")
 def get_folios_status(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Folios disponibles por tipo de documento, uno por cada tipo que se puede emitir."""
@@ -51,6 +55,11 @@ def get_folios_status(tenant_user: TenantUser = Depends(get_current_tenant_user)
         # Vence primero el que se consume a continuación: el más antiguo con folios libres.
         en_uso = next((c for c in cafs if c["disponibles"] > 0), ultimo)
         disponibles = sum(c["disponibles"] for c in cafs)
+        if tenant_user.tenant.sii_ambiente == "DEV" and not disponibles:
+            # En Desarrollador dte-torn crea (o renueva) el CAF de prueba con la
+            # primera emisión de cada tipo: nunca se agota. Con 0, el POS lo
+            # marcaba agotado y el Historial no ofrecía devolver.
+            disponibles = FOLIOS_CAF_PRUEBA
         result.append(FolioStockOut(
             dte_type=tipo,
             available=disponibles,
