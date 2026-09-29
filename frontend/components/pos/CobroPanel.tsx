@@ -5,7 +5,7 @@ import {
     ArrowLeft, Banknote, CreditCard, Landmark, Wallet, Receipt, FileText, FileStack,
     CheckCircle2, Printer, Loader2, Plus, Trash2, ChevronDown, ChevronRight,
 } from 'lucide-react'
-import { useCartStore } from '@/lib/store/cartStore'
+import { descuentosParaVenta, useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { getApiErrorDetail, getApiErrorStatus, fetchBlob, printPdf } from '@/services/api'
 import {
@@ -116,7 +116,7 @@ function Paso({ n, titulo, extra, children }: { n: number; titulo: string; extra
 export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const {
         items, totalFinal, tipoDte, setTipoDte, customer, setCustomer,
-        referencias, setReferencias, guia, setGuia, clear,
+        referencias, setReferencias, guia, setGuia, clear, descuentoGlobal,
     } = useCartStore()
     const { userId } = useSessionStore()
 
@@ -203,6 +203,20 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
         setCustomer(c)
     }
 
+    // Mismas líneas y descuento al total con que el carrito calculó el total.
+    const ventaConDescuentos = () => {
+        const { lineas, globales } = descuentosParaVenta(items, tipoDte, descuentoGlobal)
+        return {
+            items: items.map((i, n) => ({
+                product_id: i.product.id,
+                cantidad: i.quantity,
+                ...(lineas[n].descuentoPct ? { descuento_pct: lineas[n].descuentoPct } : {}),
+                ...(lineas[n].descuento ? { descuento: lineas[n].descuento } : {}),
+            })),
+            ...(globales.length ? { descuento_global: globales[0] } : {}),
+        }
+    }
+
     const confirmar = async () => {
         if (bloqueo || enviando) return
         setEnviando(true)
@@ -211,7 +225,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             const sale = await createSale({
                 rut_cliente: customer?.rut || GENERIC_RUT,
                 tipo_dte: tipoDte,
-                items: items.map((i) => ({ product_id: i.product.id, cantidad: i.quantity })),
+                ...ventaConDescuentos(),
                 ...(isGuia ? { ind_traslado: guia.indTraslado, tipo_despacho: guia.tipoDespacho ?? undefined } : {}),
                 payments: isGuia ? [] : pagos.filter((p) => p.amount > 0).map((p) => ({ payment_method_id: p.method.id, amount: p.amount })),
                 seller_id: userId || undefined,

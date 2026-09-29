@@ -34,6 +34,10 @@ export interface SystemSettings {
     control_caja: boolean
     color_mode: ColorMode
     color_primario: string
+    /** La factura fiada vence a estos días de emitida (FchVenc). */
+    dias_credito: number
+    /** Tope del descuento de una venta (%) para quien no es administrador. 0: solo el administrador. */
+    descuento_maximo: number
 }
 
 export type SettingsUpdate = Partial<Omit<SystemSettings, 'id'>>

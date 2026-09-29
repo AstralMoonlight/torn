@@ -52,19 +52,42 @@ export function precioBruto(precioNeto: number, rate: number): number {
     return pesos(precioNeto * (1 + rate))
 }
 
-/** Totales de un documento a partir de sus líneas (neto unitario, cantidad, tasa). */
+/** Descuento al total: porcentaje, o pesos netos como el de línea. */
+export type DescuentoGlobalDte = { valor: number; porcentaje: boolean }
+
+/** Línea del documento. `descuento` va en pesos netos (en boletas pasa a bruto), o `descuentoPct`. */
+export type LineaDte = { precioNeto: number; cantidad: number; rate: number; descuento?: number; descuentoPct?: number }
+
+/**
+ * Totales de un documento a partir de sus líneas y descuentos al total. Réplica de
+ * `_linea_dte`, `_descuento_global_dte` y `totales_dte` del backend.
+ */
 export function totalesDte(
     tipoDte: number,
-    lineas: { precioNeto: number; cantidad: number; rate: number }[],
+    lineas: LineaDte[],
+    globales: DescuentoGlobalDte[] = [],
 ): { neto: number; iva: number; total: number } {
     const boleta = BOLETAS.includes(tipoDte)
     let afecto = 0
     let exento = 0
     for (const l of lineas) {
         const precio = boleta ? precioBruto(l.precioNeto, l.rate) : l.precioNeto
-        const monto = pesos(l.cantidad * precio)
-        if (l.rate === 0) exento += monto
-        else afecto += monto
+        const bruto = pesos(l.cantidad * precio)
+        const descuento = l.descuentoPct
+            ? pesos(bruto * l.descuentoPct / 100)
+            : pesos((l.descuento ?? 0) * (boleta ? 1 + l.rate : 1))
+        if (l.rate === 0) exento += bruto - descuento
+        else afecto += bruto - descuento
+    }
+    // Va sobre lo afecto; si no hay nada afecto, sobre lo exento.
+    const sobreExento = lineas.every((l) => l.rate === 0)
+    for (const g of globales) {
+        const base = sobreExento ? exento : afecto
+        const monto = g.porcentaje
+            ? pesos(base * g.valor / 100)
+            : pesos(boleta && !sobreExento ? g.valor * (1 + DEFAULT_TAX_RATE) : g.valor)
+        if (sobreExento) exento -= monto
+        else afecto -= monto
     }
     const iva = boleta
         ? afecto - (afecto ? pesos(afecto / (1 + DEFAULT_TAX_RATE)) : 0)

@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 from app.utils.validators import validar_rut
@@ -130,6 +130,8 @@ class SettingsBase(BaseModel):
     control_caja: bool = True
     color_mode: Literal["empresa", "usuario"] = "empresa"
     color_primario: ColorPrimario = "azul"
+    dias_credito: int = Field(default=30, ge=0, le=365)
+    descuento_maximo: int = Field(default=10, ge=0, le=100)
 
 class SettingsUpdate(SettingsBase):
     pass
@@ -356,7 +358,22 @@ class SaleItem(BaseModel):
 
     product_id: int
     cantidad: Decimal
+    #: Descuento de la línea en pesos netos (en boletas el backend lo pasa a bruto)...
     descuento: Decimal = Field(default=Decimal("0"), ge=0)
+    #: ...o en porcentaje. No los dos.
+    descuento_pct: Optional[Decimal] = Field(default=None, gt=0, le=100)
+
+    @model_validator(mode="after")
+    def _un_solo_descuento(self):
+        if self.descuento and self.descuento_pct:
+            raise ValueError("Descuento en pesos o en porcentaje, no ambos.")
+        return self
+
+
+class DescuentoGlobal(BaseModel):
+    """Descuento al total: porcentaje, o pesos netos como el de línea."""
+    valor: Decimal = Field(gt=0)
+    porcentaje: bool = True
 
 
 class SalePaymentCreate(BaseModel):
@@ -389,6 +406,7 @@ class SaleCreate(BaseModel):
     ind_traslado: Optional[int] = Field(None, ge=1, le=9)
     # 1 por cuenta del receptor, 2 del emisor a instalaciones del cliente, 3 del emisor a otras.
     tipo_despacho: Optional[int] = Field(None, ge=1, le=3)
+    descuento_global: Optional[DescuentoGlobal] = None
 
     @field_validator("rut_cliente")
     @classmethod
@@ -405,6 +423,7 @@ class SaleDetailOut(BaseModel):
     cantidad: Decimal
     precio_unitario: Decimal
     descuento: Decimal
+    descuento_pct: Optional[Decimal] = None
     subtotal: Decimal
     product: ProductOut  # Nested product details
 

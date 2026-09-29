@@ -137,10 +137,13 @@ class FakeDte:
         self.documentos.append(documento)
         self._folios[documento["tipo_dte"]] += 1
         lineas = [
-            (monto_linea_dte(Decimal(i["cantidad"]), Decimal(i["precio"]), Decimal(i["descuento"])), i["exento"])
+            (monto_linea_dte(Decimal(i["cantidad"]), Decimal(i["precio"]), Decimal(i["descuento"]),
+                             Decimal(i["descuento_pct"]) if "descuento_pct" in i else None), i["exento"])
             for i in documento["items"]
         ]
-        _, _, _, total = totales_dte(documento["tipo_dte"], lineas)
+        globales = [(Decimal(g["valor"]), g["porcentaje"], g["exento"])
+                    for g in documento.get("descuentos_globales", [])]
+        _, _, _, total = totales_dte(documento["tipo_dte"], lineas, globales)
         return {"folio": self._folios[documento["tipo_dte"]], "monto_total": int(total), "estado": "FIRMADO"}
 
 

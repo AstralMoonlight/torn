@@ -12,7 +12,8 @@ type Caso = {
     id: string
     tipo_dte: number
     pendiente?: string[]
-    lineas: { precio_neto: string; cantidad: string; exento: boolean }[]
+    lineas: { precio_neto: string; cantidad: string; exento: boolean; descuento?: string; descuento_pct?: string }[]
+    descuentos_globales?: { valor: string; porcentaje: boolean }[]
     esperado: { neto: number; exento: number; iva: number; total: number }
 }
 
@@ -25,7 +26,9 @@ for (const caso of casos) {
             precioNeto: Number(l.precio_neto),
             cantidad: Number(l.cantidad),
             rate: l.exento ? 0 : 0.19,
-        })))
+            descuento: Number(l.descuento ?? 0),
+            descuentoPct: l.descuento_pct ? Number(l.descuento_pct) : undefined,
+        })), (caso.descuentos_globales ?? []).map((g) => ({ valor: Number(g.valor), porcentaje: g.porcentaje })))
         // `totalesDte` no separa lo exento: su neto es todo lo que no es IVA.
         assert.deepEqual(
             { neto: t.neto, iva: t.iva, total: t.total },

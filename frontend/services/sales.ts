@@ -10,6 +10,10 @@ export interface SalePaymentCreate {
 export interface SaleItem {
     product_id: number
     cantidad: number
+    /** Pesos netos (en boletas el backend los pasa a bruto)... */
+    descuento?: number
+    /** ...o porcentaje. No los dos. */
+    descuento_pct?: number
 }
 
 /** Referencia a documento previo (OC, Guía, etc.) para Factura Electrónica. */
@@ -30,6 +34,8 @@ export interface SaleCreate {
     /** Solo guía de despacho (52): IndTraslado y TipoDespacho del SII. */
     ind_traslado?: number
     tipo_despacho?: number
+    /** Descuento al total: porcentaje, o pesos netos como el de línea. */
+    descuento_global?: { valor: number; porcentaje: boolean }
 }
 
 export interface FolioStockOut {

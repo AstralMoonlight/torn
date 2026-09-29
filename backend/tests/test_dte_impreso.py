@@ -163,3 +163,17 @@ def test_ticket_no_corta_razon_social_giro_ni_direccion(monkeypatch):
         assert razon in html and giro in html
         assert direccion.replace("'", "&#39;") in html
         assert "overflow-wrap: anywhere" in html
+
+
+def test_ticket_de_factura_fiada_muestra_forma_de_pago_y_vencimiento(monkeypatch):
+    xml = XML.replace(b"<FchEmis>2026-09-23</FchEmis>",
+                      b"<FchEmis>2026-09-23</FchEmis><FmaPago>2</FmaPago><FchVenc>2026-10-23</FchVenc>")
+
+    def request(method, path, tenant=None, actor=None, params=None, **kwargs):
+        if path == "/documents":
+            return httpx.Response(200, json=[{"tipo_dte": 33, "folio": 7, "external_id": "venta-7"}])
+        return httpx.Response(200, content=xml)
+    monkeypatch.setattr(dte_client, "request", request)
+
+    html = _impreso_dte(TENANT, VENTA, 80, cedible=False).body.decode()
+    assert "Crédito" in html and "Vencimiento:" in html and "23-10-2026" in html

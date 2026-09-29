@@ -111,3 +111,8 @@ export const useSessionStore = create<SessionState>()(
         }
     )
 )
+
+/** Administrador de la empresa elegida, o superusuario del SaaS (como `es_admin` del backend). */
+export const useEsAdmin = () => useSessionStore((s) =>
+    s.user?.is_superuser === true ||
+    s.availableTenants.find((t) => t.id === s.selectedTenantId)?.role_name === 'ADMINISTRADOR')
