@@ -19,6 +19,7 @@ import {
     FileText,
     PencilLine,
     Mail,
+    RefreshCw,
 } from 'lucide-react'
 import {
     Table,
@@ -34,6 +35,7 @@ import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
 import DevolucionDialog from '@/components/pos/DevolucionDialog'
 import ReenviarXmlDialog, { ESTADOS_XML } from '@/components/pos/ReenviarXmlDialog'
+import ReemitirDialog from '@/components/pos/ReemitirDialog'
 
 
 const POR_PAGINA = 50
@@ -54,6 +56,9 @@ function DteBadge({ tipo }: { tipo: number }) {
     const info = map[tipo] || { label: `Documento ${tipo}`, color: 'bg-muted-foreground' }
     return <Badge className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
 }
+
+// Los que el SII no reconoce: se vuelven a emitir, no se devuelven ni se corrigen.
+const RECHAZADOS = ['RECHAZADO', 'ERROR_VALIDACION']
 
 const ESTADOS_SII: Record<string, { label: string; color: string }> = {
     ACEPTADO: { label: 'Aceptado', color: 'bg-emerald-600' },
@@ -81,6 +86,7 @@ export default function HistorialPage() {
     const [corregirDialog, setCorregirDialog] = useState<SaleOut | null>(null)
     const [facturarOpen, setFacturarOpen] = useState(false)
     const [xmlDialog, setXmlDialog] = useState<SaleOut | null>(null)
+    const [reemitirDialog, setReemitirDialog] = useState<SaleOut | null>(null)
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
     const [hayMas, setHayMas] = useState(false)
@@ -106,9 +112,9 @@ export default function HistorialPage() {
             getFoliosStatus(),
         ])
             .then(([s, m, f]) => {
-                const rechazadas = s.filter(v => v.dte_estado === 'RECHAZADO' || v.dte_estado === 'ERROR_VALIDACION')
+                const rechazadas = s.filter(v => RECHAZADOS.includes(v.dte_estado ?? ''))
                 if (rechazadas.length > 0) {
-                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}`)
+                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}. Use "Emitir de nuevo" en cada uno.`)
                 }
                 setMethods(m)
                 setHayNotasCredito(f.some((d: FolioStockOut) => d.dte_type === 61 && d.available > 0))
@@ -270,10 +276,13 @@ export default function HistorialPage() {
                                                     {[33, 34, 52, 56, 61].includes(sale.tipo_dte) && ['ACEPTADO', 'REPAROS'].includes(sale.dte_estado ?? '') && (
                                                         <AccionFila icon={Mail} label="Mandar el XML al cliente" onClick={() => setXmlDialog(sale)} />
                                                     )}
-                                                    {[33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && (
+                                                    {RECHAZADOS.includes(sale.dte_estado ?? '') && (
+                                                        <AccionFila icon={RefreshCw} label="Emitir de nuevo" onClick={() => setReemitirDialog(sale)} />
+                                                    )}
+                                                    {[33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && !RECHAZADOS.includes(sale.dte_estado ?? '') && (
                                                         <AccionFila icon={RotateCcw} label="Devolver productos" onClick={() => setReturnDialog(sale)} peligro />
                                                     )}
-                                                    {[33, 34].includes(sale.tipo_dte) && hayNotasCredito && (
+                                                    {[33, 34].includes(sale.tipo_dte) && hayNotasCredito && !RECHAZADOS.includes(sale.dte_estado ?? '') && (
                                                         <AccionFila icon={PencilLine} label="Corregir un dato (giro, dirección...)" onClick={() => setCorregirDialog(sale)} />
                                                     )}
                                                 </div>
@@ -306,6 +315,7 @@ export default function HistorialPage() {
                 onEmitida={recargarVentas}
             />
             <ReenviarXmlDialog venta={xmlDialog} onClose={() => setXmlDialog(null)} onEnviado={recargarVentas} />
+            <ReemitirDialog venta={reemitirDialog} onClose={() => setReemitirDialog(null)} onEmitida={recargarVentas} />
             <FacturarGuiasDialog
                 open={facturarOpen}
                 methods={methods}

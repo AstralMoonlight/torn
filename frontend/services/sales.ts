@@ -167,6 +167,12 @@ export async function corregirTexto(saleId: number, donde_dice: string, debe_dec
     return data
 }
 
+/** Vuelve a emitir, con otro número, un documento que el SII rechazó: no cobra ni mueve stock de nuevo. */
+export async function reemitir(saleId: number): Promise<SaleOut> {
+    const { data } = await api.post<SaleOut>(`/sales/${saleId}/reemitir`)
+    return data
+}
+
 export function getSalePdfPath(saleId: number): string {
     return `/sales/${saleId}/pdf`
 }

@@ -34,6 +34,7 @@ from app.utils.taxes import (
 from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
 from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user, es_admin
 from app.models.saas import TenantUser, SaaSUser
+from app.routers.stats import RECHAZADOS
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 log = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def _descuento_global_dte(tipo: int, valor: Decimal, porcentaje: bool, lineas_dt
 
 def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str,
                 tipo_despacho: int | None = None, forma_pago: int | None = None,
-                descuentos_globales: list = ()) -> None:
+                descuentos_globales: list = (), external_id: str | None = None) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
@@ -101,7 +102,7 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
     """
     hoy = get_now().date()
     documento = {
-        "external_id": f"venta-{sale.id}",
+        "external_id": external_id or _external_id(sale),
         "tipo_dte": sale.tipo_dte,
         "fecha_emision": hoy.isoformat(),
         "items": items,
@@ -251,6 +252,11 @@ def _mensaje_emision(exc: "dte_client.DteError", tipo: int) -> str:
     return detalle
 
 
+def _external_id(sale: Sale) -> str:
+    """Documento de dte-torn de la venta: `venta-{id}`, o el de su reemisión (#62)."""
+    return sale.dte_external_id or f"venta-{sale.id}"
+
+
 def _guardar_estado(sale: Sale, doc: dict) -> None:
     sale.dte_estado = doc["estado"]
     sale.intercambio_estado = doc.get("intercambio_estado")
@@ -338,7 +344,7 @@ def actualizar_estados_dte(
     cambiadas = 0
     for sale in pendientes:
         try:
-            doc = dte_client.request("GET", f"/documents/venta-{sale.id}", tenant_user.tenant).json()
+            doc = dte_client.request("GET", f"/documents/{_external_id(sale)}", tenant_user.tenant).json()
         except dte_client.DteError as exc:
             if exc.status_code == 404:
                 continue
@@ -922,12 +928,72 @@ def reenviar_xml(
     if not sale:
         raise HTTPException(status_code=404, detail="Venta no encontrada")
     try:
-        doc = dte_client.request("POST", f"/documents/venta-{sale.id}/intercambio", tenant_user.tenant,
+        doc = dte_client.request("POST", f"/documents/{_external_id(sale)}/intercambio", tenant_user.tenant,
                                  json={"correo": datos.correo} if datos.correo else {}).json()
     except dte_client.DteError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     _guardar_estado(sale, doc)
     db.commit()
+    return sale
+
+
+@router.post("/{sale_id}/reemitir", response_model=SaleOut, summary="Volver a emitir un rechazado")
+def reemitir_rechazado(
+    sale_id: int,
+    db: Session = Depends(get_tenant_db),
+    global_user: SaaSUser = Depends(get_current_global_user),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Vuelve a emitir, con folio nuevo, una venta que el SII rechazó (#62).
+
+    La venta ya descontó el stock, se cobró y, si fue fiada, sumó a la deuda: todo
+    eso queda igual, y hacer otra venta lo repetía. Cambia solo el documento: las
+    mismas líneas, precios, descuentos y pagos, con los datos del cliente como
+    están ahora (el rechazo suele venir de su ficha, que se corrige antes en
+    Clientes). Un rechazado no existe para el SII: no lleva nota de crédito.
+    """
+    sale = db.get(Sale, sale_id)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    if sale.dte_estado not in RECHAZADOS:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Solo se vuelve a emitir un documento rechazado por el SII.")
+    if not sale.details:
+        # La NC que corrige texto no tiene líneas guardadas: se hace de nuevo.
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Este documento no se puede volver a emitir: hágalo de nuevo desde el Historial.")
+
+    tipo = sale.tipo_dte
+    original = sale.related_sale  # la venta de una NC de devolución
+    pagos = db.query(SalePayment).filter(SalePayment.sale_id == sale.id).all()
+    _validar_credito(db, sale.customer, pagos)
+
+    items_dte, lineas_dte = [], []
+    for d in sale.details:
+        item, monto, exenta = _linea_dte(tipo, d.product, d.cantidad, d.precio_unitario, d.descuento,
+                                         tipo_impuesto=original.tipo_dte if original else None,
+                                         descuento_pct=d.descuento_pct)
+        items_dte.append(item)
+        lineas_dte.append((monto, exenta))
+    if original:
+        globales = _descuento_global_nc(tipo, original, lineas_dte)
+    elif sale.descuento_global:
+        globales = [_descuento_global_dte(tipo, sale.descuento_global, sale.descuento_global_pct, lineas_dte)]
+    else:
+        globales = []
+
+    folio_rechazado = sale.folio
+    external_id = f"venta-{sale.id}-{folio_rechazado}"
+    _emitir_dte(db, tenant_user.tenant, sale, sale.customer, items_dte, _referencias_dte(sale.referencias),
+                global_user.email, forma_pago=_forma_pago(db, tipo, pagos), descuentos_globales=globales,
+                external_id=external_id)
+    sale.dte_external_id = external_id
+    # La fecha del documento nuevo: la que citan las notas que se le hagan después.
+    sale.fecha_emision = get_now()
+    for movimiento in sale.stock_movements:
+        if movimiento.description == f"DTE {tipo} folio {folio_rechazado}":
+            movimiento.description = f"DTE {tipo} folio {sale.folio}"
+    db.commit()
+    db.refresh(sale)
     return sale
 
 
