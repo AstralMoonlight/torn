@@ -740,3 +740,6 @@ class ReportOut(BaseModel):
     total_iva: Decimal = Decimal(0)
     total_utilidad: Decimal
     items: List[ReportItem]
+    #: Documentos que el SII rechazó: no están en los totales, solo se informan.
+    rechazados: int = 0
+    monto_rechazado: Decimal = Decimal(0)

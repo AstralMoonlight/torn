@@ -173,6 +173,17 @@ export default function DashboardPage() {
                 </Alert>
             )}
 
+            {data.kpis.num_rechazados > 0 && (
+                <Alert data-section="dashboard.rechazados">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>{data.kpis.num_rechazados === 1 ? 'Un documento rechazado' : `${data.kpis.num_rechazados} documentos rechazados`} por el SII hoy</AlertTitle>
+                    <AlertDescription>
+                        Suman {formatCLP(data.kpis.total_rechazados)} y no se cuentan en estas cifras, porque se vuelven a emitir.
+                        Revíselos en <Link href="/historial" className="font-medium underline">Historial</Link>.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* main KPIs */}
             <div data-section="dashboard.indicadores" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard

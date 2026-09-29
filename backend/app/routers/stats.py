@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, case
+from sqlalchemy import func, desc, case, or_
 
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
@@ -21,6 +21,10 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 TIPOS_VENTA = (33, 34, 39, 41)
 TIPOS_REPORTE = TIPOS_VENTA + (56, 61)
 SIGNO = case((Sale.tipo_dte == 61, -1), else_=1)
+#: Lo que el SII rechazó se vuelve a emitir: contarlo duplicaría la venta. Los
+#: reportes solo informan cuántos hay (el mismo criterio que el Historial).
+RECHAZADOS = ("RECHAZADO", "ERROR_VALIDACION")
+CUENTA = or_(Sale.dte_estado.is_(None), Sale.dte_estado.notin_(RECHAZADOS))
 
 
 def _signo(sale: Sale) -> int:
@@ -32,7 +36,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     
     # Ventas en el periodo
     sales = db.query(Sale).filter(
-        Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE)
+        Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA
     ).all()
     
     total_sales = sum(_signo(s) * s.monto_total for s in sales)
@@ -49,7 +53,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
         func.sum(SIGNO * SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario))
     ).join(Product, SaleDetail.product_id == Product.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
-     .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE)).scalar() or Decimal(0)
+     .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA).scalar() or Decimal(0)
 
     period_name = "Personalizado"
     now = get_now()
@@ -109,7 +113,7 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_t
         ).join(Product, SaleDetail.product_id == Product.id)\
          .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
          .join(Sale, SaleDetail.sale_id == Sale.id)\
-         .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE))\
+         .filter(Sale.fecha_emision >= start_date, Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA)\
          .group_by(SaleDetail.product_id, Product.nombre, ParentProduct.nombre)
 
     # 1. Top por Cantidad
@@ -192,7 +196,7 @@ def get_report(
      .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
      .join(Sale, SaleDetail.sale_id == Sale.id)\
      .filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
-             Sale.tipo_dte.in_(TIPOS_REPORTE))\
+             Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA)\
      .group_by(SaleDetail.product_id, Product.nombre, ParentProduct.nombre)\
      .all()
 
@@ -215,8 +219,12 @@ def get_report(
     
     sales_period = db.query(Sale).filter(
         Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
-        Sale.tipo_dte.in_(TIPOS_REPORTE),
+        Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA,
     ).all()
+    rechazados = db.query(func.count(Sale.id), func.coalesce(func.sum(Sale.monto_total), 0)).filter(
+        Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
+        Sale.tipo_dte.in_(TIPOS_REPORTE), Sale.dte_estado.in_(RECHAZADOS),
+    ).one()
     total_ventas = sum(_signo(s) * s.monto_total for s in sales_period)
     total_neto = sum(_signo(s) * (s.monto_neto or Decimal(0)) for s in sales_period)
     total_iva = sum(_signo(s) * (s.iva or Decimal(0)) for s in sales_period)
@@ -229,5 +237,7 @@ def get_report(
         total_neto=total_neto,
         total_iva=total_iva,
         total_utilidad=total_utilidad,
-        items=items
+        items=items,
+        rechazados=rechazados[0],
+        monto_rechazado=rechazados[1],
     )
