@@ -1,6 +1,7 @@
 # Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
 
-> **Tercera tanda (puntos 27 a 34), sin mergear:** ver su sección y `revision/tanda-3`.
+> **Tercera tanda (puntos 27 a 34): mergeada a `main` el 2026-09-29** (revisada en el navegador por el
+> usuario). En `main`: backend 188 tests, dte-torn en verde, `tsc`, contrato 17/17. Ramas borradas.
 >
 > **Puntos 1 a 26: mergeados a `main` el 2026-09-29** (merge de `revision/todo-junto`, las 24 ramas juntas). En `main`:
 > backend 172 tests, dte-torn en verde, frontend `tsc`, lint (los 7 warnings de siempre), contrato de
@@ -368,8 +369,8 @@ configurable (vencimiento y descuentos). Revisar sobre todo esas decisiones.
 
 ## Tercera tanda (2026-09-29): lo que faltaba de todos los archivos de `tasks/`
 
-Salió de revisar todos los `.md` de `tasks/` contra los issues abiertos y el código. Ramas sin mergear;
-**`revision/tanda-3`** es `main` con las 8 juntas y los conflictos resueltos (dos ramas agregando en
+Salió de revisar todos los `.md` de `tasks/` contra los issues abiertos y el código. **Mergeada a `main`
+el 2026-09-29**; las ramas se borraron. **`revision/tanda-3`** es `main` con las 8 juntas y los conflictos resueltos (dos ramas agregando en
 el mismo lugar: `sales.py`, `schemas.py`, `services/sales.ts` e Historial). Ahí: backend **188** en
 verde, dte-torn completo en verde, `tsc`, lint (los 7 warnings de siempre), contrato de totales 17/17
 y `npm run build`. **Alembic:** `d6e7f8a9b0c1` -> `e7f8a9b0c1d2` (permisos, punto 32) ->
@@ -484,7 +485,7 @@ Actualizado el 2026-09-29 (tercera tanda). Nada de lo que sigue se empezó salvo
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
-| **Revisar la tercera tanda** | Mergear las 8 ramas (orden: 28 antes de 30, 32 antes de 33) y cerrar #45 | puntos 27 a 34 |
+| **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
 | **Volver a emitir un rechazado** | Hoy se hace otra venta y el stock sale dos veces. ¿Un botón "Emitir de nuevo" que reuse la venta, o la NC de la rechazada? | punto 27 |
