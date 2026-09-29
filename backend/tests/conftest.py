@@ -33,7 +33,7 @@ from app.dependencies.tenant import (
 )
 from app.main import app
 from app.models.saas import SaaSUser, Tenant, TenantUser
-from app.models.user import User
+from app.models.user import Role, User
 from app.services import dte_client
 from app.utils.taxes import monto_linea_dte, totales_dte
 
@@ -90,6 +90,13 @@ def admin_local_user(db_session):
 @pytest.fixture(scope="function")
 def client(db_session, admin_local_user):
     """TestClient de FastAPI con la BD y la identidad de prueba inyectadas."""
+    # Los roles con que nace cada empresa (`tenant_service.py`): los permisos del
+    # personal se leen de aquí (`requiere_permiso`).
+    db_session.add_all([
+        Role(name="ADMINISTRADOR", permissions={"all": True}),
+        Role(name="VENDEDOR", permissions={"Terminal POS": True, "Caja": True, "Historial": True, "Clientes": True}),
+    ])
+    db_session.commit()
 
     def override_db():
         yield db_session

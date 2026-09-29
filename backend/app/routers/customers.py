@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import es_admin, get_current_local_user, get_current_tenant_user, get_tenant_db
+from app.dependencies.tenant import es_admin, get_current_local_user, get_current_tenant_user, get_tenant_db, requiere_permiso
 from app.models.saas import TenantUser
 from app.models.cash import CashSession
 from app.models.customer import Customer, CustomerPayment
@@ -25,7 +25,7 @@ def _solo_admin_da_credito(tenant_user: TenantUser, cambia_plazo: bool) -> None:
                             "Solo el administrador puede dar o quitar crédito a un cliente.")
 
 
-@router.post("/", response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
+@router.post("/", dependencies=[Depends(requiere_permiso("Clientes", "Terminal POS"))], response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Cliente",
              description="Registra un nuevo cliente/contribuyente.")
 def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_db),
@@ -70,7 +70,7 @@ def create_customer(customer: CustomerCreate, db: Session = Depends(get_tenant_d
     return db_customer
 
 
-@router.get("/", response_model=list[CustomerOut],
+@router.get("/", dependencies=[Depends(requiere_permiso("Clientes", "Productos"))], response_model=list[CustomerOut],
              summary="Listar Clientes",
              description="Obtiene todos los clientes registrados.")
 def list_customers(db: Session = Depends(get_tenant_db)):
@@ -129,7 +129,7 @@ def _cliente(db: Session, rut: str) -> Customer:
     return customer
 
 
-@router.post("/{rut}/pagos", response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
+@router.post("/{rut}/pagos", dependencies=[Depends(requiere_permiso("Clientes"))], response_model=CustomerOut, status_code=status.HTTP_201_CREATED,
              summary="Registrar pago de deuda",
              description="Baja la deuda de crédito interno. El pago en efectivo entra a la caja abierta.")
 def registrar_pago(rut: str, pago: CustomerPaymentCreate, db: Session = Depends(get_tenant_db),
@@ -164,7 +164,7 @@ def registrar_pago(rut: str, pago: CustomerPaymentCreate, db: Session = Depends(
     return customer
 
 
-@router.get("/{rut}/cuenta", response_model=CuentaCliente, summary="Cuenta corriente del cliente",
+@router.get("/{rut}/cuenta", dependencies=[Depends(requiere_permiso("Clientes"))], response_model=CuentaCliente, summary="Cuenta corriente del cliente",
             description="Saldo y movimientos de crédito interno (ventas, notas de crédito y pagos), el más nuevo primero.")
 def cuenta(rut: str, db: Session = Depends(get_tenant_db)):
     customer = _cliente(db, rut)
@@ -192,7 +192,7 @@ def cuenta(rut: str, db: Session = Depends(get_tenant_db)):
     return CuentaCliente(saldo=customer.current_balance or 0, movimientos=movimientos)
 
 
-@router.put("/{rut}", response_model=CustomerOut,
+@router.put("/{rut}", dependencies=[Depends(requiere_permiso("Clientes"))], response_model=CustomerOut,
              summary="Actualizar Cliente",
              description="Actualiza datos de un cliente existente.")
 def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_tenant_db),
@@ -216,7 +216,7 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
     return db_customer
 
 
-@router.delete("/{rut}", status_code=status.HTTP_204_NO_CONTENT,
+@router.delete("/{rut}", dependencies=[Depends(requiere_permiso("Clientes"))], status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Cliente",
                description="Desactiva un cliente: deja de aparecer, pero sus ventas y su deuda se conservan.")
 def delete_customer(rut: str, db: Session = Depends(get_tenant_db)):

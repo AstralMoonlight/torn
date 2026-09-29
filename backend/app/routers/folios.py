@@ -11,7 +11,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from app.dependencies.tenant import get_current_global_user, get_current_tenant_user, require_admin
+from app.dependencies.tenant import get_current_global_user, get_current_tenant_user, require_admin, requiere_permiso
 from app.models.saas import SaaSUser, TenantUser
 from app.services import dte_client
 
@@ -88,7 +88,7 @@ async def upload_caf(
     ).json()
 
 
-@router.get("/certificate", summary="Certificado digital vigente")
+@router.get("/certificate", dependencies=[Depends(requiere_permiso("Configuración"))], summary="Certificado digital vigente")
 def get_certificate(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Titular y vigencia del certificado, sin material sensible. `null` si no hay."""
     try:

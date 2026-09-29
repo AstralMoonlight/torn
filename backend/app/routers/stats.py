@@ -12,7 +12,7 @@ from sqlalchemy import func, desc, case, or_
 from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct, ReportOut, ReportItem
-from app.dependencies.tenant import get_tenant_db, require_admin
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -74,7 +74,7 @@ def get_period_stats(db: Session, start_date: datetime) -> StatPeriod:
     )
 
 
-@router.get("/summary", response_model=DashboardSummary, dependencies=[Depends(require_admin)])
+@router.get("/summary", response_model=DashboardSummary, dependencies=[Depends(requiere_permiso("Dashboard"))])
 def get_dashboard_summary(db: Session = Depends(get_tenant_db)):
     """Obtiene resumen de ventas y margen diario, semanal y mensual."""
     now = get_now()
@@ -93,7 +93,7 @@ def get_dashboard_summary(db: Session = Depends(get_tenant_db)):
     )
 
 
-@router.get("/top-products", response_model=TopProductsResponse)
+@router.get("/top-products", dependencies=[Depends(requiere_permiso("Dashboard"))], response_model=TopProductsResponse)
 def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_tenant_db)):
     """Ranking de productos más vendidos y más rentables."""
     start_date = get_now() - timedelta(days=days)
@@ -139,7 +139,7 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_t
     )
 
 
-@router.get("/report", response_model=ReportOut, dependencies=[Depends(require_admin)])
+@router.get("/report", response_model=ReportOut, dependencies=[Depends(requiere_permiso("Reportes de Ventas"))])
 def get_report(
     period: str = "day",  # day, week, month
     date: str = None,     # YYYY-MM-DD

@@ -5,14 +5,14 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 from app.models.brand import Brand
 from app.schemas import BrandCreate, BrandOut, BrandUpdate
 
 router = APIRouter(prefix="/brands", tags=["brands"])
 
 
-@router.post("/", response_model=BrandOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", dependencies=[Depends(requiere_permiso("Marcas", "Productos"))], response_model=BrandOut, status_code=status.HTTP_201_CREATED)
 def create_brand(brand: BrandCreate, db: Session = Depends(get_tenant_db)):
     """Crea una nueva marca."""
     existing = db.query(Brand).filter(Brand.name == brand.name).first()
@@ -35,7 +35,7 @@ def list_brands(db: Session = Depends(get_tenant_db)):
     return db.query(Brand).order_by(Brand.name).all()
 
 
-@router.put("/{brand_id}", response_model=BrandOut)
+@router.put("/{brand_id}", dependencies=[Depends(requiere_permiso("Marcas"))], response_model=BrandOut)
 def update_brand(brand_id: int, brand_update: BrandUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza una marca existente."""
     db_brand = db.query(Brand).filter(Brand.id == brand_id).first()
@@ -60,7 +60,7 @@ def update_brand(brand_id: int, brand_update: BrandUpdate, db: Session = Depends
     return db_brand
 
 
-@router.delete("/{brand_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{brand_id}", dependencies=[Depends(requiere_permiso("Marcas"))], status_code=status.HTTP_204_NO_CONTENT)
 def delete_brand(brand_id: int, db: Session = Depends(get_tenant_db)):
     """Elimina una marca."""
     db_brand = db.query(Brand).filter(Brand.id == brand_id).first()

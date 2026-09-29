@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
-from app.dependencies.tenant import get_current_local_user, get_tenant_db
+from app.dependencies.tenant import get_current_local_user, get_tenant_db, requiere_permiso
 from app.models.inventory import StockMovement
 from app.models.product import Product
 from app.models.user import User
@@ -70,7 +70,7 @@ def generate_ean13(product_id: int) -> str:
 # ── Endpoints ─────────────────────────────────────────────────────────
 
 
-@router.post("/", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
+@router.post("/", dependencies=[Depends(requiere_permiso("Productos"))], response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto Simple",
              description="Agrega un nuevo producto al catálogo. SKU y código de barras se auto-generan si no se proporcionan.")
 def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db),
@@ -111,7 +111,7 @@ def create_product(product: ProductCreate, db: Session = Depends(get_tenant_db),
     return db_product
 
 
-@router.post("/with-variants", response_model=ProductOut, status_code=status.HTTP_201_CREATED,
+@router.post("/with-variants", dependencies=[Depends(requiere_permiso("Productos"))], response_model=ProductOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Producto con Variantes",
              description="Crea un producto padre y sus variantes en un solo request.")
 def create_product_with_variants(payload: ProductCreateWithVariants, db: Session = Depends(get_tenant_db),
@@ -200,7 +200,7 @@ def list_products(db: Session = Depends(get_tenant_db)):
     ).order_by(Product.id.desc()).all()
 
 
-@router.put("/{product_id}", response_model=ProductOut,
+@router.put("/{product_id}", dependencies=[Depends(requiere_permiso("Productos"))], response_model=ProductOut,
             summary="Actualizar Producto",
             description="Actualiza parcialmente un producto.")
 def update_product(product_id: int, product_in: ProductUpdate, db: Session = Depends(get_tenant_db)):
@@ -234,7 +234,7 @@ def update_product(product_id: int, product_in: ProductUpdate, db: Session = Dep
     return product
 
 
-@router.post("/{product_id}/ajuste-stock", response_model=ProductOut,
+@router.post("/{product_id}/ajuste-stock", dependencies=[Depends(requiere_permiso("Productos"))], response_model=ProductOut,
              summary="Ajustar stock",
              description="Anota en el kardex la diferencia entre lo contado y lo que dice el sistema.")
 def ajustar_stock(product_id: int, ajuste: AjusteStock, db: Session = Depends(get_tenant_db),
@@ -254,7 +254,7 @@ def ajustar_stock(product_id: int, ajuste: AjusteStock, db: Session = Depends(ge
     return product
 
 
-@router.get("/{product_id}/movimientos", response_model=List[StockMovementOut],
+@router.get("/{product_id}/movimientos", dependencies=[Depends(requiere_permiso("Productos"))], response_model=List[StockMovementOut],
             summary="Kardex del producto", description="Movimientos de stock, el más nuevo primero.")
 def movimientos(product_id: int, limit: int = 100, db: Session = Depends(get_tenant_db)):
     return (
@@ -263,7 +263,7 @@ def movimientos(product_id: int, limit: int = 100, db: Session = Depends(get_ten
     )
 
 
-@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT,
+@router.delete("/{product_id}", dependencies=[Depends(requiere_permiso("Productos"))], status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Producto",
                description="Realiza un borrado lógico del producto y sus variantes.")
 def delete_product(product_id: int, db: Session = Depends(get_tenant_db)):

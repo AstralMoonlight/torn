@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 from app.models.price_list import PriceList, PriceListProduct
 from app.models.customer import Customer
 from app.models.product import Product
@@ -90,7 +90,7 @@ def _get_or_404(db: Session, price_list_id: int) -> PriceList:
 
 # ── CRUD ────────────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=PriceListRead, status_code=status.HTTP_201_CREATED,
+@router.post("/", dependencies=[Depends(requiere_permiso("Productos"))], response_model=PriceListRead, status_code=status.HTTP_201_CREATED,
              summary="Crear Lista de Precios")
 def create_price_list(data: PriceListCreate, db: Session = Depends(get_tenant_db)):
     """Crea una nueva lista de precios vacía."""
@@ -113,7 +113,7 @@ def get_price_list(price_list_id: int, db: Session = Depends(get_tenant_db)):
     return PriceListDetail.from_orm_with_items(_get_or_404(db, price_list_id))
 
 
-@router.put("/{price_list_id}", response_model=PriceListRead, summary="Actualizar Lista de Precios")
+@router.put("/{price_list_id}", dependencies=[Depends(requiere_permiso("Productos"))], response_model=PriceListRead, summary="Actualizar Lista de Precios")
 def update_price_list(price_list_id: int, data: PriceListUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza nombre y/o descripción de una lista."""
     pl = _get_or_404(db, price_list_id)
@@ -124,7 +124,7 @@ def update_price_list(price_list_id: int, data: PriceListUpdate, db: Session = D
     return pl
 
 
-@router.delete("/{price_list_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar Lista de Precios")
+@router.delete("/{price_list_id}", dependencies=[Depends(requiere_permiso("Productos"))], status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar Lista de Precios")
 def delete_price_list(price_list_id: int, db: Session = Depends(get_tenant_db)):
     """Elimina la lista. Los clientes asignados quedarán sin lista (ON DELETE SET NULL)."""
     pl = _get_or_404(db, price_list_id)
@@ -135,7 +135,7 @@ def delete_price_list(price_list_id: int, db: Session = Depends(get_tenant_db)):
 
 # ── Asignación de Productos ─────────────────────────────────────────────────
 
-@router.put("/{price_list_id}/products", response_model=PriceListDetail, summary="Asignar Productos con Precio Fijo")
+@router.put("/{price_list_id}/products", dependencies=[Depends(requiere_permiso("Productos"))], response_model=PriceListDetail, summary="Asignar Productos con Precio Fijo")
 def assign_products(
     price_list_id: int,
     data: AssignProductsRequest,
@@ -181,7 +181,7 @@ def assign_products(
 
 # ── Asignación de Clientes ──────────────────────────────────────────────────
 
-@router.put("/{price_list_id}/customers", summary="Asignar Clientes a Lista de Precios")
+@router.put("/{price_list_id}/customers", dependencies=[Depends(requiere_permiso("Productos"))], summary="Asignar Clientes a Lista de Precios")
 def assign_customers(
     price_list_id: int,
     data: AssignCustomersRequest,

@@ -20,7 +20,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app.database import SessionLocal, engine
 from app.models.saas import SaaSUser, Tenant, TenantUser
 from app.models.sale import Sale
-from app.models.user import User
+from app.models.user import Role, User
 from app.utils.schemas import safe_schema_name
 from jose import JWTError, jwt
 
@@ -221,3 +221,27 @@ def require_admin(tenant_user: Annotated[TenantUser, Depends(get_current_tenant_
             detail="Acceso denegado: se requieren permisos de administrador de empresa."
         )
     return tenant_user
+
+
+def requiere_permiso(*claves: str):
+    """El rol tiene en `true` alguna de estas claves del menú (#60).
+
+    Son las mismas claves que leen el menú (`Sidebar.tsx`), el guardián de rutas
+    (`AppShell.tsx`) y el editor de roles: lo que el personal no ve en el menú
+    tampoco lo puede hacer llamando directo a la API. El administrador pasa siempre.
+    """
+    def verificar(
+        tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],
+        db: Session = Depends(get_tenant_db),
+    ) -> TenantUser:
+        if es_admin(tenant_user):
+            return tenant_user
+        rol = db.query(Role).filter(Role.name == tenant_user.role_name).first()
+        permisos = (rol.permissions if rol else None) or {}
+        if not any(permisos.get(clave) is True for clave in claves):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Su usuario no tiene acceso a {claves[0]}. Pídaselo al administrador.",
+            )
+        return tenant_user
+    return verificar

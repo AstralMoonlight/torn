@@ -6,10 +6,21 @@ from pydantic import BaseModel
 from app.models.user import User, Role
 from app.models.saas import SaaSUser, TenantUser
 from app.schemas import UserCreate, UserUpdate, UserOut
-from app.dependencies.tenant import get_tenant_db, get_global_db, get_current_tenant_user
+from app.dependencies.tenant import get_tenant_db, get_global_db, get_current_tenant_user, es_admin, requiere_permiso
 from app.utils.security import get_password_hash
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _solo_admin_toca_admin(quien: TenantUser, db: Session, *roles_ids: Optional[int]) -> None:
+    """Quien tiene "Personal" sin ser administrador no crea, edita ni da de baja un
+    administrador, ni se da ese rol a sí mismo o a otro (#60)."""
+    if es_admin(quien):
+        return
+    ids = [r for r in roles_ids if r is not None]
+    if ids and db.query(Role).filter(Role.id.in_(ids), Role.name == "ADMINISTRADOR").first():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Solo el administrador puede crear o cambiar un administrador.")
 
 # --- Endpoints ---
 
@@ -18,7 +29,7 @@ def list_sellers(db: Session = Depends(get_tenant_db)):
     """Lista todos los usuarios con rol SELLER activos."""
     return db.query(User).filter(User.role == "SELLER", User.is_active == True, User.is_system_user == False).all()
 
-@router.get("/", response_model=List[UserOut], summary="Listar Todos los Usuarios")
+@router.get("/", dependencies=[Depends(requiere_permiso("Personal"))], response_model=List[UserOut], summary="Listar Todos los Usuarios")
 def list_all_users(
     role: Optional[str] = None, 
     db: Session = Depends(get_tenant_db),
@@ -58,7 +69,7 @@ def list_all_users(
 
     return results
 
-@router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Crear Usuario")
+@router.post("/", dependencies=[Depends(requiere_permiso("Personal"))], response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Crear Usuario")
 def create_user(
     user: UserCreate, 
     db: Session = Depends(get_tenant_db),
@@ -66,6 +77,7 @@ def create_user(
     global_db: Session = Depends(get_global_db)
 ):
     """Crea un nuevo usuario (Vendedor/Admin/etc) tanto a nivel Global como Local."""
+    _solo_admin_toca_admin(global_user_info, db, user.role_id)
     if not user.email:
         raise HTTPException(status_code=400, detail="El Email es requerido para el login")
 
@@ -127,7 +139,7 @@ def create_user(
         
     return db_user
 
-@router.put("/{user_id}", response_model=UserOut, summary="Actualizar Usuario")
+@router.put("/{user_id}", dependencies=[Depends(requiere_permiso("Personal"))], response_model=UserOut, summary="Actualizar Usuario")
 def update_user(
     user_id: int, 
     user_update: UserUpdate, 
@@ -165,6 +177,7 @@ def update_user(
         
     if db_user.is_system_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No se puede modificar un usuario de sistema.")
+    _solo_admin_toca_admin(global_user_info, db, db_user.role_id, user_update.role_id)
         
     old_email = db_user.email
     
@@ -205,7 +218,7 @@ def update_user(
     db.refresh(db_user)
     return db_user
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desactivar Usuario")
+@router.delete("/{user_id}", dependencies=[Depends(requiere_permiso("Personal"))], status_code=status.HTTP_204_NO_CONTENT, summary="Desactivar Usuario")
 def delete_user(
     user_id: int, 
     db: Session = Depends(get_tenant_db),
@@ -222,6 +235,7 @@ def delete_user(
         
     if db_user.is_system_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No se puede eliminar un usuario de sistema.")
+    _solo_admin_toca_admin(global_user_info, db, db_user.role_id)
     
     db_user.is_active = False
     db.commit()

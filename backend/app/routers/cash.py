@@ -15,14 +15,14 @@ from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut, CashSessionWithUserOut
 
-from app.dependencies.tenant import get_tenant_db, get_current_local_user, get_current_global_user
+from app.dependencies.tenant import get_tenant_db, get_current_local_user, get_current_global_user, requiere_permiso
 from app.models.saas import SaaSUser
 from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
 
 
-@router.post("/open", response_model=CashSessionOut,
+@router.post("/open", dependencies=[Depends(requiere_permiso("Caja"))], response_model=CashSessionOut,
              summary="Abrir Caja",
              description="Inicia un nuevo turno de caja para el usuario actual.")
 def open_session(
@@ -138,7 +138,7 @@ def session_status(
     return active_session
 
 
-@router.post("/close", response_model=CashSessionOut,
+@router.post("/close", dependencies=[Depends(requiere_permiso("Caja"))], response_model=CashSessionOut,
              summary="Cerrar Caja",
              description="Cierra el turno y realiza el arqueo de caja.")
 def close_session(
@@ -224,7 +224,7 @@ def close_session(
     return active_session
 
 
-@router.get("/sessions", response_model=List[CashSessionWithUserOut],
+@router.get("/sessions", dependencies=[Depends(requiere_permiso("Caja"))], response_model=List[CashSessionWithUserOut],
              summary="Historial de Sesiones",
              description="Obtiene el historial de todas las sesiones de caja (arqueos).")
 def list_sessions(

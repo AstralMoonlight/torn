@@ -32,7 +32,7 @@ from app.utils.taxes import (
     resolve_tax_rate, round_to_nearest_ten, totales_dte,
 )
 from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
-from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user, es_admin
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, get_global_db, get_current_local_user, get_current_global_user, es_admin, requiere_permiso
 from app.models.saas import TenantUser, SaaSUser
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -274,7 +274,7 @@ def list_payment_methods(db: Session = Depends(get_tenant_db)):
     return db.query(PaymentMethod).filter(PaymentMethod.is_active == True).all()  # noqa: E712
 
 
-@router.get("/", response_model=List[SaleOut],
+@router.get("/", dependencies=[Depends(requiere_permiso("Historial"))], response_model=List[SaleOut],
             summary="Listar Ventas",
             description="Lista las ventas con filtros opcionales.")
 def list_sales(
@@ -318,7 +318,7 @@ def list_sales(
     return sales
 
 
-@router.post("/dte-estados", summary="Actualizar estado SII",
+@router.post("/dte-estados", dependencies=[Depends(requiere_permiso("Historial"))], summary="Actualizar estado SII",
              description="Consulta a dte-torn las ventas cuyo estado todavía puede cambiar.")
 def actualizar_estados_dte(
     db: Session = Depends(get_tenant_db),
@@ -350,7 +350,7 @@ def actualizar_estados_dte(
     return {"pendientes": len(pendientes), "cambiadas": cambiadas}
 
 
-@router.post("/", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+@router.post("/", dependencies=[Depends(requiere_permiso("Terminal POS"))], response_model=SaleOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Venta",
              description="Registra una nueva venta de forma atómica.",
              response_description="Objeto de venta creado con detalles y folio.")
@@ -364,7 +364,7 @@ def create_sale(
     return _registrar_venta(sale_in, db, local_user, global_user, tenant_user)
 
 
-@router.get("/guias-pendientes", response_model=List[SaleOut], summary="Guías por facturar")
+@router.get("/guias-pendientes", dependencies=[Depends(requiere_permiso("Historial"))], response_model=List[SaleOut], summary="Guías por facturar")
 def guias_pendientes(db: Session = Depends(get_tenant_db)):
     """Guías de venta (no traslados internos) que todavía no se facturan, las más antiguas primero."""
     return (
@@ -377,7 +377,7 @@ def guias_pendientes(db: Session = Depends(get_tenant_db)):
     )
 
 
-@router.post("/facturar-guias", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+@router.post("/facturar-guias", dependencies=[Depends(requiere_permiso("Historial"))], response_model=SaleOut, status_code=status.HTTP_201_CREATED,
              summary="Facturar guías de despacho")
 def facturar_guias(
     datos: FacturarGuias,
@@ -711,7 +711,7 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
     return sale_loaded
 
 
-@router.post("/return", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+@router.post("/return", dependencies=[Depends(requiere_permiso("Historial"))], response_model=SaleOut, status_code=status.HTTP_201_CREATED,
              summary="Crear Devolución (NC)",
              description="Genera una Nota de Crédito por devolución de productos.",
              response_description="Nota de Crédito generada.")
@@ -909,7 +909,7 @@ def create_return(
     return nc_sale
 
 
-@router.post("/{sale_id}/reenviar-xml", response_model=SaleOut, summary="Mandar el XML al cliente")
+@router.post("/{sale_id}/reenviar-xml", dependencies=[Depends(requiere_permiso("Historial"))], response_model=SaleOut, summary="Mandar el XML al cliente")
 def reenviar_xml(
     sale_id: int,
     datos: ReenviarXml,
@@ -931,7 +931,7 @@ def reenviar_xml(
     return sale
 
 
-@router.post("/{sale_id}/corrige-texto", response_model=SaleOut, status_code=status.HTTP_201_CREATED,
+@router.post("/{sale_id}/corrige-texto", dependencies=[Depends(requiere_permiso("Historial"))], response_model=SaleOut, status_code=status.HTTP_201_CREATED,
              summary="NC que corrige texto")
 def create_nc_corrige_texto(
     sale_id: int,
