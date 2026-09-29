@@ -479,6 +479,29 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 
 ---
 
+### [ ] 35. #60: el backend revisa los permisos del rol
+- **Rama:** `fix/permisos-backend` (sin mergear: no se pudo probar en el navegador sin Docker)
+- **Hallazgo:** además del menú (punto 32), la API no revisaba nada: una vendedora con su token podía
+  crear un usuario **ADMINISTRADOR** (`POST /users/`), cambiar el emisor (`PUT /issuer/`) o los
+  impuestos, y leer compras, proveedores y reportes.
+- **Qué:** `requiere_permiso(...)` en `dependencies/tenant.py` con las mismas claves del menú; el
+  administrador pasa siempre. Escrituras de Productos (y Listas de precios), Marcas, Clientes,
+  Configuración y Personal; Compras y Proveedores completos; Historial (listar, devolver, corrige
+  texto, guías, reenviar XML, refrescar estados); Dashboard, Reportes y Caja (abrir, cerrar, turnos);
+  la venta pide Terminal POS. Siguen abiertas las lecturas que usa el POS (productos, clientes,
+  listas, impuestos, ajustes, folios, medios de pago, PDF de la venta, estado de caja). Crear cliente
+  acepta Clientes o Terminal POS (el POS crea clientes). Quien tiene Personal sin ser administrador no
+  toca a un administrador ni da ese rol. `descuento_maximo` solo lo cambia el administrador (si no,
+  el personal se subía su propio tope). `/roles` (lectura), `/stats` y `/reports/dashboard` pasan de
+  `require_admin` a su clave del menú, como ya hacía el frontend.
+- **Verificado:** backend 201 en verde (`test_permisos.py`: 15 endpoints que la vendedora no alcanza,
+  los de su menú sí, rol inexistente no vende, Personal no toca al administrador). Sin navegador.
+- **Revisar:** entrar al POS, Caja, Historial y Clientes con la vendedora de prueba de la copia y
+  hacer una venta y una devolución; que ninguna pantalla suya muestre "Su usuario no tiene acceso a...".
+  El resto de #60 (auditoría completa y secretos del piloto) sigue pendiente.
+
+---
+
 ## Lo que falta (necesita que decidas o hagas algo)
 
 Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo día: #53 y #54 cerrados, #59 a #62 nuevos). Nada de lo que sigue se empezó salvo lo que dice:
@@ -498,7 +521,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
 | **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
-| **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Incluir que el backend no revisa los permisos del menú | `lanzamiento.md` 1.5, punto 32 |
+| **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Los permisos por endpoint ya están en el punto 35 | `lanzamiento.md` 1.5, punto 32 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
 (cuadratura del kardex viejo; tras vaciar JCB no hace falta), N1-N4, F1, P1-P4, J1-J2, C2, V1-V2, M1 de
