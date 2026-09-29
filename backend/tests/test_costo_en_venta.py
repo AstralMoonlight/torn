@@ -71,3 +71,41 @@ def test_la_nota_de_credito_resta_en_los_reportes(client, db_session):
 
     [top] = client.get("/stats/top-products").json()["by_quantity"]
     assert Decimal(top["total_qty"]) == 3
+
+
+def test_un_documento_rechazado_no_cuenta_pero_se_informa(client, db_session):
+    """Un rechazado se vuelve a emitir: contarlo duplicaría la venta."""
+    db_session.add_all([
+        Customer(rut="12345678-5", razon_social="Cliente", giro="G", direccion="D", comuna="C"),
+        PaymentMethod(code="EFECTIVO", name="Efectivo"),
+        Product(codigo_interno="C-1", nombre="Saco", precio_neto=1000, costo_unitario=600),
+    ])
+    db_session.commit()
+    assert client.post("/cash/open", json={"start_amount": 0}).status_code == 200
+    ids = []
+    for cantidad, pago in (("1", "1190"), ("2", "2380")):
+        venta = client.post("/sales/", json={
+            "rut_cliente": "12345678-5", "tipo_dte": 33,
+            "items": [{"product_id": 1, "cantidad": cantidad}],
+            "payments": [{"payment_method_id": 1, "amount": pago}],
+        })
+        assert venta.status_code == 201, venta.text
+        ids.append(venta.json()["id"])
+    from app.models.sale import Sale
+    db_session.get(Sale, ids[1]).dte_estado = "RECHAZADO"
+    db_session.commit()
+
+    reporte = client.get("/stats/report").json()
+    assert Decimal(reporte["total_ventas"]) == 1190
+    assert Decimal(reporte["total_utilidad"]) == 400
+    assert reporte["rechazados"] == 1
+    assert Decimal(reporte["monto_rechazado"]) == 2380
+
+    dia = client.get("/stats/summary").json()["daily"]
+    assert (Decimal(dia["sales_total"]), dia["sales_count"]) == (1190, 1)
+    [top] = client.get("/stats/top-products").json()["by_quantity"]
+    assert Decimal(top["total_qty"]) == 1
+
+    kpis = client.get("/reports/dashboard").json()["kpis"]
+    assert (kpis["total_ventas"], kpis["num_ventas"]) == (1190, 1)
+    assert (kpis["num_rechazados"], kpis["total_rechazados"]) == (1, 2380)

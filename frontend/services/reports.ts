@@ -10,6 +10,9 @@ export interface DashboardData {
         ticket_promedio: number
         num_notas_credito: number
         total_notas_credito: number
+        /** Rechazados por el SII: fuera de los totales, solo se informan. */
+        num_rechazados: number
+        total_rechazados: number
     }
     ventas_por_hora: Array<{
         hora: string
