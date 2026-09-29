@@ -502,6 +502,33 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 
 ---
 
+### [ ] 36. #62: volver a emitir un documento rechazado
+- **Rama:** `feat/reemitir-rechazado` (sin mergear: sin Docker no se probó la migración ni el navegador)
+- **Decisión que tomé:** reusar la venta, no anularla. Anular devolvía el stock de algo que el cliente
+  ya se llevó; reusarla deja stock, caja y deuda como están y solo cambia el documento.
+- **Qué:** `POST /sales/{id}/reemitir` (solo RECHAZADO o ERROR_VALIDACION): documento nuevo en
+  dte-torn con external_id `venta-{id}-{folio rechazado}`, las mismas líneas, descuentos y pagos, y
+  los datos del cliente **de ahora** (el rechazo suele ser su giro o dirección, que se corrige antes
+  en Clientes). Sin NC: un rechazado no existe para el SII. La NC de devolución rechazada repite lo
+  devuelto. La venta toma la fecha del documento nuevo (la que citan las notas posteriores).
+  `sales.dte_external_id` (migración `a9b0c1d2e3f4`) hace que el refresco de estados y "Mandar el
+  XML" sigan al documento nuevo. Historial: "Emitir de nuevo", con lo que dijo el SII; en un
+  rechazado ya no se ofrece devolver ni corregir (la NC citaría un documento que el SII no tiene).
+- **Verificado:** backend 188 en verde (`test_reemitir.py`: factura con datos corregidos y mismo
+  total, sin mover stock; solo rechazados; si dte-torn falla la venta queda igual; refresco y XML al
+  documento nuevo; NC rechazada). `tsc` y lint. **Sin navegador ni migración en Postgres.**
+- **Revisar:**
+  - `docker compose up -d --build` y que el backend arranque (la migración corre sola; si falla, el
+    contenedor no levanta). Es la misma forma que `f8a9b0c1d2e3`.
+  - En la copia, en modo Desarrollador: marcar una venta como RECHAZADO a mano en la base y emitirla
+    de nuevo desde Historial.
+  - La NC que corrige texto rechazada no se reemite (no guarda líneas): se hace de nuevo.
+  - Una guía reemitida sale sin tipo de despacho (no se guarda en la venta).
+  - Al mergear con el punto 35: agregar `dependencies=[Depends(requiere_permiso("Historial"))]` a
+    `/sales/{id}/reemitir`.
+
+---
+
 ## Lo que falta (necesita que decidas o hagas algo)
 
 Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo día: #53 y #54 cerrados, #59 a #62 nuevos). Nada de lo que sigue se empezó salvo lo que dice:
@@ -511,7 +538,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
-| **Volver a emitir un rechazado** (#62) | Hoy se hace otra venta y el stock sale dos veces. ¿Un botón "Emitir de nuevo" que reuse la venta, o la NC de la rechazada? | punto 27 |
+| **Volver a emitir un rechazado** (#62) | Hecho en el punto 36 (reusa la venta): revisar y mergear | puntos 27 y 36 |
 | **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
