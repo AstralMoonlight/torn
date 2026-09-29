@@ -102,7 +102,8 @@ solo si el traslado es venta. En el traslado interno "el ejemplar cedible es ino
 
 ### Checkpoint B
 - [x] Guía enviada sin reparos (SOK)
-- [ ] Revisión del diff de fase 3 (no se hizo; ya no bloquea porque el SII aceptó el envío)
+- [x] Revisión del diff de fase 3: hecha en la revisión #57 (2026-09-28, `tasks/checklist.md` punto 21);
+      corrigió el ticket de la guía. Mergeado a `main` el 2026-09-29.
 
 ---
 
@@ -143,7 +144,8 @@ retención total, entrega gratuita como IVA no recuperable (código a confirmar)
 
 ### Checkpoint C
 - [x] 6 sets declarados
-- [ ] Revisión del diff de fase 4 (no se hizo; ya no bloquea porque el SII aceptó el envío)
+- [x] Revisión del diff de fase 4: hecha en la revisión #57 (2026-09-28, `tasks/checklist.md` punto 21),
+      sin cambios en `libros.py`.
 
 ---
 

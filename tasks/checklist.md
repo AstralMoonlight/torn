@@ -1,10 +1,13 @@
 # Checklist de revisión (2026-09-28, segunda tanda 2026-09-29)
 
-Trabajo hecho a partir de los pendientes de `tasks/`, **una rama por tarea, sin mergear**. Cada punto
-dice la rama, qué cambió, cómo se verificó y qué mirar al revisar. Marcar `[x]` cuando se apruebe y se
-mergee; si necesita cambios, anotarlos debajo del punto.
+> **Mergeado a `main` el 2026-09-29** (merge de `revision/todo-junto`, las 24 ramas juntas). En `main`:
+> backend 172 tests, dte-torn en verde, frontend `tsc`, lint (los 7 warnings de siempre), contrato de
+> totales 17/17 y `npm run build`. Las ramas locales se borraron. Lo de abajo queda como registro de
+> qué cambió y qué mirar; los `[ ]` son para marcar lo que vayas revisando en uso. Lo que sigue
+> pendiente está en "Lo que falta", al final.
 
-Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al mergear.
+Trabajo hecho a partir de los pendientes de `tasks/`, una rama por tarea. Cada punto dice la rama, qué
+cambió, cómo se verificó y qué mirar al revisar.
 
 ## Cómo mergear
 

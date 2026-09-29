@@ -71,7 +71,7 @@ Hoy el backend acepta un `descuento` por línea en pesos (`backend/app/schemas.p
 `frontend/components/pos` ni en el carrito. El descuento global no existe en el backend, y dte-torn
 acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porcentaje (`descuento_pct`).
 
-**Tareas** (2026-09-29: todo hecho en ramas sin mergear, ver `checklist.md` puntos 15, 16 y 26):
+**Tareas** (2026-09-29: todo hecho y mergeado a `main`, ver `checklist.md` puntos 15, 16 y 26):
 - [x] Test de contrato de los totales (D12): los tres cálculos con los mismos casos, incluidos los
       descuentos. Rama `test/contrato-totales`; sin pendientes desde `feat/descuentos` (17 casos).
 - [x] POS: descuento por ítem en $ o % (`feat/descuentos`).
@@ -153,7 +153,7 @@ Cada una se trabaja como un issue: commit, tests y verificación.
 5. **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
    `fecha_vencimiento`. Hecho en ramas (`feat/forma-pago-credito` y `feat/vencimiento-credito`): el
    vencimiento es hoy + el plazo del cliente (decidido 2026-09-29: plazo por cliente; sin plazo no
-   compra fiado; lo asigna el administrador). Falta mergear y cerrar #44.
+   compra fiado; lo asigna el administrador). Mergeado a `main` el 2026-09-29.
 
 ### B. Paso a producción (postergado por el usuario, salvo el selector de P2)
 
