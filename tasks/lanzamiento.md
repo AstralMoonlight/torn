@@ -42,11 +42,11 @@ plan (lista + ficha, menú, Mi negocio) va **después** del piloto, con lo que a
 | 1 | Rotación de logs de Docker (driver `local` en los dos compose) | El `json-file` crece sin límite y llena el disco del PC | ✅ `2bfd862` |
 | 2 | **A1** "Sin marca" manda `null`; fuera "Sin impuesto (0%)" | Editar un producto fallaba al cargar el catálogo | ✅ `df4b4c6` |
 | 3 | **A5** El cierre de caja resta las devoluciones en efectivo | La primera devolución descuadra el arqueo por el doble | Hecho en la rama `fix/arqueo-devoluciones`, sin mergear |
-| 4 | **NC de una boleta sin cliente** (consumidor final) | dte-torn exige giro, dirección y comuna al receptor de una 61; sin esto no se devuelve el grueso de las ventas. Test en dte-torn y en el backend | |
-| 5 | **A3** Historial sin tope de 50 | Ver abajo | |
-| 6 | **K1 + K3** Ajuste de stock con kardex (Conteo, Merma, Stock inicial) y `PUT /products` sin `stock_actual` | La toma de inventario del día del corte tiene que quedar anotada | |
-| 7 | **C1** Pagos de clientes con crédito interno (saldo, registrar pago; si es efectivo, entra al cierre de caja) | JCB fía: hoy la deuda sube y nunca baja | |
-| 8 | Alertas por correo (0.2) | Nadie está mirando el PC | |
+| 4 | **NC de una boleta sin cliente** (consumidor final) | dte-torn exige giro, dirección y comuna al receptor de una 61; sin esto no se devuelve el grueso de las ventas. Test en dte-torn y en el backend | Rama `fix/nc-boleta-consumidor-final`, sin mergear |
+| 5 | **A3** Historial sin tope de 50 | Ver abajo | Rama `feat/historial-busqueda`, sin mergear |
+| 6 | **K1 + K3** Ajuste de stock con kardex (Conteo, Merma, Stock inicial) y `PUT /products` sin `stock_actual` | La toma de inventario del día del corte tiene que quedar anotada | Rama `feat/kardex-ajuste-stock`, sin mergear |
+| 7 | **C1** Pagos de clientes con crédito interno (saldo, registrar pago; si es efectivo, entra al cierre de caja) | JCB fía: hoy la deuda sube y nunca baja | Rama `feat/pagos-credito-interno`, sin mergear |
+| 8 | Alertas por correo (0.2) | Nadie está mirando el PC | Falta decidir la casilla (ver 0.2) |
 
 **A3, decidido (2026-09-26):** el historial busca en **todas** las ventas, en el servidor, no dentro de
 las últimas 50. Por defecto muestra las de hoy; se cambia el día o el rango de fechas, y el buscador
@@ -146,7 +146,8 @@ Depende del respaldo (1.4) para la alerta de respaldo.
 - [ ] Acceso remoto sin abrir puertos en el router del local: una VPN tipo Tailscale o un túnel, con
       SSH solo por llave (sin contraseña).
 - [ ] Actualizaciones del sistema operativo y de Docker fuera del horario de atención.
-- [ ] Sesiones: cerrar sesión o bloquear al rato de inactividad, para que no quede el POS abierto con
+- [ ] Sesiones (sin empezar; propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio):
+      cerrar sesión o bloquear al rato de inactividad, para que no quede el POS abierto con
       el usuario administrador.
 
 ### 1.6 Facilidad de uso para personas mayores

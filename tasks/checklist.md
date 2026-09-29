@@ -1,4 +1,4 @@
-# Checklist de revisión (2026-09-28)
+# Checklist de revisión (2026-09-28, segunda tanda 2026-09-29)
 
 Trabajo hecho a partir de los pendientes de `tasks/`, **una rama por tarea, sin mergear**. Cada punto
 dice la rama, qué cambió, cómo se verificó y qué mirar al revisar. Marcar `[x]` cuando se apruebe y se
@@ -8,19 +8,24 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
 
 ## Cómo mergear
 
-- **Todas juntas funcionan.** La rama `revision/todo-junto` es `main` con las 20 ramas mezcladas y los
-  conflictos resueltos: backend 153 tests (4 saltados: descuentos pendientes), dte-torn 335, frontend
-  `tsc`, lint (solo los 7 warnings que ya había), `npm test` y `npm run build`, migraciones encadenadas
-  sobre una copia de la base, y las pantallas tocadas cargando sin errores. Es de referencia: si una
-  rama cambia en la revisión, esa rama manda.
+- **Todas juntas funcionan.** La rama `revision/todo-junto` es `main` con las **24** ramas mezcladas y
+  los conflictos resueltos. Primera tanda (20 ramas): backend 153 tests, dte-torn 335, frontend `tsc`,
+  lint (solo los 7 warnings que ya había), `npm test` y `npm run build`, migraciones encadenadas sobre
+  una copia de la base, y las pantallas tocadas cargando sin errores. Con la segunda tanda (puntos 23
+  a 26): backend **165** en verde (5 saltados: piden Postgres real y Docker estaba apagado), contrato de
+  totales 17/17 en el frontend, `tsc` limpio. Es de referencia: si una rama cambia en la revisión, esa
+  rama manda.
 - **Conflictos esperables** (todos de "dos ramas agregan en el mismo lugar", se resuelven dejando ambos
   lados): `backend/tests/test_devoluciones.py` (NC de boleta y arqueo), `backend/tests/test_dte_impreso.py`
   (tickets), y `backend/app/routers/sales.py` entre forma de pago, errores y kardex. En la llamada a
   `_emitir_dte` de `_registrar_venta` queda **una** llamada con `_forma_pago(...)` y, debajo, el `for`
   que pone la glosa a los movimientos.
 - **Alembic:** C1 (`a3b4c5d6e7f8`) y A6 (`b4c5d6e7f8a9`) salen las dos de `f2a3b4c5d6e7`. La que entre
-  segunda cambia su `down_revision` a la otra (en `revision/todo-junto`, A6 va después de C1).
-- **Orden sugerido:** A5 antes que C1 (C1 sale de A5).
+  segunda cambia su `down_revision` a la otra (en `revision/todo-junto`, A6 va después de C1). Las de
+  la segunda tanda ya van encadenadas detrás: `b4c5d6e7f8a9` -> `c5d6e7f8a9b0` (vencimiento) ->
+  `d6e7f8a9b0c1` (descuentos). Si A6 no entra, cambiar el `down_revision` de `c5d6e7f8a9b0`.
+- **Orden sugerido:** A5 antes que C1 (C1 sale de A5). Las ramas 23 a 25 salen de
+  `revision/todo-junto`; la 26 (descuentos) sale de la 25 (vencimiento): mergear la 25 primero.
 
 ---
 
@@ -112,8 +117,7 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   probada arriba y abajo en una copia (2.180 líneas del tenant de demo quedaron con el costo actual).
 - **Ojo al mergear:** esta migración y la de C1 salen las dos de `f2a3b4c5d6e7`. La que se mergee
   segunda tiene que cambiar su `down_revision` a la otra, o `alembic upgrade head` falla por dos heads.
-- **Visto de paso (no cambiado):** los reportes suman las NC como si fueran ventas (monto y utilidad
-  positivos). Merece su propio arreglo.
+- **Visto de paso:** los reportes sumaban las NC como si fueran ventas. Arreglado en el punto 23.
 
 ---
 
@@ -151,9 +155,8 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
 - **Qué:** las facturas (33, 34) mandan `forma_pago`: **2 (crédito)** si algún pago es crédito interno,
   aunque sea una parte; **1 (contado)** si no. Boletas y notas no llevan. El PDF carta ya la imprime.
 - **Verificado:** 4 tests (`test_forma_pago.py`).
-- **Pendiente tuyo (por eso el commit dice "Refs #44" y el issue sigue abierto):** de dónde sale la
-  **fecha de vencimiento** (plazo por cliente, uno por defecto en Mi negocio o elegido en el POS). Y
-  confirmar que un pago mixto vaya como crédito.
+- **Vencimiento:** hecho en el punto 25 (plazo de la empresa, 30 días por defecto). Falta confirmar que
+  un pago mixto vaya como crédito (así quedó).
 
 ### [ ] 14. #46: el ticket no deja salir del papel un texto largo
 - **Rama:** `fix/ticket-textos-largos`
@@ -182,8 +185,7 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   `Descuento: -$1.500` / `Cliente frecuente: -5%` abajo, como el PDF carta (ese ya estaba bien: lo
   aprobó el SII en las muestras).
 - **Verificado:** test con un XML con descuento de línea en % y dos globales.
-- **Pendiente:** #41 y #42 (dar descuentos desde el POS) esperan la decisión de **#40** (quién puede y
-  con qué tope); el propio issue pide decidirlo antes de hacer la pantalla.
+- **Dar descuentos desde el POS (#41, #42):** hecho en el punto 26, con la decisión de #40 que tomé yo.
 
 ---
 
@@ -240,8 +242,8 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
   "El vendedor (ID 1)..."). En el POS, la marca "sin folios" pasa a "agotado" con una ayuda.
 - **Verificado:** 5 tests de los mensajes; en el navegador, el cobro de una boleta sin números muestra
   el texto nuevo.
-- **Visto de paso:** al entrar al POS desde saas-admin, a veces dice "Caja cerrada" con la caja
-  abierta (se arregla al ir a Caja y volver). No lo investigué.
+- **Visto de paso:** al entrar al POS desde saas-admin, a veces decía "Caja cerrada" con la caja
+  abierta. Arreglado en el punto 24.
 
 ---
 
@@ -268,26 +270,111 @@ Este archivo vive solo en `main`: las ramas no lo tocan, para que no choquen al 
 
 ---
 
+## Segunda tanda (2026-09-29): lo que había quedado pendiente
+
+Lo que no necesitaba nada tuyo, más las dos decisiones de negocio que tomé con un valor por defecto
+configurable (vencimiento y descuentos). Revisar sobre todo esas decisiones.
+
+### [ ] 23. Los reportes restan las notas de crédito
+- **Rama:** `fix/reportes-nc` (sale de `revision/todo-junto`)
+- **Qué:** `stats.py` (panel, ranking de productos y Reportes) sumaba la NC (61) como una venta más:
+  devolver subía las ventas y la utilidad. Ahora la NC resta (monto, neto, IVA, cantidad y utilidad),
+  la ND (56) suma, la guía (52) no cuenta (la venta es la factura que la cobra) y el número de ventas
+  cuenta solo 33, 34, 39 y 41. El `/reports/dashboard` dejaba fuera las exentas (34 y 41): ya no.
+- **Verificado:** test nuevo en `test_costo_en_venta.py` (vender 5, devolver 2: ventas, neto,
+  utilidad, cantidad del ranking y número de ventas).
+- **Revisar:** un documento que el SII rechazó sigue contando (se cobró y la mercadería salió). Si
+  prefieres sacarlo de los reportes, es una línea.
+
+### [ ] 24. "Caja cerrada" falso al entrar al POS
+- **Rama:** `fix/pos-caja-cerrada` (sale de `revision/todo-junto`)
+- **Causa:** `AppShell` solo preguntaba el turno a `/cash/status` si el navegador tenía un `userId`
+  guardado, que se guarda al abrir la caja en ese navegador. El superusuario que llega desde saas-admin
+  no lo tiene: el POS usaba el estado viejo guardado y decía "Caja cerrada".
+- **Qué:** `sincronizarCaja()` en `services/cash.ts`, usada por `AppShell` (al entrar y al cambiar de
+  empresa) y por Caja. Elegir empresa limpia el turno de la anterior. El POS no muestra "Caja cerrada"
+  mientras todavía no sabe (estado `UNKNOWN`).
+- **Verificado:** en el navegador (frontend de la rama contra el backend de Docker): con el estado
+  guardado en "cerrada" y sin `userId`, el POS consultó el servidor y mostró los productos.
+
+### [ ] 25. #44: vencimiento de la factura fiada
+- **Rama:** `feat/vencimiento-credito` (sale de `revision/todo-junto`)
+- **Decisión que tomé:** el plazo es de la **empresa**: `system_settings.dias_credito`, **30 días** por
+  defecto, en Configuración > General > Ventas ("Plazo de pago de la factura fiada"). Con forma de pago
+  crédito (algún pago con crédito interno, aunque sea una parte), el DTE lleva `FchVenc` = hoy + plazo.
+- **Qué más:** el ticket 57/80 mm muestra "Forma de pago" y "Vencimiento", como el PDF carta.
+  Migración `c5d6e7f8a9b0`.
+- **Verificado:** tests del vencimiento (30 por defecto, 45 tras cambiarlo, sin vencimiento al contado)
+  y del ticket; en el navegador, el campo guarda (45) contra una copia de la base (`torn_migtest`).
+- **Revisar:** ¿plazo por cliente? (JCB puede tener clientes a 30 y a 60). Sería una columna en
+  `customers` que, si está, manda sobre la de la empresa. No lo hice.
+
+### [ ] 26. #40, #41, #42: descuentos en el POS
+- **Rama:** `feat/descuentos` (**sale de la 25**: las dos migraciones van encadenadas)
+- **Decisión que tomé (#40):** el **administrador descuenta sin tope**; el resto del personal, hasta
+  `descuento_maximo` % del total de la venta (**10%** por defecto, configurable en Configuración >
+  General > Ventas; **0 = solo el administrador**). Pasarse se **bloquea** (403: "El descuento supera el
+  10% que puede dar el personal. Pida al administrador que haga la venta."); no hay autorización de un
+  supervisor. Quién vendió ya queda en la venta (`seller_id`).
+- **Qué:**
+  - Backend: descuento por línea en pesos netos o `descuento_pct` (`sale_details.descuento_pct`) y
+    descuento al total (`sales.descuento_global` y `descuento_global_pct`), enviado a dte-torn como
+    `descuentos_globales`. Va sobre lo afecto (o sobre lo exento si no hay nada afecto); en boletas los
+    pesos pasan a bruto. Migración `d6e7f8a9b0c1`.
+  - La **NC devuelve lo cobrado**: repite el % de la línea y del total, y prorratea los descuentos en
+    pesos (devolver todo devuelve el total exacto de la venta).
+  - La guía no acepta descuento al total (la factura de guías copia las líneas y lo perdería).
+  - POS: botón **%** en cada línea del ticket y **"Descuento al total"** abajo; se elige % o $ y se
+    escribe el monto. Los pesos son del precio que se ve (bruto); el carrito los pasa a neto. El ticket
+    muestra "Dcto 10%" en la línea y "Descuentos: -$X" sobre el total. Quien no puede descontar no ve
+    los botones.
+  - Contrato de totales (#39): ya sin pendientes. 17 casos (uno nuevo: boleta con descuento al total
+    en pesos) en dte-torn, backend (`totales_dte` + `_descuento_global_dte`) y frontend (`totalesDte`).
+- **Verificado:**
+  - 9 tests (`test_descuentos.py`: % por línea y al total, pesos brutos en boleta, tope del personal,
+    tope 0, NC total y parcial, NC que repite el %, guía); contrato 17/17 en dte-torn, backend y
+    frontend; dte-torn completo en verde; `tsc`, lint y `npm run build`.
+  - En el navegador, con `revision/todo-junto` contra la copia de la base y la empresa de demo pasada
+    **un rato** a modo Desarrollador (en la copia y en dte-torn; quedó de vuelta en CERT): boleta de
+    2 diccionarios (exentos) con 10% en la línea y $1.000 al total = $20.600, y boleta de un Post-it
+    ($833 con IVA) con $500 al total = $333. En los dos casos dte-torn calculó el mismo total
+    (documentos SIMULADO `venta-979` y `venta-980`, quedaron en dte-torn en modo DEV, no se ven en CERT).
+  - La NC completa de la boleta de $333 armó el documento correcto ($700 neto - $420 = $280 + IVA $53 =
+    $333), pero dte-torn la rechazó: el dte-torn de Docker es el de `main`, sin el punto 4 (NC de boleta
+    a consumidor final). Con el punto 4 mergeado debería pasar.
+- **Falta:** una **factura** con descuento en el navegador (la empresa de demo no tiene cliente con
+  giro a mano en la prueba). El commit dice "Refs" y no cierra #40, #41 ni #42 hasta eso.
+- **Revisar:**
+  - La decisión de arriba (tope por venta, no por línea; bloqueo en vez de pedir clave).
+  - En facturas, un descuento en pesos se aplica sobre el neto: $500 escritos bajan el total en $499 o
+    $500 según el redondeo del IVA.
+
+---
+
 ## Lo que falta (necesita que decidas o hagas algo)
 
-Trabajo detenido el 2026-09-28 a pedido. Nada de esto se empezó:
+Actualizado el 2026-09-29. #40 y #44 salieron de esta tabla: los decidí con un valor por defecto
+(puntos 25 y 26), revisar la decisión. Nada de lo que sigue se empezó:
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
-| **#40 descuentos** | Quién puede descontar y con qué tope. Bloquea #41 (ítem), #42 (global) y el resto de P3 | `alineacion_backend_frontend.md` P3 |
-| **#44 vencimiento** | De dónde sale la fecha de vencimiento de la factura fiada; confirmar que un pago mixto vaya a crédito | punto 13 |
+| **Probar descuentos en el POS** | Boletas probadas; falta una factura con descuento y la NC con el punto 4 mergeado. Después cerrar #40, #41, #42 y #44 | punto 26 |
+| **Mensaje de error de la NC** | Con el dte-torn viejo, "faltan datos del cliente" mostró el volcado técnico de dte-torn entero en vez de la lista de campos (punto 20). Revisar el parseo de `_mensaje_emision` con ese formato | punto 20 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor | `lanzamiento.md` 0.2 |
 | **Intercambio** (#56) | Qué correo del cliente se usa; probar SMTP/IMAP con la contraseña de `xml@distribuidorajcb.cl` | `intercambio.md` |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
 | **Certificación de boletas** (#49) | Pedir el set en el SII | `certificacion_boletas.md` |
 | **Paso a producción** | Declaración de cumplimiento (#48), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
 | **Piloto en el local** | Correr `vaciar_datos_demo.py --aplicar`, cuentas del personal, servidor de respaldo, instalar el PC, UPS, impresora y lector reales, probar apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
-| **1.5 sesiones** | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea | `lanzamiento.md` 1.5 |
+| **1.5 sesiones** | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
+| **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
 | **Auditoría de seguridad** | Correr `security-audit` completa (pedirla así) | `lanzamiento.md` 1.5 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
 (cuadratura del kardex viejo; tras vaciar JCB no hace falta), N1-N4, F1, P1-P4, J1-J2, C2, V1-V2, M1 de
 `administracion.md`, y el cierre de issues en GitHub (se cierran al mergear).
 
-**Visto de paso, sin tocar:** los reportes suman las NC como ventas (dejé una tarea sugerida para
-arreglarlo aparte) y el "Caja cerrada" falso al entrar al POS desde saas-admin (punto 20).
+**Visto de paso:** los dos de la primera tanda (reportes con NC y "Caja cerrada" falso) quedaron
+arreglados en los puntos 23 y 24. La copia de la base para probar ramas (`torn_migtest`) se volvió a
+crear el 2026-09-28 desde la de desarrollo y quedó con las migraciones de la segunda tanda aplicadas
+hasta `c5d6e7f8a9b0`.

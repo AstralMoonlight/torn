@@ -71,13 +71,18 @@ Hoy el backend acepta un `descuento` por línea en pesos (`backend/app/schemas.p
 `frontend/components/pos` ni en el carrito. El descuento global no existe en el backend, y dte-torn
 acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porcentaje (`descuento_pct`).
 
-**Tareas:**
-- [ ] Test de contrato de los totales (D12): los tres cálculos con los mismos casos, incluidos los
-      descuentos. Va primero, porque los descuentos tocan los tres.
-- [ ] POS: descuento por ítem en $ o %.
-- [ ] Backend y POS: descuento global en $ o %, enviado como `descuentos_globales`.
-- [ ] El impreso (carta, 57 y 80 mm) muestra los descuentos por línea y el global, como pidió el set de pruebas.
-- [ ] Por decidir: quién puede aplicar descuentos y con qué tope.
+**Tareas** (2026-09-29: todo hecho en ramas sin mergear, ver `checklist.md` puntos 15, 16 y 26):
+- [x] Test de contrato de los totales (D12): los tres cálculos con los mismos casos, incluidos los
+      descuentos. Rama `test/contrato-totales`; sin pendientes desde `feat/descuentos` (17 casos).
+- [x] POS: descuento por ítem en $ o % (`feat/descuentos`).
+- [x] Backend y POS: descuento global en $ o %, enviado como `descuentos_globales` (`feat/descuentos`).
+- [x] El impreso de 57 y 80 mm muestra los descuentos por línea y el global (`fix/ticket-descuentos`);
+      el carta ya los mostraba.
+- [x] **Decidido (2026-09-29, por revisar):** el administrador descuenta sin tope; el resto del
+      personal hasta `descuento_maximo` % del total de la venta (10% por defecto, Configuración >
+      General > Ventas; 0 = solo el administrador). Pasarse se bloquea, sin autorización de supervisor.
+      Lo valida el backend. Quien vendió queda en la venta.
+- [ ] Probar en el POS con Docker arriba y cerrar #40, #41, #42 y #43.
 
 ---
 
@@ -146,7 +151,8 @@ Cada una se trabaja como un issue: commit, tests y verificación.
    montos, con el detalle en la forma "donde dice… debe decir…", como pide el manual. Sirve, por ejemplo,
    para corregir el giro o la dirección del cliente.
 5. **Forma de pago y vencimiento.** Una venta con `CREDITO_INTERNO` debería ir con `forma_pago=2` y
-   `fecha_vencimiento`. Hoy no se envían.
+   `fecha_vencimiento`. Hecho en ramas (`feat/forma-pago-credito` y `feat/vencimiento-credito`): el
+   vencimiento es hoy + el plazo de la empresa (30 días por defecto). Falta mergear y cerrar #44.
 
 ### B. Paso a producción (postergado por el usuario, salvo el selector de P2)
 
