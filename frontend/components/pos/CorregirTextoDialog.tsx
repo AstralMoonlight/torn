@@ -64,7 +64,7 @@ export default function CorregirTextoDialog({ venta, onClose, onEmitida }: Props
                         Corregir un dato de la factura
                     </DialogTitle>
                     <DialogDescription>
-                        Folio #{venta?.folio}. Se emite una nota de crédito por $0: no devuelve dinero ni productos.
+                        Factura N° {venta?.folio}. Se emite una nota de crédito por $0: no devuelve dinero ni productos.
                     </DialogDescription>
                 </DialogHeader>
 
