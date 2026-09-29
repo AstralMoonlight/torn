@@ -54,6 +54,9 @@ class Sale(Base):
     # anterior a la integración. Se refresca con POST /sales/dte-estados.
     dte_estado = Column(String(20), nullable=True)
     dte_glosa = Column(String(500), nullable=True, comment="Glosa del SII o último error de dte-torn")
+    #: Envío del XML al correo del cliente (intercambio), copiado de dte-torn:
+    #: PENDIENTE, ENVIADO, SIN_CORREO o ERROR. NULL: no aplica.
+    intercambio_estado = Column(String(12), nullable=True)
     # Guías de despacho (52): IndTraslado, y la factura que la cobró (NULL: pendiente).
     ind_traslado = Column(Integer, nullable=True)
     facturada_por_id = Column(Integer, ForeignKey("sales.id"), nullable=True)

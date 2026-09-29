@@ -87,6 +87,8 @@ export interface SaleOut {
     /** Estado en dte-torn (ACEPTADO, REPAROS, RECHAZADO, ENVIADO, SIMULADO en Desarrollador...). null: venta anterior a la integración. */
     dte_estado: string | null
     dte_glosa: string | null
+    /** Envío del XML al correo del cliente: PENDIENTE, ENVIADO, SIN_CORREO, ERROR; null si no aplica. */
+    intercambio_estado: string | null
     ind_traslado: number | null
     /** Factura que cobró esta guía; null mientras está pendiente. */
     facturada_por_id: number | null
@@ -150,6 +152,12 @@ export async function facturarGuias(guia_ids: number[], tipo_dte: number, paymen
 
 export async function createReturn(ret: ReturnCreate): Promise<SaleOut> {
     const { data } = await api.post<SaleOut>('/sales/return', ret)
+    return data
+}
+
+/** Manda el XML y el PDF al correo del cliente (el de su ficha, u otro). */
+export async function reenviarXml(saleId: number, correo?: string): Promise<SaleOut> {
+    const { data } = await api.post<SaleOut>(`/sales/${saleId}/reenviar-xml`, correo ? { correo } : {})
     return data
 }
 

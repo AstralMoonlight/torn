@@ -18,6 +18,7 @@ import {
     ExternalLink,
     FileText,
     PencilLine,
+    Mail,
 } from 'lucide-react'
 import {
     Table,
@@ -32,6 +33,7 @@ import { formatCLP, getTodayChile } from '@/lib/format'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
 import DevolucionDialog from '@/components/pos/DevolucionDialog'
+import ReenviarXmlDialog, { ESTADOS_XML } from '@/components/pos/ReenviarXmlDialog'
 
 
 const POR_PAGINA = 50
@@ -78,6 +80,7 @@ export default function HistorialPage() {
     const [hayNotasCredito, setHayNotasCredito] = useState(false)
     const [corregirDialog, setCorregirDialog] = useState<SaleOut | null>(null)
     const [facturarOpen, setFacturarOpen] = useState(false)
+    const [xmlDialog, setXmlDialog] = useState<SaleOut | null>(null)
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
     const [hayMas, setHayMas] = useState(false)
@@ -246,6 +249,11 @@ export default function HistorialPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <SiiBadge estado={sale.dte_estado} glosa={sale.dte_glosa} />
+                                                {sale.intercambio_estado && ESTADOS_XML[sale.intercambio_estado] && (
+                                                    <Badge className={`${ESTADOS_XML[sale.intercambio_estado].color} ml-1 text-xs px-1.5`}>
+                                                        {ESTADOS_XML[sale.intercambio_estado].label}
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
@@ -259,6 +267,9 @@ export default function HistorialPage() {
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <AccionFila icon={ExternalLink} label="Ver PDF" onClick={() => verPdf(sale.id)} />
+                                                    {[33, 34, 52, 56, 61].includes(sale.tipo_dte) && ['ACEPTADO', 'REPAROS'].includes(sale.dte_estado ?? '') && (
+                                                        <AccionFila icon={Mail} label="Mandar el XML al cliente" onClick={() => setXmlDialog(sale)} />
+                                                    )}
                                                     {[33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && (
                                                         <AccionFila icon={RotateCcw} label="Devolver productos" onClick={() => setReturnDialog(sale)} peligro />
                                                     )}
@@ -294,6 +305,7 @@ export default function HistorialPage() {
                 onClose={() => setCorregirDialog(null)}
                 onEmitida={recargarVentas}
             />
+            <ReenviarXmlDialog venta={xmlDialog} onClose={() => setXmlDialog(null)} onEnviado={recargarVentas} />
             <FacturarGuiasDialog
                 open={facturarOpen}
                 methods={methods}

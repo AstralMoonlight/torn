@@ -10,6 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.issuer import Issuer
@@ -20,7 +21,7 @@ from app.models.customer import Customer
 from app.models.cash import CashSession
 from app.models.settings import SystemSettings
 from app.models.payment import SalePayment, PaymentMethod
-from app.schemas import CorrigeTextoCreate, FacturarGuias, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
+from app.schemas import CorrigeTextoCreate, FacturarGuias, ReenviarXml, SaleCreate, SaleOut, ReturnCreate, PaymentMethodOut
 from app.services import dte_client, dte_impreso
 from app.services.kardex import mover_stock
 from app.utils.formatters import format_clp, format_number
@@ -252,6 +253,7 @@ def _mensaje_emision(exc: "dte_client.DteError", tipo: int) -> str:
 
 def _guardar_estado(sale: Sale, doc: dict) -> None:
     sale.dte_estado = doc["estado"]
+    sale.intercambio_estado = doc.get("intercambio_estado")
     glosa = doc.get("glosa_sii") or doc.get("ultimo_error")
     sale.dte_glosa = glosa[:500] if glosa else None
 
@@ -322,12 +324,14 @@ def actualizar_estados_dte(
     db: Session = Depends(get_tenant_db),
     tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
-    """Refresca `dte_estado` de las ventas pendientes. Devuelve cuántas cambiaron."""
+    """Refresca `dte_estado` (y el envío del XML al cliente) de las ventas
+    pendientes. Devuelve cuántas cambiaron."""
     # ponytail: una llamada por venta pendiente; casi siempre son pocas porque el
     # SII responde en minutos. Si crece, pedir a dte-torn un listado por external_id.
     pendientes = (
         db.query(Sale)
-        .filter(Sale.dte_estado.isnot(None), Sale.dte_estado.notin_(ESTADOS_DTE_FINALES))
+        .filter(Sale.dte_estado.isnot(None), or_(
+            Sale.dte_estado.notin_(ESTADOS_DTE_FINALES), Sale.intercambio_estado == "PENDIENTE"))
         .limit(100)
         .all()
     )
@@ -339,7 +343,7 @@ def actualizar_estados_dte(
             if exc.status_code == 404:
                 continue
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-        if doc["estado"] != sale.dte_estado:
+        if (doc["estado"], doc.get("intercambio_estado")) != (sale.dte_estado, sale.intercambio_estado):
             cambiadas += 1
         _guardar_estado(sale, doc)
     db.commit()
@@ -903,6 +907,28 @@ def create_return(
                 _referencias_dte(referencias_json), global_user.email, descuentos_globales=globales)
     db.commit()
     return nc_sale
+
+
+@router.post("/{sale_id}/reenviar-xml", response_model=SaleOut, summary="Mandar el XML al cliente")
+def reenviar_xml(
+    sale_id: int,
+    datos: ReenviarXml,
+    db: Session = Depends(get_tenant_db),
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+):
+    """Manda (o vuelve a mandar) el XML y el PDF al correo del cliente: el de su
+    ficha, u otro. Lo hace dte-torn cuando el SII ya aceptó el documento."""
+    sale = db.get(Sale, sale_id)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    try:
+        doc = dte_client.request("POST", f"/documents/venta-{sale.id}/intercambio", tenant_user.tenant,
+                                 json={"correo": datos.correo} if datos.correo else {}).json()
+    except dte_client.DteError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    _guardar_estado(sale, doc)
+    db.commit()
+    return sale
 
 
 @router.post("/{sale_id}/corrige-texto", response_model=SaleOut, status_code=status.HTTP_201_CREATED,

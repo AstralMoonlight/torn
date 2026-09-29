@@ -459,6 +459,7 @@ class SaleOut(BaseModel):
     referencias: Optional[List[DocumentReferenceOut]] = None
     dte_estado: Optional[str] = None
     dte_glosa: Optional[str] = None
+    intercambio_estado: Optional[str] = None
     ind_traslado: Optional[int] = None
     facturada_por_id: Optional[int] = None
 
@@ -491,6 +492,11 @@ class ReturnCreate(BaseModel):
     items: List[ReturnItem]
     reason: str
     return_method_id: int # ID de medio de pago para devolución (Caja o Credito)
+
+
+class ReenviarXml(BaseModel):
+    #: Otro correo para este envío; sin él, el del cliente.
+    correo: Optional[str] = Field(default=None, max_length=80, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class CorrigeTextoCreate(BaseModel):
