@@ -34,8 +34,6 @@ export interface SystemSettings {
     control_caja: boolean
     color_mode: ColorMode
     color_primario: string
-    /** La factura fiada vence a estos días de emitida (FchVenc). */
-    dias_credito: number
 }
 
 export type SettingsUpdate = Partial<Omit<SystemSettings, 'id'>>

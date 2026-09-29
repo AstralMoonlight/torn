@@ -94,9 +94,8 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
     if forma_pago:
         documento["forma_pago"] = forma_pago
     if forma_pago == CREDITO:
-        settings = db.query(SystemSettings).first()
-        dias = settings.dias_credito if settings else 30
-        documento["fecha_vencimiento"] = (hoy + timedelta(days=dias)).isoformat()
+        # `_validar_credito` ya exigió el plazo del cliente.
+        documento["fecha_vencimiento"] = (hoy + timedelta(days=customer.dias_credito)).isoformat()
     if sale.tipo_dte not in BOLETAS:
         documento["receptor"] = {
             "rut": customer.rut, "razon_social": customer.razon_social, "giro": customer.giro,
@@ -141,6 +140,17 @@ ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VAL
 #: Facturas: las únicas que llevan forma de pago (`FmaPago`) en esta etapa.
 FACTURAS = {33, 34}
 CONTADO, CREDITO = 1, 2
+
+
+def _validar_credito(db: Session, customer: Customer, payments) -> None:
+    """Solo se fía a un cliente con plazo de crédito en su ficha."""
+    credito = {pm.id for pm in db.query(PaymentMethod).filter(PaymentMethod.code == "CREDITO_INTERNO")}
+    if customer.dias_credito is None and any(p.payment_method_id in credito for p in payments):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{customer.razon_social} no tiene crédito: el administrador le asigna un plazo de pago "
+            "en Clientes. Mientras tanto, cobre con otro medio de pago.",
+        )
 
 
 def _forma_pago(db: Session, tipo: int, payments) -> int | None:
@@ -396,6 +406,8 @@ def _registrar_venta(sale_in: SaleCreate, db: Session, local_user: User, global_
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Cliente con RUT {sale_in.rut_cliente} no encontrado",
         )
+
+    _validar_credito(db, customer, sale_in.payments)
 
     # 1.5 Validar Referencias para Documentos de Ajuste
     ADJUSTMENT_DTES = [56, 61, 111, 112]

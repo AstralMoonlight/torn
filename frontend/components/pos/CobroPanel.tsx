@@ -121,7 +121,14 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const { userId } = useSessionStore()
 
     const [folios, setFolios] = useState<FolioStockOut[] | null>(null)
-    const [methods, setMethods] = useState<PaymentMethod[]>([])
+    const [todosLosMedios, setMethods] = useState<PaymentMethod[]>([])
+    // Solo se fía a un cliente con plazo de crédito en su ficha (el backend lo exige).
+    const conCredito = !!customer?.dias_credito
+    const methods = useMemo(
+        () => todosLosMedios.filter((m) => m.code !== 'CREDITO_INTERNO' || conCredito),
+        [todosLosMedios, conCredito],
+    )
+    const hayCreditoInterno = todosLosMedios.some((m) => m.code === 'CREDITO_INTERNO')
     const [pagos, setPagos] = useState<LineaPago[]>([])
     const [dividir, setDividir] = useState(false)
     const [verOtros, setVerOtros] = useState(false)
@@ -164,6 +171,15 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
             return { ...p, amount: exacto }
         }))
     }, [totalFinal, dividir, methods])
+
+    // Cambiar a un cliente sin crédito saca el crédito interno del pago.
+    useEffect(() => {
+        if (conCredito || !pagos.some((p) => p.method.code === 'CREDITO_INTERNO')) return
+        const efectivo = methods.find((m) => m.code === 'EFECTIVO') ?? methods[0]
+        setDividir(false)
+        if (efectivo) setPagos([{ method: efectivo, amount: efectivo.code === 'EFECTIVO' ? roundCash(totalFinal) : totalFinal }])
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando cambia el cliente
+    }, [conCredito])
 
     const elegirMetodo = (method: PaymentMethod) => {
         recibidoEditado.current = false
@@ -396,6 +412,11 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                                         )
                                     })}
                                 </div>
+                                {customer && !conCredito && hayCreditoInterno && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Sin crédito interno: {customer.razon_social} no tiene plazo de crédito (se asigna en Clientes).
+                                    </p>
+                                )}
                                 {metodo?.code === 'EFECTIVO' && (
                                     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                         <div className="flex items-end gap-4">
