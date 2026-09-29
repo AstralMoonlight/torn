@@ -20,7 +20,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from prometheus_client import Counter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
@@ -35,10 +35,13 @@ from app.dte import pipeline
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, calcular_totales, construir_dte
 from app.dte.caf import CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba, guardar_caf
 from app.dte.folios import DatosEmision, PayloadDistintoError, SinFoliosError, emitir_documento, folios_disponibles
+from app.dte.intercambio import TIPOS_INTERCAMBIO
 from app.dte.pdf import DatosImpresion, generar_pdf
 from app.dte.rut import validar_rut
 from app.dte.signer import hoy_chile
-from app.models import CAF, Ambiente, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, Envio, Tenant
+from app.models import (
+    CAF, Ambiente, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, EstadoIntercambio, Envio, Tenant,
+)
 from app.tasks import colas
 
 E = EstadoDocumento
@@ -288,6 +291,11 @@ class DocumentoOut(BaseModel):
     glosa_sii: str | None
     ultimo_error: str | None
     creado_en: datetime
+    #: Envío del XML al correo del receptor. None: no aplica.
+    intercambio_estado: str | None = None
+    intercambio_correo: str | None = None
+    intercambio_at: datetime | None = None
+    intercambio_error: str | None = None
 
 
 async def _documento_out(tenant_id: uuid.UUID, doc: Document) -> DocumentoOut:
@@ -301,6 +309,8 @@ async def _documento_out(tenant_id: uuid.UUID, doc: Document) -> DocumentoOut:
         monto_neto=doc.monto_neto, monto_exento=doc.monto_exento, monto_iva=doc.monto_iva,
         monto_total=doc.monto_total, ted=doc.ted_barcode, track_id=track, estado_sii=doc.estado_sii,
         glosa_sii=doc.glosa_sii, ultimo_error=doc.last_error, creado_en=doc.created_at,
+        intercambio_estado=doc.intercambio_estado, intercambio_correo=doc.intercambio_correo,
+        intercambio_at=doc.intercambio_at, intercambio_error=doc.intercambio_error,
     )
 
 
@@ -422,6 +432,40 @@ async def _buscar(tenant_id: uuid.UUID, external_id: str) -> Document:
 
 @router.get("/documents/{external_id}", response_model=DocumentoOut)
 async def ver(external_id: str, tenant: TenantDep) -> DocumentoOut:
+    return await _documento_out(tenant.id, await _buscar(tenant.id, external_id))
+
+
+class IntercambioIn(BaseModel):
+    #: Otro correo para este envío. Sin él, el del receptor del documento.
+    correo: str | None = Field(default=None, max_length=80, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+@router.post("/documents/{external_id}/intercambio", response_model=DocumentoOut)
+async def reenviar_intercambio(external_id: str, entrada: IntercambioIn, tenant: TenantDep) -> DocumentoOut:
+    """Manda (o vuelve a mandar) el XML y el PDF al correo del receptor.
+
+    Solo lo aceptado por el SII. Sirve también en certificación, donde no sale
+    solo: así se prueba el correo con una dirección propia.
+    """
+    doc = await _buscar(tenant.id, external_id)
+    if doc.tipo_dte not in TIPOS_INTERCAMBIO:
+        raise HTTPException(409, "Las boletas no se envían por intercambio")
+    if doc.estado not in (EstadoDocumento.ACEPTADO, EstadoDocumento.REPAROS):
+        raise HTTPException(409, f"El documento está {doc.estado}: se envía cuando el SII lo acepta")
+    receptor = DatosDocumento.model_validate(doc.payload).receptor
+    correo = entrada.correo or doc.intercambio_correo or (receptor.correo if receptor else None)
+    if not correo:
+        raise HTTPException(422, "El cliente no tiene correo: indique uno")
+    async with tenant_session(tenant.id) as s:
+        await s.execute(update(Document).where(Document.id == doc.id).values(
+            intercambio_estado=EstadoIntercambio.PENDIENTE, intercambio_correo=correo, intercambio_intentos=0,
+            intercambio_error=None, intercambio_next_at=datetime.now(timezone.utc),
+        ))
+    if get_settings().smtp_host:
+        try:
+            await colas.intercambiar.kiq(str(tenant.id), str(doc.id))
+        except Exception:  # noqa: BLE001 - el scheduler lo encola igual
+            log.exception("No se pudo encolar el intercambio de %s", doc.id)
     return await _documento_out(tenant.id, await _buscar(tenant.id, external_id))
 
 

@@ -75,6 +75,16 @@ class Settings(BaseSettings):
     sii_token_ttl_segundos: int = 1800
     sii_timeout_segundos: float = 30.0
 
+    # --- Correo (intercambio) ---------------------------------------------
+    #: Servidor SMTP (SSL/TLS directo, puerto 465). Sin host no se manda nada:
+    #: los documentos quedan con el intercambio PENDIENTE hasta configurarlo.
+    smtp_host: str | None = None
+    smtp_puerto: int = 465
+    smtp_usuario: str | None = None
+    smtp_clave: str | None = None
+    #: Dirección que aparece como remitente. Por defecto, el usuario.
+    smtp_remitente: str | None = None
+
     # --- Workers -----------------------------------------------------------
     #: Procesos del pool de firma en el worker de la cola `firma`.
     procesos_firma: int = 2

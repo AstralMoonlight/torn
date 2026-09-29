@@ -314,6 +314,7 @@ def firmar_sobre(
     numero_resolucion: int,
     cert: CertificadoCargado,
     momento: datetime | None = None,
+    rut_receptor: str = RUT_SII,
 ) -> bytes:
     """Mete DTE ya firmados en un `<EnvioDTE>` o `<EnvioBOLETA>` y firma el sobre.
 
@@ -329,6 +330,7 @@ def firmar_sobre(
             en general es una persona natural distinta de la empresa.
         fecha_resolucion: Fecha de la resolución del SII (AAAA-MM-DD).
         numero_resolucion: Número de resolución; 0 en certificación.
+        rut_receptor: A quién va el sobre: el SII, o el cliente en el intercambio.
 
     Raises:
         FirmaInvalidaError: El sobre firmado no verifica.
@@ -352,7 +354,7 @@ def firmar_sobre(
         b'<Caratula version="1.0">'
         + f"<RutEmisor>{rut_emisor}</RutEmisor>"
         f"<RutEnvia>{rut_envia}</RutEnvia>"
-        f"<RutReceptor>{RUT_SII}</RutReceptor>"
+        f"<RutReceptor>{rut_receptor}</RutReceptor>"
         f"<FchResol>{fecha_resolucion}</FchResol>"
         f"<NroResol>{numero_resolucion}</NroResol>"
         f"<TmstFirmaEnv>{hora_sii(momento)}</TmstFirmaEnv>".encode()

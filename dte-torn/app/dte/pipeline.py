@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import multiprocessing
+import smtplib
 import traceback
 import uuid
 from collections.abc import Callable
@@ -37,6 +38,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.almacen import Almacen, IntegridadError, clave_dte, clave_envio
+from app.core.correo import Correo
 from app.core.certificados import (
     CertificadoCargado,
     CertificadoInvalidoError,
@@ -47,6 +49,9 @@ from app.core.certificados import (
 from app.db import tenant_session
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, construir_dte
 from app.dte.caf import CafInvalidoError, CafParseado, abrir_caf
+from app.dte.intercambio import TIPOS_INTERCAMBIO, mensaje_intercambio
+from app.dte.pdf import DatosImpresion, generar_pdf
+from app.dte.rut import RUT_CONSUMIDOR_FINAL
 from app.dte.signer import DocumentoFirmado, FirmaInvalidaError, ZONA_CHILE, firmar_dte, firmar_sobre
 from app.dte.sii_client import (
     Canal,
@@ -57,7 +62,17 @@ from app.dte.sii_client import (
     SiiNoDisponibleError,
     SiiRechazoError,
 )
-from app.models import Ambiente, AuditLog, DeadLetter, Document, Envio, EstadoDocumento, EstadoEnvio, Tenant
+from app.models import (
+    Ambiente,
+    AuditLog,
+    DeadLetter,
+    Document,
+    Envio,
+    EstadoDocumento,
+    EstadoEnvio,
+    EstadoIntercambio,
+    Tenant,
+)
 
 E = EstadoDocumento
 
@@ -96,6 +111,8 @@ class Contexto:
     ttl_token: int = 1800
     #: Pool de procesos para la firma (CPU). None firma en el mismo proceso.
     ejecutor: Executor | None = None
+    #: SMTP del intercambio. None: sin servidor configurado, no se manda nada.
+    correo: Correo | None = None
 
     def sii(self, ambiente: str) -> ClienteSii:
         if ambiente == Ambiente.DEV:
@@ -581,6 +598,7 @@ async def consultar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
                     glosa_sii=estado.glosa,
                     next_action_at=None,
                     last_error=None,
+                    **(_intercambio_al_aceptar(doc, ahora) if final_doc in (E.ACEPTADO, E.REPAROS) else {}),
                 )
             )
             s.add(
@@ -632,3 +650,95 @@ async def consultar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> s
             )
         )
     return E.ENVIADO
+
+
+# ------------------------------------------------------------- intercambio --
+
+I = EstadoIntercambio
+
+
+def _intercambio_al_aceptar(doc: Document, ahora: datetime) -> dict:
+    """Aceptado por el SII, el documento va a la casilla del receptor.
+
+    Solo en producción: en certificación los documentos son de prueba y no
+    deben llegar a clientes reales (se pueden mandar a mano). Tampoco las
+    boletas ni lo que va al consumidor final.
+    """
+    if doc.tipo_dte not in TIPOS_INTERCAMBIO or doc.ambiente != Ambiente.PROD:
+        return {}
+    receptor = DatosDocumento.model_validate(doc.payload).receptor
+    if receptor is None or receptor.rut == RUT_CONSUMIDOR_FINAL:
+        return {}
+    if not receptor.correo:
+        return {"intercambio_estado": I.SIN_CORREO}
+    return {"intercambio_estado": I.PENDIENTE, "intercambio_correo": receptor.correo,
+            "intercambio_intentos": 0, "intercambio_next_at": ahora}
+
+
+#: El servidor rechazó la dirección: reintentar no sirve.
+_DIRECCION_INVALIDA = (smtplib.SMTPRecipientsRefused,)
+
+
+async def intercambiar(ctx: Contexto, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> str:
+    """Intercambio PENDIENTE → ENVIADO: el XML (un `EnvioDTE` dirigido al RUT del
+    receptor, firmado) y el PDF, por correo a la casilla del receptor.
+
+    Un fallo del servidor de correo se reintenta con espera; tras
+    `MAX_INTENTOS`, o si el servidor rechaza la dirección, queda en ERROR con una
+    fila en `dead_letters` y se reenvía a mano.
+    """
+    if ctx.correo is None:
+        return I.PENDIENTE
+    async with tenant_session(tenant_id) as s:
+        doc, tenant = await _cargar(s, tenant_id, doc_id)
+        if doc.intercambio_estado != I.PENDIENTE:
+            return doc.intercambio_estado
+        cert = await cargar_certificado(
+            s, tenant_id, motivo=f"intercambio {doc.tipo_dte}-{doc.folio}", document_id=doc_id
+        )
+
+    try:
+        receptor = DatosDocumento.model_validate(doc.payload).receptor
+        xml = await ctx.almacen.leer(doc.xml_key, doc.xml_sha256)
+        firmado = DocumentoFirmado(xml=xml, ted=(doc.ted_barcode or "").encode("latin-1"),
+                                   sha256=doc.xml_sha256, tipo_dte=doc.tipo_dte, folio=doc.folio)
+        if tenant.resolucion_fecha is None:
+            raise ValueError("El emisor no tiene fecha de resolución del SII; sin ella la carátula es inválida")
+        sobre = firmar_sobre(
+            [firmado], canal=Canal.DTE, rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
+            fecha_resolucion=tenant.resolucion_fecha.isoformat(),
+            numero_resolucion=tenant.resolucion_numero, cert=cert, rut_receptor=receptor.rut,
+        )
+        pdf = generar_pdf(xml, DatosImpresion(
+            resolucion_numero=tenant.resolucion_numero, resolucion_fecha=tenant.resolucion_fecha,
+            oficina_sii=tenant.oficina_sii,
+        ))
+        await ctx.correo.enviar(mensaje_intercambio(
+            sobre=sobre, pdf=pdf, tipo_dte=doc.tipo_dte, folio=doc.folio, rut_emisor=tenant.rut_emisor,
+            razon_social=tenant.razon_social, remitente=ctx.correo.remitente,
+            destinatario=doc.intercambio_correo,
+        ))
+    except Exception as exc:  # noqa: BLE001 - todo fallo se registra y decide abajo
+        intentos = doc.intercambio_intentos + 1
+        final = isinstance(exc, _DIRECCION_INVALIDA + PERMANENTES) or intentos >= MAX_INTENTOS
+        async with tenant_session(tenant_id) as s:
+            await s.execute(update(Document).where(Document.id == doc_id).values(
+                intercambio_estado=I.ERROR if final else I.PENDIENTE,
+                intercambio_intentos=intentos,
+                intercambio_error=f"{type(exc).__name__}: {exc}"[:2000],
+                intercambio_next_at=None if final else _ahora() + _espera(ESPERA_REINTENTO, intentos - 1),
+            ))
+            if final:
+                s.add(DeadLetter(tenant_id=tenant_id, document_id=doc_id, cola="intercambio",
+                                 error=f"No se pudo mandar el XML a {doc.intercambio_correo}: {exc}"[:4000],
+                                 traceback=traceback.format_exc()[:8000], intentos=intentos))
+        return I.ERROR if final else I.PENDIENTE
+
+    async with tenant_session(tenant_id) as s:
+        await s.execute(update(Document).where(Document.id == doc_id, Document.intercambio_estado == I.PENDIENTE)
+                        .values(intercambio_estado=I.ENVIADO, intercambio_at=_ahora(), intercambio_error=None,
+                                intercambio_next_at=None))
+        s.add(AuditLog(tenant_id=tenant_id, document_id=doc_id, operacion="INTERCAMBIO", resultado="OK",
+                       cert_fingerprint=cert.fingerprint_sha256, actor="worker-estado",
+                       detalle={"correo": doc.intercambio_correo}))
+    return I.ENVIADO
