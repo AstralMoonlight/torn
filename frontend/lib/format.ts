@@ -74,3 +74,11 @@ export function getTodayChile(): string {
         timeZone: CHILE_TIMEZONE,
     }).format(new Date())
 }
+
+/** Fecha y hora en Chile, 24 horas: `30-09-2026, 16:06`. */
+export function fechaHora(value: string | number | Date): string {
+    return new Intl.DateTimeFormat('es-CL', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        hourCycle: 'h23', timeZone: CHILE_TIMEZONE,
+    }).format(new Date(value))
+}

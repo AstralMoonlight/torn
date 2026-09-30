@@ -17,6 +17,8 @@ export interface SessionUser {
     email: string
     full_name?: string
     is_superuser: boolean
+    es_dueno?: boolean
+    permisos?: string[]
 }
 
 export interface LoginResponse {

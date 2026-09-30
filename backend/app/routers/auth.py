@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +12,7 @@ from app.database import get_db
 from app.dependencies.tenant import get_global_db, get_current_global_user
 from app.models.saas import SaaSUser, TenantUser
 from app.schemas_saas import SaaSUserLogin, SaaSToken, SaaSUserOut, AvailableTenant
+from app.services import suscripciones
 from app.utils.schemas import safe_schema_name
 from app.utils.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]:
     """Helper to get a list of tenants the user can access."""
+    reglas, ahora = suscripciones.ajustes(global_db), datetime.now(timezone.utc)
     tenant_users = global_db.query(TenantUser).options(
         joinedload(TenantUser.tenant)
     ).filter(
@@ -63,6 +65,9 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
             max_users=tu.tenant.max_users_override or tu.tenant.plan_max_users,
             permissions=perms,
             sii_ambiente=tu.tenant.sii_ambiente,
+            suscripcion_estado=suscripciones.estado(tu.tenant, reglas, ahora),
+            suscripcion_vence=tu.tenant.suscripcion_vence,
+            prorroga_hasta=tu.tenant.prorroga_hasta,
         ))
         
     return results
@@ -75,7 +80,7 @@ def login_for_access_token(
     """OAuth2 compatible token login for SaaS Users."""
     user = global_db.query(SaaSUser).filter(SaaSUser.email == form_data.username).first()
 
-    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
+    if not user or user.is_active is False or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -105,7 +110,7 @@ def login_json(
     """JSON login alternative to OAuth2 form."""
     user = global_db.query(SaaSUser).filter(SaaSUser.email == login_data.email).first()
 
-    if not user or not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
+    if not user or user.is_active is False or not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
@@ -138,6 +143,7 @@ def validate_session(
     """Valida la sesión actual y refresca la lista de empresas disponibles."""
     tenants = _get_user_tenants(global_db, current_user.id)
     return {
-        "user": current_user,
+        # Con el esquema de salida: el ORM solo no trae `permisos` ni `es_dueno` (propiedades).
+        "user": SaaSUserOut.model_validate(current_user),
         "available_tenants": tenants
     }

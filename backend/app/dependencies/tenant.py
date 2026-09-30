@@ -12,7 +12,9 @@ migrar antes a un driver asíncrono.
 """
 
 from typing import Annotated, Optional
-from fastapi import Depends, HTTPException, Header, status
+from datetime import datetime, timezone
+
+from fastapi import Depends, HTTPException, Header, Request, status
 from sqlalchemy import event
 from sqlalchemy.orm import ORMExecuteState, Session, joinedload, with_loader_criteria
 from sqlalchemy.orm.attributes import set_committed_value
@@ -21,6 +23,7 @@ from app.database import SessionLocal, engine
 from app.models.saas import SaaSUser, Tenant, TenantUser
 from app.models.sale import Sale
 from app.models.user import User
+from app.services import suscripciones
 from app.utils.schemas import safe_schema_name
 from jose import JWTError, jwt
 
@@ -72,7 +75,8 @@ def get_current_global_user(
         raise credentials_exception
         
     user = global_db.query(SaaSUser).filter(SaaSUser.email == username).first()
-    if user is None:
+    # Desactivar a alguien (p.ej. del equipo) corta su sesión aunque su token siga vigente.
+    if user is None or user.is_active is False:
         raise credentials_exception
     return user
 
@@ -91,14 +95,17 @@ def get_current_tenant_user(
         TenantUser.is_active == True
     ).first()
 
-    if not tenant_user and not current_user.is_superuser:
+    # El equipo de Factureando entra a cualquier empresa solo si su cargo lo permite
+    # (`empresas.entrar`); el dueño siempre.
+    puede_entrar = current_user.is_superuser and "empresas.entrar" in current_user.permisos
+    if not tenant_user and not puede_entrar:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes acceso a este Inquilino / Empresa."
         )
 
-    # Si es superusuario pero no tiene registro explícito, creamos uno mockeado para salir al paso o permitimos
-    if not tenant_user and current_user.is_superuser:
+    # Superusuario sin membresía: entra como administrador de la empresa (soporte).
+    if not tenant_user:
         # Mock de admin para el superusuario
         tenant = global_db.get(Tenant, x_tenant_id)
         if tenant is None:
@@ -113,6 +120,7 @@ def get_current_tenant_user(
 
 
 def get_tenant_db(
+    request: Request,
     x_tenant_id: Annotated[int, Header()],
     tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],
     global_db: Session = Depends(get_global_db)
@@ -147,6 +155,9 @@ def get_tenant_db(
             detail="Inquilino no encontrado o inactivo."
         )
 
+    if request.method not in suscripciones.METODOS_DE_LECTURA:
+        _bloquear_si_suspendida(tenant, tenant_user, global_db)
+
     # Mapear la conexión ya abierta por `global_db` al esquema del tenant, en
     # vez de abrir (`engine.connect()`) y cerrar una conexión aparte.
     # `execution_options` en un `Connection` muta y devuelve el mismo objeto
@@ -162,6 +173,21 @@ def get_tenant_db(
     # No hay conexión propia que cerrar: el ciclo de vida de `connection` lo
     # controla `get_global_db`, que la libera al pool en su propio `finally`.
     yield global_db
+
+def _bloquear_si_suspendida(tenant: Tenant, tenant_user: TenantUser, global_db: Session) -> None:
+    """Empresa suspendida por no pago = solo lectura: puede consultar, reimprimir y
+    descargar sus documentos, pero no escribir nada. El equipo de Factureando pasa
+    (soporte). Pagar va por `/suscripcion`, que no usa esta sesión."""
+    estado = suscripciones.estado(tenant, suscripciones.ajustes(global_db), datetime.now(timezone.utc))
+    if estado != suscripciones.SUSPENDIDA or (tenant_user.user and tenant_user.user.is_superuser):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail=f"La suscripción venció el {tenant.suscripcion_vence:%d-%m-%Y}. Puede consultar sus datos, "
+               "pero no vender ni registrar cambios hasta pagar. Pague desde el aviso de arriba "
+               "o escriba a Factureando.",
+    )
+
 
 def filtrar_por_modo(session: Session, modo: str) -> None:
     """Las ventas de otro modo del emisor (CERT, PROD, DEV) no existen para esta sesión.

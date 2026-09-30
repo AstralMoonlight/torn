@@ -67,7 +67,7 @@ const navGroups = [
         label: 'Sistema',
         items: [
             { href: '/configuracion', label: 'Configuración', icon: Settings, permissionKey: 'Configuración' },
-            { href: '/saas-admin', label: 'Terminal SaaS global', icon: Globe, permissionKey: '__SUPERADMIN__' },
+            { href: '/saas-admin', label: 'Panel Factureando', icon: Globe, permissionKey: '__SUPERADMIN__' },
         ]
     }
 ]
@@ -155,7 +155,7 @@ export default function Sidebar() {
                                 {filteredItems.map((item) => {
                                     let itemHref = item.href;
                                     if (item.permissionKey === '__SUPERADMIN__' && selectedTenantId) {
-                                        itemHref = `/saas-admin/tenants/${selectedTenantId}`;
+                                        itemHref = `/saas-admin/empresas/${selectedTenantId}`;
                                     }
 
                                     const isActive = pathname === itemHref || pathname.startsWith(itemHref + '/')

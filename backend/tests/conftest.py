@@ -17,7 +17,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -45,6 +45,15 @@ engine_test = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+@event.listens_for(engine_test, "connect")
+def _adjuntar_public(dbapi_conn, _):
+    """SQLite no tiene esquemas, pero sí bases adjuntas: `public.tabla` funciona
+    igual. Así las tablas del plano SaaS se pueden probar (fixture `saas_client`)."""
+    dbapi_conn.execute("ATTACH DATABASE ':memory:' AS public")
+
+
 TestingSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine_test
 )
@@ -118,6 +127,29 @@ def client(db_session, admin_local_user):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def saas_client(db_session):
+    """TestClient del panel saas-admin con las tablas de `public` creadas.
+
+    `saas_client.como(usuario)` elige quién hace las peticiones (un `SaaSUser`
+    guardado en `db_session`).
+    """
+    Base.metadata.create_all(bind=engine_test, tables=_SAAS_TABLES)
+    actor = {}
+
+    def override_db():
+        yield db_session
+
+    app.dependency_overrides[get_global_db] = override_db
+    app.dependency_overrides[get_current_global_user] = lambda: actor["user"]
+    with TestClient(app) as c:
+        c.como = lambda usuario: actor.update(user=usuario)
+        yield c
+    app.dependency_overrides.clear()
+    db_session.rollback()
+    Base.metadata.drop_all(bind=engine_test, tables=_SAAS_TABLES)
 
 
 class FakeDte:

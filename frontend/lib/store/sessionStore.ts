@@ -11,6 +11,10 @@ interface User {
     email: string
     full_name?: string
     is_superuser: boolean
+    /** Superusuario sin cargo: tiene todos los permisos y arma el equipo. */
+    es_dueno?: boolean
+    /** Permisos del panel saas-admin (`backend/app/dependencies/saas.py`). */
+    permisos?: string[]
 }
 
 export interface AvailableTenant {
@@ -23,6 +27,10 @@ export interface AvailableTenant {
     permissions?: Record<string, boolean>
     /** Modo del emisor: CERT (maullín), PROD (palena) o DEV (Desarrollador, sin SII). */
     sii_ambiente?: 'CERT' | 'PROD' | 'DEV'
+    /** Para el aviso de pago (`AvisoSuscripcion`). */
+    suscripcion_estado?: 'CORTESIA' | 'SIN_PAGO' | 'AL_DIA' | 'POR_VENCER' | 'EN_GRACIA' | 'PRORROGA' | 'SUSPENDIDA'
+    suscripcion_vence?: string | null
+    prorroga_hasta?: string | null
 }
 
 interface SessionState {
@@ -116,3 +124,6 @@ export const useSessionStore = create<SessionState>()(
 export const useEsAdmin = () => useSessionStore((s) =>
     s.user?.is_superuser === true ||
     s.availableTenants.find((t) => t.id === s.selectedTenantId)?.role_name === 'ADMINISTRADOR')
+
+/** El usuario tiene este permiso del panel saas-admin. */
+export const usePermisoSaas = (permiso: string) => useSessionStore((s) => s.user?.permisos?.includes(permiso) === true)

@@ -56,8 +56,8 @@ def provision_new_tenant(
     commune: str = None,
     city: str = None,
     giro: str = None,
-    billing_day: int = 1,
-    economic_activities: list = []
+    economic_activities: list = [],
+    plan_id: int | None = None,
 ) -> Tenant:
     """Crea una nueva empresa, su esquema SQL y ejecuta las migraciones operativas.
     
@@ -86,8 +86,8 @@ def provision_new_tenant(
         commune=commune,
         city=city,
         giro=giro,
-        billing_day=billing_day,
-        economic_activities=economic_activities
+        economic_activities=economic_activities,
+        plan_id=plan_id,
     )
     global_db.add(new_tenant)
     global_db.commit()
