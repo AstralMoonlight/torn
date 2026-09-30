@@ -29,9 +29,9 @@ from app.dte.rut import digito_verificador
 from app.dte.signer import ZONA_CHILE, firmar_sobre
 from app.dte.sii_client import SiiNoDisponibleError, leer_fecha_recepcion, leer_respuesta_registro
 from app.main import app
-from app.models import TABLAS_RLS, Ambiente, DocumentoRecibido, EnvioRecibido, EstadoAcuse, Tenant
+from app.models import TABLAS_RLS, Ambiente, DocumentoRecibido, EstadoAcuse, Tenant
 from tests.factories import CLAVE_PFX, caf_xml, pfx
-from tests.test_api import CLAVE, _alta, api  # noqa: F401 - fixture
+from tests.test_api import _alta, api  # noqa: F401 - fixture
 from tests.test_intercambio import CorreoFalso
 from tests.test_pipeline import RUT_EMPRESA, _ctx, emisor  # noqa: F401 - fixture
 from tests.test_sii_client import SiiFalso
