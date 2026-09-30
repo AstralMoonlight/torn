@@ -133,37 +133,24 @@ export default function Sidebar() {
                     })
 
                     if (filteredItems.length === 0) return null
-                    const cerrada = seccionesCerradas.includes(group.label)
-                    const flecha = <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', cerrada && '-rotate-90')} />
+                    // Con el menú angosto no hay títulos para reabrir la sección: se ve todo.
+                    const cerrada = !collapsed && seccionesCerradas.includes(group.label)
 
                     return (
-                        <div key={group.label} className={cn(groupIdx > 0 && (collapsed ? 'mt-2' : 'mt-5'))}>
-                            <h2 className="mb-2">
-                                <button
-                                    type="button"
-                                    onClick={() => alternarSeccion(group.label)}
-                                    aria-expanded={!cerrada}
-                                    // Con el menú angosto el título no cabe: queda un separador con flecha y el nombre al pasar el mouse.
-                                    aria-label={collapsed ? group.label : undefined}
-                                    title={collapsed ? group.label : undefined}
-                                    className={cn(
-                                        'flex w-full items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
-                                        collapsed
-                                            ? 'gap-1 px-1 py-1'
-                                            : 'justify-between px-3 text-xs font-bold uppercase tracking-wider'
-                                    )}
-                                >
-                                    {collapsed ? (
-                                        <>
-                                            <span className="h-px flex-1 bg-border" />
-                                            {flecha}
-                                            <span className="h-px flex-1 bg-border" />
-                                        </>
-                                    ) : (
-                                        <>{group.label}{flecha}</>
-                                    )}
-                                </button>
-                            </h2>
+                        <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
+                            {!collapsed && (
+                                <h2 className="mb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => alternarSeccion(group.label)}
+                                        aria-expanded={!cerrada}
+                                        className="flex w-full items-center justify-between rounded-md px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                                    >
+                                        {group.label}
+                                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', cerrada && '-rotate-90')} />
+                                    </button>
+                                </h2>
+                            )}
                             {!cerrada && <div className="space-y-1">
                                 {filteredItems.map((item) => {
                                     let itemHref = item.href;
