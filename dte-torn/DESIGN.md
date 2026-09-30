@@ -345,6 +345,22 @@ reprograman `next_action_at` en vez de golpear.
   (`intercambio_next_at`) solo si hay `DTE_SMTP_HOST`. Manda un `EnvioDTE`
   dirigido al RUT del receptor, firmado, más el PDF. En certificación no sale
   solo: `POST /documents/{id}/intercambio` lo manda a mano, a cualquier correo.
+- **Recepción (2026-09-30):** la parte b del intercambio. El scheduler encola
+  `revisar_buzon` cada `DTE_RECEPCION_SEGUNDOS` si hay `DTE_IMAP_HOST`; lee los
+  correos no leídos (IMAP, `BODY.PEEK`) y guarda cada `EnvioDTE` adjunto a
+  nombre de la empresa de su `RutReceptor` (`envios_recibidos`, S3 write-once,
+  idempotente por hash) y sus documentos en `documentos_recibidos`. Lo que no es
+  un `EnvioDTE` (acuses de clientes) se ignora. El sobre se valida contra
+  `EnvioDTE_v10.xsd` y su firma con el certificado que trae; aunque falle, los
+  documentos se guardan (el SII ya los tiene y corre el plazo) con
+  `firma_valida` a la vista. El acuse (`RespuestaDTE` con `RecepcionEnvio`,
+  firmado) vuelve al `Reply-To`/`From` con la tarea `acusar` y el mismo lease
+  (`acuse_next_at`). Aceptar o reclamar va en línea al Registro de Aceptación o
+  Reclamo (`ClienteRegistro`, SOAP con la cookie `TOKEN`), y `registro_recibido`
+  consulta la fecha de recepción en el SII (desde ahí corren los 8 días) y los
+  eventos hasta que vence el plazo. Del lado emisor, `eventos_emitido` sigue 10
+  días si el cliente aceptó o reclamó una factura (`documents.eventos_receptor`).
+  En Desarrollador no se acusa ni se habla con el registro.
 
 ---
 

@@ -14,7 +14,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 from app.core.config import get_settings
-from app.models import TABLAS_RLS, TABLAS_SOLO_INSERT
+from app.models import TABLAS_SOLO_INSERT
 
 revision: str = "0001"
 down_revision: str | None = None
@@ -26,6 +26,12 @@ depends_on: str | Sequence[str] | None = None
 #: Sin variable fijada, la comparación da NULL y la política no deja pasar
 #: ninguna fila: falla cerrada, que es como tiene que fallar.
 _TENANT_ACTUAL = "NULLIF(current_setting('app.tenant_id', true), '')::uuid"
+
+#: Las tablas de tenant que crea esta migración. Fija: las que vienen después
+#: aplican sus propias políticas (ver 0007).
+TABLAS_RLS = (
+    "certificates", "cafs", "envios", "documents", "folio_requests", "audit_log", "dead_letters",
+)
 
 
 def upgrade() -> None:

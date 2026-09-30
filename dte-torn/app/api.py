@@ -20,7 +20,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from prometheus_client import Counter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
@@ -32,7 +32,7 @@ from app.core.certificados import (
 )
 from app.core.config import get_settings
 from app.db import control_session, tenant_session
-from app.dte import pipeline
+from app.dte import pipeline, recepcion, recibidos
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, calcular_totales, construir_dte
 from app.dte.caf import (
     ACTOR_CAF_PRUEBA, FOLIOS_CAF_PRUEBA, CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba,
@@ -50,8 +50,10 @@ from app.dte.intercambio import TIPOS_INTERCAMBIO
 from app.dte.pdf import DatosImpresion, generar_pdf
 from app.dte.rut import validar_rut
 from app.dte.signer import hoy_chile
+from app.dte.sii_client import SiiError
 from app.models import (
-    CAF, Ambiente, AuditLog, Certificate, Document, EstadoCAF, EstadoDocumento, EstadoIntercambio, Envio, Tenant,
+    CAF, TIPOS_CON_REGISTRO, AccionRegistro, Ambiente, AuditLog, Certificate, Document, DocumentoRecibido, EnvioRecibido,
+    EstadoCAF, EstadoDocumento, EstadoIntercambio, Envio, Tenant,
 )
 from app.tasks import colas
 
@@ -393,6 +395,10 @@ class DocumentoOut(BaseModel):
     intercambio_correo: str | None = None
     intercambio_at: datetime | None = None
     intercambio_error: str | None = None
+    #: Registro de aceptación o reclamo del cliente (33, 34 de producción):
+    #: ACEPTADO, RECLAMADO o None mientras no haga nada.
+    estado_receptor: str | None = None
+    eventos_receptor: list[dict] | None = None
 
 
 async def _documento_out(tenant_id: uuid.UUID, doc: Document) -> DocumentoOut:
@@ -408,6 +414,8 @@ async def _documento_out(tenant_id: uuid.UUID, doc: Document) -> DocumentoOut:
         glosa_sii=doc.glosa_sii, ultimo_error=doc.last_error, creado_en=doc.created_at,
         intercambio_estado=doc.intercambio_estado, intercambio_correo=doc.intercambio_correo,
         intercambio_at=doc.intercambio_at, intercambio_error=doc.intercambio_error,
+        estado_receptor=recibidos.estado_registro(doc.eventos_receptor, None),
+        eventos_receptor=doc.eventos_receptor,
     )
 
 
@@ -632,3 +640,233 @@ async def descargar_pdf(
         headers={"Content-Disposition": f'inline; filename="DTE_{doc.tipo_dte}_{doc.folio}{sufijo}.pdf"'},
     )
 
+
+
+# --------------------------------------------------------------- recibidos ---
+#
+# Documentos de proveedores (intercambio, parte b). Llegan solos por la casilla
+# (`tasks.revisar_buzon`) o se suben a mano; aceptar y reclamar van al Registro
+# de Aceptación o Reclamo del SII en línea.
+
+
+class RecibidoOut(BaseModel):
+    id: uuid.UUID
+    tipo_dte: int
+    folio: int
+    rut_emisor: str
+    razon_social_emisor: str
+    fecha_emision: date
+    monto_neto: int
+    monto_exento: int
+    monto_iva: int
+    monto_total: int
+    #: La firma del correo verificó. Si no, conviene confirmarlo en el SII.
+    firma_valida: bool
+    origen: str
+    recibido_en: datetime
+    #: Si pasa por el registro de aceptación o reclamo (33, 34, 43).
+    con_registro: bool
+    fecha_recepcion_sii: datetime | None
+    #: Hasta cuándo se puede aceptar o reclamar; aproximado sin la fecha del SII.
+    plazo: datetime | None
+    plazo_aproximado: bool
+    #: ACEPTADO, RECLAMADO o None (sin responder).
+    estado_registro: str | None
+    accion: str | None
+    accion_at: datetime | None
+    accion_actor: str | None
+    eventos: list[dict] | None
+    registro_error: str | None
+
+
+class RecibidoDetalleOut(RecibidoOut):
+    detalle: dict
+
+
+class EnvioRecibidoOut(BaseModel):
+    id: uuid.UUID
+    codigo: int
+    origen: str
+    correo_origen: str | None
+    asunto: str | None
+    nombre_archivo: str
+    rut_emisor: str | None
+    razon_social_emisor: str | None
+    estado: int
+    glosa: str
+    acuse_estado: str
+    acuse_error: str | None
+    recibido_en: datetime
+
+
+def _recibido_out(doc: DocumentoRecibido, origen: str, detalle: bool = False) -> RecibidoOut:
+    con_registro = doc.tipo_dte in TIPOS_CON_REGISTRO
+    datos = dict(
+        id=doc.id, tipo_dte=doc.tipo_dte, folio=doc.folio, rut_emisor=doc.rut_emisor,
+        razon_social_emisor=doc.razon_social_emisor, fecha_emision=doc.fecha_emision, monto_neto=doc.monto_neto,
+        monto_exento=doc.monto_exento, monto_iva=doc.monto_iva, monto_total=doc.monto_total,
+        firma_valida=doc.firma_valida, origen=origen, recibido_en=doc.created_at, con_registro=con_registro,
+        fecha_recepcion_sii=doc.fecha_recepcion_sii,
+        plazo=recibidos.plazo(doc) if con_registro else None,
+        plazo_aproximado=doc.fecha_recepcion_sii is None,
+        estado_registro=recibidos.estado_registro(doc.eventos, doc.accion),
+        accion=doc.accion, accion_at=doc.accion_at, accion_actor=doc.accion_actor, eventos=doc.eventos,
+        registro_error=doc.registro_error,
+    )
+    return RecibidoDetalleOut(**datos, detalle=doc.detalle) if detalle else RecibidoOut(**datos)
+
+
+def _envio_out(e: EnvioRecibido) -> EnvioRecibidoOut:
+    return EnvioRecibidoOut(
+        id=e.id, codigo=e.codigo, origen=e.origen, correo_origen=e.correo_origen, asunto=e.asunto,
+        nombre_archivo=e.nombre_archivo, rut_emisor=e.rut_emisor, razon_social_emisor=e.razon_social_emisor,
+        estado=e.estado, glosa=e.glosa, acuse_estado=e.acuse_estado, acuse_error=e.acuse_error,
+        recibido_en=e.recibido_at,
+    )
+
+
+@router.get("/recibidos", response_model=list[RecibidoOut])
+async def listar_recibidos(
+    tenant: TenantDep,
+    desde: date | None = None,
+    hasta: date | None = None,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    sin_responder: bool = False,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[RecibidoOut]:
+    """Documentos de proveedores, los que llegaron último primero.
+
+    `q` busca por razón social, RUT o folio (e ignora las fechas);
+    `sin_responder` deja los que aún se pueden aceptar o reclamar y nadie tocó.
+    """
+    consulta = (
+        select(DocumentoRecibido, EnvioRecibido.origen)
+        .join(EnvioRecibido, EnvioRecibido.id == DocumentoRecibido.envio_id)
+        .order_by(DocumentoRecibido.created_at.desc()).limit(limit).offset(offset)
+    )
+    if q:
+        texto = q.strip()
+        filtros = [DocumentoRecibido.razon_social_emisor.ilike(f"%{texto}%"),
+                   DocumentoRecibido.rut_emisor.ilike(f"%{texto.replace('.', '')}%")]
+        if texto.isdigit():
+            filtros.append(DocumentoRecibido.folio == int(texto))
+        consulta = consulta.where(or_(*filtros))
+    else:
+        if desde:
+            consulta = consulta.where(DocumentoRecibido.fecha_emision >= desde)
+        if hasta:
+            consulta = consulta.where(DocumentoRecibido.fecha_emision <= hasta)
+    if sin_responder:
+        consulta = consulta.where(DocumentoRecibido.tipo_dte.in_(TIPOS_CON_REGISTRO), DocumentoRecibido.accion.is_(None))
+    async with tenant_session(tenant.id) as s:
+        filas = (await s.execute(consulta)).all()
+    salida = [_recibido_out(d, origen) for d, origen in filas]
+    if sin_responder:
+        ahora = datetime.now(timezone.utc)
+        salida = [r for r in salida if r.estado_registro is None and r.plazo and r.plazo > ahora]
+    return salida
+
+
+@router.get("/recibidos/envios", response_model=list[EnvioRecibidoOut])
+async def listar_envios_recibidos(
+    tenant: TenantDep,
+    con_problemas: bool = False,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[EnvioRecibidoOut]:
+    """Los correos (envíos) recibidos. `con_problemas`: rechazados o sin acuse."""
+    consulta = select(EnvioRecibido).order_by(EnvioRecibido.recibido_at.desc()).limit(limit)
+    if con_problemas:
+        consulta = consulta.where(or_(EnvioRecibido.estado != recepcion.CONFORME, EnvioRecibido.acuse_estado == "ERROR"))
+    async with tenant_session(tenant.id) as s:
+        return [_envio_out(e) for e in (await s.execute(consulta)).scalars().all()]
+
+
+class CargaRecibidoOut(BaseModel):
+    envio: EnvioRecibidoOut
+    documentos: list[RecibidoOut]
+    #: False: ese mismo archivo ya se había cargado.
+    nuevo: bool
+
+
+@router.post("/recibidos", response_model=CargaRecibidoOut, status_code=201)
+async def cargar_recibido(
+    tenant: TenantDep,
+    ctx: Annotated[pipeline.Contexto, Depends(contexto)],
+    archivo: UploadFile = File(...),
+) -> CargaRecibidoOut:
+    """Carga a mano el XML (EnvioDTE) que mandó un proveedor. No se acusa
+    recibo por correo: no hay a quién responder."""
+    xml = await archivo.read(recepcion.MAX_SOBRE + 1)
+    if len(xml) > recepcion.MAX_SOBRE:
+        raise HTTPException(413, "Archivo demasiado grande")
+    try:
+        envio, docs, nuevo = await recibidos.guardar_envio(
+            ctx.almacen, tenant, xml, origen="MANUAL", nombre_archivo=archivo.filename or "envio.xml")
+    except recepcion.NoEsEnvioDteError as exc:
+        raise HTTPException(422, f"El archivo no es un envío de documentos del SII: {exc}") from exc
+    async with tenant_session(tenant.id) as s:
+        docs = (await s.execute(select(DocumentoRecibido).where(DocumentoRecibido.envio_id == envio.id))).scalars().all()
+    return CargaRecibidoOut(envio=_envio_out(envio), documentos=[_recibido_out(d, envio.origen) for d in docs], nuevo=nuevo)
+
+
+async def _recibido(tenant_id: uuid.UUID, doc_id: uuid.UUID) -> tuple[DocumentoRecibido, str]:
+    async with tenant_session(tenant_id) as s:
+        fila = (await s.execute(
+            select(DocumentoRecibido, EnvioRecibido.origen)
+            .join(EnvioRecibido, EnvioRecibido.id == DocumentoRecibido.envio_id)
+            .where(DocumentoRecibido.id == doc_id)
+        )).one_or_none()
+    if fila is None:
+        raise HTTPException(404, "Documento recibido no encontrado")
+    return fila[0], fila[1]
+
+
+@router.get("/recibidos/{doc_id}", response_model=RecibidoDetalleOut)
+async def ver_recibido(doc_id: uuid.UUID, tenant: TenantDep) -> RecibidoOut:
+    return _recibido_out(*await _recibido(tenant.id, doc_id), detalle=True)
+
+
+@router.get("/recibidos/{doc_id}/xml")
+async def descargar_xml_recibido(
+    doc_id: uuid.UUID, tenant: TenantDep, ctx: Annotated[pipeline.Contexto, Depends(contexto)],
+) -> Response:
+    """El DTE del proveedor, tal como vino en su envío."""
+    doc, _ = await _recibido(tenant.id, doc_id)
+    xml = await ctx.almacen.leer(doc.xml_key, doc.xml_sha256)
+    return Response(
+        xml, media_type="application/xml; charset=ISO-8859-1",
+        headers={"Content-Disposition": f'inline; filename="DTE_{doc.rut_emisor}_{doc.tipo_dte}_{doc.folio}.xml"'},
+    )
+
+
+class AccionIn(BaseModel):
+    accion: AccionRegistro
+
+
+@router.post("/recibidos/{doc_id}/accion", response_model=RecibidoOut)
+async def registrar_accion(
+    doc_id: uuid.UUID, entrada: AccionIn, tenant: TenantDep,
+    ctx: Annotated[pipeline.Contexto, Depends(contexto)], actor: Actor = None,
+) -> RecibidoOut:
+    """Acepta (ACD), da recibo de mercaderías (ERM) o reclama (RCD, RFP, RFT) en el SII."""
+    doc, origen = await _recibido(tenant.id, doc_id)
+    try:
+        doc = await recibidos.registrar_accion(ctx, tenant, doc.id, entrada.accion, actor)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except recibidos.RegistroRechazadoError as exc:
+        raise HTTPException(409, f"El SII no lo registró: {exc}") from exc
+    except SiiError as exc:
+        raise HTTPException(503, f"El SII no respondió; intente de nuevo en unos minutos ({exc})") from exc
+    return _recibido_out(doc, origen)
+
+
+@router.post("/recibidos/{doc_id}/actualizar", response_model=RecibidoOut)
+async def actualizar_recibido(
+    doc_id: uuid.UUID, tenant: TenantDep, ctx: Annotated[pipeline.Contexto, Depends(contexto)],
+) -> RecibidoOut:
+    """Consulta ahora al SII la fecha de recepción y los eventos del documento."""
+    await _recibido(tenant.id, doc_id)
+    await recibidos.actualizar_registro(ctx, tenant.id, doc_id)
+    return _recibido_out(*await _recibido(tenant.id, doc_id))

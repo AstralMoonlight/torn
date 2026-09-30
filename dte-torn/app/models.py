@@ -14,10 +14,12 @@ from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     LargeBinary,
@@ -83,6 +85,30 @@ class EstadoIntercambio(StrEnum):
     SIN_CORREO = "SIN_CORREO"
     #: Agotó los reintentos o el servidor rechazó la dirección.
     ERROR = "ERROR"
+
+
+class EstadoAcuse(StrEnum):
+    """Acuse de recibo (`RespuestaDTE` con `RecepcionEnvio`) de un envío recibido."""
+
+    PENDIENTE = "PENDIENTE"
+    ENVIADO = "ENVIADO"
+    #: Sin correo al que responder (cargado a mano), o en Desarrollador.
+    NO_APLICA = "NO_APLICA"
+    ERROR = "ERROR"
+
+
+class AccionRegistro(StrEnum):
+    """Acciones del Registro de Aceptación o Reclamo del SII (Ley 20.956)."""
+
+    ACD = "ACD"  # acepta el contenido
+    ERM = "ERM"  # recibo de mercaderías o servicios
+    RCD = "RCD"  # reclamo al contenido
+    RFP = "RFP"  # reclamo por falta parcial de mercaderías
+    RFT = "RFT"  # reclamo por falta total de mercaderías
+
+
+#: Solo estos tipos pasan por el registro de aceptación o reclamo.
+TIPOS_CON_REGISTRO = frozenset({33, 34, 43})
 
 
 class EstadoCAF(StrEnum):
@@ -363,6 +389,11 @@ class Document(TenantMixin, Base):
     #: El emisor declaró anulado en el SII este folio rechazado que no se reutilizó.
     folio_anulado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    #: Eventos del registro de aceptación o reclamo que dejó el receptor (33 y
+    #: 34 de producción): `[{"codigo": "ACD", "descripcion": ..., "fecha": ...}]`.
+    eventos_receptor: Mapped[list | None] = mapped_column(JSONB)
+    eventos_next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     intentos: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     #: Motor de reintentos y de reconciliación tras perder Redis.
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -482,6 +513,108 @@ class DeadLetter(TenantMixin, Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class EnvioRecibido(TenantMixin, Base):
+    """Sobre `EnvioDTE` que un proveedor mandó a la casilla de intercambio.
+
+    Se guarda tal cual llegó (S3, write-once) aunque se haya rechazado: el acuse
+    dice por qué, y es la prueba de qué se recibió.
+    """
+
+    __tablename__ = "envios_recibidos"
+
+    id: Mapped[uuid.UUID] = _pk()
+    #: `CodEnvio` del acuse: número único que asigna quien recibe.
+    codigo: Mapped[int] = mapped_column(BigInteger, Identity(start=1), unique=True, nullable=False)
+    #: CORREO (leído de la casilla) o MANUAL (subido desde la aplicación).
+    origen: Mapped[str] = mapped_column(String(10), nullable=False)
+    correo_origen: Mapped[str | None] = mapped_column(String(150))
+    asunto: Mapped[str | None] = mapped_column(String(300))
+    nombre_archivo: Mapped[str] = mapped_column(String(80), nullable=False)
+    rut_emisor: Mapped[str | None] = mapped_column(String(12))
+    razon_social_emisor: Mapped[str | None] = mapped_column(String(200))
+    envio_dte_id: Mapped[str | None] = mapped_column(String(80))
+    digest: Mapped[str | None] = mapped_column(String(100))
+
+    xml_key: Mapped[str] = mapped_column(Text, nullable=False)
+    xml_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    #: `EstadoRecepEnv`: 0 conforme, 1 schema, 2 firma, 3 RUT receptor, 90 repetido, 91 ilegible, 99 otros.
+    estado: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    glosa: Mapped[str] = mapped_column(String(256), nullable=False)
+    #: Resultado de cada DTE del sobre, para el acuse (`RecepcionDTE`).
+    resultados: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    acuse_estado: Mapped[str] = mapped_column(String(10), nullable=False, default=EstadoAcuse.NO_APLICA)
+    acuse_intentos: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    acuse_next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    acuse_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    acuse_error: Mapped[str | None] = mapped_column(Text)
+
+    recibido_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        # El mismo archivo dos veces (correo repetido, reintento tras una caída) es uno solo.
+        UniqueConstraint("tenant_id", "xml_sha256", name="uq_envios_recibidos_sha"),
+        Index(
+            "ix_envios_recibidos_acuse", "acuse_next_at",
+            postgresql_where=text("acuse_estado = 'PENDIENTE'"),
+        ),
+    )
+
+
+class DocumentoRecibido(TenantMixin, Base):
+    """Documento de un proveedor, leído de un envío recibido conforme."""
+
+    __tablename__ = "documentos_recibidos"
+
+    id: Mapped[uuid.UUID] = _pk()
+    envio_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("envios_recibidos.id"), nullable=False)
+    tipo_dte: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    folio: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    rut_emisor: Mapped[str] = mapped_column(String(12), nullable=False)
+    razon_social_emisor: Mapped[str] = mapped_column(String(200), nullable=False)
+    fecha_emision: Mapped[date] = mapped_column(Date, nullable=False)
+    monto_neto: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    monto_exento: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    monto_iva: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    monto_total: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    #: Emisor, líneas y referencias, para mostrarlo y llenar una compra.
+    detalle: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    #: La firma del DTE verificó. No es condición para recibirlo: el SII acepta
+    #: documentos de proveedores que reindentan el XML después de firmarlo.
+    firma_valida: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    xml_key: Mapped[str] = mapped_column(Text, nullable=False)
+    xml_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    #: Cuándo lo recibió el SII: desde ahí corren los 8 días para aceptar o reclamar.
+    fecha_recepcion_sii: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Próxima consulta al registro del SII (fecha de recepción y eventos).
+    registro_next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    registro_error: Mapped[str | None] = mapped_column(Text)
+    #: La acción que registró esta empresa (ver `AccionRegistro`).
+    accion: Mapped[str | None] = mapped_column(String(3))
+    accion_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accion_actor: Mapped[str | None] = mapped_column(String(150))
+    #: Eventos del registro del SII, de cualquiera (también las NC que lo anulan).
+    eventos: Mapped[list | None] = mapped_column(JSONB)
+    eventos_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "rut_emisor", "tipo_dte", "folio", name="uq_documentos_recibidos"),
+        Index(
+            "ix_documentos_recibidos_registro", "registro_next_at",
+            postgresql_where=text("registro_next_at IS NOT NULL"),
+        ),
+    )
+
+
 class CryptoCanary(Base):
     """Texto conocido cifrado con la llave maestra vigente.
 
@@ -500,11 +633,13 @@ class CryptoCanary(Base):
     )
 
 
-#: Tablas con RLS. La migración inicial recorre esta lista para crear las
-#: políticas, así que agregar una tabla de tenant no se puede olvidar acá.
+#: Tablas con RLS. Cada migración crea las políticas de las suyas, y
+#: `tests/test_recepcion.py` comprueba que todas las de esta lista las tengan:
+#: una tabla de tenant sin RLS hace fallar la suite.
 TABLAS_RLS: tuple[str, ...] = tuple(
     cls.__tablename__
-    for cls in (Certificate, CAF, Envio, Document, FolioRequest, AuditLog, DeadLetter)
+    for cls in (Certificate, CAF, Envio, Document, FolioRequest, AuditLog, DeadLetter,
+                EnvioRecibido, DocumentoRecibido)
 )
 
 #: `audit_log` solo acepta INSERT y SELECT.

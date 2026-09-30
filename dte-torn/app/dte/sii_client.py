@@ -32,7 +32,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import TypeVar
 
@@ -41,7 +41,7 @@ from lxml import etree
 from redis.asyncio import Redis
 
 from app.core.certificados import CertificadoCargado
-from app.dte.signer import firmar_semilla
+from app.dte.signer import ZONA_CHILE, firmar_semilla
 
 T = TypeVar("T")
 
@@ -98,6 +98,17 @@ CONSULTA_DOCUMENTO: dict[str, str] = {
     "CERT": "https://maullin.sii.cl/DTEWS/QueryEstDte.jws",
     "PROD": "https://palena.sii.cl/DTEWS/QueryEstDte.jws",
 }
+
+
+#: Registro de Aceptación o Reclamo (Ley 20.956). WSDL leído el 2026-09-30 y
+#: manual "Web Service de Consulta y Registro de Aceptación/Reclamo a DTE
+#: recibido" v1.2: SOAP rpc/literal, autenticado con el mismo token de DTE en la
+#: cookie `TOKEN`.
+REGISTRO_RECLAMO: dict[str, str] = {
+    "CERT": "https://ws2.sii.cl/WSREGISTRORECLAMODTECERT/registroreclamodteservice",
+    "PROD": "https://ws1.sii.cl/WSREGISTRORECLAMODTE/registroreclamodteservice",
+}
+NS_REGISTRO = "http://ws.registroreclamodte.diii.sdi.sii.cl"
 
 
 # ----------------------------------------------------------------- errores --
@@ -691,6 +702,132 @@ async def _consultar_documento(
         )
 
     return await cliente._con_token(Canal.DTE, tenant_id, cert, preguntar)
+
+
+# ------------------------------------------- registro de aceptación o reclamo --
+
+#: `codResp` del manual v1.2. 0 hecho y 7 "evento registrado previamente" dejan
+#: el documento como se quería; 15 y 16 son respuestas de la consulta.
+REGISTRO_OK = frozenset({0, 7})
+LISTADO, SIN_EVENTOS = 15, 16
+
+
+@dataclass(frozen=True, slots=True)
+class RespuestaRegistro:
+    codigo: int
+    descripcion: str
+    #: `[{"codigo": "ACD", "descripcion": ..., "responsable": "76...-K", "fecha": iso}]`
+    eventos: list[dict[str, str]]
+
+
+def _fecha_registro(texto: str | None) -> datetime | None:
+    """`21-02-2017 19:02:03`, en hora de Chile."""
+    try:
+        return datetime.strptime((texto or "").strip(), "%d-%m-%Y %H:%M:%S").replace(tzinfo=ZONA_CHILE)
+    except ValueError:
+        return None
+
+
+def _falla_registro(raiz: etree._Element, contenido: bytes) -> None:
+    falla = _texto(raiz, "faultstring") if _local(raiz, "Fault") is not None else None
+    if falla is None:
+        return
+    if "token" in falla.lower():
+        raise SiiTokenInvalidoError(f"Registro de reclamos: {falla}", respuesta=contenido[:500].decode("latin-1"))
+    raise SiiNoDisponibleError(f"Registro de reclamos: {falla}", respuesta=contenido[:500].decode("latin-1"))
+
+
+def leer_respuesta_registro(contenido: bytes) -> RespuestaRegistro:
+    """Respuesta de `ingresarAceptacionReclamoDoc` o `listarEventosHistDoc`."""
+    raiz = _xml(contenido, "registro de reclamos")
+    _falla_registro(raiz, contenido)
+    codigo = _texto(raiz, "codResp")
+    if codigo is None or not codigo.lstrip("-").isdigit():
+        raise SiiNoDisponibleError("Registro de reclamos sin codResp", respuesta=contenido[:500].decode("latin-1"))
+    if int(codigo) == -1:
+        # "Error interno: reintentar la transacción más tarde" (manual v1.2).
+        raise SiiNoDisponibleError("El registro de reclamos pidió reintentar más tarde", "-1")
+    eventos = []
+    for nodo in raiz.iter():
+        if isinstance(nodo.tag, str) and etree.QName(nodo).localname == "listaEventosDoc":
+            rut, dv = _texto(nodo, "rutResponsable"), _texto(nodo, "dvResponsable")
+            fecha = _fecha_registro(_texto(nodo, "fechaEvento"))
+            eventos.append({
+                "codigo": _texto(nodo, "codEvento") or "",
+                "descripcion": _texto(nodo, "descEvento") or "",
+                "responsable": f"{rut}-{dv}" if rut else "",
+                "fecha": fecha.isoformat() if fecha else (_texto(nodo, "fechaEvento") or ""),
+            })
+    return RespuestaRegistro(int(codigo), _texto(raiz, "descResp") or "", eventos)
+
+
+def leer_fecha_recepcion(contenido: bytes) -> datetime | None:
+    """Respuesta de `consultarFechaRecepcionSii`: la fecha, o None si el SII aún no lo tiene."""
+    raiz = _xml(contenido, "fecha de recepción")
+    _falla_registro(raiz, contenido)
+    return _fecha_registro(_texto(raiz, "return"))
+
+
+class ClienteRegistro:
+    """Registro de Aceptación o Reclamo, en nombre de un tenant.
+
+    Usa el token del canal DTE (mismo certificado, misma semilla) y lo manda en
+    la cookie `TOKEN`, como el ejemplo del manual.
+    """
+
+    def __init__(self, sii: ClienteSii) -> None:
+        if sii.ambiente not in REGISTRO_RECLAMO:
+            raise ValueError(f"Sin registro de reclamos en el ambiente {sii.ambiente}")
+        self.sii = sii
+        self.url = REGISTRO_RECLAMO[sii.ambiente]
+
+    async def _llamar(self, tenant_id: uuid.UUID, cert: CertificadoCargado, metodo: str, parametros: dict[str, object]) -> bytes:
+        cuerpo = etree.Element("{http://schemas.xmlsoap.org/soap/envelope/}Envelope", nsmap={
+            "soapenv": "http://schemas.xmlsoap.org/soap/envelope/", "ws": NS_REGISTRO})
+        llamada = etree.SubElement(etree.SubElement(cuerpo, "{http://schemas.xmlsoap.org/soap/envelope/}Body"),
+                                   f"{{{NS_REGISTRO}}}{metodo}")
+        for nombre, valor in parametros.items():
+            etree.SubElement(llamada, nombre).text = str(valor)
+        sobre = etree.tostring(cuerpo, encoding="UTF-8", xml_declaration=True)
+
+        async def pedir(token: str) -> bytes:
+            try:
+                respuesta = await self.sii.http.post(self.url, content=sobre, headers={
+                    "Content-Type": "text/xml; charset=utf-8", "SOAPAction": '""', "Cookie": f"TOKEN={token}"})
+            except httpx.TransportError as exc:
+                raise SiiNoDisponibleError(f"Sin respuesta del registro de reclamos: {exc!r}") from exc
+            if respuesta.status_code in (401, 403):
+                raise SiiTokenInvalidoError("Registro de reclamos: token rechazado", str(respuesta.status_code))
+            if respuesta.status_code >= 500 and b"Fault" not in respuesta.content:
+                raise SiiNoDisponibleError(f"El registro de reclamos respondió {respuesta.status_code}",
+                                           str(respuesta.status_code), respuesta.text[:500])
+            # Un Fault de SOAP viene con 500: lo lee quien parsea.
+            return respuesta.content
+
+        return await self.sii._con_token(Canal.DTE, tenant_id, cert, pedir)
+
+    @staticmethod
+    def _documento(rut_emisor: str, tipo_dte: int, folio: int) -> dict[str, object]:
+        rut, dv = _separar_rut(rut_emisor)
+        return {"rutEmisor": rut, "dvEmisor": dv.upper(), "tipoDoc": tipo_dte, "folio": folio}
+
+    async def registrar(self, tenant_id: uuid.UUID, cert: CertificadoCargado, rut_emisor: str,
+                        tipo_dte: int, folio: int, accion: str) -> RespuestaRegistro:
+        """Acepta, reclama o da recibo de mercaderías (`accion`: ACD, ERM, RCD, RFP, RFT)."""
+        parametros = self._documento(rut_emisor, tipo_dte, folio) | {"accionDoc": accion}
+        return leer_respuesta_registro(await self._llamar(tenant_id, cert, "ingresarAceptacionReclamoDoc", parametros))
+
+    async def eventos(self, tenant_id: uuid.UUID, cert: CertificadoCargado, rut_emisor: str,
+                      tipo_dte: int, folio: int) -> RespuestaRegistro:
+        """Eventos del documento: aceptaciones, reclamos y NC que lo referencian."""
+        return leer_respuesta_registro(await self._llamar(
+            tenant_id, cert, "listarEventosHistDoc", self._documento(rut_emisor, tipo_dte, folio)))
+
+    async def fecha_recepcion(self, tenant_id: uuid.UUID, cert: CertificadoCargado, rut_emisor: str,
+                              tipo_dte: int, folio: int) -> datetime | None:
+        """Cuándo recibió el SII el documento: desde ahí corren los 8 días."""
+        return leer_fecha_recepcion(await self._llamar(
+            tenant_id, cert, "consultarFechaRecepcionSii", self._documento(rut_emisor, tipo_dte, folio)))
 
 
 def crear_http(timeout: float) -> httpx.AsyncClient:

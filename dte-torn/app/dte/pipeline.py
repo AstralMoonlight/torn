@@ -71,6 +71,7 @@ from app.models import (
     EstadoDocumento,
     EstadoEnvio,
     EstadoIntercambio,
+    TIPOS_CON_REGISTRO,
     Tenant,
 )
 
@@ -663,16 +664,25 @@ def _intercambio_al_aceptar(doc: Document, ahora: datetime) -> dict:
     Solo en producción: en certificación los documentos son de prueba y no
     deben llegar a clientes reales (se pueden mandar a mano). Tampoco las
     boletas ni lo que va al consumidor final.
+
+    Una factura (33, 34) queda además siguiendo el Registro de Aceptación o
+    Reclamo: el cliente tiene 8 días para aceptarla o reclamarla
+    (`recibidos.eventos_emitido`).
     """
     if doc.tipo_dte not in TIPOS_INTERCAMBIO or doc.ambiente != Ambiente.PROD:
         return {}
     receptor = DatosDocumento.model_validate(doc.payload).receptor
     if receptor is None or receptor.rut == RUT_CONSUMIDOR_FINAL:
         return {}
+    registro = {"eventos_next_at": ahora + ESPERA_PRIMEROS_EVENTOS} if doc.tipo_dte in TIPOS_CON_REGISTRO else {}
     if not receptor.correo:
-        return {"intercambio_estado": I.SIN_CORREO}
+        return {"intercambio_estado": I.SIN_CORREO, **registro}
     return {"intercambio_estado": I.PENDIENTE, "intercambio_correo": receptor.correo,
-            "intercambio_intentos": 0, "intercambio_next_at": ahora}
+            "intercambio_intentos": 0, "intercambio_next_at": ahora, **registro}
+
+
+#: El SII tarda en reflejar la recepción de un documento en su registro.
+ESPERA_PRIMEROS_EVENTOS = timedelta(hours=1)
 
 
 #: El servidor rechazó la dirección: reintentar no sirve.

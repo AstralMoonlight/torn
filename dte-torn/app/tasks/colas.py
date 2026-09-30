@@ -6,7 +6,7 @@ Tres colas, una por tipo de trabajo, cada una con su worker:
 |--------------|-------------------------|----------------------------------------|
 | `dte:firma`  | `firmar`                | CPU: pool de procesos                  |
 | `dte:envio`  | `enviar` (y verificar)  | semáforo por RUT + circuit breaker     |
-| `dte:estado` | `consultar`, `intercambiar` | nada: lee del SII o manda un correo |
+| `dte:estado` | `consultar`, `intercambiar`, recepción | nada: lee del SII o de la casilla, o manda un correo |
 
 Las tareas no guardan estado propio: cada una llama a un paso del pipeline, que
 reclama el documento en Postgres y es idempotente. Por eso encolar dos veces lo
@@ -36,9 +36,10 @@ from taskiq_redis import ListQueueBroker
 
 from app.core.almacen import Almacen
 from app.core.config import get_settings
+from app.core.buzon import Buzon
 from app.core.correo import Correo
 from app.db import control_session, get_engine, tenant_session
-from app.dte import pipeline
+from app.dte import pipeline, recibidos
 from app.dte.sii_client import Canal, crear_http
 from app.models import Document, EstadoDocumento, Tenant
 
@@ -277,6 +278,57 @@ async def consultar(tenant_id: str, doc_id: str) -> str:
 async def intercambiar(tenant_id: str, doc_id: str) -> str:
     """Intercambio PENDIENTE → ENVIADO: el XML y el PDF al correo del receptor."""
     return await _medir("intercambiar", pipeline.intercambiar(contexto(), uuid.UUID(tenant_id), uuid.UUID(doc_id)))
+
+
+@estado.task(task_name="dte.acusar")
+async def acusar(tenant_id: str, envio_id: str) -> str:
+    """Acuse de recibo PENDIENTE → ENVIADO: el `RespuestaDTE` al proveedor."""
+    return await _medir("acusar", recibidos.acusar(contexto(), uuid.UUID(tenant_id), uuid.UUID(envio_id)))
+
+
+@estado.task(task_name="dte.registro_recibido")
+async def registro_recibido(tenant_id: str, doc_id: str) -> str:
+    """Fecha de recepción en el SII y eventos de un documento de proveedor."""
+    return await _medir("registro_recibido",
+                        recibidos.actualizar_registro(contexto(), uuid.UUID(tenant_id), uuid.UUID(doc_id)))
+
+
+@estado.task(task_name="dte.eventos_emitido")
+async def eventos_emitido(tenant_id: str, doc_id: str) -> str:
+    """Si el cliente aceptó o reclamó una factura nuestra."""
+    return await _medir("eventos_emitido",
+                        recibidos.eventos_emitido(contexto(), uuid.UUID(tenant_id), uuid.UUID(doc_id)))
+
+
+#: Una sola lectura de la casilla a la vez, aunque el scheduler la encole de nuevo.
+_CANDADO_BUZON = "dte:buzon:leyendo"
+
+
+@estado.task(task_name="dte.revisar_buzon")
+async def revisar_buzon() -> str:
+    """Lee los correos no leídos de la casilla de intercambio y guarda sus envíos.
+
+    Un correo se marca leído solo si se procesó entero; si algo falla (la base,
+    S3), queda sin leer y se reintenta en la próxima vuelta.
+    """
+    buzon = Buzon.desde(get_settings())
+    ctx = contexto()
+    if buzon is None or not await ctx.redis.set(_CANDADO_BUZON, "1", nx=True, ex=600):
+        return "OMITIDO"
+    try:
+        leidos, nuevos = [], 0
+        for correo in await buzon.no_leidos():
+            try:
+                nuevos += len(await recibidos.procesar_correo(ctx.almacen, correo))
+            except Exception:  # noqa: BLE001 - un correo no bloquea a los demás
+                log.exception("No se pudo procesar el correo %s de %s", correo.uid, correo.remitente)
+                continue
+            leidos.append(correo.uid)
+        await buzon.marcar_leidos(leidos)
+        TAREAS.labels("revisar_buzon", "OK").inc()
+        return f"{len(leidos)} correos, {nuevos} envíos nuevos"
+    finally:
+        await ctx.redis.delete(_CANDADO_BUZON)
 
 
 _TAREA_POR_ESTADO = {

@@ -10,6 +10,11 @@ También rescata los estados transitorios colgados (un worker que murió a mitad
 de un paso) y cada `VIGILANCIA_SEGUNDOS` revisa stock de folios, CAF vencidos y
 vigencia de certificados, que expone como métricas para alertar.
 
+Con el mismo lease encola lo que no es la vida de un documento emitido: el XML
+al cliente (intercambio), el acuse de recibo a un proveedor, las consultas al
+registro de aceptación o reclamo, y cada `DTE_RECEPCION_SEGUNDOS` la lectura de
+la casilla de intercambio.
+
 Correr uno solo: `python -m app.tasks.scheduler`. Dos a la vez no rompen nada
 (`FOR UPDATE SKIP LOCKED` + lease), solo duplican trabajo.
 """
@@ -30,7 +35,10 @@ from app.core.config import get_settings
 from app.db import control_session, tenant_session
 from app.dte.folios import caf_vigente_sql
 from app.dte.signer import ZONA_CHILE
-from app.models import CAF, Ambiente, Certificate, Document, EstadoCAF, EstadoDocumento, EstadoIntercambio, Tenant
+from app.models import (
+    CAF, Ambiente, Certificate, Document, DocumentoRecibido, EnvioRecibido, EstadoAcuse, EstadoCAF,
+    EstadoDocumento, EstadoIntercambio, Tenant,
+)
 from app.tasks import colas
 
 E = EstadoDocumento
@@ -104,35 +112,45 @@ async def reconciliar(limite: int = 500) -> int:
                 continue
             ENCOLADOS.labels(estado_doc).inc()
             total += 1
+        # Sin servidor de correo, el intercambio y los acuses quedan PENDIENTE.
         if get_settings().smtp_host:
-            total += await _intercambios(tenant_id, limite)
+            total += await _encolar_vencidos(
+                tenant_id, Document, Document.intercambio_next_at,
+                Document.intercambio_estado == EstadoIntercambio.PENDIENTE, colas.intercambiar, "INTERCAMBIO", limite)
+            total += await _encolar_vencidos(
+                tenant_id, EnvioRecibido, EnvioRecibido.acuse_next_at,
+                EnvioRecibido.acuse_estado == EstadoAcuse.PENDIENTE, colas.acusar, "ACUSE", limite)
+        total += await _encolar_vencidos(
+            tenant_id, DocumentoRecibido, DocumentoRecibido.registro_next_at,
+            DocumentoRecibido.registro_next_at.is_not(None), colas.registro_recibido, "REGISTRO", limite)
+        total += await _encolar_vencidos(
+            tenant_id, Document, Document.eventos_next_at,
+            Document.eventos_next_at.is_not(None), colas.eventos_emitido, "EVENTOS", limite)
     return total
 
 
-async def _intercambios(tenant_id: uuid.UUID, limite: int) -> int:
-    """Encola el envío del XML al receptor de lo aceptado, con el mismo lease.
-    Sin servidor de correo configurado no se llama: quedan PENDIENTE."""
+async def _encolar_vencidos(tenant_id: uuid.UUID, modelo, columna, filtro, tarea, etiqueta: str, limite: int) -> int:
+    """Encola lo que cumple `filtro` y tiene `columna` (su próximo paso) vencida,
+    dejando un lease en esa columna: si la tarea se pierde, vuelve al vencer."""
     ahora = datetime.now(timezone.utc)
     async with tenant_session(tenant_id) as s:
         vencidos = (
-            select(Document.id)
-            .where(Document.intercambio_estado == EstadoIntercambio.PENDIENTE,
-                   or_(Document.intercambio_next_at.is_(None), Document.intercambio_next_at <= ahora))
+            select(modelo.id)
+            .where(filtro, or_(columna.is_(None), columna <= ahora))
             .limit(limite)
             .with_for_update(skip_locked=True)
         )
         ids = (await s.execute(
-            update(Document).where(Document.id.in_(vencidos))
-            .values(intercambio_next_at=ahora + LEASE).returning(Document.id)
+            update(modelo).where(modelo.id.in_(vencidos)).values({columna: ahora + LEASE}).returning(modelo.id)
         )).scalars().all()
     n = 0
-    for doc_id in ids:
+    for fila_id in ids:
         try:
-            await colas.intercambiar.kiq(str(tenant_id), str(doc_id))
+            await tarea.kiq(str(tenant_id), str(fila_id))
         except Exception:  # noqa: BLE001 - el lease lo reintenta
-            log.exception("No se pudo encolar el intercambio de %s", doc_id)
+            log.exception("No se pudo encolar %s de %s", etiqueta, fila_id)
             continue
-        ENCOLADOS.labels("INTERCAMBIO").inc()
+        ENCOLADOS.labels(etiqueta).inc()
         n += 1
     return n
 
@@ -193,7 +211,7 @@ async def main() -> None:
     for broker in colas.BROKERS:
         await broker.startup()
 
-    ultima_vigilancia = 0.0
+    ultima_vigilancia = ultima_recepcion = 0.0
     while True:
         try:
             if n := await reconciliar():
@@ -206,6 +224,12 @@ async def main() -> None:
             except Exception:  # noqa: BLE001
                 log.exception("Falló la vigilancia")
             ultima_vigilancia = time.monotonic()
+        if s.imap_host and time.monotonic() - ultima_recepcion >= s.recepcion_segundos:
+            try:
+                await colas.revisar_buzon.kiq()
+            except Exception:  # noqa: BLE001
+                log.exception("No se pudo encolar la lectura de la casilla")
+            ultima_recepcion = time.monotonic()
         await asyncio.sleep(INTERVALO_SEGUNDOS)
 
 

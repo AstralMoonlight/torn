@@ -85,6 +85,18 @@ class Settings(BaseSettings):
     #: Dirección que aparece como remitente. Por defecto, el usuario.
     smtp_remitente: str | None = None
 
+    # --- Correo entrante (documentos de proveedores) -----------------------
+    #: Casilla de intercambio por IMAP (SSL, puerto 993). Sin host no se lee
+    #: nada; los documentos se pueden cargar a mano desde la aplicación. Usuario
+    #: y clave, por defecto los de SMTP (en cPanel es la misma casilla).
+    imap_host: str | None = None
+    imap_puerto: int = 993
+    imap_usuario: str | None = None
+    imap_clave: str | None = None
+    imap_carpeta: str = "INBOX"
+    #: Cada cuánto el scheduler revisa la casilla.
+    recepcion_segundos: int = 120
+
     # --- Workers -----------------------------------------------------------
     #: Procesos del pool de firma en el worker de la cola `firma`.
     procesos_firma: int = 2
