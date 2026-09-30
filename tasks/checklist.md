@@ -543,6 +543,45 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
   - Al mergear con el punto 35: `requiere_permiso("Historial")` en `/sales/{id}/reemitir` y en
     `/folios/por-anular`.
 
+### [ ] 37. saas-admin nuevo: suscripciones, cobranza, Flow, problemas y equipo
+- **Rama:** `feat/saas-admin` (una sola rama, como pediste; worktree en `D:\Proyectos\Torn-saas`).
+  Plan y decisiones en [`saas_admin.md`](saas_admin.md).
+- **Qué:**
+  - **Suscripción por empresa** (`tenants.plan_id`, `suscripcion_vence`, `prorroga_hasta`): el estado
+    sale de la fecha (al día, por vencer, en gracia, prórroga, suspendida, cortesía, sin primer pago).
+    Planes Mensual $33.333, Pack 6 ($189.998, 57 mm) y Pack 12 ($359.996, 80 mm) con cuotas sin interés
+    a cargo de Factureando, y Cortesía (no vence). Las empresas que ya existen quedan en Cortesía.
+  - **Suspendida = solo lectura**: toda escritura de la empresa responde 402 con un mensaje claro;
+    consultar, reimprimir y pagar siguen. El equipo de Factureando pasa.
+  - **Prórroga**: desde la ficha, 12 horas por defecto (editable en Planes > Reglas de cobranza) y se
+    ajusta en cada una. Pagar la quita.
+  - **Pagos**: manuales (transferencia, efectivo) y **Flow** (link de pago desde la ficha y botón Pagar
+    en el aviso de la empresa; webhook que consulta el estado a Flow, idempotente). Anular el último.
+  - **Requiere atención** en el Resumen: certificado vencido o por vencer, sin CAF, sin folios o por
+    vencer, rechazados, sin respuesta del SII, sin ventas, sigue en certificación, suscripción.
+  - **Equipo**: el dueño crea cargos con permisos y superusuarios con un cargo.
+  - Se borran la portada de tarjetas, `/saas-admin/tenants`, `billing_day` y los `inject-system-user*`
+    (la migración deja el usuario de soporte donde faltaba).
+  - **Arreglos de paso:** `/auth/validate` mandaba el **hash de la contraseña** al navegador; login y
+    token ya no aceptan usuarios desactivados; crear empresa no pedía ser superusuario.
+- **Verificado:** backend 230 (29 nuevos: fechas, pagos, prórroga, permisos por cargo, bloqueo, Flow
+  falso, detección de problemas) contra SQLite y contra Postgres; `tsc`, lint y build. Migración
+  `b1c2d3e4f5a6` sobre una copia de la base de desarrollo (`torn_saastest`), también bajar y subir. En
+  el navegador contra esa copia: Resumen, ficha, vencer y suspender, 402 al escribir como
+  administrador de la empresa, prórroga de 6 horas, aviso con Pagar, registrar pago (vuelve a al día),
+  planes, crear un cargo, celular y tema oscuro. **Sin probar contra el sandbox de Flow** (faltan
+  credenciales).
+- **Revisar:**
+  - Al mergear: `docker compose build backend frontend` y `up -d` (migra `b1c2d3e4f5a6` solo).
+  - Flow: crear la cuenta de comercio y poner `TORN_FLOW_API_KEY`, `TORN_FLOW_SECRET_KEY`,
+    `TORN_FLOW_URL`, `TORN_PUBLIC_API_URL` y `TORN_PUBLIC_APP_URL` en el `.env`. Las cuotas sin interés
+    se activan en el panel de Flow para toda la cuenta: el plan mensual también las tendría.
+  - Al mergear con el punto 35 (`fix/permisos-backend`): los dos tocan `dependencies/tenant.py`.
+  - En Windows, `TORN_DTE_URL=http://localhost:8001` hace que cada llamada a dte-torn tarde 2 s (busca
+    IPv6 primero); con `127.0.0.1` son milisegundos. Afecta al backend corrido fuera de Docker.
+  - Usuarios de prueba solo en `torn_saastest` (`qa-dueno@torn.test`, `qa-admin@torn.test`; claves en
+    el `.env` del worktree). Borrar la copia al terminar: `DROP DATABASE torn_saastest`.
+
 ---
 
 ## Lo que falta (necesita que decidas o hagas algo)
@@ -561,6 +600,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Certificación de boletas** (#49) | Pedir el set en el SII (estaba para la semana del 28-09). Después: lector del set, envío por REST y la verificación por folio de boletas ambiguas (`pipeline.py`, hoy va a revisión manual), que se prueba contra el SII con esas boletas | `certificacion_boletas.md` |
 | **Paso a producción** | Declaración de cumplimiento (#48; las muestras ya están aprobadas), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
 | **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor y respaldo diario (#59), instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
+| **Flow** (saas-admin) | Cuenta de comercio en Flow y sus claves en el `.env`; probar un pago en el sandbox. ¿Plan mensual también con cuotas sin interés? | punto 37, `saas_admin.md` |
 | **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
 | **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
