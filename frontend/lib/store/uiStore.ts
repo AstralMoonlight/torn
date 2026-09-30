@@ -27,11 +27,14 @@ interface UIState {
   sidebarCollapsed: boolean
   posVariantDisplay: PosVariantDisplay
   aviso: Aviso | null
+  /** Etiquetas de las secciones del menú lateral que el usuario plegó. */
+  seccionesCerradas: string[]
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
   setPosVariantDisplay: (display: PosVariantDisplay) => void
   avisar: (texto: string, opciones?: Partial<Omit<Aviso, 'texto'>>) => void
   cerrarAviso: () => void
+  alternarSeccion: (seccion: string) => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -47,9 +50,18 @@ export const useUIStore = create<UIState>()(
         aviso: { texto, tipo: 'error', ruta: window.location.pathname, ...opciones },
       }),
       cerrarAviso: () => set({ aviso: null }),
+      seccionesCerradas: [],
+      alternarSeccion: (seccion) => set((s) => ({
+        seccionesCerradas: s.seccionesCerradas.includes(seccion)
+          ? s.seccionesCerradas.filter((x) => x !== seccion)
+          : [...s.seccionesCerradas, seccion],
+      })),
     }),
-    // Solo la vista del POS es preferencia del navegador; el resto es de la sesión.
-    { name: 'torn-ui', partialize: (s) => ({ posVariantDisplay: s.posVariantDisplay }) },
+    // La vista del POS y las secciones plegadas del menú son preferencias del navegador; el resto es de la sesión.
+    {
+      name: 'torn-ui',
+      partialize: (s) => ({ posVariantDisplay: s.posVariantDisplay, seccionesCerradas: s.seccionesCerradas }),
+    },
   ),
 )
 

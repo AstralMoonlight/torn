@@ -18,6 +18,7 @@ import {
     Users,
     Settings,
     LogOut,
+    ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DistintivoModo from '@/components/layout/DistintivoModo'
@@ -77,6 +78,8 @@ export default function Sidebar() {
     const status = useSessionStore((s) => s.status)
     const collapsed = useUIStore((s) => s.sidebarCollapsed)
     const toggle = useUIStore((s) => s.toggleSidebar)
+    const seccionesCerradas = useUIStore((s) => s.seccionesCerradas)
+    const alternarSeccion = useUIStore((s) => s.alternarSeccion)
     const availableTenants = useSessionStore((s) => s.availableTenants)
     const selectedTenantId = useSessionStore((s) => s.selectedTenantId)
     const controlCaja = useControlCaja()
@@ -130,15 +133,25 @@ export default function Sidebar() {
                     })
 
                     if (filteredItems.length === 0) return null
+                    // Con el menú angosto no hay títulos para reabrir la sección: se ve todo.
+                    const cerrada = !collapsed && seccionesCerradas.includes(group.label)
 
                     return (
                         <div key={group.label} className={cn(groupIdx > 0 && "mt-5")}>
                             {!collapsed && (
-                                <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    {group.label}
+                                <h2 className="mb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => alternarSeccion(group.label)}
+                                        aria-expanded={!cerrada}
+                                        className="flex w-full items-center justify-between rounded-md px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                                    >
+                                        {group.label}
+                                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', cerrada && '-rotate-90')} />
+                                    </button>
                                 </h2>
                             )}
-                            <div className="space-y-1">
+                            {!cerrada && <div className="space-y-1">
                                 {filteredItems.map((item) => {
                                     let itemHref = item.href;
                                     if (item.permissionKey === '__SUPERADMIN__' && selectedTenantId) {
@@ -167,7 +180,7 @@ export default function Sidebar() {
                                         </Link>
                                     )
                                 })}
-                            </div>
+                            </div>}
                         </div>
                     )
                 })}
