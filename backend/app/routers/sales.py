@@ -11,7 +11,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.issuer import Issuer
@@ -162,6 +162,10 @@ TRASLADOS_FACTURABLES = {1, 2, 3}
 #: Estados de dte-torn que ya no cambian (`ERROR` no está: se reintenta).
 #: SIMULADO: emitido en modo Desarrollador, nunca va al SII.
 ESTADOS_DTE_FINALES = {"ACEPTADO", "REPAROS", "RECHAZADO", "ANULADO", "ERROR_VALIDACION", "SIMULADO"}
+#: Facturas que el cliente acepta o reclama en el registro del SII, y cuántos
+#: días se sigue lo que hizo (dte-torn las sigue 10).
+TIPOS_CON_RECLAMO = (33, 34)
+SEGUIMIENTO_RECEPTOR_DIAS = 11
 
 #: Facturas: las únicas que llevan forma de pago (`FmaPago`) en esta etapa.
 FACTURAS = {33, 34}
@@ -271,6 +275,7 @@ def _siguiente_external_id(sale: Sale) -> str:
 def _guardar_estado(sale: Sale, doc: dict) -> None:
     sale.dte_estado = doc["estado"]
     sale.intercambio_estado = doc.get("intercambio_estado")
+    sale.estado_receptor = doc.get("estado_receptor")
     glosa = doc.get("glosa_sii") or doc.get("ultimo_error")
     sale.dte_glosa = glosa[:500] if glosa else None
 
@@ -345,13 +350,19 @@ def actualizar_estados_dte(
     tenant_user: TenantUser = Depends(get_current_tenant_user),
 ):
     """Refresca `dte_estado` (y el envío del XML al cliente) de las ventas
-    pendientes. Devuelve cuántas cambiaron."""
+    pendientes, y si el cliente aceptó o reclamó una factura de los últimos
+    días. Devuelve cuántas cambiaron."""
     # ponytail: una llamada por venta pendiente; casi siempre son pocas porque el
     # SII responde en minutos. Si crece, pedir a dte-torn un listado por external_id.
+    desde_cliente = datetime.now(CHILE_TZ) - timedelta(days=SEGUIMIENTO_RECEPTOR_DIAS)
     pendientes = (
         db.query(Sale)
         .filter(Sale.dte_estado.isnot(None), or_(
-            Sale.dte_estado.notin_(ESTADOS_DTE_FINALES), Sale.intercambio_estado == "PENDIENTE"))
+            Sale.dte_estado.notin_(ESTADOS_DTE_FINALES), Sale.intercambio_estado == "PENDIENTE",
+            # Una factura aceptada por el SII puede ser reclamada por el cliente.
+            and_(Sale.tipo_dte.in_(TIPOS_CON_RECLAMO), Sale.dte_estado.in_(("ACEPTADO", "REPAROS")),
+                 Sale.fecha_emision >= desde_cliente,
+                 or_(Sale.estado_receptor.is_(None), Sale.estado_receptor != "RECLAMADO"))))
         .limit(100)
         .all()
     )
@@ -363,7 +374,8 @@ def actualizar_estados_dte(
             if exc.status_code == 404:
                 continue
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-        if (doc["estado"], doc.get("intercambio_estado")) != (sale.dte_estado, sale.intercambio_estado):
+        if (doc["estado"], doc.get("intercambio_estado"), doc.get("estado_receptor")) != (
+                sale.dte_estado, sale.intercambio_estado, sale.estado_receptor):
             cambiadas += 1
         _guardar_estado(sale, doc)
     db.commit()

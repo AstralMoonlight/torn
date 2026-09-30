@@ -37,6 +37,9 @@ class Purchase(Base):
     monto_total = Column(Numeric(15, 2), default=0)
     
     observacion = Column(String(500))
+    #: Documento del proveedor recibido en dte-torn con que se registró (UUID).
+    #: Único: la misma factura no entra dos veces al stock.
+    dte_recibido_id = Column(String(36), unique=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relaciones

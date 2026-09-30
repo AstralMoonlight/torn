@@ -95,6 +95,8 @@ app.include_router(roles.router)
 app.include_router(price_lists.router)
 from app.routers import folios
 app.include_router(folios.router)
+from app.routers import recibidos
+app.include_router(recibidos.router)
 
 
 @app.exception_handler(HTTPException)

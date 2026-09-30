@@ -4,6 +4,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Literal, Optional
 
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -460,6 +462,7 @@ class SaleOut(BaseModel):
     dte_estado: Optional[str] = None
     dte_glosa: Optional[str] = None
     intercambio_estado: Optional[str] = None
+    estado_receptor: Optional[str] = None
     ind_traslado: Optional[int] = None
     facturada_por_id: Optional[int] = None
 
@@ -683,6 +686,8 @@ class PurchaseCreate(BaseModel):
     items: List[PurchaseItem]
     observacion: Optional[str] = None
     fecha_compra: Optional[datetime] = None
+    #: La factura del proveedor recibida en dte-torn que se está ingresando.
+    dte_recibido_id: Optional[UUID] = None
 
 
 class PurchaseDetailOut(BaseModel):
@@ -705,6 +710,7 @@ class PurchaseOut(BaseModel):
     iva: Decimal
     monto_total: Decimal
     observacion: Optional[str] = None
+    dte_recibido_id: Optional[str] = None
     created_at: datetime
     provider: ProviderOut
     details: List[PurchaseDetailOut]

@@ -57,6 +57,9 @@ class Sale(Base):
     #: Envío del XML al correo del cliente (intercambio), copiado de dte-torn:
     #: PENDIENTE, ENVIADO, SIN_CORREO o ERROR. NULL: no aplica.
     intercambio_estado = Column(String(12), nullable=True)
+    #: Lo que hizo el cliente con la factura en el Registro de Aceptación o
+    #: Reclamo del SII, copiado de dte-torn: ACEPTADO, RECLAMADO o NULL.
+    estado_receptor = Column(String(10), nullable=True)
     #: Documento de dte-torn de la venta cuando se volvió a emitir tras un rechazo
     #: (`venta-{id}-{folio rechazado}`). NULL: el de siempre, `venta-{id}`.
     dte_external_id = Column(String(100), nullable=True)

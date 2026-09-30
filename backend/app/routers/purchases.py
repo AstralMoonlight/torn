@@ -37,13 +37,19 @@ _html_env.filters["number"] = format_number
 def create_purchase(purchase_in: PurchaseCreate, db: Session = Depends(get_tenant_db),
                     local_user: User = Depends(get_current_local_user)):
     """Registra una compra y actualiza stock/costos de forma atómica."""
-    
+    dte_recibido_id = str(purchase_in.dte_recibido_id) if purchase_in.dte_recibido_id else None
+    if dte_recibido_id:
+        previa = db.query(Purchase).filter(Purchase.dte_recibido_id == dte_recibido_id).first()
+        if previa:
+            raise HTTPException(status_code=409, detail=f"Esa factura ya está ingresada (compra N° {previa.id}).")
+
     # 1. Crear encabezado
     db_purchase = Purchase(
         provider_id=purchase_in.provider_id,
         folio=purchase_in.folio,
         tipo_documento=purchase_in.tipo_documento,
         observacion=purchase_in.observacion,
+        dte_recibido_id=dte_recibido_id,
         monto_neto=0,
         iva=0,
         monto_total=0
