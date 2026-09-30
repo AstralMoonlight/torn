@@ -50,7 +50,7 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 - `sii_client.py` tiene los endpoints REST de boleta (apicert / pangal). El 2026-09-23 el SII entregó
   token por el canal de boletas con el certificado real.
 - `POST /boletas` en la API, y el backend ya distingue `BOLETAS` en `routers/sales.py`.
-- Ticket 57/80 mm con timbre en el backend (`backend/app/services/dte_impreso.py`).
+- Ticket 58/80 mm con timbre en el backend (`backend/app/services/dte_impreso.py`).
 
 **Falta:**
 - `set_pruebas.py` solo entiende 33, 34, 52, 56 y 61: no lee un set de boletas.
@@ -81,7 +81,7 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
 ### Fase 3: impreso y declaración
 
-- [ ] El ticket 57/80 mm de la boleta lleva timbre, la resolución y el sitio de verificación
+- [ ] El ticket 58/80 mm de la boleta lleva timbre, la resolución y el sitio de verificación
       (el que indique el SII para boletas). Revisar también la boleta en carta.
 - [ ] Muestras impresas, si el SII las pide (upload en https://www4.sii.cl/pdfdteInternet/).
 - [ ] Declarar el avance en maullín con el track del set.

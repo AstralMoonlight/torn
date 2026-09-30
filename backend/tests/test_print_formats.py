@@ -23,7 +23,7 @@ def _render(template, tipo_dte=39, papel_mm=None):
     )
 
 
-@pytest.mark.parametrize("formato, ancho", [("80mm", "72mm"), ("57mm", "49mm")])
+@pytest.mark.parametrize("formato, ancho", [("80mm", "72mm"), ("58mm", "50mm")])
 def test_ticket_usa_ancho_del_rollo(formato, ancho):
     html = _render("factura_ticket.html", papel_mm=PAPEL_TICKET_MM[formato])
     assert f"size: {formato} auto" in html
@@ -44,6 +44,6 @@ def test_nota_de_credito_no_lleva_copia_cedible():
 
 
 def test_formato_desconocido_se_rechaza():
-    SettingsUpdate(print_formats={"39": "57mm"})
+    SettingsUpdate(print_formats={"39": "58mm"})
     with pytest.raises(ValidationError):
         SettingsUpdate(print_formats={"39": "58mm"})

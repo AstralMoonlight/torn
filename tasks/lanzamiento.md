@@ -110,7 +110,7 @@ Depende del respaldo (1.4) para la alerta de respaldo.
       debería firmarse y quedar en cola hasta que vuelva la red. Verificarlo y que la pantalla lo diga
       en palabras simples.
 - [ ] Hora del PC en Chile (los contenedores corren en UTC; dte-torn ya usa `hoy_chile()`).
-- [ ] Impresora térmica: ancho real (57 u 80 mm), impresión sin el diálogo del navegador (modo kiosco),
+- [ ] Impresora térmica: ancho real (58 u 80 mm), impresión sin el diálogo del navegador (modo kiosco),
       y calibrar el timbre leyéndolo con un lector de verdad (`COLUMNAS_TIMBRE`, pendiente en `claude.md`).
 - [ ] Lector de código de barras probado con productos reales (`useBarcodeScanner`).
 - [ ] UPS o al menos regleta con protección: un corte de luz a mitad de venta es el caso más probable.

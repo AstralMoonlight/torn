@@ -1,4 +1,4 @@
-﻿# Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
+# Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
 
 > **Tercera tanda (puntos 27 a 34): mergeada a `main` el 2026-09-29** (revisada en el navegador por el
 > usuario). En `main`: backend 188 tests, dte-torn en verde, `tsc`, contrato 17/17. Ramas borradas.
@@ -166,12 +166,12 @@ cambió, cómo se verificó y qué mirar al revisar.
 
 ### [ ] 14. #46: el ticket no deja salir del papel un texto largo
 - **Rama:** `fix/ticket-textos-largos`
-- **Qué:** en el ticket 57/80 mm la razón social, el giro y la dirección ya saltaban de línea; lo que
+- **Qué:** en el ticket 58/80 mm la razón social, el giro y la dirección ya saltaban de línea; lo que
   faltaba era que una palabra sin espacios (un correo, un código) se partiera en vez de salirse del
   ancho. La carta es el PDF de dte-torn, que ya se corrigió en `fa4f259`.
-- **Verificado:** test con los largos máximos del SII (100, 40 y 70) en 57 y 80 mm; y lo medí en el
-  navegador: 57 mm, la razón social en 7 líneas dentro del ancho.
-- **Revisar:** en 57 mm una razón social larga queda en una columna angosta a la derecha. Si prefieres,
+- **Verificado:** test con los largos máximos del SII (100, 40 y 70) en 58 y 80 mm; y lo medí en el
+  navegador: 58 mm, la razón social en 7 líneas dentro del ancho.
+- **Revisar:** en 58 mm una razón social larga queda en una columna angosta a la derecha. Si prefieres,
   el nombre puede ir debajo de "Señor(es):" a todo el ancho.
 
 ### [ ] 15. #39: contrato de los totales
@@ -186,7 +186,7 @@ cambió, cómo se verificó y qué mirar al revisar.
 
 ### [ ] 16. #43: el ticket muestra bien los descuentos (parcial)
 - **Rama:** `fix/ticket-descuentos`
-- **Qué:** en el ticket 57/80 mm, el descuento global en pesos salía sin su monto (solo "Descuento") y
+- **Qué:** en el ticket 58/80 mm, el descuento global en pesos salía sin su monto (solo "Descuento") y
   el de línea en % no decía el porcentaje. Ahora: `Dcto 12,5%: -$2.500` en la línea y
   `Descuento: -$1.500` / `Cliente frecuente: -5%` abajo, como el PDF carta (ese ya estaba bien: lo
   aprobó el SII en las muestras).
@@ -257,7 +257,7 @@ cambió, cómo se verificó y qué mirar al revisar.
 
 ### [ ] 21. Fases 3 (guía) y 4 (libros) de la certificación
 - **Rama:** `fix/ticket-guia` (lo único que hubo que corregir)
-- **Hallazgo corregido:** el ticket 57/80 mm de una **guía** decía "DOCUMENTO 52", no imprimía el tipo
+- **Hallazgo corregido:** el ticket 58/80 mm de una **guía** decía "DOCUMENTO 52", no imprimía el tipo
   de traslado y nunca sacaba la copia cedible. Ahora sigue la regla del PDF carta: nombre, "Traslado:
   Operación constituye venta" (o el que sea) y cedible con acuse de recibo solo si es venta. 2 tests.
 - **Revisado sin cambios:** `builder.py` (52: `IndTraslado`, `TipoDespacho`, líneas sin precio y
@@ -313,7 +313,7 @@ configurable (vencimiento y descuentos). Revisar sobre todo esas decisiones.
   sea una parte), el DTE lleva `FchVenc` = hoy + el plazo del cliente.
 - **Decisión que tomé:** solo el **administrador** pone o quita el plazo (403 para el resto; el campo
   aparece deshabilitado): el plazo decide a quién se fía, y si no cualquiera se lo daría editando la ficha.
-- **Qué más:** el ticket 57/80 mm muestra "Forma de pago" y "Vencimiento", como el PDF carta.
+- **Qué más:** el ticket 58/80 mm muestra "Forma de pago" y "Vencimiento", como el PDF carta.
   Migración `c5d6e7f8a9b0` (columna en `customers`; la primera versión la ponía en `system_settings`,
   nunca llegó a `main`).
 - **Verificado:** tests del vencimiento (45 y 60 días según el cliente, sin vencimiento al contado),
@@ -548,7 +548,7 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 - **Qué:**
   - **Suscripción por empresa** (`tenants.plan_id`, `suscripcion_vence`, `prorroga_hasta`): el estado
     sale de la fecha (al día, por vencer, en gracia, prórroga, suspendida, cortesía, sin primer pago).
-    Planes Mensual $33.333, Pack 6 ($189.998, 57 mm) y Pack 12 ($359.996, 80 mm) con cuotas sin interés
+    Planes Mensual $33.333, Pack 6 ($189.998, 58 mm) y Pack 12 ($359.996, 80 mm) con cuotas sin interés
     a cargo de Factureando, y Cortesía (no vence). Las empresas que ya existen quedan en Cortesía.
   - **Suspendida = solo lectura**: toda escritura de la empresa responde 402 con un mensaje claro;
     consultar, reimprimir y pagar siguen. El equipo de Factureando pasa.
@@ -621,7 +621,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Flow** (saas-admin) | Cuenta de comercio en Flow y sus claves en el `.env`; probar un pago en el sandbox. ¿Plan mensual también con cuotas sin interés? | punto 37, `saas_admin.md` |
 | **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
-| **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 57 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
+| **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 58 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
 | **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Los permisos por endpoint ya están en el punto 35 | `lanzamiento.md` 1.5, punto 32 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5

@@ -67,7 +67,7 @@ va en la pestaña Usuarios de cada empresa.
 
 ### 2.3 Suscripciones (modelo)
 
-- `SaaSPlan` se reutiliza: se agregan `meses` (1, 6, 12) y `incluye_impresora` (texto: "57 mm", "80 mm",
+- `SaaSPlan` se reutiliza: se agregan `meses` (1, 6, 12) y `incluye_impresora` (texto: "58 mm", "80 mm",
   vacío). El precio se guarda **con IVA** (el que se publica: $33.333), en pesos enteros.
 - Tabla nueva `public.suscripciones`: `tenant_id`, `plan_id`, `inicio`, `vence`, `estado`.
   **Una fila por empresa** (la vigente); la historia está en los pagos. `Tenant.billing_day` se borra.

@@ -39,7 +39,7 @@ mismo vale entre CERT y PROD. No se borra nada: al volver al modo, siguen ahí.
 - Una venta de Desarrollador **mueve todo** (stock, kardex, caja, crédito interno); lo que se separa es lo
   visible: historial, reimpresión, devoluciones, guías por facturar, reportes y dashboard.
 - El cliente ve el modo: distintivo en la barra lateral y franja en el POS (Desarrollador y
-  Certificación), y el impreso de Desarrollador (carta y 57/80 mm) dice "DOCUMENTO DE PRUEBA - SIN VALIDEZ
+  Certificación), y el impreso de Desarrollador (carta y 58/80 mm) dice "DOCUMENTO DE PRUEBA - SIN VALIDEZ
   TRIBUTARIA".
 
 **Tareas:**
@@ -76,7 +76,7 @@ acepta hasta 20 `descuentos_globales`. En los dos, dte-torn también acepta porc
       descuentos. Rama `test/contrato-totales`; sin pendientes desde `feat/descuentos` (17 casos).
 - [x] POS: descuento por ítem en $ o % (`feat/descuentos`).
 - [x] Backend y POS: descuento global en $ o %, enviado como `descuentos_globales` (`feat/descuentos`).
-- [x] El impreso de 57 y 80 mm muestra los descuentos por línea y el global (`fix/ticket-descuentos`);
+- [x] El impreso de 58 y 80 mm muestra los descuentos por línea y el global (`fix/ticket-descuentos`);
       el carta ya los mostraba.
 - [x] **Decidido (2026-09-29, por revisar):** el administrador descuenta sin tope; el resto del
       personal hasta `descuento_maximo` % del total de la venta (10% por defecto, Configuración >
@@ -169,7 +169,7 @@ Cada una se trabaja como un issue: commit, tests y verificación.
 ### C. Mejoras de uso
 
 9. → Pasó a **P3** (descuentos).
-10. ✅ **Reimpresión.** (punto 14) Revisar que la reimpresión de cedible (`_impreso_dte`) y el ticket 57/80 mm
+10. ✅ **Reimpresión.** (punto 14) Revisar que la reimpresión de cedible (`_impreso_dte`) y el ticket 58/80 mm
     (`backend/app/services/dte_impreso.py`) no corten la razón social, como pasaba en el PDF carta.
 11. ✅ **Stock de folios.** (punto 11) Mostrar la alerta de pocos folios (`DTE_FOLIO_UMBRAL_ALERTA`) en el dashboard.
 

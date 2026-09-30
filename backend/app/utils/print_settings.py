@@ -21,11 +21,11 @@ DOCUMENT_TYPES: dict[str, str] = {
     "purchase": "Compras (Comprobante Proveedor)",
 }
 
-PrintFormat = Literal["carta", "80mm", "57mm"]
+PrintFormat = Literal["carta", "80mm", "58mm"]
 
 #: Ancho del rollo de las impresoras térmicas, en mm. Los formatos que no están
 #: acá (carta) usan su propia plantilla de página completa.
-PAPEL_TICKET_MM: dict[str, int] = {"80mm": 80, "57mm": 57}
+PAPEL_TICKET_MM: dict[str, int] = {"80mm": 80, "58mm": 58}
 
 DEFAULT_PRINT_FORMAT = "80mm"
 
@@ -38,7 +38,7 @@ def resolve_print_format(settings, doc_type_key: str) -> str:
         doc_type_key: Clave en `DOCUMENT_TYPES` (p.ej. `str(sale.tipo_dte)` o `"purchase"`).
 
     Returns:
-        `"80mm"`, `"57mm"` o `"carta"`.
+        `"80mm"`, `"58mm"` o `"carta"`.
     """
     if settings is None:
         return DEFAULT_PRINT_FORMAT

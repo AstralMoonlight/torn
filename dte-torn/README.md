@@ -64,7 +64,7 @@ Construido y verificado (291 tests en verde dentro del contenedor al 2026-09-24)
 Pendiente: `caf_request.py` (pedir folios al SII sin intervención; hoy el
 scheduler solo alerta cuando quedan pocos), el RCOF diario de boletas, la
 verificación por folio de boletas tras una subida ambigua (hoy va a revisión
-manual) y el envío del PDF por correo. El ticket de 57/80 mm con timbre lo arma
+manual) y el envío del PDF por correo. El ticket de 58/80 mm con timbre lo arma
 el backend desde el XML firmado (`backend/app/services/dte_impreso.py`).
 
 ## Puesta en marcha

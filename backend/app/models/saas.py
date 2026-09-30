@@ -28,7 +28,7 @@ class SaaSPlan(Base):
     meses = Column(Integer, nullable=False, default=1, server_default="1")
     #: Cuotas sin interés en la pasarela: la comisión la paga Factureando (packs).
     cuotas_sin_interes = Column(Boolean, nullable=False, default=False, server_default="false")
-    incluye_impresora = Column(String(40), nullable=True, comment="p.ej. 'Térmica 57 mm'")
+    incluye_impresora = Column(String(40), nullable=True, comment="p.ej. 'Térmica 58 mm'")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -1131,7 +1131,7 @@ def get_sale_pdf(
     Representación impresa del documento.
 
     Sale del XML firmado en dte-torn, con el timbre electrónico: en carta es el
-    PDF de dte-torn; en 57/80 mm, un ticket HTML armado acá desde ese XML.
+    PDF de dte-torn; en 58/80 mm, un ticket HTML armado acá desde ese XML.
     `?cedible=true` da la copia cedible de las facturas. Las ventas que dte-torn
     no tiene (anteriores a la integración) usan las plantillas antiguas.
 

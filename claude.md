@@ -110,7 +110,7 @@ Torn/
 │   │   ├── schemas.py        # Pydantic por tenant
 │   │   ├── schemas_saas.py   # Pydantic del plano SaaS/public
 │   │   ├── services/         # dte_client.py (cliente de dte-torn), tenant_service.py
-│   │   ├── templates/        # HTML de impresión (ticket 80/57mm y carta)
+│   │   ├── templates/        # HTML de impresión (ticket 80/58mm y carta)
 │   │   └── utils/            # security, validators (RUT), dates, formatters
 │   ├── alembic/          # Migraciones (6 revisiones)
 │   ├── alembic.ini
@@ -208,7 +208,7 @@ del campo `available` en el estado de folios y varios renombres del selector de 
   por empresa (`public.tenants.sii_*`, solo superusuario) copiados a dte-torn al guardar el emisor.
 - Modo del emisor (`sii_ambiente`): CERT, PROD o DEV (Desarrollador: emite con CAF de prueba, sin el SII).
   Cada venta guarda su `modo` y solo se ve en ese modo (`filtrar_por_modo` en `dependencies/tenant.py`).
-- Plantillas de impresión HTML (ticket 80mm/57mm y carta), formato configurable por tipo de documento.
+- Plantillas de impresión HTML (ticket 80mm/58mm y carta), formato configurable por tipo de documento.
 - Frontend Next.js 16 / React 19 con 18 rutas, capa de servicios Axios por dominio, estado con Zustand,
   formularios con React Hook Form + Zod y componentes shadcn/ui sobre Radix.
 - Catálogo ACTECO del SII en BD con endpoint de búsqueda (`backend/scripts/seed_actecos.py`, `database/actecos_sii.json`).
@@ -218,7 +218,7 @@ del campo `available` en el estado de folios y varios renombres del selector de 
 
 ### Pendiente / lo que parece faltar
 
-- **Impresión**: carta = PDF de dte-torn; 57/80 mm = `dte_ticket.html` armado en el backend desde el XML
+- **Impresión**: carta = PDF de dte-torn; 58/80 mm = `dte_ticket.html` armado en el backend desde el XML
   firmado (`backend/app/services/dte_impreso.py`, timbre PDF417 verificado con zxing-cpp). Las ventas que
   dte-torn no tiene usan las plantillas antiguas sin timbre. El ancho de módulo del timbre en térmica
   (`COLUMNAS_TIMBRE`) está calibrado a ojo: falta validarlo leyendo un ticket impreso.

@@ -1,4 +1,4 @@
-"""Tickets de 57/80 mm desde el XML firmado de dte-torn, con el timbre en PDF417."""
+"""Tickets de 58/80 mm desde el XML firmado de dte-torn, con el timbre en PDF417."""
 
 from datetime import date
 from types import SimpleNamespace
@@ -42,7 +42,7 @@ def test_leer_dte_toma_los_datos_y_el_ted_del_xml():
     assert doc["ted"] == TED
 
 
-@pytest.mark.parametrize("papel", [57, 80])
+@pytest.mark.parametrize("papel", [58, 80])
 def test_el_pdf417_devuelve_el_ted_firmado(papel):
     leido = zxingcpp.read_barcode(render_image(dte_impreso.codigos_timbre(TED, papel), scale=3))
     assert leido is not None and leido.bytes == TED
@@ -63,9 +63,9 @@ def dte_torn(monkeypatch):
 
 
 def test_ticket_de_factura_trae_copia_cliente_y_cedible(dte_torn):
-    html = _impreso_dte(TENANT, VENTA, 57, cedible=False).body.decode()
+    html = _impreso_dte(TENANT, VENTA, 58, cedible=False).body.decode()
     for esperado in ("FACTURA ELECTRÓNICA", "N° 7", "76.543.210-3", "S.I.I. - CONCEPCION",
-                     "$23.800", "Res. N° 80 de 2014", "size: 57mm auto", "COPIA CLIENTE"):
+                     "$23.800", "Res. N° 80 de 2014", "size: 58mm auto", "COPIA CLIENTE"):
         assert esperado in html, esperado
     assert html.count("<svg") == 2
     assert html.count('<section class="copia">') == 2   # una página por copia: el driver corta entre ellas
@@ -158,7 +158,7 @@ def test_ticket_no_corta_razon_social_giro_ni_direccion(monkeypatch):
         return httpx.Response(200, content=xml)
     monkeypatch.setattr(dte_client, "request", request)
 
-    for papel in (57, 80):
+    for papel in (58, 80):
         html = _impreso_dte(TENANT, VENTA, papel, cedible=True).body.decode()
         assert razon in html and giro in html
         assert direccion.replace("'", "&#39;") in html

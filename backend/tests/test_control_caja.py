@@ -55,7 +55,7 @@ def test_solo_el_administrador_cambia_ajustes_de_empresa(client, db_session):
                    {"descuento_maximo": 100}):
         assert client.put("/config/settings/", json=cambio).status_code == 403
     # Los demás ajustes siguen abiertos a quien entra a Configuración.
-    assert client.put("/config/settings/", json={"print_formats": {"39": "57mm"}}).status_code == 200
+    assert client.put("/config/settings/", json={"print_formats": {"39": "58mm"}}).status_code == 200
 
 
 def test_color_fuera_de_la_paleta_se_rechaza(client):

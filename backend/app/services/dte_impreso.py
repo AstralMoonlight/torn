@@ -1,4 +1,4 @@
-"""Tickets de 57/80 mm armados desde el XML firmado que entrega dte-torn.
+"""Tickets de 58/80 mm armados desde el XML firmado que entrega dte-torn.
 
 Lo impreso tiene que ser exactamente lo que recibió el SII, así que los datos
 salen del `<DTE>` firmado y no de la venta, y el PDF417 lleva el `<TED>`
@@ -50,7 +50,7 @@ NIVEL_CORRECCION_TIMBRE = 5
 #: y cada fila de 2,2-2,5 veces eso: más columnas = más bajo, pero barras más
 #: finas para una térmica de 203 dpi (0,125 mm por punto).
 # ponytail: calibrado leyendo en pantalla; confirmar con un lector sobre papel real.
-TIMBRE = {80: (14, 28), 57: (10, 30)}
+TIMBRE = {80: (14, 28), 58: (10, 30)}
 
 #: Firma del software al final del documento impreso.
 LEYENDA_PIE = "Factureando.cl: Hazla simple!"
