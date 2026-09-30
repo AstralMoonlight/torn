@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import and_, literal_column, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,6 +90,22 @@ def folio_vigente(caf: CAF, hoy: date) -> bool:
     return True
 
 
+def caf_vigente_sql(hoy: date):
+    """`folio_vigente` como condición SQL, sin mirar el estado.
+
+    Postgres suma el intervalo recortando al fin de mes (31-mar + 6 meses =
+    30-sep), que es lo mismo que cuenta `folio_vigente`.
+    """
+    return and_(
+        or_(CAF.fecha_vencimiento.is_(None), CAF.fecha_vencimiento >= hoy),
+        or_(
+            CAF.tipo_dte.not_in(TIPOS_CON_VIGENCIA_6_MESES),
+            CAF.fecha_autorizacion.is_(None),
+            CAF.fecha_autorizacion + literal_column("interval '6 months'") >= hoy,
+        ),
+    )
+
+
 def hash_payload(payload: dict) -> str:
     """Hash estable del payload, para distinguir un reintento de un error."""
     canonico = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
@@ -129,7 +145,7 @@ async def asignar_folio(
                 CAF.tipo_dte == tipo_dte,
                 CAF.ambiente == ambiente,
                 CAF.estado == EstadoCAF.ACTIVO,
-                or_(CAF.fecha_vencimiento.is_(None), CAF.fecha_vencimiento >= hoy),
+                caf_vigente_sql(hoy),
             )
             .order_by(CAF.folio_desde)
             .limit(1)
@@ -180,7 +196,7 @@ async def _queda_algun_caf(
             CAF.tipo_dte == tipo_dte,
             CAF.ambiente == ambiente,
             CAF.estado == EstadoCAF.ACTIVO,
-            or_(CAF.fecha_vencimiento.is_(None), CAF.fecha_vencimiento >= hoy),
+            caf_vigente_sql(hoy),
         )
         .limit(1)
     )

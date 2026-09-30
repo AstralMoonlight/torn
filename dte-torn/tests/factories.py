@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 
 from app.core.certificados import OID_RUT_SII
+from app.dte.signer import hoy_chile
 
 CLAVE_PFX = "clave-de-prueba"
 
@@ -34,7 +35,7 @@ def caf_xml(
     tipo_dte: int = 33,
     desde: int = 1000,
     hasta: int = 1100,
-    fecha: str = "2026-09-01",
+    fecha: str | None = None,
     llave: rsa.RSAPrivateKey | None = None,
     llave_publica_de: rsa.RSAPrivateKey | None = None,
     idk: int = 100,
@@ -84,7 +85,7 @@ def caf_xml(
 <RS>{razon_social}</RS>
 <TD>{tipo_dte}</TD>
 <RNG><D>{desde}</D><H>{hasta}</H></RNG>
-<FA>{fecha}</FA>
+<FA>{fecha or hoy_chile().isoformat()}</FA>
 <RSAPK><M>{_b64_entero(publica.n)}</M><E>{_b64_entero(publica.e)}</E></RSAPK>
 <IDK>{idk}</IDK>
 </DA>

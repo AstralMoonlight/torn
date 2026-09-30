@@ -377,10 +377,12 @@ async def asegurar_caf_prueba(session: AsyncSession, tenant: Tenant, tipo_dte: i
         text("SELECT pg_advisory_xact_lock(hashtext(:clave))"),
         {"clave": f"caf-prueba:{tenant.id}:{tipo_dte}"},
     )
+    from app.dte.folios import caf_vigente_sql  # folios importa signer, que importa este módulo
+    from app.dte.signer import hoy_chile
+
     del_tipo = and_(CAF.tenant_id == tenant.id, CAF.ambiente == Ambiente.DEV, CAF.tipo_dte == tipo_dte)
-    hay = (
-        await session.execute(select(CAF.id).where(del_tipo, CAF.estado == EstadoCAF.ACTIVO).limit(1))
-    ).scalar_one_or_none()
+    vigente = and_(CAF.estado == EstadoCAF.ACTIVO, caf_vigente_sql(hoy_chile()))
+    hay = (await session.execute(select(CAF.id).where(del_tipo, vigente).limit(1))).scalar_one_or_none()
     if hay is not None:
         return
     ultimo = (await session.execute(select(func.max(CAF.folio_hasta)).where(del_tipo))).scalar_one() or 0

@@ -534,8 +534,7 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
   - Al mergear: `docker compose build` y `up -d` en los dos compose (migran solos `a9b0c1d2e3f4` y
     `0006`). El downgrade de `0006` falla si ya hay un folio reutilizado.
   - La guía es provisoria: falta la versión con capturas del SII.
-  - `folio_vigente` aplica los 6 meses solo al reutilizar; la emisión normal todavía no los revisa
-    (un CAF de factura de más de 6 meses se sigue usando y el SII lo rechazaría).
+  - ~~`folio_vigente` aplica los 6 meses solo al reutilizar~~: resuelto en el punto 38.
   - Si la subida del documento que reutiliza el folio queda ambigua (VERIFICAR), el SII tiene ese
     folio con los datos del rechazado: probablemente va a revisión manual.
   - La NC que corrige texto rechazada no se reemite (no guarda líneas); una guía reemitida sale sin
@@ -580,6 +579,27 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
   - En Windows, `TORN_DTE_URL=http://localhost:8001` hace que cada llamada a dte-torn tarde 2 s (busca
     IPv6 primero); con `127.0.0.1` son milisegundos. Afecta al backend corrido fuera de Docker.
 
+### [ ] 38. Vigencia de 6 meses del CAF en la emisión normal
+- **Rama:** `feat/vigencia-caf-6-meses`, mergeada a `main` el 2026-09-30 (cuarta tanda).
+- **Revisado contra el SII (2026-09-30):** Res. Ex. SII N° 58 de 2017, resolutivos 1° y 2°: los CAF
+  de documentos que dan derecho a crédito fiscal valen 6 meses desde su autorización; el SII rechaza
+  al recibirlo un DTE con folio de un CAF vencido, y los folios sin usar se anulan. Se aplica a 33,
+  34, 56 y 61 (`TIPOS_CON_VIGENCIA_6_MESES`, el mismo del punto 36).
+- **Qué:** `caf_vigente_sql(hoy)` en `dte-torn/app/dte/folios.py` (la condición SQL de `folio_vigente`)
+  filtra `asignar_folio` y `_queda_algun_caf`: se salta al siguiente CAF vigente o `SinFoliosError`.
+  El scheduler (`vigilar`) marca VENCIDO también por antigüedad, así `/folios` no los cuenta. El CAF
+  de prueba de Desarrollador se regenera si el que hay venció.
+- **Verificado:** dte-torn 353 en Docker (4 nuevos en `test_folios.py`: salta al vigente y luego
+  `SinFoliosError`, la boleta no vence así, SQL igual a Python en fin de mes, scheduler). Los dos
+  tests de reemisión con CAF vencido ahora cargan un segundo CAF (antes sacaban el folio nuevo del
+  mismo CAF vencido). `caf_xml` de los tests toma la fecha de hoy: con la fija `2026-09-01` la suite
+  habría fallado desde marzo de 2027.
+- **Revisar:**
+  - Entre una pasada del scheduler y otra (10 minutos) `/folios` puede contar un CAF recién vencido;
+    la emisión ya no lo usa.
+  - La factura exenta (34) no da crédito fiscal, pero queda con los 6 meses (lo que ya hacía el
+    punto 36): en el peor caso se anulan folios antes de tiempo, nunca se emite uno rechazable.
+
 ---
 
 ## Lo que falta (necesita que decidas o hagas algo)
@@ -591,7 +611,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
-| **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII y la vigencia de 6 meses en la emisión normal | puntos 27 y 36 |
+| **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII. La vigencia de 6 meses en la emisión normal está en el punto 37 | puntos 27, 36 y 37 |
 | **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |

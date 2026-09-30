@@ -122,7 +122,7 @@ def test_normalizar_rut() -> None:
 
 async def test_guardar_y_volver_a_abrir(emisor: uuid.UUID) -> None:
     """El CAF vuelve idéntico después de pasar cifrado por la base."""
-    xml = caf_xml(desde=1000, hasta=1100)
+    xml = caf_xml(desde=1000, hasta=1100, fecha="2026-09-01")
     original = parsear_caf(xml)
 
     async with tenant_session(emisor) as s:
