@@ -226,3 +226,9 @@ export async function getFoliosStatus(): Promise<FolioStockOut[]> {
     const { data } = await api.get<FolioStockOut[]>('/folios/status')
     return data
 }
+
+/** Vigencia del certificado digital cargado en dte-torn; `null` si no hay. */
+export async function getCertificado(): Promise<{ not_after: string | null; dias_restantes: number | null } | null> {
+    const { data } = await api.get('/folios/certificate')
+    return data
+}

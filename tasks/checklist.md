@@ -1,4 +1,4 @@
-# Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
+﻿# Checklist de revisión (2026-09-28, segunda y tercera tanda 2026-09-29)
 
 > **Tercera tanda (puntos 27 a 34): mergeada a `main` el 2026-09-29** (revisada en el navegador por el
 > usuario). En `main`: backend 188 tests, dte-torn en verde, `tsc`, contrato 17/17. Ramas borradas.
@@ -611,7 +611,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
-| **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII. La vigencia de 6 meses en la emisión normal está en el punto 37 | puntos 27, 36 y 37 |
+| **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII. La vigencia de 6 meses en la emisión normal está en el punto 38 | puntos 27, 36 y 38 |
 | **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |

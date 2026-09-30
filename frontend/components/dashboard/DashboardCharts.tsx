@@ -8,15 +8,12 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    type PieLabelRenderProps,
 } from 'recharts'
 import { formatCLP } from '@/lib/format'
 
 interface SalesData {
-    hora: string
+    /** aaaa-mm-dd */
+    fecha: string
     total: number
 }
 
@@ -30,36 +27,39 @@ interface Props {
     paymentData: PaymentData[]
 }
 
-// Tonos del color principal (sigue al color elegido en Configuración y al tema).
-const PIE_COLORS = [1, 0.75, 0.55, 0.4, 0.28, 0.18].map((a) => `hsl(var(--primary) / ${a})`)
+const TOOLTIP_STYLE = {
+    borderRadius: '0.5rem',
+    border: '1px solid hsl(var(--border))',
+    background: 'hsl(var(--popover))',
+    color: 'hsl(var(--popover-foreground))',
+    fontSize: '12px',
+    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+}
+
+/** aaaa-mm-dd a dd/mm, sin pasar por Date (que la leería en UTC). */
+const diaMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`
+
+const miles = (v: number) => `$${(v / 1000).toFixed(0)}k`
 
 
 export default function DashboardCharts({ salesData, paymentData }: Props) {
+    const hayVentas = salesData.some((d) => d.total !== 0)
     return (
         <div data-section="dashboard.graficos" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Sales by Hour */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas por hora</h3>
-                {salesData.length > 0 ? (
+                <h3 className="text-sm font-semibold text-foreground mb-3">Ventas de los últimos 30 días</h3>
+                {hayVentas ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={salesData}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                                <XAxis dataKey="hora" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                                <YAxis
-                                    tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                                    tick={{ fontSize: 10 }}
-                                />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                                <XAxis dataKey="fecha" tickFormatter={diaMes} tick={{ fontSize: 10 }} minTickGap={12} />
+                                <YAxis tickFormatter={miles} tick={{ fontSize: 10 }} width={48} />
                                 <Tooltip
-                                    formatter={(v) => [formatCLP(Number(v)), 'Total']}
-                                    contentStyle={{
-                                        borderRadius: '0.5rem',
-                                        border: '1px solid hsl(var(--border))',
-                                        background: 'hsl(var(--popover))',
-                                        color: 'hsl(var(--popover-foreground))',
-                                        fontSize: '12px',
-                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                                    }}
+                                    labelFormatter={(f) => diaMes(String(f))}
+                                    formatter={(v) => [formatCLP(Number(v)), 'Ventas']}
+                                    contentStyle={TOOLTIP_STYLE}
+                                    cursor={{ fill: 'hsl(var(--muted))' }}
                                 />
                                 <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                             </BarChart>
@@ -67,51 +67,32 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
                     </div>
                 ) : (
                     <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-                        Sin datos de ventas hoy
+                        Sin ventas en los últimos 30 días
                     </div>
                 )}
             </div>
 
-            {/* Payment Methods Pie */}
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de pago</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de pago de hoy</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={paymentData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={50}
-                                    outerRadius={80}
-                                    paddingAngle={4}
-                                    dataKey="total"
-                                    nameKey="nombre"
-                                    label={(props: PieLabelRenderProps) =>
-                                        `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%`
-                                    }
-                                >
-                                    {paymentData.map((_, i) => (
-                                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                                    ))}
-                                </Pie>
+                            <BarChart data={paymentData} layout="vertical" margin={{ left: 8, right: 16 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
+                                <XAxis type="number" tickFormatter={miles} tick={{ fontSize: 10 }} />
+                                <YAxis type="category" dataKey="nombre" tick={{ fontSize: 11 }} width={110} />
                                 <Tooltip
                                     formatter={(v) => [formatCLP(Number(v)), 'Total']}
-                                    contentStyle={{
-                                        borderRadius: '0.5rem',
-                                        fontSize: '12px',
-                                        border: '1px solid hsl(var(--border))',
-                                        background: 'hsl(var(--popover))',
-                                        color: 'hsl(var(--popover-foreground))',
-                                    }}
+                                    contentStyle={TOOLTIP_STYLE}
+                                    cursor={{ fill: 'hsl(var(--muted))' }}
                                 />
-                            </PieChart>
+                                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} maxBarSize={28} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 ) : (
                     <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-                        Sin datos de pagos hoy
+                        Sin pagos hoy
                     </div>
                 )}
             </div>

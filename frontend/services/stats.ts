@@ -8,6 +8,8 @@ export interface StatPeriod {
     sales_count: number
     margin_total: number
     period: string
+    /** Ventas del mismo tramo del periodo anterior (hoy hasta ahora contra ayer a esta hora). */
+    sales_total_prev: number
 }
 
 export interface DashboardSummary {

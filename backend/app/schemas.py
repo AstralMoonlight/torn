@@ -724,6 +724,8 @@ class StatPeriod(BaseModel):
     sales_count: int
     margin_total: Decimal
     period: str  # 'Diario' | 'Semanal' | 'Mensual'
+    #: Ventas del mismo tramo del periodo anterior, para mostrar la variación.
+    sales_total_prev: Decimal = Decimal(0)
 
 
 class DashboardSummary(BaseModel):
