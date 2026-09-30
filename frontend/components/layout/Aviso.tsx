@@ -20,7 +20,7 @@ export default function Aviso({ className }: { className?: string }) {
         <Alert
             data-section="aviso"
             variant={aviso.tipo === 'error' ? 'destructive' : 'default'}
-            className={cn('flex items-start gap-3 bg-card [&>svg]:static [&>svg~*]:pl-0 shadow-sm', className)}
+            className={cn('flex items-start gap-3 bg-card [&>svg]:static [&>svg~:not(button)]:pl-0 shadow-sm', className)}
         >
             <Icono className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
             <AlertDescription className="flex-1">{aviso.texto}</AlertDescription>
