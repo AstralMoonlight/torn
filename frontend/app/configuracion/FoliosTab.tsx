@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { FileUp, KeyRound, Loader2 } from "lucide-react";
+import { FileUp, KeyRound, Loader2, Sparkles } from "lucide-react";
+import { SelectOpciones } from "@/components/ui/select-opciones";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -40,6 +41,7 @@ const DTE_NAMES: Record<number, string> = {
     34: "Factura Exenta",
     39: "Boleta Electrónica",
     41: "Boleta Exenta",
+    52: "Guía de Despacho",
     56: "Nota de Débito",
     61: "Nota de Crédito",
 };
@@ -52,8 +54,10 @@ const DTE_NAMES: Record<number, string> = {
 const AYUDA_AMBIENTE: Record<'CERT' | 'PROD' | 'DEV', string> = {
     CERT: "Modo Certificación: los CAF se piden en maullín (ambiente de certificación del SII). Los de producción se rechazan.",
     PROD: "Modo Producción: los CAF se piden en palena (sitio del SII de producción). Los de certificación se rechazan.",
-    DEV: "Modo Desarrollador: los folios son de prueba y se generan solos; no se cargan CAF.",
+    DEV: "Modo Desarrollador: los folios son de prueba. Pídalos con Cargar CAF automático, como si los entregara el SII; si se acaban, se generan solos.",
 };
+
+const OPCIONES_TIPO = Object.entries(DTE_NAMES).map(([value, label]) => ({ value: Number(value), label }));
 
 export default function FoliosTab() {
     const ambiente = useSessionStore((s) => s.availableTenants.find((t) => t.id === s.selectedTenantId)?.sii_ambiente);
@@ -68,6 +72,11 @@ export default function FoliosTab() {
 
     const cafInput = useRef<HTMLInputElement>(null);
     const [errorCaf, setErrorCaf] = useState<string | null>(null);
+
+    const [autoOpen, setAutoOpen] = useState(false);
+    const [autoTipo, setAutoTipo] = useState<number | "">(39);
+    const [autoFolios, setAutoFolios] = useState("100");
+    const [errorAuto, setErrorAuto] = useState<string | null>(null);
     const [errorCert, setErrorCert] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -115,6 +124,19 @@ export default function FoliosTab() {
         setErrorCaf(await subir("/folios/upload", form));
     };
 
+    const handleCafAutomatico = async () => {
+        setSubiendo(true);
+        try {
+            await api.post("/folios/caf-prueba", { tipo_dte: autoTipo, folios: Number(autoFolios) });
+            setAutoOpen(false);
+            fetchData();
+        } catch (error) {
+            setErrorAuto(getApiErrorDetail(error, "No se pudieron pedir los folios."));
+        } finally {
+            setSubiendo(false);
+        }
+    };
+
     const handleCertificado = async () => {
         if (!pfx || !password) return;
         const form = new FormData();
@@ -138,11 +160,48 @@ export default function FoliosTab() {
                         {AYUDA_AMBIENTE[ambiente ?? 'CERT']}
                     </p>
                 </div>
-                <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
-                <Button onClick={() => cafInput.current?.click()} disabled={subiendo || ambiente === 'DEV'}>
-                    {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-                    Cargar CAF
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                    <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
+                    <Button variant="secondary" onClick={() => cafInput.current?.click()} disabled={subiendo || ambiente === 'DEV'}>
+                        {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+                        Cargar CAF manual
+                    </Button>
+                    <Dialog open={autoOpen} onOpenChange={(o) => { setAutoOpen(o); setErrorAuto(null); }}>
+                        <DialogTrigger asChild>
+                            {/* ponytail: solo Desarrollador; la solicitud real al SII (como Bsale) va después. */}
+                            <Button disabled={subiendo || ambiente !== 'DEV'}
+                                title={ambiente !== 'DEV' ? "Por ahora solo en modo Desarrollador" : undefined}>
+                                <Sparkles className="h-4 w-4" />
+                                Cargar CAF automático
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Cargar CAF automático</DialogTitle>
+                                <DialogDescription>
+                                    Folios de prueba, como si los entregara el SII: el rango sigue al último cargado.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <SelectOpciones value={autoTipo} onChange={setAutoTipo} opciones={OPCIONES_TIPO}
+                                    aria-label="Tipo de documento" />
+                                <Input type="number" min={1} max={100000} value={autoFolios}
+                                    onChange={(e) => setAutoFolios(e.target.value)} aria-label="Cantidad de folios" />
+                            </div>
+                            <AlertaError mensaje={errorAuto} />
+                            <DialogFooter>
+                                <Button variant="secondary" onClick={() => setAutoOpen(false)} disabled={subiendo}>
+                                    Cancelar
+                                </Button>
+                                <Button onClick={handleCafAutomatico}
+                                    disabled={subiendo || autoTipo === "" || !(Number(autoFolios) >= 1)}>
+                                    {subiendo && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Pedir folios
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <AlertaError mensaje={errorCaf} />

@@ -34,7 +34,10 @@ from app.core.config import get_settings
 from app.db import control_session, tenant_session
 from app.dte import pipeline
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, calcular_totales, construir_dte
-from app.dte.caf import CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba, guardar_caf
+from app.dte.caf import (
+    ACTOR_CAF_PRUEBA, FOLIOS_CAF_PRUEBA, CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba,
+    generar_caf_prueba, guardar_caf,
+)
 from app.dte.folios import (
     DatosEmision,
     NoReemplazableError,
@@ -244,6 +247,23 @@ async def subir_caf(
         raise HTTPException(409, str(exc)) from exc
     except CafInvalidoError as exc:
         raise HTTPException(422, str(exc)) from exc
+    return _caf_out(caf)
+
+
+class CafPruebaIn(BaseModel):
+    tipo_dte: Literal[33, 34, 39, 41, 52, 56, 61]
+    folios: int = Field(default=100, ge=1, le=FOLIOS_CAF_PRUEBA)
+
+
+@router.post("/cafs/prueba", response_model=CafOut, status_code=201)
+async def pedir_caf_prueba(tenant: TenantDep, datos: CafPruebaIn, actor: Actor = None) -> CafOut:
+    """Simula la solicitud automática de folios al SII: un CAF de prueba con el
+    rango que sigue al último. Solo en Desarrollador; con el SII real se hará
+    igual, pidiéndolo a maullín o palena."""
+    if tenant.ambiente != Ambiente.DEV:
+        raise HTTPException(409, "La carga automática de folios por ahora solo funciona en modo Desarrollador")
+    async with tenant_session(tenant.id) as s:
+        caf = await generar_caf_prueba(s, tenant, datos.tipo_dte, datos.folios, actor or ACTOR_CAF_PRUEBA)
     return _caf_out(caf)
 
 

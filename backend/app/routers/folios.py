@@ -122,6 +122,22 @@ async def upload_caf(
     ).json()
 
 
+class CafPruebaIn(BaseModel):
+    tipo_dte: int
+    folios: int = 100
+
+
+@router.post("/caf-prueba", status_code=201, summary="Pedir un CAF de prueba (Desarrollador)")
+def pedir_caf_prueba(
+    datos: CafPruebaIn,
+    admin: TenantUser = Depends(require_admin),
+    global_user: SaaSUser = Depends(get_current_global_user),
+):
+    """Carga automática de folios, como si los entregara el SII. Por ahora solo en
+    modo Desarrollador: dte-torn responde 409 en los demás."""
+    return _llamar("POST", "/cafs/prueba", admin.tenant, global_user.email, json=datos.model_dump()).json()
+
+
 @router.get("/certificate", dependencies=[Depends(requiere_permiso("Configuración"))], summary="Certificado digital vigente")
 def get_certificate(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Titular y vigencia del certificado, sin material sensible. `null` si no hay."""

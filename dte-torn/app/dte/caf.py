@@ -383,10 +383,21 @@ async def asegurar_caf_prueba(session: AsyncSession, tenant: Tenant, tipo_dte: i
     del_tipo = and_(CAF.tenant_id == tenant.id, CAF.ambiente == Ambiente.DEV, CAF.tipo_dte == tipo_dte)
     vigente = and_(CAF.estado == EstadoCAF.ACTIVO, caf_vigente_sql(hoy_chile()))
     hay = (await session.execute(select(CAF.id).where(del_tipo, vigente).limit(1))).scalar_one_or_none()
-    if hay is not None:
-        return
-    ultimo = (await session.execute(select(func.max(CAF.folio_hasta)).where(del_tipo))).scalar_one() or 0
-    xml = caf_de_prueba(
-        tenant.rut_emisor, tenant.razon_social, tipo_dte, ultimo + 1, ultimo + FOLIOS_CAF_PRUEBA
+    if hay is None:
+        await generar_caf_prueba(session, tenant, tipo_dte)
+
+
+async def generar_caf_prueba(
+    session: AsyncSession, tenant: Tenant, tipo_dte: int, folios: int = FOLIOS_CAF_PRUEBA,
+    subido_por: str = ACTOR_CAF_PRUEBA,
+) -> CAF:
+    """Un CAF de prueba nuevo, como si lo entregara el SII: su rango sigue al
+    último del tipo. Solo para Desarrollador."""
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:clave))"),
+        {"clave": f"caf-prueba:{tenant.id}:{tipo_dte}"},
     )
-    await guardar_caf(session, tenant.id, xml, subido_por=ACTOR_CAF_PRUEBA)
+    del_tipo = and_(CAF.tenant_id == tenant.id, CAF.ambiente == Ambiente.DEV, CAF.tipo_dte == tipo_dte)
+    ultimo = (await session.execute(select(func.max(CAF.folio_hasta)).where(del_tipo))).scalar_one() or 0
+    xml = caf_de_prueba(tenant.rut_emisor, tenant.razon_social, tipo_dte, ultimo + 1, ultimo + folios)
+    return await guardar_caf(session, tenant.id, xml, subido_por=subido_por)

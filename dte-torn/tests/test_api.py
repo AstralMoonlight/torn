@@ -226,6 +226,24 @@ async def test_desarrollador_emite_con_folios_de_prueba_y_sin_sii(api) -> None:
     assert caf.status_code == 409
 
 
+async def test_caf_automatico_de_prueba_solo_en_desarrollador(api) -> None:
+    h = await _alta(api)  # en CERT
+    pedido = {"tipo_dte": 33, "folios": 50}
+    assert (await api.post("/cafs/prueba", json=pedido, headers=h)).status_code == 409
+
+    await _cambiar_ambiente(api, h, "DEV", resolucion_fecha=None)
+    primero = await api.post("/cafs/prueba", json=pedido, headers={**h, "X-Actor": "dueno@torn.cl"})
+    assert primero.status_code == 201, primero.text
+    assert (primero.json()["folio_desde"], primero.json()["folio_hasta"]) == (1, 50)
+    # El siguiente sigue al anterior, como los entrega el SII.
+    segundo = (await api.post("/cafs/prueba", json=pedido, headers=h)).json()
+    assert (segundo["folio_desde"], segundo["folio_hasta"]) == (51, 100)
+    assert await _disponibles(api, h) == 100
+    # Con CAF vigente, la emisión no genera otro: usa el pedido.
+    assert (await api.post("/documents", json=FACTURA, headers=h)).json()["folio"] == 1
+    assert (await api.post("/cafs/prueba", json={"tipo_dte": 99}, headers=h)).status_code == 422
+
+
 async def test_caf_de_otro_ambiente_se_rechaza(api) -> None:
     h = await _alta(api)  # en CERT
     palena = await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", caf_xml(rut=RUT, desde=50, hasta=60, idk=300))})
