@@ -64,3 +64,14 @@ def test_con_personal_no_se_toca_a_un_administrador(client, db_session):
     assert client.put("/users/6", json={"role_id": admin.id}).status_code == 403
     assert client.post("/users/", json={"full_name": "Nueva", "email": "nueva@jcb.cl", "password": "x",
                                         "role_id": admin.id}).status_code == 403
+
+
+
+def test_la_vendedora_edita_clientes_pero_no_los_elimina(client):
+    """Completa en el POS lo que falta para facturar; eliminar lo pide a administración."""
+    client.post("/customers/", json={"rut": "11111111-1", "razon_social": "Cliente"})
+    _como("VENDEDOR")
+    resp = client.put("/customers/11111111-1", json={"giro": "Ferretería", "direccion": "Av. Uno 1", "comuna": "Maipú"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["direccion"] == "Av. Uno 1"
+    assert client.delete("/customers/11111111-1").status_code == 403

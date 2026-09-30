@@ -192,7 +192,7 @@ def cuenta(rut: str, db: Session = Depends(get_tenant_db)):
     return CuentaCliente(saldo=customer.current_balance or 0, movimientos=movimientos)
 
 
-@router.put("/{rut}", dependencies=[Depends(requiere_permiso("Clientes"))], response_model=CustomerOut,
+@router.put("/{rut}", dependencies=[Depends(requiere_permiso("Clientes", "Terminal POS"))], response_model=CustomerOut,
              summary="Actualizar Cliente",
              description="Actualiza datos de un cliente existente.")
 def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Depends(get_tenant_db),
@@ -219,8 +219,11 @@ def update_customer(rut: str, customer_update: CustomerUpdate, db: Session = Dep
 @router.delete("/{rut}", dependencies=[Depends(requiere_permiso("Clientes"))], status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar Cliente",
                description="Desactiva un cliente: deja de aparecer, pero sus ventas y su deuda se conservan.")
-def delete_customer(rut: str, db: Session = Depends(get_tenant_db)):
+def delete_customer(rut: str, db: Session = Depends(get_tenant_db),
+                    tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Desactiva un cliente. Borrarlo chocaba con la FK de sus ventas."""
+    if not es_admin(tenant_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el administrador puede eliminar clientes. Pídaselo a administración.")
     db_customer = db.query(Customer).filter(Customer.rut == rut).first()
     if not db_customer:
         raise HTTPException(
