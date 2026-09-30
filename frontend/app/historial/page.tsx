@@ -259,6 +259,15 @@ export default function HistorialPage() {
                                                         {ESTADOS_XML[sale.intercambio_estado].label}
                                                     </Badge>
                                                 )}
+                                                {sale.estado_receptor === 'RECLAMADO' && (
+                                                    <Badge variant="destructive" className="ml-1 text-xs px-1.5"
+                                                        title="El cliente la reclamó en el SII: corresponde emitir una nota de crédito">
+                                                        Reclamada por el cliente
+                                                    </Badge>
+                                                )}
+                                                {sale.estado_receptor === 'ACEPTADO' && (
+                                                    <Badge className="bg-emerald-600 ml-1 text-xs px-1.5">Aceptada por el cliente</Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
                                                 {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}

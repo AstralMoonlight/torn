@@ -10,7 +10,9 @@ import {
     Calendar,
     FileText,
     Clock,
-    Printer
+    Printer,
+    Inbox,
+    X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
@@ -53,6 +55,8 @@ import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type 
 import { getApiErrorMessage, getApiErrorDetail, fetchBlobUrl } from '@/services/api'
 import { formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
+import DocumentosRecibidos from '@/components/compras/DocumentosRecibidos'
+import { proveedorDeRecibido, type LineaRecibida, type RecibidoDetalle } from '@/services/recibidos'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 
@@ -82,6 +86,13 @@ export default function ComprasPage() {
     const [submitting, setSubmitting] = useState(false)
     const [errorIngreso, setErrorIngreso] = useState<string | null>(null)
     const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
+
+    // Factura de proveedor recibida que se está ingresando, y sus líneas que
+    // todavía no tienen un producto nuestro.
+    const [tab, setTab] = useState('nuevo')
+    const [recibido, setRecibido] = useState<{ id: string; titulo: string } | null>(null)
+    const [pendientes, setPendientes] = useState<LineaRecibida[]>([])
+    const [lineaActiva, setLineaActiva] = useState<number | null>(null)
 
     // Purchase Detail Modal
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
@@ -144,13 +155,63 @@ export default function ComprasPage() {
             return
         }
 
+        // Si se está buscando el producto de una línea de la factura recibida,
+        // entra con su cantidad y su costo.
+        const linea = lineaActiva !== null ? pendientes[lineaActiva] : null
         setItems([...items, {
             product,
-            cantidad: 1,
-            precio_costo: parseFloat(product.costo_unitario) || 0
+            cantidad: linea ? Number(linea.cantidad) : 1,
+            precio_costo: linea ? Number(linea.costo_unitario) : parseFloat(product.costo_unitario) || 0
         }])
+        if (linea) {
+            setPendientes(pendientes.filter((_, i) => i !== lineaActiva))
+            setLineaActiva(null)
+        }
         setSearchQuery('')
         setIsSearching(false)
+    }
+
+    const buscarProductoDe = (index: number) => {
+        setLineaActiva(index)
+        setSearchQuery(pendientes[index].nombre)
+        setIsSearching(true)
+    }
+
+    const limpiarRecibido = () => {
+        setRecibido(null)
+        setPendientes([])
+        setLineaActiva(null)
+    }
+
+    /** Llena el ingreso con la factura recibida: proveedor (se crea si no
+     * existe), folio, fecha y las líneas cuyo producto se reconoció. */
+    const ingresarRecibido = async (doc: RecibidoDetalle) => {
+        try {
+            const proveedor = await proveedorDeRecibido(doc.id)
+            const reconocidas: CartItem[] = []
+            const sinProducto: LineaRecibida[] = []
+            for (const linea of doc.lineas) {
+                const product = products.find(p => p.id === linea.product_id)
+                if (product && !reconocidas.some(r => r.product.id === product.id)) {
+                    reconocidas.push({ product, cantidad: Number(linea.cantidad), precio_costo: Number(linea.costo_unitario) })
+                } else {
+                    sinProducto.push(linea)
+                }
+            }
+            setSelectedProvider(proveedor)
+            setFolio(String(doc.folio))
+            setTipoDoc('FACTURA')
+            setFecha(doc.fecha_emision)
+            setObservacion(`Documento electrónico N° ${doc.folio} de ${doc.razon_social_emisor}`)
+            setItems(reconocidas)
+            setPendientes(sinProducto)
+            setLineaActiva(null)
+            setRecibido({ id: doc.id, titulo: `N° ${doc.folio} de ${doc.razon_social_emisor}` })
+            setErrorIngreso(null)
+            setTab('nuevo')
+        } catch (err) {
+            avisar(getApiErrorDetail(err, 'No se pudo preparar el ingreso.'))
+        }
     }
 
     const removeItem = (index: number) => {
@@ -194,6 +255,7 @@ export default function ComprasPage() {
                 tipo_documento: tipoDoc,
                 fecha_compra: fecha ? new Date(fecha).toISOString() : undefined,
                 observacion,
+                dte_recibido_id: recibido?.id,
                 items: items.map(i => ({
                     product_id: i.product.id,
                     cantidad: i.cantidad,
@@ -208,6 +270,7 @@ export default function ComprasPage() {
             setFolio('')
             setObservacion('')
             setSelectedProvider(null)
+            limpiarRecibido()
             refreshPurchases()
         } catch (error) {
             setErrorIngreso(getApiErrorDetail(error, 'No se pudo registrar la compra.'))
@@ -234,7 +297,7 @@ export default function ComprasPage() {
                 description="Registra compras y actualiza el stock de productos."
             />
 
-            <Tabs defaultValue="nuevo" className="space-y-6">
+            <Tabs value={tab} onValueChange={setTab} className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="nuevo" className="gap-2">
                         <Plus className="h-4 w-4" /> Nuevo ingreso
@@ -242,9 +305,42 @@ export default function ComprasPage() {
                     <TabsTrigger value="historial" className="gap-2" onClick={refreshPurchases}>
                         <Clock className="h-4 w-4" /> Historial / gestión
                     </TabsTrigger>
+                    <TabsTrigger value="recibidos" className="gap-2">
+                        <Inbox className="h-4 w-4" /> Facturas de proveedores
+                    </TabsTrigger>
                 </TabsList>
 
+                <TabsContent data-section="compras.recibidos" value="recibidos">
+                    <DocumentosRecibidos onIngresar={ingresarRecibido} />
+                </TabsContent>
+
                 <TabsContent data-section="compras.nueva" value="nuevo" className="space-y-6">
+                    {recibido && (
+                        <Card className="shadow-sm border-sky-500/50">
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                    <p className="text-sm">
+                                        Ingresando la factura <span className="font-semibold">{recibido.titulo}</span>.
+                                        {pendientes.length > 0
+                                            ? ' Estas líneas no tienen un producto suyo: toque una y búsquelo.'
+                                            : ' Revise las cantidades y guarde.'}
+                                    </p>
+                                    <Button variant="ghost" size="icon" title="Ingresar sin la factura" aria-label="Ingresar sin la factura" onClick={limpiarRecibido}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                {pendientes.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {pendientes.map((l, i) => (
+                                            <Button key={i} size="sm" variant={lineaActiva === i ? 'default' : 'outline'} onClick={() => buscarProductoDe(i)}>
+                                                {l.nombre} · {Number(l.cantidad).toLocaleString('es-CL')} x {formatCLP(l.costo_unitario)}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Left Panel: Form Info */}
                         <Card className="lg:col-span-1 shadow-sm">

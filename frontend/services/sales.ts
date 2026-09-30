@@ -89,6 +89,8 @@ export interface SaleOut {
     dte_glosa: string | null
     /** Envío del XML al correo del cliente: PENDIENTE, ENVIADO, SIN_CORREO, ERROR; null si no aplica. */
     intercambio_estado: string | null
+    /** Lo que hizo el cliente con la factura en el SII: ACEPTADO o RECLAMADO. */
+    estado_receptor?: string | null
     ind_traslado: number | null
     /** Factura que cobró esta guía; null mientras está pendiente. */
     facturada_por_id: number | null

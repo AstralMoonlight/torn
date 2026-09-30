@@ -15,6 +15,8 @@ export interface PurchaseCreate {
     items: PurchaseItem[]
     observacion?: string
     fecha_compra?: string
+    /** Factura del proveedor recibida por el SII que se está ingresando. */
+    dte_recibido_id?: string
 }
 
 export interface PurchaseDetail {
@@ -36,6 +38,7 @@ export interface Purchase {
     iva: number
     monto_total: number
     observacion?: string
+    dte_recibido_id?: string | null
     created_at: string
     provider: Provider
     details: PurchaseDetail[]
