@@ -83,3 +83,20 @@ def test_dte_torn_caido_responde_503(client, monkeypatch):
 
     monkeypatch.setattr(dte_client, "request", caido)
     assert client.get("/folios/status").status_code == 503
+
+
+def test_folios_por_anular(client, monkeypatch):
+    doc = {"id": "5f0c3a52-7a8e-4c55-9d0e-6c1b2a3d4e5f", "external_id": "venta-7", "tipo_dte": 33, "folio": 12,
+           "fecha_emision": "2026-09-29", "receptor_razon_social": "Cliente", "monto_total": 1190,
+           "glosa_sii": "Giro invalido", "folio_nuevo": 30, "caf_folio_desde": 1, "caf_folio_hasta": 20}
+    llamadas = []
+
+    def fake_request(method, path, tenant=None, actor=None, **kwargs):
+        llamadas.append((method, path))
+        return httpx.Response(200, json=[doc]) if method == "GET" else httpx.Response(204)
+
+    monkeypatch.setattr(dte_client, "request", fake_request)
+    [pendiente] = client.get("/folios/por-anular").json()
+    assert (pendiente["folio"], pendiente["folio_nuevo"], pendiente["glosa_sii"]) == (12, 30, "Giro invalido")
+    assert client.post(f"/folios/por-anular/{doc['id']}/anulado").status_code == 204
+    assert llamadas == [("GET", "/folios/por-anular"), ("POST", f"/folios/por-anular/{doc['id']}/anulado")]

@@ -8,7 +8,9 @@ del backend.
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 
 from app.dependencies.tenant import get_current_global_user, get_current_tenant_user, require_admin
@@ -71,6 +73,38 @@ def get_folios_status(tenant_user: TenantUser = Depends(get_current_tenant_user)
                     and disponibles < stock[tipo].get("umbral_alerta", 0)),
         ))
     return result
+
+
+class FolioPorAnularOut(BaseModel):
+    id: UUID
+    tipo_dte: int
+    folio: int
+    fecha_emision: date
+    receptor_razon_social: Optional[str] = None
+    monto_total: int
+    glosa_sii: Optional[str] = None
+    folio_nuevo: Optional[int] = None
+    caf_folio_desde: Optional[int] = None
+    caf_folio_hasta: Optional[int] = None
+
+
+@router.get("/por-anular", response_model=List[FolioPorAnularOut], summary="Folios rechazados por anular")
+def folios_por_anular(tenant_user: TenantUser = Depends(get_current_tenant_user)):
+    """Rechazados que se volvieron a emitir con otro número porque el suyo ya no
+    se podía reutilizar: hay que declararlos anulados en el SII, o el SII los
+    sigue contando como folios disponibles y limita los CAF nuevos."""
+    return _llamar("GET", "/folios/por-anular", tenant_user.tenant).json()
+
+
+@router.post("/por-anular/{documento_id}/anulado", status_code=204, summary="Folio ya anulado en el SII")
+def marcar_folio_anulado(
+    documento_id: UUID,
+    admin: TenantUser = Depends(require_admin),
+    global_user: SaaSUser = Depends(get_current_global_user),
+):
+    """El administrador ya lo anuló en el SII: deja de aparecer por anular."""
+    _llamar("POST", f"/folios/por-anular/{documento_id}/anulado", admin.tenant, global_user.email)
+    return Response(status_code=204)
 
 
 @router.post("/upload", status_code=201, summary="Cargar CAF")

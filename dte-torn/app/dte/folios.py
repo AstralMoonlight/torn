@@ -53,6 +53,14 @@ class PayloadDistintoError(Exception):
         self.external_id = external_id
 
 
+class NoReemplazableError(Exception):
+    """El documento a reemplazar no existe, no está rechazado o ya se reemplazó."""
+
+
+#: Tipos cuyos folios vencen a los 6 meses de autorizados (factura, NC y ND).
+TIPOS_CON_VIGENCIA_6_MESES = frozenset({33, 34, 56, 61})
+
+
 # --------------------------------------------------------------- aritmética --
 
 
@@ -64,6 +72,22 @@ def siguiente_folio(caf: CAF) -> int:
 def folios_disponibles(caf: CAF) -> int:
     """Cantidad de folios que le quedan al CAF (nunca negativa)."""
     return max(caf.folio_hasta - max(caf.ultimo_folio_usado, caf.folio_desde - 1), 0)
+
+
+def folio_vigente(caf: CAF, hoy: date) -> bool:
+    """Si un folio de este CAF todavía se puede usar hoy.
+
+    Además de la fecha de vencimiento que se le haya puesto al cargarlo, los
+    folios de factura, nota de crédito y nota de débito vencen a los 6 meses de
+    autorizados: el SII rechaza el documento que use uno más viejo.
+    """
+    if caf.estado == EstadoCAF.VENCIDO or (caf.fecha_vencimiento and caf.fecha_vencimiento < hoy):
+        return False
+    fa = caf.fecha_autorizacion
+    if caf.tipo_dte in TIPOS_CON_VIGENCIA_6_MESES and fa is not None:
+        meses = (hoy.year - fa.year) * 12 + hoy.month - fa.month
+        return meses < 6 or (meses == 6 and hoy.day <= fa.day)
+    return True
 
 
 def hash_payload(payload: dict) -> str:
@@ -185,7 +209,7 @@ class DatosEmision:
 
 
 async def emitir_documento(
-    session: AsyncSession, tenant_id: uuid.UUID, datos: DatosEmision
+    session: AsyncSession, tenant_id: uuid.UUID, datos: DatosEmision, reemplaza_a: str | None = None
 ) -> tuple[Document, bool]:
     """Crea el documento y le asigna folio, de forma atómica e idempotente.
 
@@ -196,6 +220,9 @@ async def emitir_documento(
         session: Sesión con `app.tenant_id` fijado y transacción abierta.
         tenant_id: Tenant emisor.
         datos: Datos del documento.
+        reemplaza_a: `external_id` de un documento RECHAZADO que este reemplaza.
+            Se reutiliza su folio si el CAF sigue vigente; si no, sale con uno
+            nuevo y el rechazado queda con su folio por anular en el SII.
 
     Returns:
         `(documento, creado)`. `creado` es False si ya existía.
@@ -203,6 +230,7 @@ async def emitir_documento(
     Raises:
         PayloadDistintoError: El `external_id` existe con otro contenido.
         SinFoliosError: No hay folios para ese tipo de documento.
+        NoReemplazableError: `reemplaza_a` no es un rechazado sin reemplazo.
     """
     payload_hash = hash_payload(datos.payload)
 
@@ -247,7 +275,8 @@ async def emitir_documento(
         return existente, False
 
     # 2. Folio. Si esto levanta, el rollback se lleva también el documento.
-    caf_id, folio = await asignar_folio(session, tenant_id, datos.tipo_dte, datos.ambiente)
+    reusado = await _folio_del_rechazado(session, tenant_id, datos, reemplaza_a, nuevo_id) if reemplaza_a else None
+    caf_id, folio = reusado or await asignar_folio(session, tenant_id, datos.tipo_dte, datos.ambiente)
 
     await session.execute(
         update(Document)
@@ -258,3 +287,37 @@ async def emitir_documento(
         await session.execute(select(Document).where(Document.id == nuevo_id))
     ).scalar_one()
     return documento, True
+
+
+async def _folio_del_rechazado(
+    session: AsyncSession, tenant_id: uuid.UUID, datos: DatosEmision, reemplaza_a: str, nuevo_id: uuid.UUID
+) -> tuple[uuid.UUID, int] | None:
+    """Marca el rechazado como reemplazado por `nuevo_id` y devuelve su folio si
+    se puede reutilizar: el SII da por no emitido un rechazado, y reutilizar el
+    folio evita tener que anularlo (FAQ 001.003.2167). None si su CAF venció.
+
+    El lock sobre el rechazado serializa dos reemisiones simultáneas: la segunda
+    ve `reemplazado_por` ya puesto y falla.
+    """
+    viejo = (
+        await session.execute(
+            select(Document)
+            .where(Document.tenant_id == tenant_id, Document.external_id == reemplaza_a)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    if viejo is None or viejo.estado != EstadoDocumento.RECHAZADO:
+        raise NoReemplazableError(f"El documento {reemplaza_a} no está rechazado por el SII")
+    if viejo.tipo_dte != datos.tipo_dte or viejo.ambiente != datos.ambiente:
+        raise NoReemplazableError(f"El documento {reemplaza_a} es de otro tipo o de otro ambiente")
+    if viejo.reemplazado_por is not None:
+        raise NoReemplazableError(f"El documento {reemplaza_a} ya se volvió a emitir")
+    viejo.reemplazado_por = nuevo_id
+
+    caf = await session.get(CAF, viejo.caf_id) if viejo.caf_id else None
+    if caf is None or viejo.folio is None or not folio_vigente(caf, hoy_chile()):
+        await session.flush()
+        return None
+    await session.flush()
+    return caf.id, viejo.folio

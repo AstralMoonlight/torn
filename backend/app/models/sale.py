@@ -57,6 +57,9 @@ class Sale(Base):
     #: Envío del XML al correo del cliente (intercambio), copiado de dte-torn:
     #: PENDIENTE, ENVIADO, SIN_CORREO o ERROR. NULL: no aplica.
     intercambio_estado = Column(String(12), nullable=True)
+    #: Documento de dte-torn de la venta cuando se volvió a emitir tras un rechazo
+    #: (`venta-{id}-{folio rechazado}`). NULL: el de siempre, `venta-{id}`.
+    dte_external_id = Column(String(100), nullable=True)
     # Guías de despacho (52): IndTraslado, y la factura que la cobró (NULL: pendiente).
     ind_traslado = Column(Integer, nullable=True)
     facturada_por_id = Column(Integer, ForeignKey("sales.id"), nullable=True)

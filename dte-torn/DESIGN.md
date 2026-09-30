@@ -102,6 +102,8 @@ originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 | estado_sii, glosa_sii | text | respuesta cruda del SII |
 | pdf_key | text NULL | |
 | intentos | smallint | |
+| reemplazado_por | uuid NULL | en un RECHAZADO: el documento que lo volvió a emitir |
+| folio_anulado_at | timestamptz NULL | el emisor declaró anulado en el SII el folio de un rechazado no reutilizado |
 | next_action_at | timestamptz NULL | motor de reintentos y reconciliación |
 | last_error | text | |
 | created_at, updated_at | timestamptz | |
@@ -109,7 +111,8 @@ originales, sin reserializarlo. Dentro del `<TED>` va aplanado (ver §6).
 Índices y constraints:
 
 - `UNIQUE (tenant_id, external_id)` - respaldo duro de la idempotencia.
-- `UNIQUE (tenant_id, ambiente, tipo_dte, folio)` - respaldo duro contra folio duplicado. `documents.ambiente`
+- `UNIQUE (tenant_id, ambiente, tipo_dte, folio) WHERE estado <> 'RECHAZADO'` - respaldo duro contra folio
+  duplicado. Un RECHAZADO no cuenta porque su folio se reutiliza (ver §3). `documents.ambiente`
   es el del tenant al emitir: fija a qué SII va aunque el tenant cambie de ambiente, y `GET /documents` y
   `GET /folios` muestran solo los del ambiente actual.
 - `(estado, next_action_at) WHERE estado NOT IN (terminales)` - el barrido del
@@ -192,9 +195,9 @@ servicio + header `X-Tenant-Id`, igual que el backend Torn. (A confirmar.)
          ┌────┴────┬──────┴──────┐               │
          ▼         ▼             ▼               │
     ACEPTADO   REPAROS      RECHAZADO            │
-       ✔          ✔             ✘  (folio quemado;
-       │          │           corregir = NC o    │
-       │          │           documento nuevo)   │
+       ✔          ✔             ✘  (no emitido para
+       │          │           el SII: documento  │
+       │          │           nuevo, mismo folio)│
        └────┬─────┘                              │
             ▼ cola notifica                      │
           PDF + correo                           │
@@ -225,8 +228,15 @@ Reglas:
   inválido nunca quema un folio.
 - Una vez asignado, el folio queda amarrado al documento para siempre. Un
   reintento de firma reusa el mismo folio; por eso nunca hay saltos.
-- `RECHAZADO` no libera el folio: el documento existe y fue emitido. Se corrige
-  con Nota de Crédito o con un documento nuevo, según el caso.
+- `RECHAZADO`: el SII lo da por no emitido. **No** se corrige con nota de crédito
+  (esa es para documentos aceptados): se emite un documento nuevo con
+  `reemplaza_a`. Ese documento reutiliza el folio del rechazado si su CAF sigue
+  vigente (los de factura y notas vencen a los 6 meses de autorizados); si no,
+  toma uno nuevo y el rechazado aparece en `GET /folios/por-anular` hasta que el
+  emisor lo anule en el SII (Timbraje Electrónico > Anular folios) y lo marque
+  con `POST /folios/por-anular/{id}/anulado`. Un folio sin usar ni anular el SII
+  lo cuenta como disponible y limita los CAF nuevos (FAQ 001.003.2167 e
+  informativo de timbraje electrónico del SII).
 - `ANULADO` es para folios que nunca se usarán; el SII exige declararlos.
 - Cada transición es un `UPDATE ... WHERE id = :id AND estado = :esperado`. Si
   afecta 0 filas, otro worker ya hizo el trabajo → la tarea termina sin hacer

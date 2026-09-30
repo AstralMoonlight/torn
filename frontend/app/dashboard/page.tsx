@@ -179,7 +179,7 @@ export default function DashboardPage() {
                     <AlertTitle>{data.kpis.num_rechazados === 1 ? 'Un documento rechazado' : `${data.kpis.num_rechazados} documentos rechazados`} por el SII hoy</AlertTitle>
                     <AlertDescription>
                         Suman {formatCLP(data.kpis.total_rechazados)} y no se cuentan en estas cifras, porque se vuelven a emitir.
-                        Revíselos en <Link href="/historial" className="font-medium underline">Historial</Link>.
+                        Revíselos en <Link href="/historial/rechazados" className="font-medium underline">Documentos rechazados</Link>.
                     </AlertDescription>
                 </Alert>
             )}

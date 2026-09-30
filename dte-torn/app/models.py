@@ -357,6 +357,12 @@ class Document(TenantMixin, Base):
     intercambio_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     intercambio_error: Mapped[str | None] = mapped_column(Text)
 
+    #: Rechazado por el SII y vuelto a emitir: el documento que lo reemplaza. Si
+    #: pudo, reutilizó este mismo folio; si no, el folio queda por anular en el SII.
+    reemplazado_por: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("documents.id"))
+    #: El emisor declaró anulado en el SII este folio rechazado que no se reutilizó.
+    folio_anulado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     intentos: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     #: Motor de reintentos y de reconciliación tras perder Redis.
     next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -373,8 +379,12 @@ class Document(TenantMixin, Base):
         # Respaldo duro de la idempotencia.
         UniqueConstraint("tenant_id", "external_id", name="uq_documents_external_id"),
         # Respaldo duro contra folio duplicado: si la lógica falla, falla la BD
-        # antes de que salga un documento repetido.
-        UniqueConstraint("tenant_id", "ambiente", "tipo_dte", "folio", name="uq_documents_folio"),
+        # antes de que salga un documento repetido. Un RECHAZADO no cuenta: el SII
+        # lo da por no emitido y su folio se puede reutilizar (FAQ 001.003.2167).
+        Index(
+            "uq_documents_folio", "tenant_id", "ambiente", "tipo_dte", "folio",
+            unique=True, postgresql_where=text("estado <> 'RECHAZADO'"),
+        ),
         Index(
             "ix_documents_pendientes",
             "estado",

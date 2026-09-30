@@ -1,4 +1,4 @@
-import api from './api'
+import api, { fetchBlob, printPdf } from './api'
 import type { Product } from './products'
 
 export interface SalePaymentCreate {
@@ -125,6 +125,8 @@ export interface FiltroVentas {
     desde?: string
     hasta?: string
     q?: string
+    /** Solo los rechazados por el SII, en todas las fechas. */
+    rechazados?: boolean
     skip?: number
     limit?: number
 }
@@ -167,8 +169,52 @@ export async function corregirTexto(saleId: number, donde_dice: string, debe_dec
     return data
 }
 
+/** Vuelve a emitir, con otro número, un documento que el SII rechazó: no cobra ni mueve stock de nuevo. */
+export async function reemitir(saleId: number): Promise<SaleOut> {
+    const { data } = await api.post<SaleOut>(`/sales/${saleId}/reemitir`)
+    return data
+}
+
 export function getSalePdfPath(saleId: number): string {
     return `/sales/${saleId}/pdf`
+}
+
+/**
+ * Imprime el documento de una venta. Carta (PDF de dte-torn): diálogo de
+ * impresión con vista previa. Ticket (HTML): una pestaña que se imprime sola.
+ */
+export async function imprimirVenta(saleId: number): Promise<void> {
+    const { url, isPdf } = await fetchBlob(getSalePdfPath(saleId))
+    if (isPdf) {
+        printPdf(url)
+        return
+    }
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
+
+/** Rechazado que se volvió a emitir con otro número: el suyo hay que anularlo en el SII. */
+export interface FolioPorAnular {
+    id: string
+    tipo_dte: number
+    folio: number
+    fecha_emision: string
+    receptor_razon_social: string | null
+    monto_total: number
+    glosa_sii: string | null
+    folio_nuevo: number | null
+    caf_folio_desde: number | null
+    caf_folio_hasta: number | null
+}
+
+export async function getFoliosPorAnular(): Promise<FolioPorAnular[]> {
+    const { data } = await api.get<FolioPorAnular[]>('/folios/por-anular')
+    return data
+}
+
+/** El administrador ya lo anuló en el SII: deja de aparecer en la lista. */
+export async function marcarFolioAnulado(id: string): Promise<void> {
+    await api.post(`/folios/por-anular/${id}/anulado`)
 }
 
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {

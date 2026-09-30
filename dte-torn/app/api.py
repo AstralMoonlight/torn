@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query
 from prometheus_client import Counter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select, update
+from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
@@ -34,7 +35,14 @@ from app.db import control_session, tenant_session
 from app.dte import pipeline
 from app.dte.builder import BOLETAS, DatosDocumento, Emisor, calcular_totales, construir_dte
 from app.dte.caf import CafInvalidoError, RangoSolapadoError, asegurar_caf_prueba, guardar_caf
-from app.dte.folios import DatosEmision, PayloadDistintoError, SinFoliosError, emitir_documento, folios_disponibles
+from app.dte.folios import (
+    DatosEmision,
+    NoReemplazableError,
+    PayloadDistintoError,
+    SinFoliosError,
+    emitir_documento,
+    folios_disponibles,
+)
 from app.dte.intercambio import TIPOS_INTERCAMBIO
 from app.dte.pdf import DatosImpresion, generar_pdf
 from app.dte.rut import validar_rut
@@ -263,12 +271,81 @@ async def stock_folios(tenant: TenantDep) -> list[StockFolios]:
     ]
 
 
+class FolioPorAnular(BaseModel):
+    """Un rechazado que se volvió a emitir con otro folio: el suyo quedó sin usar
+    y el SII lo cuenta como disponible hasta que se declare anulado."""
+
+    id: uuid.UUID
+    external_id: str
+    tipo_dte: int
+    folio: int
+    fecha_emision: date
+    receptor_razon_social: str | None
+    monto_total: int
+    #: Lo que dijo el SII al rechazarlo.
+    glosa_sii: str | None
+    #: El folio con que salió el documento que lo reemplazó.
+    folio_nuevo: int | None
+    #: Rango del CAF al que pertenece: en el SII se anula eligiendo ese rango.
+    caf_folio_desde: int | None
+    caf_folio_hasta: int | None
+
+
+def _por_anular(tenant: Tenant):
+    nuevo = aliased(Document)
+    return (
+        select(Document, nuevo.folio, CAF.folio_desde, CAF.folio_hasta)
+        .join(nuevo, nuevo.id == Document.reemplazado_por)
+        .outerjoin(CAF, CAF.id == Document.caf_id)
+        .where(
+            Document.ambiente == tenant.ambiente,
+            Document.estado == E.RECHAZADO,
+            Document.folio_anulado_at.is_(None),
+            Document.folio.is_not(None),
+            # Si el reemplazo reutilizó el folio, no hay nada que anular.
+            nuevo.folio != Document.folio,
+        )
+    )
+
+
+@router.get("/folios/por-anular", response_model=list[FolioPorAnular])
+async def folios_por_anular(tenant: TenantDep) -> list[FolioPorAnular]:
+    """Folios rechazados que no se pudieron reutilizar y hay que declarar
+    anulados en el SII (Timbraje Electrónico > Anular folios)."""
+    async with tenant_session(tenant.id) as s:
+        filas = (await s.execute(_por_anular(tenant).order_by(Document.tipo_dte, Document.folio))).all()
+    return [
+        FolioPorAnular(
+            id=d.id, external_id=d.external_id, tipo_dte=d.tipo_dte, folio=d.folio, fecha_emision=d.fecha_emision,
+            receptor_razon_social=d.receptor_razon_social, monto_total=d.monto_total, glosa_sii=d.glosa_sii,
+            folio_nuevo=folio_nuevo, caf_folio_desde=desde, caf_folio_hasta=hasta,
+        )
+        for d, folio_nuevo, desde, hasta in filas
+    ]
+
+
+@router.post("/folios/por-anular/{documento_id}/anulado", status_code=204)
+async def marcar_folio_anulado(documento_id: uuid.UUID, tenant: TenantDep) -> Response:
+    """El emisor ya lo declaró anulado en el SII: deja de aparecer por anular."""
+    async with tenant_session(tenant.id) as s:
+        fila = (await s.execute(_por_anular(tenant).where(Document.id == documento_id))).first()
+        if fila is None:
+            raise HTTPException(404, "Ese folio no está pendiente de anular")
+        await s.execute(
+            update(Document).where(Document.id == documento_id).values(folio_anulado_at=datetime.now(timezone.utc))
+        )
+    return Response(status_code=204)
+
+
 # -------------------------------------------------------------- documentos ---
 
 
 class DocumentoIn(DatosDocumento):
     #: Clave de idempotencia: típicamente el id de la venta en el backend.
     external_id: str = Field(min_length=1, max_length=100)
+    #: `external_id` de un documento RECHAZADO que este reemplaza: se reutiliza
+    #: su folio si su CAF sigue vigente (ver `emitir_documento`).
+    reemplaza_a: str | None = Field(default=None, max_length=100)
 
 
 class DocumentoOut(BaseModel):
@@ -322,7 +399,7 @@ async def _emitir(tenant: Tenant, entrada: DocumentoIn, ctx: pipeline.Contexto, 
     respuesta traiga el timbre y el POS pueda imprimir de inmediato; si falla,
     el documento queda PENDIENTE y la reconciliación la reintenta.
     """
-    datos = DatosDocumento.model_validate(entrada.model_dump(exclude={"external_id"}))
+    datos = DatosDocumento.model_validate(entrada.model_dump(exclude={"external_id", "reemplaza_a"}))
     try:
         totales = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)
         # Construir con un folio cualquiera detecta lo que el builder rechaza
@@ -349,7 +426,10 @@ async def _emitir(tenant: Tenant, entrada: DocumentoIn, ctx: pipeline.Contexto, 
                     monto_iva=totales.iva, monto_total=totales.total,
                     ambiente=tenant.ambiente,
                 ),
+                reemplaza_a=entrada.reemplaza_a,
             )
+    except NoReemplazableError as exc:
+        raise HTTPException(409, str(exc)) from exc
     except SinFoliosError as exc:
         raise HTTPException(409, f"Sin folios disponibles para el tipo {datos.tipo_dte}") from exc
     except PayloadDistintoError as exc:
