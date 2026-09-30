@@ -93,7 +93,15 @@ export function SuscripcionEmpresa({ empresa, planes, onCambio }: {
         <div className="space-y-6">
             <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-4">
                 <div><dt className="text-xs text-muted-foreground">Estado</dt><dd className="mt-1"><EstadoSuscripcionBadge estado={empresa.suscripcion_estado} /></dd></div>
-                <div><dt className="text-xs text-muted-foreground">Plan</dt><dd className="mt-1 font-medium">{plan?.name ?? 'Sin plan'}</dd></div>
+                <div>
+                    <dt className="text-xs text-muted-foreground">Plan</dt>
+                    <dd className="mt-1 flex items-center gap-2 font-medium">
+                        {plan?.name ?? 'Sin plan'}
+                        {puedeCobrar && (
+                            <Button size="sm" variant="link" className="h-auto p-0" onClick={() => abrir('plan')}>Cambiar</Button>
+                        )}
+                    </dd>
+                </div>
                 <div><dt className="text-xs text-muted-foreground">Pagado hasta</dt><dd className="mt-1 font-medium font-tabular">{formatDate(empresa.suscripcion_vence) || (plan?.meses === 0 ? 'No vence' : '-')}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Prórroga</dt><dd className="mt-1 font-medium">{empresa.prorroga_hasta ? `Hasta ${fechaHora(empresa.prorroga_hasta)}` : '-'}</dd></div>
             </dl>
@@ -104,7 +112,7 @@ export function SuscripcionEmpresa({ empresa, planes, onCambio }: {
                 {puedeProrrogar && ['SUSPENDIDA', 'PRORROGA'].includes(empresa.suscripcion_estado) && (
                     <Button variant="outline" onClick={() => abrir('prorroga')}><Clock className="h-4 w-4" /> Dar prórroga</Button>
                 )}
-                {puedeCobrar && <Button variant="ghost" onClick={() => abrir('plan')}><Package className="h-4 w-4" /> Cambiar plan o fecha</Button>}
+                {puedeCobrar && <Button variant="outline" onClick={() => abrir('plan')}><Package className="h-4 w-4" /> Cambiar plan</Button>}
             </div>
 
             {puedeVerPagos && (
@@ -268,19 +276,24 @@ export function SuscripcionEmpresa({ empresa, planes, onCambio }: {
                             ejecutar(async () => { await cambiarSuscripcion(empresa.id, planId, vence || null); onCambio(); setDialogo(null) }, 'No se pudo cambiar el plan.')
                         }}>
                             <DialogHeader>
-                                <DialogTitle>Cambiar plan o fecha</DialogTitle>
-                                <DialogDescription>Corrección a mano, sin pago. Cortesía no vence nunca.</DialogDescription>
+                                <DialogTitle>Cambiar plan</DialogTitle>
+                                <DialogDescription>
+                                    Sin cobrar nada: el plan nuevo rige desde el próximo pago y lo ya pagado se respeta.
+                                    Si el cliente paga ahora el plan nuevo, use Registrar pago o Link de pago con ese plan: cambia el plan y extiende la fecha de una vez.
+                                </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-2">
-                                <Label htmlFor="cambio-plan">Plan</Label>
+                                <Label htmlFor="cambio-plan">Plan nuevo</Label>
                                 <SelectOpciones id="cambio-plan" value={planId} onChange={setPlanId}
-                                    opciones={planes.map((p) => ({ value: p.id, label: p.name }))} />
+                                    opciones={planes.map((p) => ({ value: p.id, label: p.meses === 0 ? `${p.name} (no vence)` : `${p.name} - ${formatCLP(p.precio)}` }))} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="cambio-vence">Pagado hasta</Label>
-                                <Input id="cambio-vence" type="date" value={vence} onChange={(e) => setVence(e.target.value)} className="max-w-[12rem]" />
-                                <p className="text-xs text-muted-foreground">Vacío: sin pagos todavía.</p>
-                            </div>
+                            {planes.find((p) => p.id === planId)?.meses !== 0 && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="cambio-vence">Pagado hasta</Label>
+                                    <Input id="cambio-vence" type="date" value={vence} onChange={(e) => setVence(e.target.value)} className="max-w-[12rem]" />
+                                    <p className="text-xs text-muted-foreground">Normalmente no se toca. Corríjala solo si quedó mal; vacía = sin pagos todavía.</p>
+                                </div>
+                            )}
                             <AlertaError mensaje={error} />
                             <div className="flex justify-end gap-2">
                                 <Button type="button" variant="outline" onClick={() => setDialogo(null)}>Cancelar</Button>
