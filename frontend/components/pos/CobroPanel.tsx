@@ -7,9 +7,9 @@ import {
 } from 'lucide-react'
 import { descuentosParaVenta, useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
-import { getApiErrorDetail, getApiErrorStatus, fetchBlob, printPdf } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import {
-    createSale, getFoliosStatus, getPaymentMethods, getSalePdfPath,
+    createSale, getFoliosStatus, getPaymentMethods, imprimirVenta,
     type DocumentReference, type FolioStockOut, type PaymentMethod,
 } from '@/services/sales'
 import type { Customer } from '@/services/customers'
@@ -264,20 +264,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const imprimir = async () => {
         if (!emitida) return
         try {
-            // Vía `api`: el PDF exige Authorization + X-Tenant-ID.
-            const { url, isPdf } = await fetchBlob(getSalePdfPath(emitida.id))
-            if (isPdf) {
-                printPdf(url)
-            } else {
-                const frame = document.createElement('iframe')
-                frame.style.display = 'none'
-                frame.onload = () => {
-                    try { frame.contentWindow?.print() } catch { window.open(url, '_blank') }
-                    setTimeout(() => { URL.revokeObjectURL(url); frame.remove() }, 60000)
-                }
-                frame.src = url
-                document.body.appendChild(frame)
-            }
+            await imprimirVenta(emitida.id)
         } catch (err) {
             avisar(getApiErrorDetail(err, 'No se pudo cargar el documento. Reimprímelo desde Historial.'))
         }
