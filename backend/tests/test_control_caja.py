@@ -62,3 +62,36 @@ def test_color_fuera_de_la_paleta_se_rechaza(client):
     assert client.put("/config/settings/", json={"color_primario": "amarillo"}).status_code == 422
     resp = client.put("/config/settings/", json={"color_mode": "usuario", "color_primario": "lima"})
     assert resp.json()["color_mode"] == "usuario" and resp.json()["color_primario"] == "lima"
+
+
+def _turno_ajeno(db_session):
+    from app.models.cash import CashSession
+    from app.models.user import User
+    otro = User(email="cajera@test.cl", razon_social="Cajera")
+    db_session.add(otro)
+    db_session.commit()
+    sesion = CashSession(user_id=otro.id, start_amount=1000, final_cash_system=0, final_cash_declared=0,
+                         difference=0, status="OPEN")
+    db_session.add(sesion)
+    db_session.commit()
+    return sesion.id
+
+
+def test_admin_cierra_turno_ajeno_y_desbloquea_el_apagado(client, db_session):
+    sid = _turno_ajeno(db_session)
+    resp = client.put("/config/settings/", json={"control_caja": False})
+    assert resp.status_code == 409 and "cajera@test.cl" in resp.json()["detail"]
+
+    resp = client.post(f"/cash/sessions/{sid}/close", json={"final_cash_declared": 1000})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "CLOSED" and float(resp.json()["difference"]) == 0
+    assert client.post(f"/cash/sessions/{sid}/close", json={"final_cash_declared": 1000}).status_code == 404
+    assert client.put("/config/settings/", json={"control_caja": False}).status_code == 200
+
+
+def test_solo_el_administrador_cierra_turnos_ajenos(client, db_session):
+    sid = _turno_ajeno(db_session)
+    app.dependency_overrides[get_current_tenant_user] = lambda: TenantUser(
+        tenant_id=1, user_id=2, role_name="VENDEDOR", is_active=True,
+    )
+    assert client.post(f"/cash/sessions/{sid}/close", json={"final_cash_declared": 0}).status_code == 403
