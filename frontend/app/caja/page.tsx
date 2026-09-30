@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSessionStore } from '@/lib/store/sessionStore'
-import { openSession, closeSession, sincronizarCaja, getAllSessions, type CashSessionWithUser } from '@/services/cash'
+import { useSessionStore, useEsAdmin } from '@/lib/store/sessionStore'
+import { openSession, closeSession, closeOtherSession, sincronizarCaja, getAllSessions, type CashSessionWithUser } from '@/services/cash'
 import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,8 @@ import PageHeader from '@/components/layout/PageHeader'
 
 
 export default function CajaPage() {
-    const { status, user, startAmount, startTime, setSession, closeSession: clearSession } = useSessionStore()
+    const { status, user, sessionId, startAmount, startTime, setSession, closeSession: clearSession } = useSessionStore()
+    const esAdmin = useEsAdmin()
     const [montoInicial, setMontoInicial] = useState('')
     const [efectivoContado, setEfectivoContado] = useState('')
     const [opening, setOpening] = useState(false)
@@ -51,6 +52,9 @@ export default function CajaPage() {
     // History state
     const [historySessions, setHistorySessions] = useState<CashSessionWithUser[]>([])
     const [loadingHistory, setLoadingHistory] = useState(false)
+    // Turno de otro usuario que el administrador va a cerrar.
+    const [turnoAjeno, setTurnoAjeno] = useState<CashSessionWithUser | null>(null)
+    const [contadoAjeno, setContadoAjeno] = useState('')
 
     const loadHistory = async () => {
         setLoadingHistory(true)
@@ -131,6 +135,17 @@ export default function CajaPage() {
             setErrorCierre(getApiErrorDetail(err, 'No se pudo cerrar la caja.'))
         } finally {
             setClosing(false)
+        }
+    }
+
+    const cerrarTurnoAjeno = async () => {
+        if (!turnoAjeno) return
+        try {
+            await closeOtherSession(turnoAjeno.id, parseFloat(contadoAjeno) || 0)
+            setContadoAjeno('')
+            await loadHistory()
+        } catch (err) {
+            avisar(getApiErrorDetail(err, 'No se pudo cerrar el turno.'))
         }
     }
 
@@ -364,6 +379,12 @@ export default function CajaPage() {
                                                     >
                                                         {session.status === 'OPEN' ? 'ABIERTA' : 'CERRADA'}
                                                     </Badge>
+                                                    {session.status === 'OPEN' && esAdmin && session.id !== sessionId && (
+                                                        <Button size="sm" variant="outline" className="mt-1.5 h-7 text-xs"
+                                                            onClick={() => setTurnoAjeno(session)}>
+                                                            Cerrar turno
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -381,6 +402,27 @@ export default function CajaPage() {
                 description="Revisa el monto. Una vez cerrada, la caja no se puede reabrir ni corregir."
                 confirmLabel="Sí, cerrar caja"
                 onConfirm={handleClose}
+            />
+            <ConfirmDialog
+                open={turnoAjeno !== null}
+                onOpenChange={(o) => !o && setTurnoAjeno(null)}
+                title={`¿Cerrar el turno de ${turnoAjeno?.user.full_name || turnoAjeno?.user.email || ''}?`}
+                description={
+                    <>
+                        Ingresa el efectivo contado en esa caja (abierta el {turnoAjeno && new Date(turnoAjeno.start_time).toLocaleString('es-CL')}).
+                        Una vez cerrado, el turno no se puede reabrir.
+                        <Input
+                            type="number"
+                            placeholder="Efectivo contado"
+                            value={contadoAjeno}
+                            onChange={(e) => setContadoAjeno(e.target.value)}
+                            className="font-tabular h-10 text-sm mt-3"
+                            min={0}
+                        />
+                    </>
+                }
+                confirmLabel="Sí, cerrar turno"
+                onConfirm={cerrarTurnoAjeno}
             />
             <ConfirmDialog
                 open={forzar !== null}

@@ -84,7 +84,7 @@ def update_settings(
         quienes = ", ".join(sorted({s.user.email or s.user.razon_social for s in abiertos}))
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Hay turnos de caja abiertos ({quienes}). Ciérralos antes de desactivar el control de caja.",
+            f"Hay turnos de caja abiertos ({quienes}). Ciérralos en Caja, Historial de turnos, antes de desactivar el control de caja.",
         )
 
     settings = db.query(SystemSettings).first()

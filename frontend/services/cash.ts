@@ -49,6 +49,14 @@ export async function closeSession(finalCashDeclared: number): Promise<CashSessi
     return data
 }
 
+/** El administrador cierra el turno de otro usuario (uno olvidado, por ejemplo). */
+export async function closeOtherSession(sessionId: number, finalCashDeclared: number): Promise<CashSession> {
+    const { data } = await api.post<CashSession>(`/cash/sessions/${sessionId}/close`, {
+        final_cash_declared: finalCashDeclared,
+    })
+    return data
+}
+
 export interface CashSessionWithUser extends CashSession {
     user: {
         id: number
