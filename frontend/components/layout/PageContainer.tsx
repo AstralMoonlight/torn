@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
-/** Nombre de la página para `data-section`: `/saas-admin/tenants` -> `saas-admin.tenants`. */
+/** Nombre de la página para `data-section`: `/saas-admin/empresas` -> `saas-admin.empresas`. */
 export function usePagina(): string {
     return usePathname().split('/').filter(Boolean).join('.') || 'inicio'
 }

@@ -102,14 +102,23 @@ def upgrade() -> None:
     op.execute("INSERT INTO public.saas_ajustes (id) VALUES (1) ON CONFLICT DO NOTHING")
     # $33.333 al mes con IVA; packs con 5% y 10% de descuento, impresora y cuotas sin
     # interés (la comisión la paga Factureando). Se cambian en saas-admin > Planes.
-    op.execute("""
-        INSERT INTO public.saas_plans (name, description, precio, meses, max_users, cuotas_sin_interes, incluye_impresora, is_active)
-        SELECT v.*, true FROM (VALUES
+    valores = """(VALUES
             ('Mensual', 'Pago mes a mes', 33333, 1, 3, false, NULL),
             ('Pack 6 meses', '5% de descuento, impresora térmica e instalación', 189998, 6, 3, true, 'Térmica 57 mm'),
             ('Pack 12 meses', '10% de descuento, impresora térmica e instalación', 359996, 12, 3, true, 'Térmica 80 mm'),
             ('Cortesía', 'Sin vencimiento: piloto y pruebas', 0, 0, 3, false, NULL)
-        ) AS v(name, description, precio, meses, max_users, cuotas_sin_interes, incluye_impresora)
+        ) AS v(name, description, precio, meses, max_users, cuotas_sin_interes, incluye_impresora)"""
+    # Si ya hay planes con estos nombres (p.ej. tras un downgrade), se dejan como la siembra.
+    op.execute(f"""
+        UPDATE public.saas_plans p
+        SET description = v.description, precio = v.precio, meses = v.meses, max_users = v.max_users,
+            cuotas_sin_interes = v.cuotas_sin_interes, incluye_impresora = v.incluye_impresora, is_active = true
+        FROM {valores}
+        WHERE p.name = v.name
+    """)
+    op.execute(f"""
+        INSERT INTO public.saas_plans (name, description, precio, meses, max_users, cuotas_sin_interes, incluye_impresora, is_active)
+        SELECT v.*, true FROM {valores}
         WHERE NOT EXISTS (SELECT 1 FROM public.saas_plans p WHERE p.name = v.name)
     """)
     op.execute("""

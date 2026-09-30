@@ -175,9 +175,13 @@ def _datos_dte(t: Tenant, d: DatosEmpresa) -> None:
                 raise
             d.certificado = {}
         d.folios = dte_client.request("GET", "/folios", t).json()
-        d.por_anular = len(dte_client.request("GET", "/folios/por-anular", t).json())
     except dte_client.DteError as exc:
         d.dte_error = exc.detail
+        return
+    try:
+        d.por_anular = len(dte_client.request("GET", "/folios/por-anular", t).json())
+    except dte_client.DteError:
+        pass  # dte-torn anterior a los folios por anular: no es un problema de la empresa
 
 
 def datos_empresa(t: Tenant, usuarios_activos: int, ahora: datetime) -> DatosEmpresa:

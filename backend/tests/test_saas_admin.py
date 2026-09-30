@@ -197,3 +197,12 @@ def test_flow_con_otro_monto_no_se_aplica(saas_client, db_session, datos, flow_f
     assert c.post("/pagos/flow/confirmacion", data={"token": token}).status_code == 502
     db_session.expire_all()
     assert db_session.query(SaaSPago).filter_by(referencia=token).one().estado == "PENDIENTE"
+
+
+def test_validar_sesion_trae_permisos_y_no_el_hash(saas_client, datos):
+    """AppShell reemplaza al usuario con lo de /auth/validate: sin esquema de salida
+    se perdían los permisos (el panel quedaba vacío) y viajaba el hash de la clave."""
+    saas_client.como(datos["dueno"])
+    user = saas_client.get("/auth/validate").json()["user"]
+    assert user["es_dueno"] and "planes.editar" in user["permisos"]
+    assert "hashed_password" not in user

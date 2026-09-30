@@ -196,8 +196,8 @@ Ya estaba acordado: seguridad, luego servidor y release. Lo que agrega el lanzam
       - cobranza: aviso antes del vencimiento, qué pasa si no paga (¿solo lectura?, ¿plazo de gracia?);
       - facturación de Factureando a sus clientes, emitida por el mismo sistema como una empresa más,
         con el RUT de la empresa propia (arriba).
-      No bloquea el piloto (JCB no paga), pero sí la venta al primer cliente externo. Merece su propio
-      plan en `tasks/`.
+      No bloquea el piloto (JCB no paga), pero sí la venta al primer cliente externo. Plan en
+      [`saas_admin.md`](saas_admin.md).
 - [ ] Términos de servicio y política de privacidad (datos de clientes finales de cada empresa).
 - [ ] Canal de soporte y horario.
 - [ ] Autocompletar por RUT ([`autocompletar_rut_sii.md`](autocompletar_rut_sii.md), #50).

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import MobileNav from './MobileNav'
 import Aviso from './Aviso'
+import AvisoSuscripcion from './AvisoSuscripcion'
 import { useSessionStore } from '@/lib/store/sessionStore'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useColorEfectivo, useControlCaja, useSettingsStore } from '@/lib/store/settingsStore'
@@ -197,7 +198,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!isMounted) return null // Prevent hydration mismatch
 
     const aviso = (
-        <div className="sticky top-0 z-30 mx-auto max-w-7xl px-4 pt-4 md:px-6 empty:hidden">
+        <div className="sticky top-0 z-30 mx-auto max-w-7xl space-y-2 px-4 pt-4 md:px-6 empty:hidden">
+            {!sinEmpresa && <AvisoSuscripcion />}
             <Aviso />
         </div>
     )

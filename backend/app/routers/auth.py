@@ -143,6 +143,7 @@ def validate_session(
     """Valida la sesión actual y refresca la lista de empresas disponibles."""
     tenants = _get_user_tenants(global_db, current_user.id)
     return {
-        "user": current_user,
+        # Con el esquema de salida: el ORM solo no trae `permisos` ni `es_dueno` (propiedades).
+        "user": SaaSUserOut.model_validate(current_user),
         "available_tenants": tenants
     }
