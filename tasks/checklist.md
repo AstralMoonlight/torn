@@ -503,29 +503,44 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 ---
 
 ### [ ] 36. #62: volver a emitir un documento rechazado
-- **Rama:** `feat/reemitir-rechazado` (sin mergear: sin Docker no se probó la migración ni el navegador)
+- **Rama:** `feat/reemitir-rechazado` (sin mergear), dos commits.
 - **Decisión que tomé:** reusar la venta, no anularla. Anular devolvía el stock de algo que el cliente
   ya se llevó; reusarla deja stock, caja y deuda como están y solo cambia el documento.
-- **Qué:** `POST /sales/{id}/reemitir` (solo RECHAZADO o ERROR_VALIDACION): documento nuevo en
-  dte-torn con external_id `venta-{id}-{folio rechazado}`, las mismas líneas, descuentos y pagos, y
-  los datos del cliente **de ahora** (el rechazo suele ser su giro o dirección, que se corrige antes
-  en Clientes). Sin NC: un rechazado no existe para el SII. La NC de devolución rechazada repite lo
-  devuelto. La venta toma la fecha del documento nuevo (la que citan las notas posteriores).
-  `sales.dte_external_id` (migración `a9b0c1d2e3f4`) hace que el refresco de estados y "Mandar el
-  XML" sigan al documento nuevo. Historial: "Emitir de nuevo", con lo que dijo el SII; en un
-  rechazado ya no se ofrece devolver ni corregir (la NC citaría un documento que el SII no tiene).
-- **Verificado:** backend 188 en verde (`test_reemitir.py`: factura con datos corregidos y mismo
-  total, sin mover stock; solo rechazados; si dte-torn falla la venta queda igual; refresco y XML al
-  documento nuevo; NC rechazada). `tsc` y lint. **Sin navegador ni migración en Postgres.**
+- **Revisado contra el SII (2026-09-30):** un rechazado se da por no emitido: se vuelve a enviar
+  corregido, **sin** nota de crédito (esa es para aceptados), y su folio se **reutiliza o se anula**
+  en el SII; si no, el SII lo cuenta como disponible y entrega menos folios (FAQ 001.003.2167,
+  informativo de timbraje). Con fecha anterior a la de envío sale con reparos: por eso va con la de hoy.
+- **Qué:**
+  - `POST /sales/{id}/reemitir` (solo RECHAZADO o ERROR_VALIDACION): mismas líneas, descuentos y
+    pagos, datos del cliente **de ahora**; external_id `venta-{id}-rN` (`sales.dte_external_id`,
+    migración `a9b0c1d2e3f4`, para que el refresco y el XML sigan al documento nuevo).
+  - dte-torn reutiliza el folio del rechazado (`reemplaza_a`) si su CAF sigue vigente (factura y
+    notas: 6 meses desde la autorización). Si no, sale con otro y el rechazado queda en
+    `GET /folios/por-anular` hasta marcarlo "Ya lo anulé". Migración `0006`: el único de folio
+    ignora los RECHAZADO; columnas `reemplazado_por` y `folio_anulado_at`.
+  - Frontend: **Historial > Rechazados** (`/historial/rechazados`, con contador en el botón):
+    "Por emitir de nuevo" con el motivo del SII y "Números por anular en el SII" (rango del CAF,
+    "Ya lo anulé" solo administrador), y la tarjeta "Cómo anular un número en el SII" a una guía
+    **provisoria** (`/historial/rechazados/anular-folios`, pasos sin capturas). El diálogo dice si
+    salió con el mismo número y ofrece imprimir. En un rechazado ya no se ofrece devolver ni
+    corregir. Panel y Reportes enlazan a la página nueva.
+- **Verificado:** backend 196, dte-torn 349 en Docker (5 nuevos: reutiliza, CAF vencido y por
+  anular, una sola reemisión, reutilizado que se vuelve a rechazar, vigencia de 6 meses), `tsc` y
+  lint. En el navegador con la API simulada (página temporal, borrada): la tabla, los dos resultados
+  del diálogo, "Ya lo anulé", la guía y el celular. **Sin probar de punta a punta ni las
+  migraciones en tus bases** (dte-torn es compartido y la rama no está mergeada).
 - **Revisar:**
-  - `docker compose up -d --build` y que el backend arranque (la migración corre sola; si falla, el
-    contenedor no levanta). Es la misma forma que `f8a9b0c1d2e3`.
-  - En la copia, en modo Desarrollador: marcar una venta como RECHAZADO a mano en la base y emitirla
-    de nuevo desde Historial.
-  - La NC que corrige texto rechazada no se reemite (no guarda líneas): se hace de nuevo.
-  - Una guía reemitida sale sin tipo de despacho (no se guarda en la venta).
-  - Al mergear con el punto 35: agregar `dependencies=[Depends(requiere_permiso("Historial"))]` a
-    `/sales/{id}/reemitir`.
+  - Al mergear: `docker compose build` y `up -d` en los dos compose (migran solos `a9b0c1d2e3f4` y
+    `0006`). El downgrade de `0006` falla si ya hay un folio reutilizado.
+  - La guía es provisoria: falta la versión con capturas del SII.
+  - `folio_vigente` aplica los 6 meses solo al reutilizar; la emisión normal todavía no los revisa
+    (un CAF de factura de más de 6 meses se sigue usando y el SII lo rechazaría).
+  - Si la subida del documento que reutiliza el folio queda ambigua (VERIFICAR), el SII tiene ese
+    folio con los datos del rechazado: probablemente va a revisión manual.
+  - La NC que corrige texto rechazada no se reemite (no guarda líneas); una guía reemitida sale sin
+    tipo de despacho.
+  - Al mergear con el punto 35: `requiere_permiso("Historial")` en `/sales/{id}/reemitir` y en
+    `/folios/por-anular`.
 
 ---
 
