@@ -544,8 +544,8 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
     `/folios/por-anular`.
 
 ### [ ] 37. saas-admin nuevo: suscripciones, cobranza, Flow, problemas y equipo
-- **Rama:** `feat/saas-admin` (una sola rama, como pediste; worktree en `D:\Proyectos\Torn-saas`).
-  Plan y decisiones en [`saas_admin.md`](saas_admin.md).
+- **Rama:** `feat/saas-admin` (una sola rama, como pediste), **mergeada a `main` el 2026-09-30**; rama,
+  worktree y base de prueba `torn_saastest` borrados. Plan y decisiones en [`saas_admin.md`](saas_admin.md).
 - **Qué:**
   - **Suscripción por empresa** (`tenants.plan_id`, `suscripcion_vence`, `prorroga_hasta`): el estado
     sale de la fecha (al día, por vencer, en gracia, prórroga, suspendida, cortesía, sin primer pago).
@@ -572,15 +572,13 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
   planes, crear un cargo, celular y tema oscuro. **Sin probar contra el sandbox de Flow** (faltan
   credenciales).
 - **Revisar:**
-  - Al mergear: `docker compose build backend frontend` y `up -d` (migra `b1c2d3e4f5a6` solo).
+  - Docker ya reconstruido: `torn_db` quedó en `b1c2d3e4f5a6` (JCB y la demo en Cortesía); suite 230 en `main`.
   - Flow: crear la cuenta de comercio y poner `TORN_FLOW_API_KEY`, `TORN_FLOW_SECRET_KEY`,
     `TORN_FLOW_URL`, `TORN_PUBLIC_API_URL` y `TORN_PUBLIC_APP_URL` en el `.env`. Las cuotas sin interés
     se activan en el panel de Flow para toda la cuenta: el plan mensual también las tendría.
   - Al mergear con el punto 35 (`fix/permisos-backend`): los dos tocan `dependencies/tenant.py`.
   - En Windows, `TORN_DTE_URL=http://localhost:8001` hace que cada llamada a dte-torn tarde 2 s (busca
     IPv6 primero); con `127.0.0.1` son milisegundos. Afecta al backend corrido fuera de Docker.
-  - Usuarios de prueba solo en `torn_saastest` (`qa-dueno@torn.test`, `qa-admin@torn.test`; claves en
-    el `.env` del worktree). Borrar la copia al terminar: `DROP DATABASE torn_saastest`.
 
 ---
 
