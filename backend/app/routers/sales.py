@@ -1,6 +1,7 @@
 """Router para gestión de Ventas (Facturas)."""
 
 import logging
+import re
 from datetime import date, datetime, time, timedelta
 from urllib.parse import quote
 from decimal import Decimal
@@ -94,7 +95,8 @@ def _descuento_global_dte(tipo: int, valor: Decimal, porcentaje: bool, lineas_dt
 
 def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list, referencias: list, actor: str,
                 tipo_despacho: int | None = None, forma_pago: int | None = None,
-                descuentos_globales: list = (), external_id: str | None = None) -> None:
+                descuentos_globales: list = (), external_id: str | None = None,
+                reemplaza_a: str | None = None) -> None:
     """Pide el folio a dte-torn y lo deja en `sale.folio`.
 
     Si dte-torn rechaza o no responde, se revierte la venta entera: no se
@@ -108,6 +110,8 @@ def _emitir_dte(db: Session, tenant, sale: Sale, customer: Customer, items: list
         "items": items,
         "referencias": referencias,
     }
+    if reemplaza_a:
+        documento["reemplaza_a"] = reemplaza_a
     if forma_pago:
         documento["forma_pago"] = forma_pago
     if descuentos_globales:
@@ -257,6 +261,13 @@ def _external_id(sale: Sale) -> str:
     return sale.dte_external_id or f"venta-{sale.id}"
 
 
+def _siguiente_external_id(sale: Sale) -> str:
+    """`venta-{id}-r1`, `-r2`...: el documento que reemplaza al rechazado. No sirve
+    el folio: la reemisión puede reutilizarlo y volver a rechazarse."""
+    n = re.fullmatch(r"venta-\d+-r(\d+)", _external_id(sale))
+    return f"venta-{sale.id}-r{int(n.group(1)) + 1 if n else 1}"
+
+
 def _guardar_estado(sale: Sale, doc: dict) -> None:
     sale.dte_estado = doc["estado"]
     sale.intercambio_estado = doc.get("intercambio_estado")
@@ -289,6 +300,7 @@ def list_sales(
     desde: date | None = Query(None, description="Primer día (hora de Chile), inclusive"),
     hasta: date | None = Query(None, description="Último día (hora de Chile), inclusive"),
     q: str | None = Query(None, description="Folio, razón social o RUT; busca en todas las fechas"),
+    rechazados: bool = Query(False, description="Solo los rechazados por el SII, en todas las fechas"),
     db: Session = Depends(get_tenant_db),
 ):
     """Lista ventas paginadas, ordenadas por fecha descendente.
@@ -298,7 +310,9 @@ def list_sales(
     """
     query = db.query(Sale)
     q = (q or "").strip()
-    if q:
+    if rechazados:
+        query = query.filter(Sale.dte_estado.in_(RECHAZADOS))
+    elif q:
         rut = q.replace(".", "").upper()
         coincide = Customer.razon_social.ilike(f"%{q}%") | Customer.rut.ilike(f"%{rut}%")
         if q.isdigit():
@@ -982,14 +996,16 @@ def reemitir_rechazado(
         globales = []
 
     folio_rechazado = sale.folio
-    external_id = f"venta-{sale.id}-{folio_rechazado}"
+    external_id = _siguiente_external_id(sale)
+    # dte-torn reutiliza el folio del rechazado si su CAF sigue vigente; si no,
+    # sale con uno nuevo y el rechazado aparece en `/folios/por-anular`.
     _emitir_dte(db, tenant_user.tenant, sale, sale.customer, items_dte, _referencias_dte(sale.referencias),
                 global_user.email, forma_pago=_forma_pago(db, tipo, pagos), descuentos_globales=globales,
-                external_id=external_id)
+                external_id=external_id, reemplaza_a=_external_id(sale))
     sale.dte_external_id = external_id
     # La fecha del documento nuevo: la que citan las notas que se le hagan después.
     sale.fecha_emision = get_now()
-    for movimiento in sale.stock_movements:
+    for movimiento in sale.stock_movements if sale.folio != folio_rechazado else ():
         if movimiento.description == f"DTE {tipo} folio {folio_rechazado}":
             movimiento.description = f"DTE {tipo} folio {sale.folio}"
     db.commit()

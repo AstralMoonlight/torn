@@ -130,12 +130,20 @@ class FakeDte:
         self.documentos = []
         self.error = None
         self._folios = defaultdict(int)
+        self._folio_de = {}
+        #: Como dte-torn con el CAF vigente: la reemisión de un rechazado reutiliza su folio.
+        self.reutiliza_folio = True
 
     def emitir(self, tenant, documento, actor=None):
         if self.error:
             raise self.error
         self.documentos.append(documento)
-        self._folios[documento["tipo_dte"]] += 1
+        if self.reutiliza_folio and documento.get("reemplaza_a") in self._folio_de:
+            folio = self._folio_de[documento["reemplaza_a"]]
+        else:
+            self._folios[documento["tipo_dte"]] += 1
+            folio = self._folios[documento["tipo_dte"]]
+        self._folio_de[documento["external_id"]] = folio
         lineas = [
             (monto_linea_dte(Decimal(i["cantidad"]), Decimal(i["precio"]), Decimal(i["descuento"]),
                              Decimal(i["descuento_pct"]) if "descuento_pct" in i else None), i["exento"])
@@ -144,7 +152,7 @@ class FakeDte:
         globales = [(Decimal(g["valor"]), g["porcentaje"], g["exento"])
                     for g in documento.get("descuentos_globales", [])]
         _, _, _, total = totales_dte(documento["tipo_dte"], lineas, globales)
-        return {"folio": self._folios[documento["tipo_dte"]], "monto_total": int(total), "estado": "FIRMADO"}
+        return {"folio": folio, "monto_total": int(total), "estado": "FIRMADO"}
 
 
 @pytest.fixture(autouse=True)

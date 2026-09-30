@@ -62,17 +62,40 @@ def test_factura_rechazada_sale_de_nuevo_con_los_datos_corregidos(client, db_ses
     resp = client.post(f"/sales/{venta['id']}/reemitir")
     assert resp.status_code == 200, resp.text
     nueva = resp.json()
-    assert (nueva["folio"], nueva["dte_estado"], nueva["dte_glosa"]) == (2, "FIRMADO", None)
+    # dte-torn reutilizó el folio del rechazado.
+    assert (nueva["folio"], nueva["dte_estado"], nueva["dte_glosa"]) == (1, "FIRMADO", None)
     assert nueva["monto_total"] == venta["monto_total"]
 
     primero, segundo = fake_dte.documentos
-    assert segundo["external_id"] == f"venta-{venta['id']}-1"
+    assert (segundo["external_id"], segundo["reemplaza_a"]) == (f"venta-{venta['id']}-r1", f"venta-{venta['id']}")
     for campo in ("items", "descuentos_globales", "forma_pago", "tipo_dte"):
         assert _mismo(segundo[campo], primero[campo]), campo
     assert segundo["receptor"]["giro"] == "Giro bueno"
     # El stock salió una sola vez, con la venta.
     assert db_session.query(Product).one().stock_actual == 8
+    assert db_session.get(Sale, venta["id"]).stock_movements[0].description == "DTE 33 folio 1"
+
+
+def test_sin_poder_reutilizar_sale_con_otro_numero_y_se_vuelve_a_rechazar(client, db_session, pos, fake_dte):
+    """Con el CAF del rechazado vencido, dte-torn da un folio nuevo. Si ese también
+    se rechaza, la tercera emisión reemplaza a la segunda (`-r2`)."""
+    fake_dte.reutiliza_folio = False
+    venta = _vender(client, 33)
+    _rechazar(db_session, venta["id"])
+    assert client.post(f"/sales/{venta['id']}/reemitir").json()["folio"] == 2
     assert db_session.get(Sale, venta["id"]).stock_movements[0].description == "DTE 33 folio 2"
+
+    _rechazar(db_session, venta["id"])
+    assert client.post(f"/sales/{venta['id']}/reemitir").json()["folio"] == 3
+    assert fake_dte.documentos[-1]["external_id"] == f"venta-{venta['id']}-r2"
+    assert fake_dte.documentos[-1]["reemplaza_a"] == f"venta-{venta['id']}-r1"
+
+
+def test_historial_de_rechazados(client, db_session, pos):
+    venta = _vender(client, 39)
+    _vender(client, 39)
+    _rechazar(db_session, venta["id"])
+    assert [v["id"] for v in client.get("/sales/", params={"rechazados": True}).json()] == [venta["id"]]
 
 
 def test_solo_se_reemite_un_rechazado(client, pos):
@@ -104,7 +127,7 @@ def test_el_refresco_y_el_xml_siguen_al_documento_nuevo(client, db_session, pos,
     monkeypatch.setattr(dte_client, "request", request)
     client.post("/sales/dte-estados")
     client.post(f"/sales/{venta['id']}/reenviar-xml", json={})
-    assert rutas == [f"/documents/venta-{venta['id']}-1", f"/documents/venta-{venta['id']}-1/intercambio"]
+    assert rutas == [f"/documents/venta-{venta['id']}-r1", f"/documents/venta-{venta['id']}-r1/intercambio"]
 
 
 def test_nota_de_credito_rechazada_repite_lo_devuelto(client, db_session, pos, fake_dte):

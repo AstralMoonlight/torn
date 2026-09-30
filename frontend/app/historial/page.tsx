@@ -1,8 +1,8 @@
 'use client'
 
-import { getApiErrorDetail, fetchBlob, printPdf } from '@/services/api'
+import { getApiErrorDetail } from '@/services/api'
 import { useEffect, useRef, useState, Fragment } from 'react'
-import { getSales, actualizarEstadosDte, getPaymentMethods, getFoliosStatus, getSalePdfPath, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
+import { getSales, actualizarEstadosDte, getPaymentMethods, getFoliosStatus, getFoliosPorAnular, imprimirVenta, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
@@ -20,6 +20,7 @@ import {
     PencilLine,
     Mail,
     RefreshCw,
+    FileWarning,
 } from 'lucide-react'
 import {
     Table,
@@ -36,26 +37,11 @@ import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
 import DevolucionDialog from '@/components/pos/DevolucionDialog'
 import ReenviarXmlDialog, { ESTADOS_XML } from '@/components/pos/ReenviarXmlDialog'
 import ReemitirDialog from '@/components/pos/ReemitirDialog'
+import { DteBadge } from '@/components/pos/DteBadge'
+import Link from 'next/link'
 
 
 const POR_PAGINA = 50
-
-function DteBadge({ tipo }: { tipo: number }) {
-    const map: Record<number, { label: string; color: string }> = {
-        33: { label: 'Factura', color: 'bg-primary' },
-        34: { label: 'Factura Exenta', color: 'bg-muted-foreground' },
-        39: { label: 'Boleta', color: 'bg-primary' },
-        41: { label: 'Boleta Exenta', color: 'bg-muted-foreground' },
-        52: { label: 'Guía', color: 'bg-amber-600' },
-        56: { label: 'N. Débito', color: 'bg-muted-foreground' },
-        61: { label: 'N. Crédito', color: 'bg-destructive' },
-        110: { label: 'Factura Export.', color: 'bg-indigo-600' },
-        111: { label: 'ND Export.', color: 'bg-indigo-500' },
-        112: { label: 'NC Export.', color: 'bg-pink-500' },
-    }
-    const info = map[tipo] || { label: `Documento ${tipo}`, color: 'bg-muted-foreground' }
-    return <Badge className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
-}
 
 // Los que el SII no reconoce: se vuelven a emitir, no se devuelven ni se corrigen.
 const RECHAZADOS = ['RECHAZADO', 'ERROR_VALIDACION']
@@ -90,6 +76,8 @@ export default function HistorialPage() {
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
     const [hayMas, setHayMas] = useState(false)
+    // Rechazados por emitir de nuevo más números por anular en el SII, en todas las fechas.
+    const [pendientesSii, setPendientesSii] = useState(0)
 
     // La búsqueda recorre todas las ventas en el servidor, sin importar las fechas.
     const filtro = (): FiltroVentas => search.trim() ? { q: search.trim() } : { desde, hasta }
@@ -101,20 +89,29 @@ export default function HistorialPage() {
         return pagina
     }
 
-    const recargarVentas = () => traerVentas().catch(() => avisar('No se pudo cargar el historial.'))
+    const contarPendientesSii = () => Promise.all([
+        getSales({ rechazados: true, limit: 200 }),
+        // Sin dte-torn no hay lista de folios: el historial se muestra igual.
+        getFoliosPorAnular().catch(() => []),
+    ]).then(([r, f]) => setPendientesSii(r.length + f.length)).catch(() => null)
+
+    const recargarVentas = () => {
+        contarPendientesSii()
+        return traerVentas().catch(() => avisar('No se pudo cargar el historial.'))
+    }
 
     const cargar = () => {
         setLoading(true)
         Promise.all([
             // Si dte-torn no responde, el historial se muestra igual con el último estado conocido.
-            actualizarEstadosDte().catch(() => null).then(() => traerVentas()),
+            actualizarEstadosDte().catch(() => null).then(() => { contarPendientesSii(); return traerVentas() }),
             getPaymentMethods(),
             getFoliosStatus(),
         ])
             .then(([s, m, f]) => {
                 const rechazadas = s.filter(v => RECHAZADOS.includes(v.dte_estado ?? ''))
                 if (rechazadas.length > 0) {
-                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}. Use "Emitir de nuevo" en cada uno.`)
+                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}. Véalos en "Rechazados", arriba a la derecha.`)
                 }
                 setMethods(m)
                 setHayNotasCredito(f.some((d: FolioStockOut) => d.dte_type === 61 && d.available > 0))
@@ -154,15 +151,7 @@ export default function HistorialPage() {
 
     const verPdf = async (saleId: number) => {
         try {
-            // PDF (carta, de dte-torn): diálogo de impresión con vista previa.
-            // HTML (tickets): se abre en una pestaña y se imprime solo al cargar.
-            const { url: blobUrl, isPdf } = await fetchBlob(getSalePdfPath(saleId))
-            if (isPdf) {
-                printPdf(blobUrl)
-                return
-            }
-            window.open(blobUrl, '_blank')
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+            await imprimirVenta(saleId)
         } catch (err) {
             avisar(getApiErrorDetail(err, 'No se pudo cargar el documento.'))
         }
@@ -205,9 +194,19 @@ export default function HistorialPage() {
                     </>
                 )}
                 acciones={
-                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFacturarOpen(true)}>
-                        <FileText className="h-4 w-4" /> Facturar guías
-                    </Button>
+                    <>
+                        <Button asChild variant="outline" size="sm" className="gap-1.5">
+                            <Link href="/historial/rechazados">
+                                <FileWarning className="h-4 w-4" /> Rechazados
+                                {pendientesSii > 0 && (
+                                    <Badge className="bg-destructive text-xs px-1.5">{pendientesSii}</Badge>
+                                )}
+                            </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFacturarOpen(true)}>
+                            <FileText className="h-4 w-4" /> Facturar guías
+                        </Button>
+                    </>
                 }
             />
 
