@@ -5,14 +5,14 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 from app.models.product import Product
 from app.schemas import ProductOut
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
-@router.get("/", response_model=List[ProductOut],
+@router.get("/", dependencies=[Depends(requiere_permiso("Productos"))], response_model=List[ProductOut],
              summary="Consultar Inventario",
              description="Obtiene todos los productos activos con sus niveles de stock.")
 def get_inventory(db: Session = Depends(get_tenant_db)):

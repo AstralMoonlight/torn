@@ -7,6 +7,7 @@ from app.models.issuer import Issuer
 from app.models.payment import PaymentMethod
 from app.models.product import Product
 from app.models.saas import TenantUser
+from app.models.user import Role
 
 
 def _venta(db_session):
@@ -44,11 +45,14 @@ def test_no_se_apaga_con_turnos_abiertos(client):
     assert client.get("/config/settings/").json()["control_caja"] is True
 
 
-def test_solo_el_administrador_cambia_ajustes_de_empresa(client):
+def test_solo_el_administrador_cambia_ajustes_de_empresa(client, db_session):
+    db_session.add(Role(name="ENCARGADO", permissions={"Configuración": True}))
+    db_session.commit()
     app.dependency_overrides[get_current_tenant_user] = lambda: TenantUser(
-        tenant_id=1, user_id=2, role_name="VENDEDOR", is_active=True,
+        tenant_id=1, user_id=2, role_name="ENCARGADO", is_active=True,
     )
-    for cambio in ({"control_caja": False}, {"color_mode": "usuario"}, {"color_primario": "rojo"}):
+    for cambio in ({"control_caja": False}, {"color_mode": "usuario"}, {"color_primario": "rojo"},
+                   {"descuento_maximo": 100}):
         assert client.put("/config/settings/", json=cambio).status_code == 403
     # Los demás ajustes siguen abiertos a quien entra a Configuración.
     assert client.put("/config/settings/", json={"print_formats": {"39": "57mm"}}).status_code == 200

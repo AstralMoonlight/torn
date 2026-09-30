@@ -4,7 +4,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import es_admin, get_current_tenant_user, get_tenant_db
+from app.dependencies.tenant import es_admin, get_current_tenant_user, get_tenant_db, requiere_permiso
 from app.models.cash import CashSession
 from app.models.saas import TenantUser
 from app.models.tax import Tax
@@ -24,7 +24,7 @@ def list_taxes(db: Session = Depends(get_tenant_db)):
     """Lista todos los impuestos."""
     return db.query(Tax).all()
 
-@router.post("/taxes/", response_model=TaxOut, status_code=status.HTTP_201_CREATED)
+@router.post("/taxes/", dependencies=[Depends(requiere_permiso("Configuración"))], response_model=TaxOut, status_code=status.HTTP_201_CREATED)
 def create_tax(tax_in: TaxCreate, db: Session = Depends(get_tenant_db)):
     """Crea un nuevo impuesto."""
     tax = Tax(**tax_in.model_dump())
@@ -33,7 +33,7 @@ def create_tax(tax_in: TaxCreate, db: Session = Depends(get_tenant_db)):
     db.refresh(tax)
     return tax
 
-@router.put("/taxes/{tax_id}", response_model=TaxOut)
+@router.put("/taxes/{tax_id}", dependencies=[Depends(requiere_permiso("Configuración"))], response_model=TaxOut)
 def update_tax(tax_id: int, tax_in: TaxUpdate, db: Session = Depends(get_tenant_db)):
     """Actualiza un impuesto existente."""
     tax = db.query(Tax).get(tax_id)
@@ -63,10 +63,11 @@ def get_settings(db: Session = Depends(get_tenant_db)):
     return settings
 
 #: Ajustes que afectan a toda la empresa y solo cambia el administrador.
-SOLO_ADMIN = {"control_caja", "color_mode", "color_primario"}
+# descuento_maximo: el tope es para quien no es administrador; no se lo sube solo (#60).
+SOLO_ADMIN = {"control_caja", "color_mode", "color_primario", "descuento_maximo"}
 
 
-@router.put("/settings/", response_model=SettingsOut)
+@router.put("/settings/", dependencies=[Depends(requiere_permiso("Configuración"))], response_model=SettingsOut)
 def update_settings(
     settings_in: SettingsUpdate,
     tenant_user: Annotated[TenantUser, Depends(get_current_tenant_user)],

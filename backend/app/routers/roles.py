@@ -4,16 +4,16 @@ from sqlalchemy.orm import Session
 
 from app.models.user import Role
 from app.schemas import RoleOut, RoleUpdate
-from app.dependencies.tenant import require_admin, get_tenant_db
+from app.dependencies.tenant import require_admin, get_tenant_db, requiere_permiso
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
-@router.get("/", response_model=List[RoleOut], dependencies=[Depends(require_admin)])
+@router.get("/", response_model=List[RoleOut], dependencies=[Depends(requiere_permiso("Personal"))])
 def list_roles(db: Session = Depends(get_tenant_db)):
     """Lista todos los roles disponibles."""
     return db.query(Role).all()
 
-@router.get("/{role_id}", response_model=RoleOut, dependencies=[Depends(require_admin)])
+@router.get("/{role_id}", response_model=RoleOut, dependencies=[Depends(requiere_permiso("Personal"))])
 def get_role(role_id: int, db: Session = Depends(get_tenant_db)):
     """Obtiene detalles de un rol específico."""
     role = db.query(Role).filter(Role.id == role_id).first()

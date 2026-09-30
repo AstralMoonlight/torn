@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session, joinedload
 
-from app.dependencies.tenant import get_current_local_user, get_tenant_db
+from app.dependencies.tenant import get_current_local_user, get_tenant_db, requiere_permiso
 from app.models.purchase import Purchase, PurchaseDetail
 from app.models.product import Product
 from app.models.user import User
@@ -21,7 +21,7 @@ from app.utils.formatters import format_clp, format_number
 from app.utils.print_settings import PAPEL_TICKET_MM, resolve_print_format
 from app.utils.taxes import quantize_money, resolve_purchase_tax_rate
 
-router = APIRouter(prefix="/purchases", tags=["purchases"])
+router = APIRouter(prefix="/purchases", tags=["purchases"], dependencies=[Depends(requiere_permiso("Compras"))])
 
 # ── Jinja2 para plantillas HTML ──────────────────────────────────────
 _HTML_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "html"

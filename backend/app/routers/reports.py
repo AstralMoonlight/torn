@@ -16,13 +16,13 @@ from app.models.sale import Sale, SaleDetail
 from app.models.product import Product
 from app.models.payment import PaymentMethod, SalePayment
 from app.models.cash import CashSession
-from app.dependencies.tenant import get_tenant_db, require_admin
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 from app.routers.stats import CUENTA, RECHAZADOS, TIPOS_REPORTE, TIPOS_VENTA
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.get("/dashboard", dependencies=[Depends(require_admin)])
+@router.get("/dashboard", dependencies=[Depends(requiere_permiso("Dashboard"))])
 def get_dashboard(
     fecha: Optional[date] = Query(None, description="Fecha del reporte (default=hoy)"),
     db: Session = Depends(get_tenant_db),

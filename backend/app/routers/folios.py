@@ -13,7 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 
-from app.dependencies.tenant import get_current_global_user, get_current_tenant_user, require_admin
+from app.dependencies.tenant import get_current_global_user, get_current_tenant_user, require_admin, requiere_permiso
 from app.models.saas import SaaSUser, TenantUser
 from app.services import dte_client
 
@@ -88,7 +88,7 @@ class FolioPorAnularOut(BaseModel):
     caf_folio_hasta: Optional[int] = None
 
 
-@router.get("/por-anular", response_model=List[FolioPorAnularOut], summary="Folios rechazados por anular")
+@router.get("/por-anular", dependencies=[Depends(requiere_permiso("Historial"))], response_model=List[FolioPorAnularOut], summary="Folios rechazados por anular")
 def folios_por_anular(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Rechazados que se volvieron a emitir con otro número porque el suyo ya no
     se podía reutilizar: hay que declararlos anulados en el SII, o el SII los
@@ -122,7 +122,7 @@ async def upload_caf(
     ).json()
 
 
-@router.get("/certificate", summary="Certificado digital vigente")
+@router.get("/certificate", dependencies=[Depends(requiere_permiso("Configuración"))], summary="Certificado digital vigente")
 def get_certificate(tenant_user: TenantUser = Depends(get_current_tenant_user)):
     """Titular y vigencia del certificado, sin material sensible. `null` si no hay."""
     try:

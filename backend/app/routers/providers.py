@@ -5,11 +5,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_tenant_db
+from app.dependencies.tenant import get_tenant_db, requiere_permiso
 from app.models.provider import Provider
 from app.schemas import ProviderCreate, ProviderOut, ProviderUpdate
 
-router = APIRouter(prefix="/providers", tags=["providers"])
+router = APIRouter(prefix="/providers", tags=["providers"], dependencies=[Depends(requiere_permiso("Proveedores", "Compras"))])
 
 
 @router.post("/", response_model=ProviderOut, status_code=status.HTTP_201_CREATED)

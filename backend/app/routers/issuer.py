@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies.tenant import get_current_tenant_user, get_tenant_db
+from app.dependencies.tenant import get_current_tenant_user, get_tenant_db, requiere_permiso
 from app.models.issuer import Issuer
 from app.models.saas import TenantUser
 from app.services import dte_client
@@ -37,7 +37,7 @@ def get_issuer(db: Session = Depends(get_tenant_db)):
     return issuer
 
 
-@router.put("/", response_model=IssuerOut,
+@router.put("/", dependencies=[Depends(requiere_permiso("Configuración"))], response_model=IssuerOut,
              summary="Configurar Emisor",
              description="Crea o actualiza los datos tributarios de la empresa.")
 def upsert_issuer(
