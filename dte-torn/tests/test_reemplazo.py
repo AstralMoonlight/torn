@@ -11,7 +11,8 @@ from sqlalchemy import select, update
 from app.db import tenant_session
 from app.dte.folios import folio_vigente
 from app.models import CAF, Document, EstadoCAF, EstadoDocumento
-from tests.test_api import FACTURA, _alta, api  # noqa: F401 - fixture
+from tests.factories import caf_xml
+from tests.test_api import FACTURA, RUT, _alta, api  # noqa: F401 - fixture
 
 
 async def _rechazar(h, external_id: str, glosa: str = "Giro del receptor invalido") -> None:
@@ -23,6 +24,14 @@ async def _rechazar(h, external_id: str, glosa: str = "Giro del receptor invalid
 async def _doc(h, external_id: str) -> Document:
     async with tenant_session(uuid.UUID(h["X-Tenant-Id"])) as s:
         return (await s.execute(select(Document).where(Document.external_id == external_id))).scalar_one()
+
+
+async def _vencer_y_cargar_otro(api, h) -> None:
+    """Deja el CAF 1-10 con más de 6 meses y carga uno vigente 11-20."""
+    async with tenant_session(uuid.UUID(h["X-Tenant-Id"])) as s:
+        await s.execute(update(CAF).values(fecha_autorizacion=date(2025, 1, 1)))
+    xml = caf_xml(rut=RUT, tipo_dte=33, desde=11, hasta=20)
+    assert (await api.post("/cafs", headers=h, files={"archivo": ("caf.xml", xml)})).status_code == 201
 
 
 def _reemision(n: int = 1, reemplaza_a: str = "venta-1") -> dict:
@@ -50,17 +59,14 @@ async def test_con_el_caf_vencido_sale_con_folio_nuevo_y_queda_por_anular(api) -
     h = await _alta(api)
     await api.post("/documents", json=FACTURA, headers=h)
     await _rechazar(h, "venta-1")
-    async with tenant_session(uuid.UUID(h["X-Tenant-Id"])) as s:
-        await s.execute(update(CAF).values(fecha_autorizacion=date(2025, 1, 1)))  # más de 6 meses
+    await _vencer_y_cargar_otro(api, h)
 
-    # El CAF de 2025 también da el folio nuevo en este test: lo que se prueba es
-    # que no se reutiliza el rechazado.
     r = await api.post("/documents", json=_reemision(), headers=h)
     assert r.status_code == 201, r.text
-    assert r.json()["folio"] == 2
+    assert r.json()["folio"] == 11
 
     [pendiente] = (await api.get("/folios/por-anular", headers=h)).json()
-    assert (pendiente["folio"], pendiente["folio_nuevo"], pendiente["glosa_sii"]) == (1, 2, "Giro del receptor invalido")
+    assert (pendiente["folio"], pendiente["folio_nuevo"], pendiente["glosa_sii"]) == (1, 11, "Giro del receptor invalido")
     assert (pendiente["caf_folio_desde"], pendiente["caf_folio_hasta"]) == (1, 10)
 
     r = await api.post(f"/folios/por-anular/{pendiente['id']}/anulado", headers=h)
@@ -93,9 +99,8 @@ async def test_un_reutilizado_que_vuelve_a_rechazarse_se_anula_una_sola_vez(api)
     await _rechazar(h, "venta-1")
     await api.post("/documents", json=_reemision(1), headers=h)
     await _rechazar(h, "venta-1-r1")
-    async with tenant_session(uuid.UUID(h["X-Tenant-Id"])) as s:
-        await s.execute(update(CAF).values(fecha_autorizacion=date(2025, 1, 1)))
-    assert (await api.post("/documents", json=_reemision(2, "venta-1-r1"), headers=h)).json()["folio"] == 2
+    await _vencer_y_cargar_otro(api, h)
+    assert (await api.post("/documents", json=_reemision(2, "venta-1-r1"), headers=h)).json()["folio"] == 11
 
     pendientes = (await api.get("/folios/por-anular", headers=h)).json()
     assert [(p["external_id"], p["folio"]) for p in pendientes] == [("venta-1-r1", 1)]

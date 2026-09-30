@@ -24,10 +24,11 @@ from datetime import datetime, timedelta, timezone
 
 import sentry_sdk
 from prometheus_client import Counter, Gauge, start_http_server
-from sqlalchemy import case, func, or_, select, update
+from sqlalchemy import case, func, not_, or_, select, update
 
 from app.core.config import get_settings
 from app.db import control_session, tenant_session
+from app.dte.folios import caf_vigente_sql
 from app.dte.signer import ZONA_CHILE
 from app.models import CAF, Ambiente, Certificate, Document, EstadoCAF, EstadoDocumento, EstadoIntercambio, Tenant
 from app.tasks import colas
@@ -145,7 +146,7 @@ async def vigilar() -> dict[str, dict]:
         async with tenant_session(tenant_id) as sesion:
             await sesion.execute(
                 update(CAF)
-                .where(CAF.estado == EstadoCAF.ACTIVO, CAF.fecha_vencimiento < hoy)
+                .where(CAF.estado == EstadoCAF.ACTIVO, not_(caf_vigente_sql(hoy)))
                 .values(estado=EstadoCAF.VENCIDO)
             )
             stock = dict(

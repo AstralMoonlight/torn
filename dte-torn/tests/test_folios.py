@@ -8,17 +8,20 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.db import tenant_session
+from app.dte.signer import hoy_chile
 from app.dte.folios import (
     DatosEmision,
     PayloadDistintoError,
     SinFoliosError,
+    caf_vigente_sql,
     emitir_documento,
+    folio_vigente,
     folios_disponibles,
     siguiente_folio,
 )
@@ -159,6 +162,64 @@ async def test_caf_vencido_no_se_usa(tenant: uuid.UUID, caf_factory) -> None:
 
     with pytest.raises(SinFoliosError):
         await _emitir(tenant, _datos("venta-1"))
+
+
+async def _autorizado(tenant: uuid.UUID, caf_id: uuid.UUID, fecha: date) -> None:
+    async with tenant_session(tenant) as s:
+        await s.execute(update(CAF).where(CAF.id == caf_id).values(fecha_autorizacion=fecha))
+
+
+async def test_factura_no_usa_caf_de_mas_de_6_meses(tenant: uuid.UUID, caf_factory) -> None:
+    """Res. Ex. SII 58/2017: el CAF de un documento con crédito fiscal vale 6
+    meses desde su autorización. Se salta al siguiente vigente, y si no hay, no
+    se emite."""
+    hoy = hoy_chile()
+    viejo = await caf_factory(desde=1000, hasta=1100)
+    await _autorizado(tenant, viejo, hoy - timedelta(days=200))
+    nuevo = await caf_factory(desde=2000, hasta=2001)
+    await _autorizado(tenant, nuevo, hoy - timedelta(days=30))
+
+    assert (await _emitir(tenant, _datos("venta-1")))[0] == 2000
+    assert (await _emitir(tenant, _datos("venta-2")))[0] == 2001
+    with pytest.raises(SinFoliosError):
+        await _emitir(tenant, _datos("venta-3"))
+
+
+async def test_boleta_no_vence_a_los_6_meses(tenant: uuid.UUID, caf_factory) -> None:
+    """La boleta no da crédito fiscal: su CAF no tiene esa vigencia."""
+    caf_id = await caf_factory(tipo_dte=39)
+    await _autorizado(tenant, caf_id, date(2020, 1, 1))
+    assert (await _emitir(tenant, _datos("boleta-1", tipo_dte=39)))[0] == 1000
+
+
+async def test_vigencia_sql_igual_a_la_de_python(tenant: uuid.UUID, caf_factory) -> None:
+    """La condición SQL y `folio_vigente` cuentan igual los 6 meses, también en
+    fin de mes (31-mar vale hasta el 30-sep)."""
+    fechas = [date(2026, 2, 28), date(2026, 3, 1), date(2026, 3, 29), date(2026, 3, 30), date(2026, 3, 31)]
+    for i, fa in enumerate(fechas):
+        await _autorizado(tenant, await caf_factory(desde=1000 + 100 * i, hasta=1099 + 100 * i), fa)
+
+    async with tenant_session(tenant) as s:
+        cafs = (await s.execute(select(CAF))).scalars().all()
+        for hoy in (date(2026, 8, 31), date(2026, 9, 30), date(2026, 10, 1)):
+            en_sql = set((await s.execute(select(CAF.id).where(caf_vigente_sql(hoy)))).scalars())
+            assert en_sql == {c.id for c in cafs if folio_vigente(c, hoy)}, hoy
+    assert folio_vigente(next(c for c in cafs if c.fecha_autorizacion == date(2026, 3, 31)), date(2026, 9, 30))
+
+
+async def test_scheduler_marca_vencido_el_caf_de_mas_de_6_meses(tenant: uuid.UUID, caf_factory) -> None:
+    """Así `/folios` deja de contarlo como stock."""
+    from app.tasks import scheduler
+
+    viejo = await caf_factory()
+    await _autorizado(tenant, viejo, hoy_chile() - timedelta(days=200))
+    boleta = await caf_factory(tipo_dte=39)
+    await _autorizado(tenant, boleta, date(2020, 1, 1))
+
+    await scheduler.vigilar()
+    async with tenant_session(tenant) as s:
+        estados = dict((await s.execute(select(CAF.id, CAF.estado))).all())
+    assert estados == {viejo: EstadoCAF.VENCIDO, boleta: EstadoCAF.ACTIVO}
 
 
 # --------------------------------------------------------------------- RLS --
