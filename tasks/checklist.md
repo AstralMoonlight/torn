@@ -480,7 +480,7 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 ---
 
 ### [ ] 35. #60: el backend revisa los permisos del rol
-- **Rama:** `fix/permisos-backend` (sin mergear: no se pudo probar en el navegador sin Docker)
+- **Rama:** `fix/permisos-backend`, mergeada a `main` el 2026-09-30 (punto 39)
 - **Hallazgo:** además del menú (punto 32), la API no revisaba nada: una vendedora con su token podía
   crear un usuario **ADMINISTRADOR** (`POST /users/`), cambiar el emisor (`PUT /issuer/`) o los
   impuestos, y leer compras, proveedores y reportes.
@@ -599,6 +599,40 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
     la emisión ya no lo usa.
   - La factura exenta (34) no da crédito fiscal, pero queda con los 6 meses (lo que ya hacía el
     punto 36): en el peor caso se anulan folios antes de tiempo, nunca se emite uno rechazable.
+
+## Cuarta tanda (2026-09-30): integración en `main`
+
+Rama `integracion/tanda-4`, mergeada a `main` el 2026-09-30. Backend 244, dte-torn 354, `tsc`, lint
+(6 warnings de siempre), contrato 17/17 y build.
+
+### [ ] 39. Merge de lo que estaba hecho y sin mergear
+- `fix/permisos-backend` (punto 35), `feat/vigencia-caf-6-meses` (punto 38) y `feat/dashboard-kpis`
+  (plan y decisiones en [`dashboard.md`](dashboard.md)).
+- **Al juntarlas:** `requiere_permiso("Historial")` en `/sales/{id}/reemitir` y `/folios/por-anular`.
+  El panel (`/reports/panel`) pedía administrador y el resto del dashboard la clave "Dashboard": quien
+  tenía esa clave veía el panel fallar entero; ahora pide la clave. Las ventas de 30 días, el IVA del
+  mes y la comparación con el período anterior contaban los rechazados (punto 27); ya no. La alerta de
+  rechazados de hoy y la de documentos con problemas eran dos: queda una, que lleva a Documentos
+  rechazados.
+- **Revisar:** el dashboard nuevo con datos reales (alertas, IVA estimado, cobranza por tramos).
+
+### [ ] 40. La térmica es de 58 mm
+- Formato `58mm` en vez de `57mm` en backend, frontend, tests y documentación. Migración
+  `c2d3e4f5a6b7`: cambia el formato guardado de cada empresa y el texto del plan Pack 6.
+- **Revisar:** imprimir un ticket en la impresora real y leer el timbre con un lector (el ancho del
+  timbre, `TIMBRE` en `dte_impreso.py`, sigue calibrado a ojo).
+
+### [ ] 41. Cargar CAF automático (Desarrollador)
+- Configuración > Folios tiene **Cargar CAF manual** (el archivo del SII) y **Cargar CAF automático**:
+  elige tipo y cantidad y dte-torn arma un CAF de prueba con el rango que sigue al último
+  (`POST /cafs/prueba`, en el backend `/folios/caf-prueba`, solo administrador). Fuera de
+  Desarrollador el botón está desactivado y dte-torn responde 409. Si se acaban, en Desarrollador se
+  siguen generando solos como antes. La pestaña ahora nombra la guía de despacho (decía "Documento 52").
+- **Después:** la solicitud real al SII (como Bsale) con el mismo botón.
+
+### [ ] 42. El menú de celular respeta los permisos
+- Mostraba POS, Caja, Panel, Stock y Ventas a todos; ahora solo lo que el rol puede ver, como el menú
+  lateral.
 
 ---
 
