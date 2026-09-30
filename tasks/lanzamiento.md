@@ -73,7 +73,8 @@ Depende del respaldo (1.4) para la alerta de respaldo.
 ### 1.1 Paso a producción ante el SII
 
 - [ ] Declaración de cumplimiento de factura (#48), la hace la representante en maullín
-      (https://maullin.sii.cl/cvc_cgi/dte/pe_avance7).
+      (https://maullin.sii.cl/cvc_cgi/dte/pe_avance7). Decidido 2026-09-30: se firma cuando el SII
+      acepte también las boletas (#49); en maullín no queda nada más pendiente.
 - [ ] Emisor de JCB en modo PROD con la **Res. 80 del 22-08-2014** (la de certificación era la 0 de 2020).
 - [ ] CAF de producción pedidos en palena, cargados en dte-torn. Pantalla de folios que avise si el CAF
       no es del ambiente del emisor (#54: el rechazo está, falta mostrarlo). Alerta de pocos folios en el

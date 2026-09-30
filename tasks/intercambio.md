@@ -8,8 +8,10 @@
 > a) es obligatoria antes de facturar a empresas. La parte b) puede esperar: si nadie responde, al octavo
 > día la factura recibida queda aceptada por presunción legal, igual que hoy.
 
-No existe nada: no hay correo (ni SMTP ni IMAP) en el repo, ni
-formatos de respuesta en dte-torn. Son dos partes:
+> **Hecho (2026-09-30):** la parte a en el punto 33 de `checklist.md` y la parte b en el punto 44. Queda
+> poner las claves de la casilla en el `.env` de dte-torn y registrarla en el SII.
+
+Son dos partes:
 
 **a) Enviar el XML a la casilla del cliente.** Cuando el SII acepta un 33, 34, 52, 56 o 61, se manda el
 `EnvioDTE` (sobre dirigido al RUT del cliente) a su correo de intercambio. Las boletas no pasan por
@@ -66,11 +68,14 @@ no se hace.
 **Tareas:**
 - [x] Bajar del SII los XSD y el instructivo de intercambio (`RespuestaDTE`, `EnvioRecibos`), igual que se
       hizo con los libros (source-driven-development).
-- [ ] Decidir el correo del cliente (el servicio ya está: la casilla de JCB).
-- [ ] Probar SMTP e IMAP contra `mail.distribuidorajcb.cl` desde el contenedor de dte-torn.
-- [ ] dte-torn: sobre `EnvioDTE` para el receptor y su envío al correo tras la aceptación del SII, con reintentos.
-- [ ] Backend y frontend: estado del envío en la venta y botón de reenviar en el historial.
-- [ ] Recepción: leer la casilla, validar y guardar los documentos recibidos.
-- [ ] Acuse del envío firmado (`RespuestaDTE` con `RecepcionEnvio`), validado contra el XSD, enviado al proveedor.
-- [ ] dte-torn: cliente del web service del Registro de Aceptación o Reclamo (registrar y consultar eventos).
-- [ ] Frontend: bandeja de documentos recibidos con aceptar / reclamar (va al registro) y el plazo de 8 días a la vista.
+- [x] Decidir el correo del cliente: el `email` de la ficha (punto 33).
+- [ ] Probar SMTP e IMAP contra `mail.distribuidorajcb.cl` desde el contenedor de dte-torn (necesita la clave en el `.env`).
+- [x] dte-torn: sobre `EnvioDTE` para el receptor y su envío al correo tras la aceptación del SII, con reintentos.
+- [x] Backend y frontend: estado del envío en la venta y botón de reenviar en el historial.
+- [x] Recepción: leer la casilla, validar y guardar los documentos recibidos.
+- [x] Acuse del envío firmado (`RespuestaDTE` con `RecepcionEnvio`), validado contra el XSD, enviado al proveedor.
+- [x] dte-torn: cliente del web service del Registro de Aceptación o Reclamo (registrar y consultar eventos).
+- [x] Frontend: bandeja de documentos recibidos con aceptar / reclamar (va al registro) y el plazo de 8 días a la vista.
+- [x] Facturas propias: si el cliente la aceptó o reclamó, a la vista en el historial.
+- [ ] Probar el registro contra el SII real con una factura de un proveedor (ACD o ERM sobre una que ya
+      se vaya a pagar), cuando la casilla esté activa.

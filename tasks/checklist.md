@@ -634,28 +634,88 @@ Rama `integracion/tanda-4`, mergeada a `main` el 2026-09-30. Backend 244, dte-to
 - Mostraba POS, Caja, Panel, Stock y Ventas a todos; ahora solo lo que el rol puede ver, como el menú
   lateral.
 
+## Quinta tanda (2026-09-30): intercambio completo y preguntas pendientes
+
+### [ ] 43. `PUT /purchases/{id}` borrado (respuesta al punto 9)
+- **Rama:** `chore/borrar-put-purchases`, ya mergeada a `main` (`9e87a36`).
+- **Por qué:** nadie lo usaba y editaba una compra moviendo stock **sin** la validación de variantes que
+  sí tiene crear (se podía cargar stock a un producto padre). Una compra mal ingresada se borra (reversa
+  el stock en el kardex) y se ingresa de nuevo. Menos superficie de ataque, nada de lo que se usa cambia.
+- **Verificado:** test de que `PUT` responde 405; backend en verde.
+
+### [ ] 44. #56 parte b: recibir facturas de proveedores, acusar recibo y aceptar o reclamar en el SII
+- **Rama:** `feat/intercambio-recepcion` (con `main` mezclado; subida a GitHub, sin mergear).
+- **dte-torn:**
+  - Lee la casilla por IMAP (`DTE_IMAP_*`, por defecto usuario y clave del SMTP) cada 2 minutos. Cada
+    `EnvioDTE` adjunto se guarda a nombre de la empresa de su `RutReceptor` (S3 write-once, sin
+    duplicar por hash); lo que no es un envío (acuses de clientes) se ignora. Un correo que falla queda
+    sin leer y se reintenta.
+  - Valida el sobre contra el XSD del SII y verifica su firma con el certificado que trae. Aunque falle,
+    los documentos se guardan (el SII ya los tiene y corren los 8 días) y se marcan "firma no comprobada".
+    XML sin DTD ni entidades (a salvo de XXE).
+  - Responde el acuse (`RespuestaDTE` con `RecepcionEnvio`, firmado, validado contra el XSD) al
+    `Reply-To`/`From` del correo, con reintentos. En Desarrollador no responde.
+  - Aceptar (ACD), recibo de mercadería (ERM) y reclamar (RCD, RFP, RFT) van **en línea** al Registro de
+    Aceptación o Reclamo del SII (web service SOAP, leído del WSDL y del manual v1.2). Consulta la fecha
+    de recepción en el SII (desde ahí corren los 8 días) y los eventos, hasta que vence el plazo.
+  - Facturas propias (33, 34 de producción): sigue 10 días si el cliente la aceptó o la reclamó.
+  - `POST /recibidos` para cargar un XML a mano. Migración `0007` (tablas nuevas con RLS; la `0001`
+    queda con su lista fija de tablas).
+- **Backend:** router `/recibidos` (permiso Compras). El detalle trae el proveedor (se crea con los datos
+  de la factura si no existe) y el producto nuestro que calza con cada línea, por código o por nombre.
+  `purchases.dte_recibido_id` (único: la misma factura no entra dos veces al stock) y
+  `sales.estado_receptor`. Migración `d3e4f5a6b7c8`.
+- **Frontend:** Compras > **Facturas de proveedores**: lista con el plazo a la vista ("Por responder:
+  quedan 5 días"), buscador, filtro "Por responder", "Cargar XML" y aviso de correos con problemas en
+  palabras simples. El detalle muestra líneas y totales, y deja **Aceptar**, **Recibí la mercadería** o
+  **Reclamar** (eligiendo qué pasó), con confirmación porque queda en el SII. **Ingresar al stock** llena
+  Nuevo ingreso: proveedor, folio, fecha y las líneas reconocidas; las demás quedan como botones para
+  buscarles producto con su cantidad y costo. En el historial de ventas: "Reclamada por el cliente"
+  (corresponde una NC) o "Aceptada por el cliente".
+- **Verificado:** dte-torn 374 en verde (20 nuevos: firma del proveedor, sobre alterado, RUT de otra
+  empresa, XXE, acuse contra el XSD, idempotencia y repetidos, acuse por correo, registro del SII con sus
+  códigos, Desarrollador sin SII, fecha de recepción, casilla que reparte por empresa, API y RLS);
+  migración 0007 arriba, abajo y desde cero. Backend 256 en verde. `tsc`, lint (6 warnings de siempre),
+  `npm test` y build. En el navegador, contra copias (`dte_migtest` y `torn_migtest`, empresa de demo en
+  DEV): cargar un XML de un proveedor ficticio, verlo por responder, ingresarlo al stock (compra N° 5,
+  proveedor creado, línea buscada con su cantidad y costo), reclamarlo, y un sobre alterado con el aviso.
+  **No se leyó ninguna casilla real ni se habló con el registro del SII.**
+- **Revisar:**
+  - Reclamar o aceptar lo puede hacer quien tiene Compras (igual que ingresar la mercadería).
+  - Una factura exenta (34) se ingresa como "Factura": el IVA de la compra sale del impuesto de cada
+    producto, así que un producto con IVA sumaría IVA que la factura no trae.
+  - Para probarlo en tu equipo: `docker compose up -d --build` en los dos compose (dte-torn aplica 0007 y
+    el backend `d3e4f5a6b7c8` al arrancar).
+
+**Respuestas a las preguntas de la primera tanda:**
+- **Punto 14 (razón social en 58 mm):** ya sale igual que en 80 mm; es la misma plantilla
+  (`dte_ticket.html`) para los dos anchos. Nada que cambiar.
+- **Punto 7 (pago de deuda en efectivo con caja cerrada):** lo dejé como está, y solo aplica con el control
+  de caja encendido. Si se acepta el pago sin turno, ese efectivo no entra a ningún arqueo: el cajón
+  queda con plata que no aparece en ningún cierre y el arqueo ciego deja de servir para detectar
+  faltantes. Con el control de caja apagado no se exige nada. Pendiente tu respuesta (ver abajo).
+
 ---
 
 ## Lo que falta (necesita que decidas o hagas algo)
 
-Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo día: #53 y #54 cerrados, #59 a #62 nuevos). Nada de lo que sigue se empezó salvo lo que dice:
+Actualizado el 2026-09-30 (quinta tanda). Nada de lo que sigue se empezó salvo lo que dice:
 
 | Pendiente | Qué falta | Dónde |
 |---|---|---|
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
-| **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
+| **Correo del intercambio** (#56) | Las dos partes están hechas (puntos 33 y 44). Falta: poner `DTE_SMTP_HOST/USUARIO/CLAVE` y `DTE_IMAP_HOST` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento a un correo tuyo, y registrar la casilla en el SII (hoy Haulmer). Ojo: desde ese momento las facturas de proveedores llegan a Factureando y no a Bsale | puntos 33 y 44, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
 | **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII. La vigencia de 6 meses en la emisión normal está en el punto 38 | puntos 27, 36 y 38 |
-| **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
 | **Certificación de boletas** (#49) | Pedir el set en el SII (estaba para la semana del 28-09). Después: lector del set, envío por REST y la verificación por folio de boletas ambiguas (`pipeline.py`, hoy va a revisión manual), que se prueba contra el SII con esas boletas | `certificacion_boletas.md` |
-| **Paso a producción** | Declaración de cumplimiento (#48; las muestras ya están aprobadas), CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
+| **Paso a producción** | Declaración de cumplimiento (#48): se firma cuando el SII acepte también las boletas (decidido 2026-09-30). CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
 | **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor y respaldo diario (#59), instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
 | **Flow** (saas-admin) | Cuenta de comercio en Flow y sus claves en el `.env`; probar un pago en el sandbox. ¿Plan mensual también con cuotas sin interés? | punto 37, `saas_admin.md` |
 | **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
-| **Preguntas de la primera tanda** | ¿Borrar `PUT /purchases/{id}` (punto 9)? ¿Razón social debajo de "Señor(es):" en 58 mm (punto 14)? ¿Pago en efectivo de deuda exige caja abierta (punto 7)? | puntos 7, 9 y 14 |
+| **Pago de deuda en efectivo sin caja abierta** | Lo dejé exigiendo caja abierta cuando el control de caja está encendido (motivo en la quinta tanda). ¿Lo mantenemos? | punto 7, quinta tanda |
 | **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Los permisos por endpoint ya están en el punto 35 | `lanzamiento.md` 1.5, punto 32 |
 
 Tampoco hice, por decisión del plan (van después del piloto): K2, K4 (pantalla de movimientos), K5
