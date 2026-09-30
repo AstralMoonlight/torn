@@ -65,7 +65,7 @@ export default function AvisoSuscripcion() {
             <Alert
                 data-section="aviso-suscripcion"
                 variant={grave ? 'destructive' : 'default'}
-                className={cn('flex flex-wrap items-center gap-3 bg-card [&>svg]:static [&>svg~*]:pl-0 shadow-sm',
+                className={cn('flex flex-wrap items-center gap-3 bg-card [&>svg]:static [&>svg~:not(button)]:pl-0 shadow-sm',
                     !grave && 'border-amber-500/50 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600')}
             >
                 <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
