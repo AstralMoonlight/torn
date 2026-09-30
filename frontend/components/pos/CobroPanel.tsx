@@ -339,7 +339,8 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                     <kbd className="hidden md:inline rounded border border-border px-1.5 text-xs font-medium text-muted-foreground">Esc</kbd>
                 </Button>
                 <h2 className="text-lg font-semibold text-foreground">Cobrar</h2>
-                <span className="ml-auto text-2xl font-bold text-foreground font-tabular">{formatCLP(totalFinal)}</span>
+                {/* Lo que se le pide al cliente: con efectivo, ya redondeado. */}
+                <span className="ml-auto text-2xl font-bold text-foreground font-tabular">{formatCLP(isGuia ? totalFinal : totalAjustado)}</span>
             </div>
 
             <div className="flex-1 overflow-auto px-4 py-4 md:px-6 space-y-5 min-h-0">
