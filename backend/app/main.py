@@ -71,8 +71,10 @@ app.add_middleware(
 )
 
 # ── Routers ──────────────────────────────────────────────────────────
-from app.routers import saas
+from app.routers import saas, saas_equipo, suscripcion
 app.include_router(saas.router)
+app.include_router(saas_equipo.router)
+app.include_router(suscripcion.router)
 app.include_router(health.router)
 app.include_router(customers.router)
 app.include_router(products.router)

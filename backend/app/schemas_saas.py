@@ -21,8 +21,8 @@ class TenantCreate(BaseModel):
     commune: Optional[str] = None
     city: Optional[str] = None
     giro: Optional[str] = None
-    billing_day: Optional[int] = 1
     economic_activities: Optional[list] = []
+    plan_id: Optional[int] = None
 
 class TenantOut(BaseModel):
     id: int
@@ -38,8 +38,13 @@ class TenantOut(BaseModel):
     commune: Optional[str] = None
     city: Optional[str] = None
     giro: Optional[str] = None
-    billing_day: int
     economic_activities: Optional[list] = []
+
+    # Suscripción (`services/suscripciones.py`)
+    plan_id: Optional[int] = None
+    suscripcion_vence: Optional[date] = None
+    prorroga_hasta: Optional[datetime] = None
+    suscripcion_estado: Optional[str] = None
 
     # Datos SII (copiados a dte-torn)
     sii_ambiente: str = "CERT"
@@ -62,7 +67,10 @@ class SaaSUserOut(BaseModel):
     full_name: Optional[str]
     is_active: bool
     is_superuser: bool
-    
+    cargo_id: Optional[int] = None
+    es_dueno: bool = False
+    permisos: list[str] = []
+
     model_config = ConfigDict(from_attributes=True)
 
 class SaaSUserLogin(BaseModel):
@@ -79,6 +87,10 @@ class AvailableTenant(BaseModel):
     permissions: Optional[dict] = {}
     #: Modo del emisor (CERT, PROD o DEV), para que el cliente vea en qué modo emite.
     sii_ambiente: str = "CERT"
+    #: Para el aviso de pago en la barra superior (`services/suscripciones.py`).
+    suscripcion_estado: Optional[str] = None
+    suscripcion_vence: Optional[date] = None
+    prorroga_hasta: Optional[datetime] = None
 
 class TenantUserCreate(BaseModel):
     email: str
@@ -104,7 +116,6 @@ class TenantUpdate(BaseModel):
     commune: Optional[str] = None
     city: Optional[str] = None
     giro: Optional[str] = None
-    billing_day: Optional[int] = None
     economic_activities: Optional[list] = None
     sii_ambiente: Optional[Literal["CERT", "PROD", "DEV"]] = None
     sii_resolucion_numero: Optional[int] = Field(default=None, ge=0)
@@ -122,3 +133,104 @@ class SaaSToken(BaseModel):
     token_type: str
     user: SaaSUserOut
     available_tenants: list[AvailableTenant]
+
+
+# ── Planes, pagos y cobranza ───────────────────────────────────────────
+
+class PlanIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: Optional[str] = None
+    precio: int = Field(ge=0)
+    meses: int = Field(ge=0, le=36)
+    max_users: int = Field(ge=1, le=500)
+    cuotas_sin_interes: bool = False
+    incluye_impresora: Optional[str] = Field(default=None, max_length=40)
+    is_active: bool = True
+
+class PlanOut(PlanIn):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class AjustesCobranza(BaseModel):
+    dias_aviso: int = Field(ge=0, le=60)
+    dias_gracia: int = Field(ge=0, le=60)
+    horas_prorroga: int = Field(ge=1, le=720)
+    model_config = ConfigDict(from_attributes=True)
+
+class PagoManualIn(BaseModel):
+    plan_id: int
+    medio: Literal["TRANSFERENCIA", "EFECTIVO"]
+    monto: Optional[int] = Field(default=None, ge=0, description="Por defecto, el precio del plan")
+    nota: Optional[str] = Field(default=None, max_length=300)
+
+class PagoOut(BaseModel):
+    id: int
+    tenant_id: int
+    empresa: str
+    plan_id: int
+    plan: str
+    monto: int
+    medio: str
+    estado: str
+    periodo_desde: Optional[date] = None
+    periodo_hasta: Optional[date] = None
+    nota: Optional[str] = None
+    created_at: Optional[datetime] = None
+    pagado_at: Optional[datetime] = None
+
+class SuscripcionIn(BaseModel):
+    """Corrección a mano: cambiar el plan o la fecha de vencimiento."""
+    plan_id: int
+    suscripcion_vence: Optional[date] = None
+
+class ProrrogaIn(BaseModel):
+    horas: int = Field(ge=0, le=720, description="0 quita la prórroga")
+
+class LinkPagoIn(BaseModel):
+    plan_id: int
+    email: Optional[str] = None
+
+class LinkPagoOut(BaseModel):
+    url: str
+
+class ProblemaOut(BaseModel):
+    tenant_id: int
+    empresa: str
+    nivel: str
+    tipo: str
+    mensaje: str
+    model_config = ConfigDict(from_attributes=True)
+
+class ResumenOut(BaseModel):
+    empresas_activas: int
+    por_estado: dict[str, int]
+    cobrado_mes: int
+    pagos_mes: int
+    problemas: list[ProblemaOut]
+
+
+# ── Equipo de Factureando ──────────────────────────────────────────────
+
+class PermisoOut(BaseModel):
+    clave: str
+    nombre: str
+
+class CargoIn(BaseModel):
+    nombre: str = Field(min_length=1, max_length=60)
+    permisos: list[str] = []
+
+class CargoOut(CargoIn):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class MiembroIn(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    full_name: Optional[str] = Field(default=None, max_length=200)
+    password: str = Field(min_length=8)
+    cargo_id: int
+
+class MiembroUpdate(BaseModel):
+    full_name: Optional[str] = Field(default=None, max_length=200)
+    password: Optional[str] = Field(default=None, min_length=8)
+    cargo_id: Optional[int] = None
+    is_active: Optional[bool] = None

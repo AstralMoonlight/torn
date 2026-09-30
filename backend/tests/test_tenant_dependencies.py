@@ -21,6 +21,7 @@ varios commit()).
 """
 
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import text
@@ -40,6 +41,9 @@ def _postgres_available() -> bool:
     except OperationalError:
         return False
 
+
+#: `get_tenant_db` solo mira el método (una lectura nunca se bloquea por suscripción).
+LECTURA = SimpleNamespace(method="GET")
 
 pytestmark = pytest.mark.skipif(
     not _postgres_available(),
@@ -213,6 +217,7 @@ class TestGetTenantDbReal:
             )
 
             tenant_gen = get_tenant_db(
+                request=LECTURA,
                 x_tenant_id=tenant.id, tenant_user=tenant_user, global_db=global_db
             )
             try:
@@ -256,7 +261,7 @@ class TestGetTenantDbReal:
             )
 
             with pytest.raises(HTTPException) as exc_info:
-                next(get_tenant_db(x_tenant_id=tenant.id, tenant_user=tenant_user, global_db=global_db))
+                next(get_tenant_db(request=LECTURA, x_tenant_id=tenant.id, tenant_user=tenant_user, global_db=global_db))
             assert exc_info.value.status_code == 404
         finally:
             global_gen.close()
