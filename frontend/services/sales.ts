@@ -179,18 +179,11 @@ export function getSalePdfPath(saleId: number): string {
     return `/sales/${saleId}/pdf`
 }
 
-/**
- * Imprime el documento de una venta. Carta (PDF de dte-torn): diálogo de
- * impresión con vista previa. Ticket (HTML): una pestaña que se imprime sola.
- */
+/** Imprime el documento de una venta (PDF carta o HTML de ticket) desde un
+ * iframe oculto: solo aparece el diálogo de impresión, sin pestañas. */
 export async function imprimirVenta(saleId: number): Promise<void> {
-    const { url, isPdf } = await fetchBlob(getSalePdfPath(saleId))
-    if (isPdf) {
-        printPdf(url)
-        return
-    }
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    const { url } = await fetchBlob(getSalePdfPath(saleId))
+    printPdf(url)
 }
 
 /** Rechazado que se volvió a emitir con otro número: el suyo hay que anularlo en el SII. */
