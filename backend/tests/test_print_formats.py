@@ -46,4 +46,4 @@ def test_nota_de_credito_no_lleva_copia_cedible():
 def test_formato_desconocido_se_rechaza():
     SettingsUpdate(print_formats={"39": "58mm"})
     with pytest.raises(ValidationError):
-        SettingsUpdate(print_formats={"39": "58mm"})
+        SettingsUpdate(print_formats={"39": "57mm"})
