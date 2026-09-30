@@ -503,7 +503,8 @@ En la copia quedaron una vendedora de prueba, un cliente "Cliente de Prueba SpA"
 ---
 
 ### [ ] 36. #62: volver a emitir un documento rechazado
-- **Rama:** `feat/reemitir-rechazado` (sin mergear), dos commits.
+- **Rama:** `feat/reemitir-rechazado`, **mergeada a `main` el 2026-09-30** tras revisarla en el navegador contra
+  copias de las dos bases (las migraciones `a9b0c1d2e3f4` y `0006` corrieron bien en Postgres).
 - **Decisión que tomé:** reusar la venta, no anularla. Anular devolvía el stock de algo que el cliente
   ya se llevó; reusarla deja stock, caja y deuda como están y solo cambia el documento.
 - **Revisado contra el SII (2026-09-30):** un rechazado se da por no emitido: se vuelve a enviar
@@ -553,7 +554,7 @@ Actualizado el 2026-09-29 (tercera tanda; issues cruzados con GitHub el mismo d�
 | **Al actualizar Docker** | `docker compose build` y `up -d` en los dos compose: el backend migra solo (`e7f8a9b0c1d2`, `f8a9b0c1d2e3`) y dte-torn aplica `0005` al arrancar | puntos 32 y 33 |
 | **Correo del intercambio** (#56) | Poner `DTE_SMTP_HOST/USUARIO/CLAVE` de `xml@distribuidorajcb.cl` en el `.env` de dte-torn (la clave, solo ahí), mandar a mano un documento de certificación a un correo tuyo y revisar que llegue bien. Confirmar que el destino sea el correo de la ficha. Registrar la casilla en el SII (hoy Haulmer). La parte b (recibir de proveedores) sin empezar | punto 33, `intercambio.md` |
 | **Fecha de corte con Bsale** (#55) | Por tipo de documento; es la única decisión abierta de `lanzamiento.md` 0 | `lanzamiento.md` 0 |
-| **Volver a emitir un rechazado** (#62) | Hecho en el punto 36 (reusa la venta): revisar y mergear | puntos 27 y 36 |
+| **Volver a emitir un rechazado** (#62) | Mergeado (punto 36). Falta la guía con capturas del SII y la vigencia de 6 meses en la emisión normal | puntos 27 y 36 |
 | **Probar descuentos en una factura** | Una factura con descuento en el POS y la NC con el punto 4 mergeado; después cerrar #40, #41 y #42 | punto 26 |
 | **0.2 alertas por correo** | Desde qué casilla salen y dónde corre el revisor. El SMTP del punto 33 sirve para mandarlas | `lanzamiento.md` 0.2 |
 | **Autocompletar RUT** (#50) | Descargar las nóminas del SII (pide tu permiso para bajar archivos) y ver su formato | `autocompletar_rut_sii.md` |
