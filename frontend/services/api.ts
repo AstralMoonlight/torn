@@ -127,13 +127,12 @@ export async function fetchBlobUrl(path: string): Promise<string> {
 }
 
 /**
- * Abre el diálogo de impresión de un PDF (con su vista previa).
+ * Abre el diálogo de impresión de un PDF o de un HTML de impresión, sin pestañas.
  *
- * Un PDF abierto en una pestaña no puede imprimirse solo, a diferencia de los
- * HTML de impresión, que llaman a `window.print()` al cargar. Se carga en un
- * iframe invisible del mismo origen (blob:) y se imprime desde ahí. No puede ser
- * `display: none`: Chrome no carga el visor de PDF en un iframe oculto así.
- * Si el navegador no lo permite, se abre en una pestaña.
+ * Se carga en un iframe invisible del mismo origen (blob:) y se imprime desde
+ * ahí; las plantillas HTML no se imprimen solas, así que el diálogo sale una
+ * vez. No puede ser `display: none`: Chrome no carga el visor de PDF en un
+ * iframe oculto así. Si el navegador no lo permite, se abre en una pestaña.
  */
 export function printPdf(url: string): void {
     const iframe = document.createElement('iframe')

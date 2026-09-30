@@ -79,10 +79,12 @@ def update_settings(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el administrador de la empresa puede cambiar este ajuste.")
 
     # Con turnos abiertos, apagar el control los dejaría sin forma de cerrarse.
-    if cambios.get("control_caja") is False and db.query(CashSession).filter(CashSession.status == "OPEN").first():
+    abiertos = db.query(CashSession).filter(CashSession.status == "OPEN").all() if cambios.get("control_caja") is False else []
+    if abiertos:
+        quienes = ", ".join(sorted({s.user.email or s.user.razon_social for s in abiertos}))
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Cierra los turnos de caja abiertos antes de desactivar el control de caja.",
+            f"Hay turnos de caja abiertos ({quienes}). Ciérralos en Caja, Historial de turnos, antes de desactivar el control de caja.",
         )
 
     settings = db.query(SystemSettings).first()

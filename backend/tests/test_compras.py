@@ -109,3 +109,17 @@ class TestIvaDeCompras:
         assert Decimal(compra["monto_neto"]) == Decimal("2000.00")
         assert Decimal(compra["iva"]) == Decimal("190.00")
         assert Decimal(compra["monto_total"]) == Decimal("2190.00")
+
+
+def test_una_compra_no_se_edita(client, db_session, proveedor):
+    """Editar una compra movía stock sin las validaciones de crearla (variantes).
+    Se corrige borrándola y registrándola de nuevo."""
+    prod = Product(codigo_interno="C-ED", nombre="Insumo", precio_neto=1000)
+    db_session.add(prod)
+    db_session.commit()
+    compra = _comprar(client, proveedor.id, prod.id, "FACTURA", 1000).json()
+
+    resp = client.put(f"/purchases/{compra['id']}", json={
+        "provider_id": proveedor.id, "tipo_documento": "FACTURA", "items": [],
+    })
+    assert resp.status_code == 405

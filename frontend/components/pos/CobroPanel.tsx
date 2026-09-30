@@ -7,12 +7,12 @@ import {
 } from 'lucide-react'
 import { descuentosParaVenta, useCartStore } from '@/lib/store/cartStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
-import { getApiErrorDetail, getApiErrorStatus, fetchBlob, printPdf } from '@/services/api'
+import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import {
-    createSale, getFoliosStatus, getPaymentMethods, getSalePdfPath,
+    createSale, getFoliosStatus, getPaymentMethods, imprimirVenta,
     type DocumentReference, type FolioStockOut, type PaymentMethod,
 } from '@/services/sales'
-import type { Customer } from '@/services/customers'
+import { updateCustomer, type Customer } from '@/services/customers'
 import CustomerSearchCombobox from '@/components/pos/CustomerSearchCombobox'
 import { Button } from '@/components/ui/button'
 import { AlertaError } from '@/components/ui/alerta-error'
@@ -115,7 +115,7 @@ function Paso({ n, titulo, extra, children }: { n: number; titulo: string; extra
 
 export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const {
-        items, totalFinal, tipoDte, setTipoDte, customer, setCustomer,
+        items, totalFinal, tipoDte, setTipoDte, customer, setCustomer, priceList,
         referencias, setReferencias, guia, setGuia, clear, descuentoGlobal,
     } = useCartStore()
     const { userId } = useSessionStore()
@@ -143,6 +143,8 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const isGuia = tipoDte === 52
     const trasladoInterno = isGuia && guia.indTraslado === 5
     const pideCliente = !isBoleta && !trasladoInterno
+    // Lo que el SII exige del receptor de una factura o guía (dte-torn lo rechaza sin esto).
+    const faltanDatos = pideCliente && customer ? CAMPOS_FACTURA.filter((c) => !customer[c.campo]?.trim()) : []
     const hayFolios = folios === null || folios.some((f) => f.dte_type === tipoDte)
 
     useEffect(() => {
@@ -201,6 +203,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
         items.length === 0 ? 'El ticket está vacío.'
             : !hayFolios ? `Se acabaron los números autorizados por el SII para ${(NOMBRE_DOC[tipoDte] ?? 'este documento').toLowerCase()}. Avise al administrador.`
                 : pideCliente && !customer ? 'Elige el cliente.'
+                    : faltanDatos.length ? `Completa los datos del cliente: ${faltanDatos.map((c) => c.label.toLowerCase()).join(', ')}.`
                     : isGuia ? null
                         : falta > 0 ? `Faltan ${formatCLP(falta)}.`
                             : vueltoSinEfectivo ? 'El vuelto solo se entrega en efectivo: ajusta los montos.'
@@ -264,20 +267,7 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
     const imprimir = async () => {
         if (!emitida) return
         try {
-            // Vía `api`: el PDF exige Authorization + X-Tenant-ID.
-            const { url, isPdf } = await fetchBlob(getSalePdfPath(emitida.id))
-            if (isPdf) {
-                printPdf(url)
-            } else {
-                const frame = document.createElement('iframe')
-                frame.style.display = 'none'
-                frame.onload = () => {
-                    try { frame.contentWindow?.print() } catch { window.open(url, '_blank') }
-                    setTimeout(() => { URL.revokeObjectURL(url); frame.remove() }, 60000)
-                }
-                frame.src = url
-                document.body.appendChild(frame)
-            }
+            await imprimirVenta(emitida.id)
         } catch (err) {
             avisar(getApiErrorDetail(err, 'No se pudo cargar el documento. Reimprímelo desde Historial.'))
         }
@@ -339,7 +329,8 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                     <kbd className="hidden md:inline rounded border border-border px-1.5 text-xs font-medium text-muted-foreground">Esc</kbd>
                 </Button>
                 <h2 className="text-lg font-semibold text-foreground">Cobrar</h2>
-                <span className="ml-auto text-2xl font-bold text-foreground font-tabular">{formatCLP(totalFinal)}</span>
+                {/* Lo que se le pide al cliente: con efectivo, ya redondeado. */}
+                <span className="ml-auto text-2xl font-bold text-foreground font-tabular">{formatCLP(isGuia ? totalFinal : totalAjustado)}</span>
             </div>
 
             <div className="flex-1 overflow-auto px-4 py-4 md:px-6 space-y-5 min-h-0">
@@ -396,6 +387,10 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                     <div data-section="pos.cobro.cliente">
                         <Paso n={2} titulo="Cliente" extra={!pideCliente && <span className="text-sm text-muted-foreground">Opcional</span>}>
                             <CustomerSearchCombobox compact={false} value={customer} onChange={handleCustomerChange} required={pideCliente} />
+                            {pideCliente && customer && (
+                                <DatosCliente key={customer.id} customer={customer} faltan={faltanDatos.length > 0}
+                                    onGuardado={(c) => setCustomer(c, priceList)} />
+                            )}
                         </Paso>
                     </div>
                 )}
@@ -528,6 +523,74 @@ export default function CobroPanel({ onVolver, onTerminado }: Props) {
                         {formatCLP(isGuia ? totalFinal : totalAjustado)}
                         <kbd className="hidden md:inline rounded border border-primary-foreground/30 px-1.5 text-xs font-medium opacity-80">F12</kbd>
                     </span>
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+const CAMPOS_FACTURA = [
+    { campo: 'giro', label: 'Giro', placeholder: 'Rubro o actividad económica' },
+    { campo: 'direccion', label: 'Dirección', placeholder: 'Calle y número' },
+    { campo: 'comuna', label: 'Comuna', placeholder: '' },
+] as const
+
+/**
+ * Giro, dirección y comuna del cliente, editables sin salir del cobro. Se abre
+ * solo si falta alguno: antes la venta se cortaba y había que ir a Clientes.
+ */
+function DatosCliente({ customer, faltan, onGuardado }: {
+    customer: Customer; faltan: boolean; onGuardado: (c: Customer) => void
+}) {
+    const [abierto, setAbierto] = useState(faltan)
+    const [datos, setDatos] = useState({ giro: customer.giro ?? '', direccion: customer.direccion ?? '', comuna: customer.comuna ?? '' })
+    const [guardando, setGuardando] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    if (!abierto) {
+        return (
+            <button type="button" onClick={() => setAbierto(true)}
+                className="mt-2 text-sm font-medium text-primary hover:underline cursor-pointer">
+                Editar datos del cliente
+            </button>
+        )
+    }
+
+    const guardar = async () => {
+        setGuardando(true)
+        setError(null)
+        try {
+            onGuardado(await updateCustomer(customer.rut, {
+                giro: datos.giro.trim(), direccion: datos.direccion.trim(), comuna: datos.comuna.trim(),
+            }))
+            setAbierto(false)
+        } catch (err) {
+            setError(getApiErrorDetail(err, 'No se pudieron guardar los datos del cliente.'))
+        } finally {
+            setGuardando(false)
+        }
+    }
+
+    return (
+        <div data-section="pos.cobro.cliente.datos" className="mt-3 space-y-3 rounded-lg border border-border bg-card p-3">
+            {faltan && <p className="text-sm text-muted-foreground">Para facturar, complete los datos que faltan. Quedan guardados en el cliente.</p>}
+            <div className="grid gap-3 sm:grid-cols-3">
+                {CAMPOS_FACTURA.map(({ campo, label, placeholder }) => (
+                    <div key={campo} className="space-y-1.5">
+                        <Label htmlFor={`cliente-${campo}`}>{label}</Label>
+                        <Input id={`cliente-${campo}`} className="h-11" value={datos[campo]} placeholder={placeholder}
+                            aria-invalid={!datos[campo].trim()}
+                            onChange={(e) => setDatos({ ...datos, [campo]: e.target.value })} />
+                    </div>
+                ))}
+            </div>
+            <AlertaError mensaje={error} />
+            <div className="flex justify-end gap-2">
+                {!faltan && <Button variant="outline" className="h-10" onClick={() => setAbierto(false)} disabled={guardando}>Cancelar</Button>}
+                <Button className="h-10 gap-2" onClick={guardar}
+                    disabled={guardando || CAMPOS_FACTURA.some(({ campo }) => !datos[campo].trim())}>
+                    {guardando && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                    Guardar datos
                 </Button>
             </div>
         </div>

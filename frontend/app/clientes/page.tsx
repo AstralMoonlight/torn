@@ -21,6 +21,7 @@ import { AccionFila } from '@/components/ui/accion-fila'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, Customer, CustomerCreate } from '@/services/customers'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { avisar } from '@/lib/store/uiStore'
+import { useEsAdmin } from '@/lib/store/sessionStore'
 import { Pencil, Trash2, Plus, Globe, Wallet } from 'lucide-react'
 import CustomerForm from '@/components/customers/CustomerForm'
 import CuentaClienteDialog from '@/components/customers/CuentaClienteDialog'
@@ -36,6 +37,8 @@ export default function CustomersPage() {
     const [filter, setFilter] = useState('')
     const [conDeuda, setConDeuda] = useState(false)
     const [cuentaDe, setCuentaDe] = useState<Customer | null>(null)
+    // Eliminar lo pide el personal a administración; editar y crear, no.
+    const esAdmin = useEsAdmin()
 
     // Dialog state
     const [open, setOpen] = useState(false)
@@ -179,7 +182,7 @@ export default function CustomersPage() {
                                         <div className="flex justify-end gap-1">
                                             <AccionFila icon={Wallet} label="Cuenta y pagos" onClick={() => setCuentaDe(customer)} />
                                             <AccionFila icon={Pencil} label="Editar" onClick={() => handleOpenEdit(customer)} />
-                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(customer)} peligro />
+                                            {esAdmin && <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(customer)} peligro />}
                                         </div>
                                     </TableCell>
                                 </TableRow>

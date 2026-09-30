@@ -15,8 +15,10 @@ from app.models.sale import Sale
 from app.models.user import User
 from app.schemas import CashSessionCreate, CashSessionClose, CashSessionOut, CashSessionWithUserOut
 
-from app.dependencies.tenant import get_tenant_db, get_current_local_user, get_current_global_user, requiere_permiso
-from app.models.saas import SaaSUser
+from app.dependencies.tenant import (
+    es_admin, get_tenant_db, get_current_local_user, get_current_global_user, get_current_tenant_user, requiere_permiso,
+)
+from app.models.saas import SaaSUser, TenantUser
 from app.utils.dates import get_now
 
 router = APIRouter(prefix="/cash", tags=["cash"])
@@ -162,14 +164,38 @@ def close_session(
     Raises:
         HTTPException(404): Si no hay caja abierta.
     """
-    user_id = local_user.id
     active_session = db.query(CashSession).filter(
-        CashSession.user_id == user_id,
+        CashSession.user_id == local_user.id,
         CashSession.status == "OPEN"
     ).first()
     
     if not active_session:
         raise HTTPException(status_code=404, detail="No hay caja abierta")
+    return _arquear(db, active_session, close_in, local_user, global_user)
+
+
+@router.post("/sessions/{session_id}/close", response_model=CashSessionOut,
+             summary="Cerrar turno ajeno",
+             description="El administrador cierra el turno de otro usuario (por ejemplo, uno olvidado).")
+def close_other_session(
+    session_id: int,
+    close_in: CashSessionClose,
+    tenant_user: TenantUser = Depends(get_current_tenant_user),
+    db: Session = Depends(get_tenant_db),
+    local_user: User = Depends(get_current_local_user),
+    global_user: SaaSUser = Depends(get_current_global_user)
+):
+    if not es_admin(tenant_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el administrador puede cerrar turnos de otros usuarios.")
+    sesion = db.get(CashSession, session_id)
+    if sesion is None or sesion.status != "OPEN":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "El turno no existe o ya está cerrado.")
+    return _arquear(db, sesion, close_in, local_user, global_user)
+
+
+def _arquear(db: Session, active_session: CashSession, close_in: CashSessionClose, local_user: User, global_user: SaaSUser):
+    """Calcula el efectivo esperado del turno y lo cierra con lo declarado."""
+    user_id = active_session.user_id
 
     # Calcular Sistema
     # Sumar pagos en efectivo desde active_session.start_time
@@ -218,6 +244,8 @@ def close_session(
     active_session.status = "CLOSED"
     if local_user.is_system_user:
         active_session.audit_metadata = {"saas_admin_email": global_user.email, "closed_by": "system_user"}
+    elif local_user.id != user_id:
+        active_session.audit_metadata = {"closed_by_user_id": local_user.id}
     
     db.commit()
     db.refresh(active_session)
