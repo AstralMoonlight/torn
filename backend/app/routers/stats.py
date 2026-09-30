@@ -1,17 +1,19 @@
 """Router para estadísticas y reportes del Dashboard."""
 
-from datetime import datetime, timedelta
-from app.utils.dates import get_now, get_today
-from typing import List
+from collections import defaultdict
+from datetime import date as date_, datetime, time, timedelta, timezone
+from app.utils.dates import CHILE_TZ, get_now, get_today
+from typing import Optional
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, desc, case, or_
 
 from app.models.sale import Sale, SaleDetail
+from app.models.payment import PaymentMethod, SalePayment
 from app.models.product import Product
-from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct, ReportOut, ReportItem
+from app.schemas import DashboardSummary, StatPeriod, TopProductsResponse, TopProduct
 from app.dependencies.tenant import get_tenant_db, requiere_permiso
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -148,105 +150,192 @@ def get_top_products(days: int = 30, limit: int = 5, db: Session = Depends(get_t
     )
 
 
-@router.get("/report", response_model=ReportOut, dependencies=[Depends(requiere_permiso("Reportes de Ventas"))])
-def get_report(
-    period: str = "day",  # day, week, month
-    date: str = None,     # YYYY-MM-DD
-    db: Session = Depends(get_tenant_db)
-):
-    """Genera reporte detallado de ventas y utilidad para un periodo específico."""
-    
-    # Determinar fecha de referencia
-    if date:
-        try:
-            ref_date = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=get_now().tzinfo)
-        except ValueError:
-            ref_date = get_now()
+# ── Reporte de ventas ────────────────────────────────────────────────
+
+#: Receptor genérico de las boletas: no es un cliente que valga la pena rankear.
+CONSUMIDOR_FINAL = "66666666-6"
+CERO = Decimal(0)
+
+
+def _inicio(dia: date_) -> datetime:
+    return datetime.combine(dia, time.min, tzinfo=CHILE_TZ)
+
+
+def _en(ini: datetime, fin: datetime) -> tuple:
+    """Documentos del rango que cuentan como venta: sin guías ni rechazados."""
+    return (Sale.fecha_emision >= ini, Sale.fecha_emision < fin, Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA)
+
+
+def _anterior(desde: date_, hasta: date_, ini: datetime, fin: datetime) -> tuple:
+    """El periodo con el que se compara. Si el rango parte el día 1, los meses
+    anteriores (el año, el mismo tramo del año pasado); si no, los mismos días justo
+    antes. Un periodo en curso se compara hasta la misma hora: hoy a las 11 contra
+    ayer a las 11, este mes hasta el día de hoy del mes pasado."""
+    if desde.day == 1:
+        meses = (hasta.year - desde.year) * 12 + hasta.month - desde.month + 1
+        if desde.month == 1 and meses > 1:
+            meses = 12
+        n = desde.year * 12 + desde.month - 1 - meses
+        ini_prev = _inicio(date_(n // 12, n % 12 + 1, 1))
     else:
-        ref_date = get_now()
+        ini_prev = ini - (fin - ini)
+    fin_prev = min(ini_prev + (min(fin, get_now()) - ini), ini)
+    return ini_prev, fin_prev
 
-    # Calcular rango de fechas (start_date, end_date)
-    # start_date inclusivo, end_date exclusivo (o hasta el final del día)
-    start_date = ref_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_date = ref_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-    period_label = "Diario"
+def _resumen(db: Session, ini: datetime, fin: datetime) -> dict:
+    """Totales del periodo. El margen es la venta neta (con descuentos) menos el
+    costo guardado en cada línea al vender."""
+    total, neto, iva, num = db.query(
+        func.sum(SIGNO * Sale.monto_total), func.sum(SIGNO * Sale.monto_neto), func.sum(SIGNO * Sale.iva),
+        func.sum(case((Sale.tipo_dte.in_(TIPOS_VENTA), 1), else_=0)),
+    ).filter(*_en(ini, fin)).one()
+    costo = db.query(func.sum(SIGNO * SaleDetail.cantidad * SaleDetail.costo_unitario)) \
+        .join(Sale, SaleDetail.sale_id == Sale.id).filter(*_en(ini, fin)).scalar()
+    total, neto, iva, costo, num = total or CERO, neto or CERO, iva or CERO, costo or CERO, int(num or 0)
+    return {
+        "venta_total": float(total), "neto": float(neto), "iva": float(iva), "costo": float(costo),
+        "margen": float(neto - costo), "num_ventas": num,
+        "ticket_promedio": float(total / num) if num else 0.0,
+    }
 
-    if period == "week":
-        # Inicio de semana (Lunes = 0)
-        start_date = start_date - timedelta(days=start_date.weekday())
-        end_date = start_date + timedelta(days=6)
-        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        period_label = "Semanal"
-    
-    elif period == "month":
-        # Inicio de mes
-        start_date = start_date.replace(day=1)
-        # Fin de mes (inicio del proximo mes - 1 microsegundo)
-        next_month = start_date.replace(day=28) + timedelta(days=4)
-        end_date = next_month - timedelta(days=next_month.day)
-        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        period_label = "Mensual"
 
-    # Alias para el padre en caso de variantes
-    from sqlalchemy.orm import aliased
-    ParentProduct = aliased(Product)
+def _local(dt: datetime) -> datetime:
+    """Fecha en hora de Chile. SQLite (tests) la devuelve sin zona y en UTC."""
+    return (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt).astimezone(CHILE_TZ)
 
-    # Consulta principal
-    items_query = db.query(
-        SaleDetail.product_id,
-        Product.nombre.label("product_nombre"),
-        ParentProduct.nombre.label("parent_nombre"),
-        func.sum(SIGNO * SaleDetail.cantidad).label("total_qty"),
-        func.sum(SIGNO * SaleDetail.subtotal).label("total_sales"),
-        # Utilidad = (Venta Neta - Costo Neta) * Cantidad
-        func.sum(SIGNO * SaleDetail.cantidad * (SaleDetail.precio_unitario - SaleDetail.costo_unitario)).label("total_margin")
-    ).join(Product, SaleDetail.product_id == Product.id)\
-     .outerjoin(ParentProduct, Product.parent_id == ParentProduct.id)\
-     .join(Sale, SaleDetail.sale_id == Sale.id)\
-     .filter(Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
-             Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA)\
-     .group_by(SaleDetail.product_id, Product.nombre, ParentProduct.nombre)\
-     .all()
 
-    items = []
-    
-    for r in items_query:
-        full_name = f"{r.parent_nombre} {r.product_nombre}" if r.parent_nombre else r.product_nombre
-        items.append(ReportItem(
-            product_id=r.product_id,
-            full_name=full_name,
-            cantidad=r.total_qty,
-            monto_total=r.total_sales,
-            utilidad=r.total_margin
-        ))
-    
-    # Totales generales del periodo
-    # Nota: items_query usa subtotal (neto), pero total_ventas suele ser bruto para el usuario final en Chile?
-    # En el reporte anterior usabamos sum(s.monto_total), que es bruto.
-    # Mantengamos consistencia con el Daily Report anterior: Total Bruto.
-    
-    sales_period = db.query(Sale).filter(
-        Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
-        Sale.tipo_dte.in_(TIPOS_REPORTE), CUENTA,
-    ).all()
+@router.get("/report", dependencies=[Depends(requiere_permiso("Reportes de Ventas"))])
+def get_report(
+    desde: Optional[date_] = Query(None, description="Primer día, en hora de Chile (default: hoy)"),
+    hasta: Optional[date_] = Query(None, description="Último día, incluido (default: desde)"),
+    db: Session = Depends(get_tenant_db),
+):
+    """Reporte de ventas de un rango de días: totales contra el periodo anterior,
+    evolución, medios de pago, documentos, vendedores, clientes y productos."""
+    desde = desde or get_today().date()
+    hasta = max(hasta or desde, desde)
+    ini, fin = _inicio(desde), _inicio(hasta + timedelta(days=1))
+    ini_prev, fin_prev = _anterior(desde, hasta, ini, fin)
+
+    ventas = (
+        db.query(Sale)
+        .options(selectinload(Sale.details).joinedload(SaleDetail.product).joinedload(Product.parent),
+                 joinedload(Sale.customer), joinedload(Sale.seller))
+        .filter(*_en(ini, fin))
+        .all()
+    )
+
+    # Evolución: por hora si es un día, por día hasta dos meses, si no por mes.
+    dias = (hasta - desde).days + 1
+    agrupacion = "hora" if dias == 1 else "dia" if dias <= 62 else "mes"
+    serie = defaultdict(lambda: [CERO, 0])
+    documentos = defaultdict(lambda: {"num": 0, "neto": CERO, "iva": CERO, "total": CERO})
+    vendedores = defaultdict(lambda: {"num": 0, "total": CERO, "margen": CERO})
+    clientes = defaultdict(lambda: {"num": 0, "total": CERO})
+    productos = {}
+    descuentos = CERO
+    devoluciones = {"num": 0, "total": CERO}
+
+    for s in ventas:
+        signo = _signo(s)
+        es_venta = s.tipo_dte in TIPOS_VENTA
+        local = _local(s.fecha_emision)
+        clave = local.hour if agrupacion == "hora" else \
+            local.date().isoformat() if agrupacion == "dia" else local.strftime("%Y-%m")
+        serie[clave][0] += signo * s.monto_total
+        serie[clave][1] += es_venta
+
+        doc = documentos[s.tipo_dte]
+        doc["num"] += 1
+        doc["neto"] += signo * s.monto_neto
+        doc["iva"] += signo * s.iva
+        doc["total"] += signo * s.monto_total
+        if s.tipo_dte == 61:
+            devoluciones["num"] += 1
+            devoluciones["total"] += s.monto_total
+
+        # El descuento al total no está en las líneas: se reparte en proporción
+        # para que la suma de los productos cuadre con la venta neta.
+        base = sum((d.subtotal for d in s.details), CERO)
+        factor = s.monto_neto / base if base else CERO
+        costo_venta = CERO
+        for d in s.details:
+            p = productos.setdefault(d.product_id, {
+                "product_id": d.product_id, "codigo": d.product.codigo_interno, "nombre": d.product.full_name,
+                "cantidad": CERO, "venta": CERO, "costo": CERO,
+            })
+            costo = d.cantidad * d.costo_unitario
+            p["cantidad"] += signo * d.cantidad
+            p["venta"] += signo * d.subtotal * factor
+            p["costo"] += signo * costo
+            costo_venta += costo
+            if es_venta:
+                descuentos += d.descuento or CERO
+        if es_venta and s.descuento_global:
+            descuentos += max(base - s.monto_neto, CERO)
+
+        v = vendedores[(s.seller.full_name or s.seller.email) if s.seller else "Sin vendedor"]
+        v["num"] += es_venta
+        v["total"] += signo * s.monto_total
+        v["margen"] += signo * (s.monto_neto - costo_venta)
+
+        if s.customer and s.customer.rut != CONSUMIDOR_FINAL:
+            c = clientes[(s.customer.rut, s.customer.razon_social)]
+            c["num"] += es_venta
+            c["total"] += signo * s.monto_total
+
+    # Medios de pago: lo cobrado. El vuelto sale del efectivo y la NC devuelve.
+    pagos = db.query(PaymentMethod.code, PaymentMethod.name, func.count(SalePayment.id),
+                     func.sum(SIGNO * SalePayment.amount)) \
+        .join(SalePayment, SalePayment.payment_method_id == PaymentMethod.id) \
+        .join(Sale, Sale.id == SalePayment.sale_id).filter(*_en(ini, fin)) \
+        .group_by(PaymentMethod.code, PaymentMethod.name).all()
+    vuelto = sum((s.vuelto or CERO for s in ventas), CERO)
+    medios = [{"codigo": c, "nombre": n, "num": k, "total": float(t - (vuelto if c == "EFECTIVO" else 0))}
+              for c, n, k, t in pagos]
+
     rechazados = db.query(func.count(Sale.id), func.coalesce(func.sum(Sale.monto_total), 0)).filter(
-        Sale.fecha_emision >= start_date, Sale.fecha_emision <= end_date,
+        Sale.fecha_emision >= ini, Sale.fecha_emision < fin,
         Sale.tipo_dte.in_(TIPOS_REPORTE), Sale.dte_estado.in_(RECHAZADOS),
     ).one()
-    total_ventas = sum(_signo(s) * s.monto_total for s in sales_period)
-    total_neto = sum(_signo(s) * (s.monto_neto or Decimal(0)) for s in sales_period)
-    total_iva = sum(_signo(s) * (s.iva or Decimal(0)) for s in sales_period)
-    total_utilidad = sum(item.utilidad for item in items)
 
-    return ReportOut(
-        fecha=ref_date, # Devolvemos la fecha referencial solicitada
-        period=period_label,
-        total_ventas=total_ventas,
-        total_neto=total_neto,
-        total_iva=total_iva,
-        total_utilidad=total_utilidad,
-        items=items,
-        rechazados=rechazados[0],
-        monto_rechazado=rechazados[1],
-    )
+    # Serie completa, con los huecos en cero, para que el gráfico no se salte días.
+    if agrupacion == "hora":
+        claves = list(range(min(serie, default=9), max(serie, default=18) + 1))
+    elif agrupacion == "dia":
+        claves = [(desde + timedelta(days=i)).isoformat() for i in range(dias)]
+    else:
+        claves, mes = [], desde.replace(day=1)
+        while mes <= hasta:
+            claves.append(mes.strftime("%Y-%m"))
+            mes = (mes + timedelta(days=32)).replace(day=1)
+
+    resumen = _resumen(db, ini, fin)
+    resumen.update(descuentos=float(descuentos),
+                   devoluciones={"num": devoluciones["num"], "total": float(devoluciones["total"])})
+    return {
+        "desde": desde.isoformat(),
+        "hasta": hasta.isoformat(),
+        "resumen": resumen,
+        "anterior": {
+            "desde": ini_prev.date().isoformat(),
+            "hasta": (fin_prev - timedelta(microseconds=1)).date().isoformat(),
+            **_resumen(db, ini_prev, fin_prev),
+        },
+        "agrupacion": agrupacion,
+        "serie": [{"clave": str(k), "total": float(serie[k][0]) if k in serie else 0.0,
+                   "num": serie[k][1] if k in serie else 0} for k in claves],
+        "medios_pago": sorted(medios, key=lambda m: -m["total"]),
+        "documentos": [{"tipo_dte": t, "num": d["num"], **{k: float(d[k]) for k in ("neto", "iva", "total")}}
+                       for t, d in sorted(documentos.items())],
+        "vendedores": sorted(({"nombre": n, "num": v["num"], "total": float(v["total"]),
+                               "margen": float(v["margen"])} for n, v in vendedores.items()),
+                             key=lambda v: -v["total"]),
+        "clientes": sorted(({"rut": r, "razon_social": n, "num": c["num"], "total": float(c["total"])}
+                            for (r, n), c in clientes.items()), key=lambda c: -c["total"])[:10],
+        "productos": sorted(({**p, "cantidad": float(p["cantidad"]), "venta": float(p["venta"]),
+                              "costo": float(p["costo"]), "margen": float(p["venta"] - p["costo"])}
+                             for p in productos.values()), key=lambda p: -p["venta"]),
+        "rechazados": {"num": rechazados[0], "total": float(rechazados[1])},
+    }

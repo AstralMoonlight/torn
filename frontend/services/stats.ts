@@ -44,31 +44,51 @@ export async function getTopProducts(days: number = 30, limit: number = 5): Prom
     return data
 }
 
-export interface ReportItem {
-    product_id: number
-    full_name: string
-    cantidad: number
-    monto_total: number
-    utilidad: number
+/** Totales de un periodo. Margen: venta neta (con descuentos) menos el costo de lo vendido. */
+export interface ResumenVentas {
+    venta_total: number
+    neto: number
+    iva: number
+    costo: number
+    margen: number
+    num_ventas: number
+    ticket_promedio: number
 }
 
-export interface ReportOut {
-    fecha: string
-    period: string
-    total_ventas: number
-    /** Neto e IVA reales del periodo, ya calculados por el backend. */
-    total_neto: number
-    total_iva: number
-    total_utilidad: number
-    items: ReportItem[]
+export interface ReporteVentas {
+    /** aaaa-mm-dd, ambos incluidos. */
+    desde: string
+    hasta: string
+    resumen: ResumenVentas & {
+        descuentos: number
+        devoluciones: { num: number; total: number }
+    }
+    /** El periodo con que se compara; si está en curso, hasta la misma hora. */
+    anterior: ResumenVentas & { desde: string; hasta: string }
+    agrupacion: 'hora' | 'dia' | 'mes'
+    /** clave: hora (0-23), aaaa-mm-dd o aaaa-mm según `agrupacion`. */
+    serie: { clave: string; total: number; num: number }[]
+    /** Lo cobrado: el efectivo ya descuenta el vuelto y las devoluciones restan. */
+    medios_pago: { codigo: string; nombre: string; num: number; total: number }[]
+    /** Montos con signo: la nota de crédito resta. */
+    documentos: { tipo_dte: number; num: number; neto: number; iva: number; total: number }[]
+    vendedores: { nombre: string; num: number; total: number; margen: number }[]
+    /** Los 10 que más compraron, sin consumidor final. */
+    clientes: { rut: string; razon_social: string; num: number; total: number }[]
+    productos: {
+        product_id: number
+        codigo: string
+        nombre: string
+        cantidad: number
+        venta: number
+        costo: number
+        margen: number
+    }[]
     /** Rechazados por el SII en el periodo: fuera de los totales, solo se informan. */
-    rechazados: number
-    monto_rechazado: number
+    rechazados: { num: number; total: number }
 }
 
-export async function getReport(period: string = 'day', date?: string): Promise<ReportOut> {
-    const { data } = await api.get<ReportOut>('/stats/report', {
-        params: { period, date }
-    })
+export async function getReporteVentas(desde: string, hasta: string): Promise<ReporteVentas> {
+    const { data } = await api.get<ReporteVentas>('/stats/report', { params: { desde, hasta } })
     return data
 }

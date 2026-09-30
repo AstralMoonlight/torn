@@ -746,24 +746,3 @@ class TopProduct(BaseModel):
 class TopProductsResponse(BaseModel):
     by_quantity: List[TopProduct]
     by_margin: List[TopProduct]
-
-
-class ReportItem(BaseModel):
-    product_id: int
-    full_name: str
-    cantidad: Decimal
-    monto_total: Decimal
-    utilidad: Decimal
-
-class ReportOut(BaseModel):
-    fecha: datetime
-    period: str  # 'Diario' | 'Semanal' | 'Mensual'
-    total_ventas: Decimal
-    #: Ver la nota de StatPeriod: el reporte los calculaba dividiendo por 1.19.
-    total_neto: Decimal = Decimal(0)
-    total_iva: Decimal = Decimal(0)
-    total_utilidad: Decimal
-    items: List[ReportItem]
-    #: Documentos que el SII rechazó: no están en los totales, solo se informan.
-    rechazados: int = 0
-    monto_rechazado: Decimal = Decimal(0)

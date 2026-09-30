@@ -28,9 +28,9 @@ def test_cambiar_el_costo_no_cambia_la_utilidad(client, db_session):
     assert venta.status_code == 201, venta.text
     assert db_session.query(SaleDetail).one().costo_unitario == 600
 
-    antes = client.get("/stats/report").json()["total_utilidad"]
+    antes = client.get("/stats/report").json()["resumen"]["margen"]
     assert client.put("/products/1", json={"costo_unitario": "900"}).status_code == 200
-    despues = client.get("/stats/report").json()["total_utilidad"]
+    despues = client.get("/stats/report").json()["resumen"]["margen"]
 
     assert Decimal(antes) == Decimal(despues) == 800  # 2 x (1.000 - 600)
 
@@ -58,10 +58,10 @@ def test_la_nota_de_credito_resta_en_los_reportes(client, db_session):
     assert nc.status_code == 201, nc.text
 
     reporte = client.get("/stats/report").json()
-    assert Decimal(reporte["total_ventas"]) == 3570  # 5.950 - 2.380
-    assert Decimal(reporte["total_neto"]) == 3000
-    assert Decimal(reporte["total_utilidad"]) == 1200  # 3 x (1.000 - 600)
-    [item] = reporte["items"]
+    assert Decimal(reporte["resumen"]["venta_total"]) == 3570  # 5.950 - 2.380
+    assert Decimal(reporte["resumen"]["neto"]) == 3000
+    assert Decimal(reporte["resumen"]["margen"]) == 1200  # 3 x (1.000 - 600)
+    [item] = reporte["productos"]
     assert Decimal(item["cantidad"]) == 3
 
     dia = client.get("/stats/summary").json()["daily"]
@@ -96,10 +96,9 @@ def test_un_documento_rechazado_no_cuenta_pero_se_informa(client, db_session):
     db_session.commit()
 
     reporte = client.get("/stats/report").json()
-    assert Decimal(reporte["total_ventas"]) == 1190
-    assert Decimal(reporte["total_utilidad"]) == 400
-    assert reporte["rechazados"] == 1
-    assert Decimal(reporte["monto_rechazado"]) == 2380
+    assert Decimal(reporte["resumen"]["venta_total"]) == 1190
+    assert Decimal(reporte["resumen"]["margen"]) == 400
+    assert reporte["rechazados"] == {"num": 1, "total": 2380}
 
     dia = client.get("/stats/summary").json()["daily"]
     assert (Decimal(dia["sales_total"]), dia["sales_count"]) == (1190, 1)

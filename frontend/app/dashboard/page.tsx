@@ -354,7 +354,7 @@ export default function DashboardPage() {
                 <KPICard
                     title={`Utilidad ${periodo.titulo}`}
                     value={formatCLP(currentStats.margin_total)}
-                    subtitle={`Margen: ${currentStats.sales_total > 0 ? ((currentStats.margin_total / currentStats.sales_total) * 100).toFixed(1) : 0}%`}
+                    subtitle={`Margen: ${currentStats.sales_net > 0 ? ((currentStats.margin_total / currentStats.sales_net) * 100).toFixed(1) : 0}% de la venta sin IVA`}
                     icon={Wallet}
                     color="green"
                 />
