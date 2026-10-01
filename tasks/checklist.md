@@ -687,6 +687,29 @@ Rama `integracion/tanda-4`, mergeada a `main` el 2026-09-30. Backend 244, dte-to
   - Para probarlo en tu equipo: `docker compose up -d --build` en los dos compose (dte-torn aplica 0007 y
     el backend `d3e4f5a6b7c8` al arrancar).
 
+## Sexta tanda (2026-10-01)
+
+### [ ] 45. #61: sesión única (entrar en otro equipo cierra la sesión anterior)
+
+- **Rama:** `feat/sesion-unica` (subida a GitHub, sin mergear).
+- **Qué:** decidiste no cerrar por inactividad. Cada login renueva `public.saas_users.sesion_id` y lo
+  pone en el token; un token de una sesión anterior responde 401 "Se inició sesión con esta cuenta en
+  otro equipo.", y ese equipo vuelve al login con el mensaje. El carrito del POS no se pierde (queda
+  guardado en el navegador). Migración `d3e4f5a6b7c9`. De paso: un 401 de un pedido que salió sin token
+  ya no vuelve a cerrar la sesión (borraba el motivo).
+- **Verificado:** backend 256 en verde (test nuevo: dos logins, el primero queda fuera); `tsc`, lint (6
+  warnings de siempre), `npm test` y build. En el navegador contra una copia (`torn_inact`): equipo A en
+  el POS, equipo B entra con la misma cuenta, A al cambiar de página cae al login con el mensaje.
+- **Revisar:**
+  - Vale para todos, también el superusuario y el administrador. Dos personas no pueden compartir
+    cuenta: cada vendedora necesita la suya.
+  - El equipo desplazado se entera en su próximo clic (no hay aviso en vivo); su venta en curso queda
+    en el carrito.
+  - Cualquier script que haga login con una cuenta (p. ej. pruebas contra la API) saca del sistema a
+    quien la esté usando.
+  - Al mergear junto con `feat/intercambio-recepcion`: las dos migraciones (`d3e4f5a6b7c8` y
+  `d3e4f5a6b7c9`) salen de `c2d3e4f5a6b7`; la segunda en entrar tiene que apuntar a la otra.
+
 **Respuestas a las preguntas de la primera tanda:**
 - **Punto 14 (razón social en 58 mm):** ya sale igual que en 80 mm; es la misma plantilla
   (`dte_ticket.html`) para los dos anchos. Nada que cambiar.
@@ -713,7 +736,7 @@ Actualizado el 2026-09-30 (quinta tanda). Nada de lo que sigue se empezó salvo 
 | **Paso a producción** | Declaración de cumplimiento (#48): se firma cuando el SII acepte también las boletas (decidido 2026-09-30). CAF de palena, Res. 80, correos del SII, venta real de cada tipo (#47), retirar tablas DTE locales (#52) | `lanzamiento.md` 1.1 |
 | **Piloto en el local** | `vaciar_datos_demo.py --aplicar`, cuentas del personal (con el punto 32 ya ven su menú), servidor y respaldo diario (#59), instalar el PC, UPS, impresora y lector reales, apagado a mitad de envío y sin internet | `lanzamiento.md` 1.2 a 1.4 |
 | **Flow** (saas-admin) | Cuenta de comercio en Flow y sus claves en el `.env`; probar un pago en el sandbox. ¿Plan mensual también con cuotas sin interés? | punto 37, `saas_admin.md` |
-| **1.5 sesiones** (#61) | Cerrar o bloquear por inactividad: cuántos minutos y si cierra o bloquea. Propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio | `lanzamiento.md` 1.5 |
+| **1.5 sesiones** (#61) | Hecho como sesión única (punto 45, sin cierre por inactividad): revisar y mergear | punto 45 |
 | **1.6 con ellas** | Hojas de una página por tarea, capacitación y el recorrido de cada flujo con ellas (lo que se pudo sin ellas está en los puntos 20, 30 y 31) | `lanzamiento.md` 1.6 |
 | **Pago de deuda en efectivo sin caja abierta** | Lo dejé exigiendo caja abierta cuando el control de caja está encendido (motivo en la quinta tanda). ¿Lo mantenemos? | punto 7, quinta tanda |
 | **Auditoría de seguridad** (#60) | Correr `security-audit` completa (pedirla así). Los permisos por endpoint ya están en el punto 35 | `lanzamiento.md` 1.5, punto 32 |
