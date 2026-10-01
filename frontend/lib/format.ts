@@ -27,7 +27,9 @@ export function formatCLP(value: number | string | null | undefined): string {
     if (amount === null || amount === undefined || Number.isNaN(amount)) {
         return clpFormatter.format(0)
     }
-    return clpFormatter.format(Math.round(amount))
+    // es-CL escribe "$-1.000"; en Chile se lee "-$1.000". Math.abs evita el "-$0".
+    const redondeado = Math.round(amount)
+    return redondeado < 0 ? `-${clpFormatter.format(-redondeado)}` : clpFormatter.format(Math.abs(redondeado))
 }
 
 /**
