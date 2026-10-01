@@ -45,6 +45,8 @@ interface SessionState {
     user: User | null
     availableTenants: AvailableTenant[]
     selectedTenantId: number | null
+    /** Por qué se cerró la última sesión sin que el usuario lo pidiera; lo muestra el login. */
+    motivoCierre: string | null
 
     setSession: (id: number, amount: number, time: string, userId: number) => void
     closeSession: () => void
@@ -52,7 +54,7 @@ interface SessionState {
 
     login: (token: string, user: User, tenants: AvailableTenant[]) => void
     selectTenant: (tenantId: number) => void
-    logout: () => void
+    logout: (motivo?: string) => void
     syncSession: (user: User, tenants: AvailableTenant[]) => void
 }
 
@@ -68,6 +70,7 @@ export const useSessionStore = create<SessionState>()(
             user: null,
             availableTenants: [],
             selectedTenantId: null,
+            motivoCierre: null,
 
             setSession: (id, amount, time, userId) =>
                 set({
@@ -93,6 +96,7 @@ export const useSessionStore = create<SessionState>()(
                 token,
                 user,
                 availableTenants: tenants,
+                motivoCierre: null,
                 // Solo auto-seleccionar si hay exactamente uno Y está activo
                 selectedTenantId: (tenants.length === 1 && tenants[0].is_active) ? tenants[0].id : null
             }),
@@ -100,7 +104,8 @@ export const useSessionStore = create<SessionState>()(
             // El turno de caja guardado es de la empresa anterior: AppShell lo vuelve a pedir.
             selectTenant: (tenantId) => set({ selectedTenantId: tenantId, sessionId: null, status: 'UNKNOWN' }),
 
-            logout: () => set({
+            logout: (motivo) => set({
+                motivoCierre: motivo ?? null,
                 token: null,
                 user: null,
                 availableTenants: [],

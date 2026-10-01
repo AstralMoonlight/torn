@@ -54,13 +54,14 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: Union[str, Any], expires_delta: Optional[timedelta] = None
+    subject: Union[str, Any], expires_delta: Optional[timedelta] = None, sid: Optional[str] = None
 ) -> str:
     """Emite un JWT firmado para el `subject` indicado.
 
     Args:
         subject: Identificador del usuario (se usa el email).
         expires_delta: Vigencia del token. Por defecto `ACCESS_TOKEN_EXPIRE_MINUTES`.
+        sid: Sesión del usuario (`SaaSUser.sesion_id`) que el token representa.
 
     Returns:
         El JWT codificado.
@@ -73,4 +74,6 @@ def create_access_token(
         )
 
     to_encode = {"exp": expire, "sub": str(subject)}
+    if sid:
+        to_encode["sid"] = sid
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

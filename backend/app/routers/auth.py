@@ -1,4 +1,5 @@
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
@@ -72,6 +73,15 @@ def _get_user_tenants(global_db: Session, user_id: int) -> list[AvailableTenant]
         
     return results
 
+def _nueva_sesion(global_db: Session, user: SaaSUser) -> str:
+    """Abre una sesión nueva y cierra la anterior del usuario (en cualquier equipo)."""
+    user.sesion_id = secrets.token_hex(16)
+    global_db.commit()
+    return create_access_token(
+        subject=user.email, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES), sid=user.sesion_id
+    )
+
+
 @router.post("/token", response_model=SaaSToken)
 def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -87,11 +97,8 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        subject=user.email, expires_delta=access_token_expires
-    )
-    
+    access_token = _nueva_sesion(global_db, user)
+
     # Obtener la lista de empresas a las que tiene acceso para que el Frontend renderice un selector
     tenants = _get_user_tenants(global_db, user.id)
     
@@ -116,10 +123,7 @@ def login_json(
             detail="Credenciales incorrectas",
         )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        subject=user.email, expires_delta=access_token_expires
-    )
+    access_token = _nueva_sesion(global_db, user)
 
     tenants = _get_user_tenants(global_db, user.id)
 

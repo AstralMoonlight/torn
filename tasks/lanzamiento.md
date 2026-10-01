@@ -149,9 +149,9 @@ Depende del respaldo (1.4) para la alerta de respaldo.
 - [ ] Acceso remoto sin abrir puertos en el router del local: una VPN tipo Tailscale o un túnel, con
       SSH solo por llave (sin contraseña).
 - [ ] Actualizaciones del sistema operativo y de Docker fuera del horario de atención.
-- [ ] Sesiones (sin empezar; propuesta: cerrar sesión a los 15 minutos, configurable en Mi negocio):
-      cerrar sesión o bloquear al rato de inactividad, para que no quede el POS abierto con
-      el usuario administrador.
+- [x] Sesiones (#61): **sin cierre por inactividad** (decidido 2026-10-01: es molesto). En su lugar,
+      **sesión única**: entrar con una cuenta en otro equipo cierra la sesión anterior, y su login
+      dice por qué (rama `feat/sesion-unica`).
 
 ### 1.6 Facilidad de uso para personas mayores
 

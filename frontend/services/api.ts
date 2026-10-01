@@ -1,4 +1,8 @@
 import axios, { AxiosError } from 'axios'
+import { useSessionStore } from '@/lib/store/sessionStore'
+
+/** Otro equipo entró con la misma cuenta (`SESION_REEMPLAZADA` en `backend/app/dependencies/tenant.py`). */
+const SESION_REEMPLAZADA = 'Se inició sesión con esta cuenta en otro equipo.'
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
@@ -78,10 +82,14 @@ api.interceptors.response.use(
         // Redirigir al login si el token expira (401) fuera del flujo de autenticación
         const status = error.response?.status
         const isLoginRequest = error.config?.url?.includes('/auth/login')
+        // Un pedido que salió sin token llega cuando la sesión ya se cerró: cerrarla de nuevo
+        // borraría el motivo que dejó el primer 401.
+        const conToken = !!error.config?.headers?.Authorization
 
-        if (status === 401 && !isLoginRequest) {
+        if (status === 401 && !isLoginRequest && conToken) {
             console.warn('[API] Token expirado o inválido. Cerrando sesión...')
-            localStorage.removeItem('torn-session')
+            const detail = error.response?.data?.detail
+            useSessionStore.getState().logout(detail === SESION_REEMPLAZADA ? detail : undefined)
             window.location.href = '/login'
         }
 

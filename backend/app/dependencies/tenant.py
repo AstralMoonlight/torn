@@ -32,6 +32,10 @@ from jose import JWTError, jwt
 from app.utils.security import SECRET_KEY, ALGORITHM
 from fastapi.security import OAuth2PasswordBearer
 
+#: El frontend lo reconoce para explicar en el login por qué se cerró la sesión
+#: (`SESION_REEMPLAZADA` en `frontend/services/api.ts`).
+SESION_REEMPLAZADA = "Se inició sesión con esta cuenta en otro equipo."
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
@@ -69,6 +73,7 @@ def get_current_global_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         # Historicamente en Torn se usaba RUT o Email como sub
         username: str = payload.get("sub")
+        sid = payload.get("sid")
         if username is None:
             raise credentials_exception
     except JWTError:
@@ -78,6 +83,9 @@ def get_current_global_user(
     # Desactivar a alguien (p.ej. del equipo) corta su sesión aunque su token siga vigente.
     if user is None or user.is_active is False:
         raise credentials_exception
+    # Sin sesion_id (nunca entró desde que existe) vale cualquier token suyo.
+    if user.sesion_id and sid != user.sesion_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, SESION_REEMPLAZADA, headers={"WWW-Authenticate": "Bearer"})
     return user
 
 

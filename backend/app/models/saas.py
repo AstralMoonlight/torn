@@ -106,6 +106,9 @@ class SaaSUser(Base):
     is_superuser = Column(Boolean, default=False, comment="Admin del SaaS (nosotros)")
     #: Superusuario con cargo: solo tiene los permisos del cargo. Sin cargo: dueño, todos.
     cargo_id = Column(Integer, ForeignKey("public.saas_cargos.id"), nullable=True)
+    #: Sesión vigente: cada login la renueva y va en el token (`sid`). Un token con otra queda
+    #: inválido, así que entrar con la misma cuenta en otro equipo cierra la sesión anterior.
+    sesion_id = Column(String(32), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
