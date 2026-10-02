@@ -3,33 +3,17 @@
 import { useEffect, useState } from 'react'
 import { getDashboard, getPanel, type DashboardData, type PanelData } from '@/services/reports'
 import { getDashboardSummary, getTopProducts, type DashboardSummary, type TopProductsResponse } from '@/services/stats'
-import { getCertificado, getFoliosStatus, type FolioStockOut } from '@/services/sales'
+import { getCertificado, getFoliosStatus, getSales, type FolioStockOut, type SaleOut } from '@/services/sales'
 import Link from 'next/link'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-    BarChart3,
-    DollarSign,
-    ShoppingCart,
-    Receipt,
-    TrendingUp,
-    Wallet,
-    ArrowUpRight,
-    ArrowDownRight,
-    AlertTriangle,
-    CheckCircle2,
-    FileWarning,
-    HandCoins,
-    Truck,
-    ShieldCheck,
-} from 'lucide-react'
+import { BarChart3, CheckCircle2 } from 'lucide-react'
 import { avisar } from '@/lib/store/uiStore'
 import { useSessionStore } from '@/lib/store/sessionStore'
-import { formatCLP, formatDate } from '@/lib/format'
+import { CHILE_TIMEZONE, formatCLP, formatDate, getTodayChile } from '@/lib/format'
 import dynamic from 'next/dynamic'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -39,57 +23,6 @@ const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCh
     ssr: false,
     loading: () => <div className="h-64 w-full bg-muted animate-pulse rounded-xl" />
 })
-
-
-function KPICard({
-    title,
-    value,
-    subtitle,
-    icon: Icon,
-    color = 'blue',
-    trend,
-}: {
-    title: string
-    value: string
-    subtitle?: string
-    icon: React.ElementType
-    color?: string
-    trend?: { value: string, positive: boolean, label: string }
-}) {
-    const colorMap: Record<string, string> = {
-        blue: 'bg-primary/10 text-primary',
-        green: 'bg-muted text-foreground',
-        amber: 'bg-muted text-foreground',
-        red: 'bg-destructive/10 text-destructive',
-    }
-
-    return (
-        <div className="rounded-xl border border-border bg-card p-4 dark:bg-card shadow-sm transition-all hover:shadow-md">
-            <div className="flex items-start justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[color]}`}>
-                    <Icon className="h-5 w-5" />
-                </div>
-                {trend && (
-                    <div className="flex flex-col items-end gap-0.5">
-                        <div className={cn(
-                            "flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full",
-                            trend.positive ? "bg-muted text-foreground" : "bg-destructive/10 text-destructive"
-                        )}>
-                            {trend.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                            {trend.value}
-                        </div>
-                        <span className="text-[11px] text-muted-foreground">{trend.label}</span>
-                    </div>
-                )}
-            </div>
-            <div className="mt-3">
-                <p className="text-xs text-muted-foreground truncate font-medium uppercase tracking-wider">{title}</p>
-                <p className="text-2xl font-bold text-foreground font-tabular mt-0.5 tracking-tight">{value}</p>
-                {subtitle && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">{subtitle}</p>}
-            </div>
-        </div>
-    )
-}
 
 
 /** Barra horizontal partida en tramos, con la leyenda y el valor de cada uno abajo. */
@@ -103,7 +36,7 @@ function BarraApilada({ partes }: { partes: { etiqueta: string; valor: number; t
                         title={`${p.etiqueta}: ${p.texto}`} />
                 ))}
             </div>
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                 {partes.map((p) => (
                     <li key={p.etiqueta} className="flex items-center gap-2">
                         <span className={cn('h-2.5 w-2.5 shrink-0 rounded-sm', p.clase)} />
@@ -126,10 +59,10 @@ function isPeriod(value: string): value is Period {
     return (PERIODS as readonly string[]).includes(value)
 }
 
-const TEXTO_PERIODO: Record<Period, { titulo: string; comparado: string }> = {
-    daily: { titulo: 'de hoy', comparado: 'vs. ayer a esta hora' },
-    weekly: { titulo: 'de 7 días', comparado: 'vs. 7 días antes' },
-    monthly: { titulo: 'de 30 días', comparado: 'vs. 30 días antes' },
+const TEXTO_PERIODO: Record<Period, { vendiste: string; utilidad: string; comparado: string }> = {
+    daily: { vendiste: 'Hoy vendiste', utilidad: 'Utilidad de hoy', comparado: 'que ayer a esta hora' },
+    weekly: { vendiste: 'En 7 días vendiste', utilidad: 'Utilidad de 7 días', comparado: 'que los 7 días anteriores' },
+    monthly: { vendiste: 'En 30 días vendiste', utilidad: 'Utilidad de 30 días', comparado: 'que los 30 días anteriores' },
 }
 
 const NOMBRE_DTE: Record<number, string> = {
@@ -162,6 +95,27 @@ function diasHasta(fecha: string): number {
     return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86_400_000)
 }
 
+const horaChile = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: CHILE_TIMEZONE })
+const fechaLarga = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: CHILE_TIMEZONE })
+
+function saludo(nombre?: string): string {
+    const hora = Number(new Intl.DateTimeFormat('es-CL', { hour: 'numeric', hourCycle: 'h23', timeZone: CHILE_TIMEZONE }).format(new Date()))
+    const base = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
+    const primero = nombre?.trim().split(/\s+/)[0]
+    return primero ? `${base}, ${primero}` : base
+}
+
+/** Algo que el usuario tiene que resolver, con el botón que lo lleva a hacerlo. */
+type Pendiente = { tono: 'grave' | 'aviso' | 'info'; titulo: string; detalle: string; accion: string; href: string }
+
+const PUNTO: Record<Pendiente['tono'], string> = {
+    grave: 'bg-destructive',
+    aviso: 'bg-amber-500',
+    info: 'bg-primary',
+}
+
+const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : `${n} ${varios}`)
+
 export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null)
     const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -171,7 +125,9 @@ export default function DashboardPage() {
     const [selectedPeriod, setSelectedPeriod] = useState<Period>('daily')
     const [folios, setFolios] = useState<FolioStockOut[]>([])
     const [diasCertificado, setDiasCertificado] = useState<number | null>(null)
+    const [ultimas, setUltimas] = useState<SaleOut[]>([])
     const ambiente = useSessionStore((s) => s.availableTenants.find((t) => t.id === s.selectedTenantId)?.sii_ambiente)
+    const nombre = useSessionStore((s) => s.user?.full_name)
 
     useEffect(() => {
         // loading ya arranca en `true` (useState(true) arriba); no hace falta
@@ -194,6 +150,8 @@ export default function DashboardPage() {
         // Aparte: si dte-torn no responde, el resto del panel se muestra igual.
         getFoliosStatus().then(setFolios).catch(() => null)
         getCertificado().then((c) => setDiasCertificado(c?.dias_restantes ?? null)).catch(() => null)
+        const hoy = getTodayChile()
+        getSales({ desde: hoy, hasta: hoy, limit: 8 }).then(setUltimas).catch(() => null)
     }, [])
 
     if (loading) {
@@ -214,23 +172,75 @@ export default function DashboardPage() {
     const variacion = currentStats.sales_total_prev > 0
         ? ((currentStats.sales_total - currentStats.sales_total_prev) / currentStats.sales_total_prev) * 100
         : null
+    const { sii, cobranza, guias, iva } = panel
 
-    // ── Alertas ──────────────────────────────────────────────────────
+    // ── Para atender ─────────────────────────────────────────────────
     // En modo Desarrollador los CAF y el certificado son de prueba: no se avisa su vencimiento.
     const real = ambiente !== 'DEV'
-    const avisosEmision = [
-        ...folios.filter((f) => f.alerta).map((f) =>
-            `${NOMBRE_DTE[f.dte_type] ?? `Documento ${f.dte_type}`}: quedan ${f.available} folios.`),
-        ...folios.filter((f) => real && f.available > 0 && f.fecha_vencimiento && diasHasta(f.fecha_vencimiento) <= DIAS_AVISO)
-            .map((f) => `Los folios de ${NOMBRE_DTE[f.dte_type] ?? f.dte_type} vencen el ${formatDate(f.fecha_vencimiento)}.`),
-        ...(real && diasCertificado !== null && diasCertificado <= DIAS_AVISO
-            ? [diasCertificado < 0 ? 'El certificado digital está vencido.' : `El certificado digital vence en ${diasCertificado} días.`]
-            : []),
-    ]
-    const { sii, cobranza, guias, iva } = panel
-    const hayAlertas = sii.num_problemas > 0 || avisosEmision.length > 0 || cobranza.vencido > 0 || guias.pendientes > 0
+    const pendientes: Pendiente[] = []
+    if (sii.num_problemas > 0) {
+        const p = sii.problemas[0]
+        pendientes.push({
+            tono: 'grave',
+            titulo: `${plural(sii.num_problemas, 'Un documento', 'documentos')} con problemas en el SII`,
+            detalle: `${NOMBRE_DTE[p.tipo_dte] ?? `Documento ${p.tipo_dte}`} ${p.folio ?? ''} del ${formatDate(p.fecha)}: ${ESTADO_PROBLEMA[p.estado]}`
+                + `${sii.num_problemas > 1 ? `, y ${sii.num_problemas - 1} más` : ''}. Un rechazado no tiene validez: hay que emitirlo de nuevo.`,
+            accion: 'Revisar',
+            href: '/historial/rechazados',
+        })
+    }
+    for (const f of folios.filter((f) => f.alerta)) {
+        pendientes.push({
+            tono: 'grave',
+            titulo: `Quedan ${f.available} folios de ${NOMBRE_DTE[f.dte_type] ?? `documento ${f.dte_type}`}`,
+            detalle: 'Cuando se acaben no se puede vender con ese documento.',
+            accion: 'Cargar folios',
+            href: '/configuracion?tab=folios',
+        })
+    }
+    for (const f of folios.filter((f) => real && f.available > 0 && f.fecha_vencimiento && diasHasta(f.fecha_vencimiento) <= DIAS_AVISO)) {
+        pendientes.push({
+            tono: 'grave',
+            titulo: `Los folios de ${NOMBRE_DTE[f.dte_type] ?? f.dte_type} vencen el ${formatDate(f.fecha_vencimiento)}`,
+            detalle: 'Después de esa fecha no sirven: carga folios nuevos antes.',
+            accion: 'Cargar folios',
+            href: '/configuracion?tab=folios',
+        })
+    }
+    if (real && diasCertificado !== null && diasCertificado <= DIAS_AVISO) {
+        pendientes.push({
+            tono: 'grave',
+            titulo: diasCertificado < 0 ? 'El certificado digital está vencido' : `El certificado digital vence en ${diasCertificado} días`,
+            detalle: 'Sin certificado vigente no se pueden emitir documentos.',
+            accion: 'Renovar',
+            href: '/configuracion?tab=folios',
+        })
+    }
+    if (cobranza.vencido > 0) {
+        const mayor = cobranza.deudores[0]
+        pendientes.push({
+            tono: 'aviso',
+            titulo: cobranza.num_vencidos === 1 && mayor
+                ? `${mayor.razon_social} debe ${formatCLP(mayor.vencido)}`
+                : `${cobranza.num_vencidos} clientes deben ${formatCLP(cobranza.vencido)} vencido`,
+            detalle: cobranza.num_vencidos === 1 && mayor
+                ? `Lleva ${mayor.dias} días de atraso.`
+                : `La mayor deuda: ${mayor?.razon_social}, ${formatCLP(mayor?.vencido)} con ${mayor?.dias} días de atraso.`,
+            accion: cobranza.num_vencidos === 1 ? 'Ver cliente' : 'Ver clientes',
+            href: '/clientes',
+        })
+    }
+    if (guias.pendientes > 0) {
+        pendientes.push({
+            tono: 'info',
+            titulo: `${plural(guias.pendientes, 'Una guía', 'guías')} de despacho sin facturar`,
+            detalle: `La más antigua es del ${formatDate(guias.desde)}. Se factura a más tardar el día 10 del mes siguiente.`,
+            accion: 'Facturar',
+            href: '/pos',
+        })
+    }
 
-    // ── Estado SII y cobranza ────────────────────────────────────────
+    // ── Estado SII ───────────────────────────────────────────────────
     const partesSii = GRUPOS_SII.map((g) => {
         const valor = Object.entries(sii.estados)
             .filter(([estado]) => g.estados ? g.estados.includes(estado) : !ESTADOS_AGRUPADOS.has(estado))
@@ -238,165 +248,174 @@ export default function DashboardPage() {
         return { etiqueta: g.etiqueta, valor, texto: String(valor), clase: g.clase }
     })
     const foliosEnUso = folios.filter((f) => f.total > 0)
-    const partesCobranza = [
-        { etiqueta: 'Al día', valor: cobranza.tramos.al_dia, clase: 'bg-primary/30' },
-        { etiqueta: '1 a 30 días vencido', valor: cobranza.tramos['1_30'], clase: 'bg-primary/60' },
-        { etiqueta: '31 a 60 días vencido', valor: cobranza.tramos['31_60'], clase: 'bg-primary' },
-        { etiqueta: 'Más de 60 días vencido', valor: cobranza.tramos['61_mas'], clase: 'bg-destructive' },
-    ].map((p) => ({ ...p, texto: formatCLP(p.valor) }))
+    const fecha = fechaLarga.format(new Date())
 
     return (
         <PageContainer>
             <PageHeader
-                icon={BarChart3}
-                title="Panel de control"
-                description="Resumen operativo y financiero de tu empresa."
+                title={saludo(nombre)}
+                description={fecha.charAt(0).toUpperCase() + fecha.slice(1)}
                 actions={
                     <Tabs value={selectedPeriod} onValueChange={(v) => { if (isPeriod(v)) setSelectedPeriod(v) }} className="w-full sm:w-auto">
                         <TabsList className="bg-muted p-1">
-                            <TabsTrigger value="daily" className="text-xs">Diario</TabsTrigger>
-                            <TabsTrigger value="weekly" className="text-xs">Semanal</TabsTrigger>
-                            <TabsTrigger value="monthly" className="text-xs">Mensual</TabsTrigger>
+                            <TabsTrigger value="daily">Hoy</TabsTrigger>
+                            <TabsTrigger value="weekly">7 días</TabsTrigger>
+                            <TabsTrigger value="monthly">30 días</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 }
             />
 
-            <div data-section="dashboard.alertas" className="space-y-3">
-                {sii.num_problemas > 0 && (
-                    <Alert variant="destructive">
-                        <FileWarning className="h-4 w-4" />
-                        <AlertTitle>
-                            {sii.num_problemas === 1 ? 'Un documento necesita atención' : `${sii.num_problemas} documentos necesitan atención`}
-                        </AlertTitle>
-                        <AlertDescription>
-                            <ul className="space-y-0.5">
-                                {sii.problemas.slice(0, 3).map((p) => (
-                                    <li key={p.id}>
-                                        {NOMBRE_DTE[p.tipo_dte] ?? `Documento ${p.tipo_dte}`} {p.folio ?? ''} del {formatDate(p.fecha)}:{' '}
-                                        {ESTADO_PROBLEMA[p.estado]}{p.glosa ? `. ${p.glosa}` : ''}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="space-y-6 min-w-0">
+                    <Card data-section="dashboard.ventas">
+                        <CardContent className="p-6">
+                            <p className="text-base font-medium text-muted-foreground">{periodo.vendiste}</p>
+                            <p className="mt-1 text-4xl sm:text-5xl font-bold tracking-tight font-tabular text-foreground">
+                                {formatCLP(currentStats.sales_total)}
+                            </p>
+                            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                                {variacion !== null && (
+                                    <span className="flex items-center gap-2">
+                                        <span className={cn(
+                                            'rounded-full px-2.5 py-0.5 font-semibold',
+                                            variacion >= 0 ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'
+                                        )}>
+                                            {Math.abs(variacion).toFixed(0)}% {variacion >= 0 ? 'más' : 'menos'}
+                                        </span>
+                                        <span className="text-muted-foreground">{periodo.comparado}</span>
+                                    </span>
+                                )}
+                                <span className="text-foreground">
+                                    {plural(currentStats.sales_count, 'Una venta', 'ventas')}, ticket promedio{' '}
+                                    {formatCLP(currentStats.sales_count > 0 ? currentStats.sales_total / currentStats.sales_count : 0)}
+                                </span>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card data-section="dashboard.atender">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base font-semibold flex items-center justify-between">
+                                Para atender
+                                {pendientes.length > 0 && (
+                                    <span className="text-sm font-normal text-muted-foreground">
+                                        {plural(pendientes.length, '1 pendiente', 'pendientes')}
+                                    </span>
+                                )}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {pendientes.length > 0 ? (
+                                <ul className="divide-y divide-border">
+                                    {pendientes.map((p) => (
+                                        <li key={p.titulo} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
+                                            <span className={cn('hidden sm:block h-2.5 w-2.5 shrink-0 rounded-full', PUNTO[p.tono])} aria-hidden />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-foreground flex items-center gap-2">
+                                                    <span className={cn('sm:hidden h-2.5 w-2.5 shrink-0 rounded-full', PUNTO[p.tono])} aria-hidden />
+                                                    {p.titulo}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">{p.detalle}</p>
+                                            </div>
+                                            <Button asChild variant="outline" className="self-start sm:self-auto">
+                                                <Link href={p.href}>{p.accion}</Link>
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                                    Todo en orden: sin documentos con problemas ni cuentas vencidas.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card data-section="dashboard.ultimas-ventas" className="self-start">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-semibold">Últimas ventas de hoy</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            {plural(data.kpis.num_ventas, 'Una venta', 'ventas')} hoy
+                            {data.caja && `, caja abierta a las ${horaChile.format(new Date(data.caja.inicio))}`}
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        {ultimas.length > 0 ? (
+                            <ul className="divide-y divide-border text-sm">
+                                {ultimas.map((v) => (
+                                    <li key={v.id} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] gap-2 py-2">
+                                        <span className="text-muted-foreground font-tabular">{horaChile.format(new Date(v.fecha_emision))}</span>
+                                        <span className="min-w-0">
+                                            <span className="block text-foreground">{NOMBRE_DTE[v.tipo_dte] ?? 'Documento'} {v.folio}</span>
+                                            <span className="block truncate text-muted-foreground">{v.customer?.razon_social}</span>
+                                        </span>
+                                        <span className="font-semibold font-tabular text-foreground text-right">
+                                            {formatCLP(v.tipo_dte === 61 ? -Number(v.monto_total) : v.monto_total)}
+                                        </span>
                                     </li>
                                 ))}
-                                {sii.num_problemas > 3 && <li>y {sii.num_problemas - 3} más.</li>}
                             </ul>
-                            <p className="mt-1">
-                                Un documento rechazado no tiene validez ni se cuenta en estas cifras: hay que volver a emitirlo. Revíselos en{' '}
-                                <Link href="/historial/rechazados" className="font-medium underline">Documentos rechazados</Link>.
-                            </p>
-                        </AlertDescription>
-                    </Alert>
-                )}
+                        ) : (
+                            <p className="text-sm text-muted-foreground">Todavía no hay ventas hoy.</p>
+                        )}
+                        <Link href="/historial" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
+                            Ver todo el historial
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
 
-                {avisosEmision.length > 0 && (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>La emisión se puede detener</AlertTitle>
-                        <AlertDescription>
-                            <ul className="space-y-0.5">
-                                {avisosEmision.map((a) => <li key={a}>{a}</li>)}
-                            </ul>
-                            <p className="mt-1">
-                                Sin folios ni certificado vigente no se puede vender con ese documento. Cárguelos en{' '}
-                                <Link href="/configuracion?tab=folios" className="font-medium underline">Configuración, Folios</Link>.
-                            </p>
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                {cobranza.vencido > 0 && (
-                    <Alert>
-                        <HandCoins className="h-4 w-4" />
-                        <AlertTitle>
-                            {formatCLP(cobranza.vencido)} en cuentas vencidas
-                        </AlertTitle>
-                        <AlertDescription>
-                            {cobranza.num_vencidos === 1 ? 'Un cliente' : `${cobranza.num_vencidos} clientes`} con deuda pasada de su plazo.
-                            {' '}La mayor: {cobranza.deudores[0]?.razon_social}, {formatCLP(cobranza.deudores[0]?.vencido)} con {cobranza.deudores[0]?.dias} días de atraso.{' '}
-                            <Link href="/clientes" className="font-medium underline">Ver clientes</Link>.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                {guias.pendientes > 0 && (
-                    <Alert>
-                        <Truck className="h-4 w-4" />
-                        <AlertTitle>
-                            {guias.pendientes === 1 ? 'Una guía de despacho por facturar' : `${guias.pendientes} guías de despacho por facturar`}
-                        </AlertTitle>
-                        <AlertDescription>
-                            La más antigua es del {formatDate(guias.desde)}. La factura de una guía se emite a más tardar el día 10
-                            del mes siguiente. Facture desde el <Link href="/pos" className="font-medium underline">Punto de venta</Link>.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                {!hayAlertas && (
-                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                        Todo en orden: sin documentos con problemas ni cuentas vencidas.
+            <Card data-section="dashboard.indicadores" className="grid grid-cols-1 md:grid-cols-3 md:divide-x divide-y md:divide-y-0 divide-border">
+                <div className="p-6">
+                    <p className="text-sm font-medium text-muted-foreground">{periodo.utilidad}</p>
+                    <p className="mt-1 text-2xl font-bold tracking-tight font-tabular text-foreground">{formatCLP(currentStats.margin_total)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Lo que te quedó después del costo:{' '}
+                        {currentStats.sales_net > 0 ? ((currentStats.margin_total / currentStats.sales_net) * 100).toFixed(0) : 0}% de la venta sin IVA.
                     </p>
-                )}
-            </div>
+                </div>
+                <div className="p-6">
+                    <p className="text-sm font-medium text-muted-foreground">IVA a pagar del mes</p>
+                    <p className="mt-1 text-2xl font-bold tracking-tight font-tabular text-foreground">{formatCLP(iva.a_pagar)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Estimado: ventas {formatCLP(iva.debito)} menos compras {formatCLP(iva.credito)}. El F29 vence el {formatDate(iva.vence)}.
+                    </p>
+                </div>
+                <div className="p-6">
+                    <p className="text-sm font-medium text-muted-foreground">Te deben</p>
+                    <p className="mt-1 text-2xl font-bold tracking-tight font-tabular text-foreground">{formatCLP(cobranza.total)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {cobranza.vencido > 0 ? `${formatCLP(cobranza.vencido)} ya pasó su plazo. ` : 'Nada vencido. '}
+                        <Link href="/clientes" className="font-medium text-primary hover:underline">Ver clientes</Link>
+                    </p>
+                </div>
+            </Card>
 
-            <div data-section="dashboard.indicadores" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard
-                    title={`Ventas ${periodo.titulo}`}
-                    value={formatCLP(currentStats.sales_total)}
-                    subtitle={`${currentStats.sales_count} ventas · ticket promedio ${formatCLP(currentStats.sales_count > 0 ? currentStats.sales_total / currentStats.sales_count : 0)}`}
-                    icon={DollarSign}
-                    color="blue"
-                    trend={variacion === null ? undefined : {
-                        value: `${variacion >= 0 ? '+' : ''}${variacion.toFixed(0)}%`,
-                        positive: variacion >= 0,
-                        label: periodo.comparado,
-                    }}
-                />
-                <KPICard
-                    title={`Utilidad ${periodo.titulo}`}
-                    value={formatCLP(currentStats.margin_total)}
-                    subtitle={`Margen: ${currentStats.sales_net > 0 ? ((currentStats.margin_total / currentStats.sales_net) * 100).toFixed(1) : 0}% de la venta sin IVA`}
-                    icon={Wallet}
-                    color="green"
-                />
-                <KPICard
-                    title="IVA del mes"
-                    value={formatCLP(iva.a_pagar)}
-                    subtitle={`Estimado: ventas ${formatCLP(iva.debito)} - compras ${formatCLP(iva.credito)}. El F29 vence el ${formatDate(iva.vence)}`}
-                    icon={Receipt}
-                    color="amber"
-                />
-                <KPICard
-                    title="Por cobrar"
-                    value={formatCLP(cobranza.total)}
-                    subtitle={cobranza.vencido > 0 ? `${formatCLP(cobranza.vencido)} vencido` : 'Nada vencido'}
-                    icon={HandCoins}
-                    color={cobranza.vencido > 0 ? 'red' : 'green'}
-                />
-            </div>
+            <DashboardCharts salesData={panel.ventas_30_dias} paymentData={data.medios_pago} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card data-section="dashboard.estado-sii" className="shadow-sm">
-                    <CardHeader className="pb-3 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <ShieldCheck className="h-4 w-4 text-primary" />
-                                Documentos ante el SII
-                            </span>
-                            <Badge variant="outline" className="text-xs uppercase">Este mes</Badge>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <Card data-section="dashboard.estado-sii">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center justify-between">
+                            Tus documentos en el SII
+                            <span className="text-sm font-normal text-muted-foreground">Este mes</span>
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4 space-y-5">
+                    <CardContent className="space-y-6">
                         {partesSii.some((p) => p.valor > 0)
                             ? <BarraApilada partes={partesSii} />
                             : <p className="text-sm text-muted-foreground">Todavía no hay documentos emitidos este mes.</p>}
                         {foliosEnUso.length > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Folios disponibles</p>
+                                <h3 className="text-sm font-semibold text-foreground">Folios que te quedan</h3>
                                 {foliosEnUso.map((f) => (
-                                    <div key={f.dte_type} className="flex items-center gap-3 text-xs">
+                                    <div key={f.dte_type} className="flex items-center gap-3 text-sm">
                                         <span className="w-28 shrink-0 text-foreground">{NOMBRE_DTE[f.dte_type] ?? f.dte_type}</span>
                                         <Progress value={(f.available / f.total) * 100} className="h-1.5 flex-1" />
-                                        <span className={cn('w-20 text-right font-tabular', f.alerta ? 'font-bold text-destructive' : 'text-foreground')}>
+                                        <span className={cn('w-24 text-right font-tabular', f.alerta ? 'font-bold text-destructive' : 'text-foreground')}>
                                             {f.available} de {f.total}
                                         </span>
                                     </div>
@@ -406,98 +425,51 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card data-section="dashboard.cobranza" className="shadow-sm">
-                    <CardHeader className="pb-3 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <HandCoins className="h-4 w-4 text-primary" />
-                                Cuentas por cobrar
-                            </span>
-                            <span className="font-tabular">{formatCLP(cobranza.total)}</span>
+                <Card data-section="dashboard.mas-vendidos">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center justify-between">
+                            Lo que más se vende
+                            <span className="text-sm font-normal text-muted-foreground">30 días</span>
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4 space-y-5">
-                        {cobranza.total > 0
-                            ? <BarraApilada partes={partesCobranza} />
-                            : <p className="text-sm text-muted-foreground">Ningún cliente tiene deuda de crédito interno.</p>}
-                        {cobranza.deudores.length > 0 && (
-                            <div>
-                                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Mayor deuda vencida</p>
-                                <ul className="divide-y divide-border text-xs">
-                                    {cobranza.deudores.map((d) => (
-                                        <li key={d.rut} className="flex items-center gap-3 py-2">
-                                            <span className="flex-1 truncate text-foreground">{d.razon_social}</span>
-                                            <span className="text-muted-foreground">{d.dias} días</span>
-                                            <span className="w-24 text-right font-semibold font-tabular text-foreground">{formatCLP(d.vencido)}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            <DashboardCharts salesData={panel.ventas_30_dias} paymentData={data.medios_pago} />
-
-            {/* Rankings Section */}
-            <div data-section="dashboard.rankings" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top by Quantity */}
-                <Card className="shadow-sm">
-                    <CardHeader className="pb-3 border-b">
-                        <CardTitle className="text-sm font-bold flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4 text-primary" />
-                                Más vendidos (cantidad)
-                            </span>
-                            <Badge variant="outline" className="text-xs uppercase">Últimos 30 días</Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        {topRanking?.by_quantity.map((p, i) => (
-                            <div key={p.product_id} className="flex items-center mb-4 last:mb-0 gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
-                                    {i + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-xs text-muted-foreground font-tabular">{p.total_qty} unidades vendidas</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-foreground">{formatCLP(p.total_sales)}</p>
-                                    <Progress value={Math.min(100, (p.total_qty / (topRanking.by_quantity[0]?.total_qty || 1)) * 100)} className="h-1 mt-1" />
-                                </div>
-                            </div>
-                        ))}
+                    <CardContent>
+                        <ol className="divide-y divide-border text-sm">
+                            {topRanking?.by_quantity.map((p, i) => (
+                                <li key={p.product_id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-baseline gap-2 py-2">
+                                    <span className="font-semibold text-muted-foreground">{i + 1}</span>
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-foreground">{p.full_name || p.nombre}</span>
+                                        <span className="block text-muted-foreground font-tabular">{p.total_qty} vendidos</span>
+                                    </span>
+                                    <span className="font-semibold font-tabular text-foreground">{formatCLP(p.total_sales)}</span>
+                                </li>
+                            ))}
+                        </ol>
                     </CardContent>
                 </Card>
 
-                {/* Top by Margin */}
-                <Card className="shadow-sm border-primary/20">
-                    <CardHeader className="pb-3 border-b bg-primary/5">
-                        <CardTitle className="text-sm font-bold flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-primary" />
-                                Más rentables (ranking de utilidad)
-                            </span>
+                <Card data-section="dashboard.mas-rentables">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold flex items-center justify-between">
+                            Lo que más te deja
+                            <span className="text-sm font-normal text-muted-foreground">30 días</span>
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                        {topRanking?.by_margin.map((p, i) => (
-                            <div key={p.product_id} className="flex items-center mb-4 last:mb-0 gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                                    {i + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-foreground truncate">{p.full_name || p.nombre}</p>
-                                    <p className="text-xs text-muted-foreground font-medium">Margen: {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(1) : 0}%</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-primary">{formatCLP(p.total_margin)}</p>
-                                    <p className="text-xs text-muted-foreground">Utilidad total</p>
-                                </div>
-                            </div>
-                        ))}
+                    <CardContent>
+                        <ol className="divide-y divide-border text-sm">
+                            {topRanking?.by_margin.map((p, i) => (
+                                <li key={p.product_id} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-baseline gap-2 py-2">
+                                    <span className="font-semibold text-muted-foreground">{i + 1}</span>
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-foreground">{p.full_name || p.nombre}</span>
+                                        <span className="block text-muted-foreground">
+                                            Te deja el {p.total_sales > 0 ? ((p.total_margin / p.total_sales) * 100).toFixed(0) : 0}%
+                                        </span>
+                                    </span>
+                                    <span className="font-semibold font-tabular text-primary">{formatCLP(p.total_margin)}</span>
+                                </li>
+                            ))}
+                        </ol>
                     </CardContent>
                 </Card>
             </div>
