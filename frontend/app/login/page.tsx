@@ -95,6 +95,8 @@ function Impresion({ doc, variante }: { doc: Documento; variante: (typeof VARIAN
                             }}
                         />
                         <p className="mt-1 text-center text-[11px] opacity-60">Timbre electrónico SII</p>
+                        {/* Mismo pie que el documento impreso (LEYENDA_PIE en dte_impreso.py) */}
+                        <p className="mt-3 text-center text-[11px]">Factureando.cl: Hazla simple!</p>
                     </div>
                 </div>
             </div>
@@ -160,7 +162,7 @@ export default function LoginPage() {
         <div className="min-h-screen grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-2 bg-background">
             <section
                 data-section="login.marca"
-                className="relative flex flex-col justify-between gap-8 overflow-hidden px-6 py-8 lg:px-14 lg:py-12"
+                className="relative flex flex-col justify-between gap-2 overflow-hidden px-6 py-8 lg:gap-8 lg:px-14 lg:py-12"
                 style={{ background: variante.fondo, color: variante.texto }}
             >
                 <p className={`${marca.className} text-3xl font-extrabold tracking-tight lg:text-4xl`}>
@@ -171,8 +173,8 @@ export default function LoginPage() {
                     <Impresion doc={documento} variante={variante} />
                 </div>
 
-                <p className={`${marca.className} hidden max-w-sm text-2xl font-semibold leading-snug lg:block`}>
-                    Vendes, cobras y la boleta sale sola.
+                <p className={`${marca.className} text-2xl font-extrabold leading-none tracking-tight lg:text-7xl`}>
+                    ¡Hazla simple!
                 </p>
             </section>
 
