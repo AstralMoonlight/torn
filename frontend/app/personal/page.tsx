@@ -4,18 +4,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AccionFila } from '@/components/ui/accion-fila'
+import { Progress } from '@/components/ui/progress'
+import Estado from '@/components/layout/Estado'
 import {
     Users,
     ShieldCheck,
     Plus,
-    Pencil,
     Loader2,
-    Mail,
     RefreshCw,
     Save,
     CheckCircle2,
-    UserCircle
 } from 'lucide-react'
 import {
     Table,
@@ -24,9 +22,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-    TableEmpty
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
@@ -60,6 +56,19 @@ const MENU_ITEMS = [
     'Reportes de Ventas',
     'Configuración'
 ]
+
+/** "Rosa Pérez" -> "RP". */
+const iniciales = (nombre: string) => nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?'
+
+/** "ADMINISTRADOR" -> "Administrador": los roles vienen en mayúsculas. */
+const nombreRol = (rol: string) => rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase()
+
+/** Los permisos de un rol en una frase. */
+function queEstaPermitido(rol: Role): string {
+    if (rol.name === 'ADMINISTRADOR') return 'Todo, incluida la configuración y el personal.'
+    const puede = MENU_ITEMS.filter((m) => rol.permissions?.[m])
+    return puede.length ? `${puede.join(', ')}.` : 'Nada todavía: dale permisos en Cambiar permisos.'
+}
 
 export default function PersonalPage() {
     // Shared State
@@ -212,111 +221,95 @@ export default function PersonalPage() {
     return (
         <PageContainer>
             <PageHeader
-                icon={Users}
-                title="Gestión de personal"
-                description="Controla el acceso, roles y cupos de los trabajadores de tu empresa."
+                title="Personal"
+                description="Quién usa Factureando en tu negocio y qué puede hacer cada uno."
                 actions={
-                    <Badge variant="outline" className="h-9 px-3 gap-1.5">
-                        <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                        Cupos: <span className={cn("font-bold", activeStaffCount >= maxUsers && "text-destructive")}>
-                            {activeStaffCount} / {maxUsers}
-                        </span>
-                    </Badge>
+                    <Button onClick={handleCreate} disabled={!canActivateMore} className="h-11 text-base">
+                        <Plus className="h-4 w-4" /> Agregar persona
+                    </Button>
                 }
             />
 
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="text-[15px] text-foreground">
+                    Usas <strong className="font-tabular">{activeStaffCount} de {maxUsers}</strong> cuentas de tu plan
+                </span>
+                <Progress value={Math.min(100, (activeStaffCount / maxUsers) * 100)} className="h-2 w-48" />
+                {!canActivateMore && (
+                    <span className="text-sm text-muted-foreground">Para sumar a alguien, desactiva otra cuenta o amplía tu plan.</span>
+                )}
+            </div>
+
             <Tabs defaultValue="list" className="space-y-6">
                 <TabsList>
-                    <TabsTrigger value="list" className="gap-2">
-                        <Users className="h-4 w-4" /> Personal
-                    </TabsTrigger>
-                    <TabsTrigger value="roles" className="gap-2">
-                        <ShieldCheck className="h-4 w-4" /> Roles y permisos
-                    </TabsTrigger>
+                    <TabsTrigger value="list">Personas</TabsTrigger>
+                    <TabsTrigger value="roles">Cambiar permisos</TabsTrigger>
                 </TabsList>
 
-                <TabsContent data-section="personal.usuarios" value="list" className="space-y-4">
-                    <ListToolbar
-                        busqueda={rolesSearchTerm}
-                        onBusqueda={setRolesSearchTerm}
-                        placeholder="Buscar por nombre o RUT..."
-                        visibles={filteredRolesUsers.length}
-                        total={staff.length}
-                        unidad="usuarios"
-                        acciones={
-                            <Button onClick={handleCreate} disabled={!canActivateMore} className="gap-2 shadow-lg shadow-primary/20">
-                                <Plus className="h-4 w-4" /> Nuevo personal
-                            </Button>
-                        }
-                    />
-
-                    <Card className="border-border shadow-sm overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[300px]">Nombre / rol</TableHead>
-                                    <TableHead>Email (identificador)</TableHead>
-                                    <TableHead>Identificación (RUT)</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                <TabsContent data-section="personal.usuarios" value="list">
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+                        <div className="space-y-4 min-w-0">
+                            {staff.length > 6 && (
+                                <ListToolbar
+                                    busqueda={rolesSearchTerm}
+                                    onBusqueda={setRolesSearchTerm}
+                                    placeholder="Nombre o RUT"
+                                    visibles={filteredRolesUsers.length}
+                                    total={staff.length}
+                                    unidad="personas"
+                                />
+                            )}
+                            <div className="overflow-hidden rounded-xl border border-border bg-card">
                                 {filteredRolesUsers.length === 0 ? (
-                                    <TableEmpty colSpan={5}>{staff.length === 0 ? 'No hay personal registrado. Comienza agregando uno nuevo.' : 'Nadie coincide con la búsqueda.'}</TableEmpty>
+                                    <p className="px-5 py-6 text-sm text-muted-foreground">
+                                        {staff.length === 0 ? 'Todavía no hay personal. Agrega a la primera persona.' : 'Nadie coincide con la búsqueda.'}
+                                    </p>
                                 ) : (
-                                    filteredRolesUsers.map((user) => (
-                                        <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
-                                                        <UserCircle className="h-5 w-5" />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="font-semibold text-foreground truncate flex items-center gap-2">
-                                                            {user.name}
-                                                            {user.is_owner && (
-                                                                <Badge className="bg-primary h-5 text-xs px-1.5 font-bold">ADMIN</Badge>
-                                                            )}
-                                                        </span>
-                                                        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                                            {user.role_obj?.name || user.role || 'Vendedor'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-1.5 text-muted-foreground dark:text-muted-foreground truncate max-w-[180px]">
-                                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    {user.email || <span className="text-muted-foreground italic">Sin email</span>}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
+                                    <ul className="divide-y divide-border">
+                                        {filteredRolesUsers.map((user) => (
+                                            <li key={user.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+                                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary" aria-hidden>
+                                                    {iniciales(user.name)}
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-[15px] font-medium text-foreground">{user.name}</span>
+                                                    <span className="block truncate text-sm text-muted-foreground">{user.email || 'Sin correo'}</span>
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <Estado>{nombreRol(user.role_obj?.name || user.role || 'Vendedor')}</Estado>
+                                                    {user.is_owner && <Estado tono="bien">Cuenta principal</Estado>}
+                                                </span>
+                                                <label className="flex items-center gap-2 text-sm">
                                                     <Switch
                                                         checked={user.is_active}
                                                         onCheckedChange={() => handleToggleStatus(user)}
                                                         disabled={user.is_owner}
+                                                        aria-label={user.is_active ? `Desactivar a ${user.name}` : `Activar a ${user.name}`}
                                                     />
-                                                    <span className={cn(
-                                                        "text-xs font-bold uppercase tracking-wider",
-                                                        user.is_active ? "text-foreground font-semibold" : "text-muted-foreground"
-                                                    )}>
-                                                        {user.is_active ? 'Activo' : 'Inactivo'}
+                                                    <span className={user.is_active ? 'text-foreground' : 'text-muted-foreground'}>
+                                                        {user.is_active ? 'Activa' : 'Desactivada'}
                                                     </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <AccionFila icon={Pencil} label="Editar" onClick={() => handleEdit(user)} />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                </label>
+                                                <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>Editar</Button>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </Card>
+                            </div>
+                        </div>
+
+                        <section data-section="personal.resumen-roles" className="self-start rounded-xl border border-border bg-card p-5" aria-label="Roles">
+                            <h2 className="text-base font-semibold text-foreground">Qué puede hacer cada rol</h2>
+                            <ul className="mt-2 divide-y divide-border">
+                                {roles.map((r) => (
+                                    <li key={r.id} className="py-3">
+                                        <p className="font-medium text-foreground">{nombreRol(r.name)}</p>
+                                        <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{queEstaPermitido(r)}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    </div>
                 </TabsContent>
 
                 <TabsContent data-section="personal.roles" value="roles" className="space-y-6">
@@ -443,7 +436,7 @@ export default function PersonalPage() {
                                 <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
                                     <div className="flex items-center gap-1.5 mb-1 text-primary">
                                         <CheckCircle2 className="h-3.5 w-3.5" />
-                                        <span className="text-xs font-bold uppercase tracking-wider">Info: Admin</span>
+                                        <span className="text-sm font-semibold">Administrador</span>
                                     </div>
                                     <p className="text-xs text-primary leading-relaxed">
                                         El rol ADMINISTRADOR tiene todos los permisos activos por defecto y no se puede limitar.

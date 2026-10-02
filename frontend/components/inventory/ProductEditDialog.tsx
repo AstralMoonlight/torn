@@ -1,25 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertaError } from '@/components/ui/alerta-error'
 import { getApiErrorDetail } from '@/services/api'
-import { Loader2, Package, RefreshCw } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Product, updateProduct } from '@/services/products'
 import { getBrands, Brand } from '@/services/brands'
 import { type Tax } from '@/services/config'
+import { formatCLP } from '@/lib/format'
+import { DEFAULT_TAX_RATE, normalizeTaxRate, precioBruto } from '@/lib/taxes'
 
 // Radix no admite "" como valor de un SelectItem; "Sin marca" usa este y se
 // manda como null (un 0 viola la FK de brands).
@@ -33,6 +29,7 @@ interface Props {
     onAjustarStock: (product: Product) => void
 }
 
+/** Edición de un producto en un panel lateral: la lista sigue a la vista detrás. */
 export default function ProductEditDialog({ open, product, onClose, onAjustarStock }: Props) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -42,6 +39,7 @@ export default function ProductEditDialog({ open, product, onClose, onAjustarSto
     const [selectedBrand, setSelectedBrand] = useState<string>('')
     const [selectedTax, setSelectedTax] = useState<string>('')
     const [controlStock, setControlStock] = useState(true)
+    const [stockMinimo, setStockMinimo] = useState('')
 
     // For simple products (no variants)
     const [simplePrice, setSimplePrice] = useState(0)
@@ -60,12 +58,12 @@ export default function ProductEditDialog({ open, product, onClose, onAjustarSto
             setSelectedBrand(product.brand_id ? product.brand_id.toString() : SIN_MARCA)
             setSelectedTax(product.tax_id ? product.tax_id.toString() : '')
             setControlStock(product.controla_stock)
+            setStockMinimo(String(Number(product.stock_minimo) || ''))
 
             if (product.variants && product.variants.length > 0) {
                 setVariants(product.variants)
             } else {
                 setVariants([])
-                // Init simple product fields
                 setSimplePrice(parseFloat(product.precio_neto) || 0)
                 setSimpleBarcode(product.codigo_barras || '')
             }
@@ -80,7 +78,6 @@ export default function ProductEditDialog({ open, product, onClose, onAjustarSto
         setError(null)
         setLoading(true)
         try {
-            // 1. Save main product info (General)
             const mainPayload: Partial<Product> = {
                 nombre: baseName,
                 codigo_interno: baseSku,
@@ -91,14 +88,14 @@ export default function ProductEditDialog({ open, product, onClose, onAjustarSto
             }
 
             if (!isParent) {
-                // Producto simple: precio y código de barras van en el mismo update.
+                // Producto simple: precio, código de barras y aviso de stock van en el mismo update.
                 mainPayload.precio_neto = simplePrice.toString()
                 mainPayload.codigo_barras = simpleBarcode || null
+                mainPayload.stock_minimo = String(parseFloat(stockMinimo) || 0)
             }
 
             await updateProduct(product.id, mainPayload)
 
-            // 2. If it has variants, save them
             if (isParent) {
                 for (const v of variants) {
                     await updateProduct(v.id, {
@@ -124,234 +121,172 @@ export default function ProductEditDialog({ open, product, onClose, onAjustarSto
     if (!product) return null
 
     const isParent = product.variants && product.variants.length > 0
+    const impuesto = taxes.find((t) => t.id.toString() === selectedTax)
+    const tasa = impuesto ? normalizeTaxRate(impuesto.rate) : product.tax ? normalizeTaxRate(product.tax.rate) : DEFAULT_TAX_RATE
+    const costo = parseFloat(product.costo_unitario) || 0
+    const ganancia = simplePrice - costo
 
     return (
-        <Dialog open={open} onOpenChange={(val) => { if (!val) { setError(null); onClose() } }}>
-            <DialogContent data-section="inventario.editar-producto" className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        Editar producto: {product?.full_name || baseName}
-                    </DialogTitle>
-                    <DialogDescription>
-                        SKU: {baseSku}
-                    </DialogDescription>
-                </DialogHeader>
+        <Sheet open={open} onOpenChange={(val) => { if (!val) { setError(null); onClose() } }}>
+            <SheetContent data-section="inventario.editar-producto" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+                <SheetHeader className="border-b border-border px-6 py-5 pr-12">
+                    <SheetTitle>{product.full_name || baseName}</SheetTitle>
+                    <SheetDescription>Los cambios se aplican al guardar.</SheetDescription>
+                </SheetHeader>
 
-                <Tabs defaultValue="general" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="general">Información general</TabsTrigger>
-                        <TabsTrigger value="variants">
-                            {isParent ? `Variantes (${variants.length})` : 'Precio y stock'}
-                        </TabsTrigger>
-                    </TabsList>
-
-                    {/* ── General Tab ──────────────────────────────── */}
-                    <TabsContent value="general" className="space-y-4 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Nombre del producto</Label>
-                                <Input
-                                    value={baseName}
-                                    onChange={(e) => setBaseName(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>SKU base</Label>
-                                <Input
-                                    value={baseSku}
-                                    onChange={(e) => setBaseSku(e.target.value)}
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Marca</Label>
-                                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar marca" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={SIN_MARCA}>Sin marca</SelectItem>
-                                        {brands.map(b => (
-                                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2 pt-8">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <Input
-                                        type="checkbox"
-                                        checked={controlStock}
-                                        onChange={(e) => setControlStock(e.target.checked)}
-                                        className="w-4 h-4"
-                                    />
-                                    <span className="text-sm font-medium">Controlar stock globalmente</span>
-                                </label>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Impuesto aplicado</Label>
-                                <Select value={selectedTax} onValueChange={setSelectedTax}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="IVA (por defecto)" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {taxes.map(t => (
-                                            <SelectItem key={t.id} value={t.id.toString()}>
-                                                {t.name} ({(t.rate * 100).toFixed(0)}%)
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ep-nombre">Nombre</Label>
+                        <Input id="ep-nombre" value={baseName} onChange={(e) => setBaseName(e.target.value)} className="h-11 text-base" />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="ep-sku">Código</Label>
+                            <Input id="ep-sku" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} className="h-11 font-mono" />
                         </div>
+                        {!isParent && (
+                            <div className="space-y-1.5">
+                                <Label htmlFor="ep-barras">Código de barras</Label>
+                                <Input id="ep-barras" value={simpleBarcode} onChange={(e) => setSimpleBarcode(e.target.value)}
+                                    className="h-11 font-mono" placeholder="Escanea aquí..." />
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <Label>Marca</Label>
+                            <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                                <SelectTrigger className="h-11"><SelectValue placeholder="Elegir marca" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={SIN_MARCA}>Sin marca</SelectItem>
+                                    {brands.map(b => <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Impuesto</Label>
+                            <Select value={selectedTax} onValueChange={setSelectedTax}>
+                                <SelectTrigger className="h-11"><SelectValue placeholder="IVA (por defecto)" /></SelectTrigger>
+                                <SelectContent>
+                                    {taxes.map(t => (
+                                        <SelectItem key={t.id} value={t.id.toString()}>{t.name} ({(normalizeTaxRate(t.rate) * 100).toFixed(0)}%)</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="ep-desc">Descripción</Label>
+                        <Input id="ep-desc" value={baseDescription} onChange={(e) => setBaseDescription(e.target.value)} className="h-11" />
+                    </div>
+
+                    {isParent ? (
                         <div className="space-y-2">
-                            <Label>Descripción</Label>
-                            <Input
-                                value={baseDescription}
-                                onChange={(e) => setBaseDescription(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={handleSave} disabled={loading} className="gap-2 ">
-                                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Guardar cambios
-                            </Button>
-                        </div>
-                    </TabsContent>
-
-                    {/* ── Variants/Pricing Tab ────────────────────── */}
-                    <TabsContent value="variants" className="space-y-4 py-4">
-                        {isParent ? (
-                            <>
-                                <div className="rounded-md border border-border overflow-hidden">
-                                    <Table compacta>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Variante / SKU</TableHead>
-                                                <TableHead>Precio neto</TableHead>
-                                                <TableHead>Stock</TableHead>
-                                                <TableHead>Código de barras</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {variants.map((v, i) => (
+                            <h3 className="text-sm font-semibold text-foreground">Variantes ({variants.length})</h3>
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                                <Table compacta>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Variante y código</TableHead>
+                                            <TableHead>Precio neto</TableHead>
+                                            <TableHead>Stock</TableHead>
+                                            <TableHead>Código de barras</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {variants.map((v, i) => {
+                                            const cambiar = (campo: Partial<Product>) =>
+                                                setVariants((vs) => vs.map((x, j) => (j === i ? { ...x, ...campo } : x)))
+                                            return (
                                                 <TableRow key={v.id}>
                                                     <TableCell>
-                                                        <Input
-                                                            value={v.nombre}
-                                                            onChange={(e) => {
-                                                                const newVariants = [...variants]
-                                                                newVariants[i] = { ...v, nombre: e.target.value }
-                                                                setVariants(newVariants)
-                                                            }}
-                                                            className="h-8 text-xs mb-1"
-                                                        />
-                                                        <Input
-                                                            value={v.codigo_interno}
-                                                            onChange={(e) => {
-                                                                const newVariants = [...variants]
-                                                                newVariants[i] = { ...v, codigo_interno: e.target.value }
-                                                                setVariants(newVariants)
-                                                            }}
-                                                            className="h-8 text-xs font-mono w-32"
-                                                        />
+                                                        <Input value={v.nombre} onChange={(e) => cambiar({ nombre: e.target.value })} className="mb-1 h-9 text-sm" aria-label="Nombre de la variante" />
+                                                        <Input value={v.codigo_interno} onChange={(e) => cambiar({ codigo_interno: e.target.value })} className="h-9 w-32 font-mono text-xs" aria-label="Código de la variante" />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            value={v.precio_neto.toString()}
-                                                            onChange={(e) => {
-                                                                const newVariants = [...variants]
-                                                                newVariants[i] = { ...v, precio_neto: e.target.value }
-                                                                setVariants(newVariants)
-                                                            }}
-                                                            className="h-8 w-24 text-xs text-right font-tabular"
-                                                        />
+                                                        <Input type="number" value={v.precio_neto.toString()} onChange={(e) => cambiar({ precio_neto: e.target.value })}
+                                                            className="h-9 w-24 text-right font-tabular" aria-label="Precio neto" />
                                                     </TableCell>
                                                     <TableCell className="whitespace-nowrap">
-                                                        <span className="font-tabular text-sm mr-2">{Number(v.stock_actual)}</span>
+                                                        <span className="mr-2 font-tabular">{Number(v.stock_actual)}</span>
                                                         {controlStock && (
-                                                            <Button variant="outline" size="sm" className="h-8 text-xs"
-                                                                onClick={() => { onClose(); onAjustarStock(v) }}>
-                                                                Ajustar
-                                                            </Button>
+                                                            <Button variant="outline" size="sm" onClick={() => { onClose(); onAjustarStock(v) }}>Ajustar</Button>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Input
-                                                            value={v.codigo_barras || ''}
-                                                            onChange={(e) => {
-                                                                const newVariants = [...variants]
-                                                                newVariants[i] = { ...v, codigo_barras: e.target.value }
-                                                                setVariants(newVariants)
-                                                            }}
-                                                            placeholder="EAN-13"
-                                                            className="h-8 w-32 font-mono text-xs"
-                                                        />
+                                                        <Input value={v.codigo_barras || ''} onChange={(e) => cambiar({ codigo_barras: e.target.value })}
+                                                            placeholder="EAN-13" className="h-9 w-32 font-mono text-xs" aria-label="Código de barras" />
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="ep-precio">Precio neto</Label>
+                                    <Input id="ep-precio" type="number" inputMode="numeric" value={simplePrice.toString()}
+                                        onChange={(e) => setSimplePrice(parseFloat(e.target.value) || 0)} className="h-11 text-base font-tabular" />
+                                    <p className="text-sm text-muted-foreground">Con impuesto se cobra {formatCLP(precioBruto(simplePrice, tasa))}</p>
                                 </div>
-                                <div className="flex justify-end pt-4">
-                                    <Button onClick={handleSave} disabled={loading || variants.length === 0} className="gap-2 ">
-                                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        <RefreshCw className="h-4 w-4" />
-                                        Guardar todas las variantes
-                                    </Button>
+                                <div className="space-y-1.5">
+                                    <Label>Lo que te cuesta</Label>
+                                    <p className="flex h-11 items-center text-base font-tabular text-foreground">{costo > 0 ? formatCLP(costo) : 'Sin compras registradas'}</p>
+                                    <p className="text-sm text-muted-foreground">Sin IVA, de tus compras</p>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="bg-muted p-6 rounded-lg border border-border">
-                                <h3 className="text-sm font-medium mb-4 text-foreground">Configuración de inventario (producto simple)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <Label>Precio neto</Label>
-                                        <Input
-                                            type="number"
-                                            value={simplePrice.toString()}
-                                            onChange={(e) => setSimplePrice(parseFloat(e.target.value) || 0)}
-                                            className="font-tabular"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Stock actual</Label>
-                                        <div className="flex h-10 items-center gap-3">
-                                            <span className="font-tabular text-lg">{Number(product.stock_actual)}</span>
-                                            {product.controla_stock && (
-                                                <Button variant="outline" size="sm"
-                                                    onClick={() => { onClose(); onAjustarStock(product) }}>
-                                                    Ajustar stock
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Código de barras</Label>
-                                        <Input
-                                            value={simpleBarcode}
-                                            onChange={(e) => setSimpleBarcode(e.target.value)}
-                                            className="font-mono"
-                                            placeholder="Escanea aquí..."
-                                        />
+                            </div>
+                            {costo > 0 && simplePrice > 0 && (
+                                <p className="rounded-lg bg-primary/10 px-4 py-3 text-sm text-foreground">
+                                    {ganancia >= 0 ? 'Ganas' : 'Pierdes'} <strong className="font-tabular">{formatCLP(Math.abs(ganancia))}</strong> por unidad
+                                    {ganancia >= 0 && <>: el {Math.round((ganancia / simplePrice) * 100)}% de lo que cobras sin IVA</>}.
+                                </p>
+                            )}
+                        </>
+                    )}
+
+                    <div className="space-y-4 rounded-lg border border-border p-4">
+                        <label className="flex cursor-pointer items-center justify-between gap-3">
+                            <span>
+                                <span className="block text-sm font-medium text-foreground">Controlar stock</span>
+                                <span className="block text-sm text-muted-foreground">Descuenta lo vendido y avisa cuando se acaba.</span>
+                            </span>
+                            <Switch checked={controlStock} onCheckedChange={setControlStock} />
+                        </label>
+                        {!isParent && controlStock && (
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label>Stock actual</Label>
+                                    <div className="flex h-11 items-center gap-3">
+                                        <span className="text-lg font-semibold font-tabular">{Number(product.stock_actual)}</span>
+                                        {product.controla_stock && (
+                                            <Button variant="outline" size="sm" onClick={() => { onClose(); onAjustarStock(product) }}>Ajustar stock</Button>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex justify-end pt-6">
-                                    <Button onClick={handleSave} disabled={loading} className="gap-2 ">
-                                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        <RefreshCw className="h-4 w-4" />
-                                        Guardar todo
-                                    </Button>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="ep-minimo">Avísame cuando queden</Label>
+                                    <Input id="ep-minimo" type="number" inputMode="numeric" min={0} value={stockMinimo}
+                                        onChange={(e) => setStockMinimo(e.target.value)} className="h-11 font-tabular" placeholder="0" />
                                 </div>
                             </div>
                         )}
-                    </TabsContent>
-                </Tabs>
-                <AlertaError mensaje={error} />
-            </DialogContent>
-        </Dialog>
+                    </div>
+
+                    <AlertaError mensaje={error} />
+                </div>
+
+                <div className="flex gap-3 border-t border-border px-6 py-4">
+                    <Button onClick={handleSave} disabled={loading || (isParent && variants.length === 0)} className="h-11 flex-1 text-base">
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Guardar cambios
+                    </Button>
+                    <Button variant="outline" className="h-11" onClick={() => onClose()}>Cancelar</Button>
+                </div>
+            </SheetContent>
+        </Sheet>
     )
 }

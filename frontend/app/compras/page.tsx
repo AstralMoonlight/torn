@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-    ShoppingBag,
     Plus,
     Trash2,
     Search,
     Package,
     Calendar,
     FileText,
-    Clock,
     Printer
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -38,7 +36,6 @@ import { Badge } from '@/components/ui/badge'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { avisar } from '@/lib/store/uiStore'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     Dialog,
     DialogContent,
@@ -46,15 +43,24 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { type Provider } from '@/services/providers'
+import { getProviders, type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
 import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type Purchase, type PurchaseCreate } from '@/services/purchases'
 import { getApiErrorMessage, getApiErrorDetail, fetchBlobUrl } from '@/services/api'
-import { formatCLP, getTodayChile } from '@/lib/format'
+import { CHILE_TIMEZONE, diaEnPalabras, formatCLP, getTodayChile } from '@/lib/format'
 import ProviderSearchCombobox from '@/components/providers/ProviderSearchCombobox'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import ListToolbar from '@/components/layout/ListToolbar'
+import Resumen from '@/components/layout/Resumen'
+import FiltrosRapidos from '@/components/layout/FiltrosRapidos'
+
+const NOMBRE_DOC: Record<string, string> = { FACTURA: 'Factura', BOLETA: 'Boleta', SIN_DOCUMENTO: 'Sin documento' }
+const NOMBRE_MES = new Intl.DateTimeFormat('es-CL', { month: 'long', timeZone: CHILE_TIMEZONE })
+
+/** Mes (aaaa-mm) de una fecha, en hora de Chile. */
+const mesDe = (fecha: string | Date) => new Intl.DateTimeFormat('en-CA', { timeZone: CHILE_TIMEZONE }).format(new Date(fecha)).slice(0, 7)
 
 interface CartItem {
     product: Product
@@ -67,7 +73,7 @@ export default function ComprasPage() {
     const [products, setProducts] = useState<Product[]>([])
     const [items, setItems] = useState<CartItem[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
-    const [loadingPurchases, setLoadingPurchases] = useState(false)
+    const [loadingPurchases, setLoadingPurchases] = useState(true)
 
     // Form State
     const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
@@ -87,6 +93,12 @@ export default function ComprasPage() {
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
+    // La lista de compras es la vista principal; el formulario se abre al registrar.
+    // Desde Proveedores se llega con ?registrar=<id> para abrir el formulario con ese proveedor.
+    const [registrando, setRegistrando] = useState(() => new URLSearchParams(window.location.search).has('registrar'))
+    const [periodo, setPeriodo] = useState<'mes' | 'pasado' | 'todas'>('mes')
+    const [buscar, setBuscar] = useState('')
+
     const verPdfCompra = async (purchaseId: number) => {
         setErrorDetalle(null)
         try {
@@ -100,6 +112,8 @@ export default function ComprasPage() {
 
     useEffect(() => {
         loadInitialData()
+        const proveedor = Number(new URLSearchParams(window.location.search).get('registrar'))
+        if (proveedor) getProviders().then((ps) => setSelectedProvider(ps.find((p) => p.id === proveedor) ?? null)).catch(() => null)
     }, [])
 
     const loadInitialData = () => {
@@ -114,6 +128,7 @@ export default function ComprasPage() {
                 setPurchases(purchaseData)
             })
             .catch(err => avisar(getApiErrorMessage(err, 'Error al cargar datos'), { reintentar: loadInitialData }))
+            .finally(() => setLoadingPurchases(false))
     }
 
     const refreshPurchases = async () => {
@@ -163,6 +178,18 @@ export default function ComprasPage() {
         setItems(newItems)
     }
 
+    const ahora = new Date()
+    const esteMes = mesDe(ahora)
+    const mesPasado = mesDe(new Date(ahora.getFullYear(), ahora.getMonth() - 1, 15))
+    const delMes = purchases.filter((p) => mesDe(p.fecha_compra) === esteMes)
+    const ultima = [...purchases].sort((a, b) => b.fecha_compra.localeCompare(a.fecha_compra))[0]
+    const enPeriodo = periodo === 'todas' ? purchases
+        : purchases.filter((p) => mesDe(p.fecha_compra) === (periodo === 'mes' ? esteMes : mesPasado))
+    const q = buscar.trim().toLowerCase()
+    const visibles = q
+        ? enPeriodo.filter((p) => p.provider?.razon_social.toLowerCase().includes(q) || (p.folio ?? '').includes(q) || p.provider?.rut.includes(q))
+        : enPeriodo
+
     const totalNeto = items.reduce((sum, item) => sum + (item.cantidad * item.precio_costo), 0)
     // El IVA se calcula por línea con el impuesto de cada producto, igual que
     // en el backend (app/utils/taxes.py): un insumo exento no suma impuesto
@@ -208,6 +235,7 @@ export default function ComprasPage() {
             setFolio('')
             setObservacion('')
             setSelectedProvider(null)
+            setRegistrando(false)
             refreshPurchases()
         } catch (error) {
             setErrorIngreso(getApiErrorDetail(error, 'No se pudo registrar la compra.'))
@@ -229,22 +257,19 @@ export default function ComprasPage() {
     return (
         <PageContainer>
             <PageHeader
-                icon={ShoppingBag}
-                title="Ingreso de mercadería"
-                description="Registra compras y actualiza el stock de productos."
+                title="Compras"
+                description="Lo que le compras a tus proveedores. Al registrar una compra se suma el stock de cada producto."
+                actions={registrando ? (
+                    <Button variant="outline" className="h-11" onClick={() => setRegistrando(false)}>Volver a las compras</Button>
+                ) : (
+                    <Button className="h-11 text-base" onClick={() => setRegistrando(true)}>
+                        <Plus className="h-4 w-4" /> Registrar compra
+                    </Button>
+                )}
             />
 
-            <Tabs defaultValue="nuevo" className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="nuevo" className="gap-2">
-                        <Plus className="h-4 w-4" /> Nuevo ingreso
-                    </TabsTrigger>
-                    <TabsTrigger value="historial" className="gap-2" onClick={refreshPurchases}>
-                        <Clock className="h-4 w-4" /> Historial / gestión
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent data-section="compras.nueva" value="nuevo" className="space-y-6">
+            {registrando ? (
+                <div data-section="compras.nueva" className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Left Panel: Form Info */}
                         <Card className="lg:col-span-1 shadow-sm">
@@ -255,7 +280,7 @@ export default function ComprasPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Proveedor</Label>
+                                    <Label>Proveedor</Label>
                                     <ProviderSearchCombobox
                                         value={selectedProvider}
                                         onChange={setSelectedProvider}
@@ -264,7 +289,7 @@ export default function ComprasPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Tipo</Label>
+                                        <Label>Tipo</Label>
                                         <Select value={tipoDoc} onValueChange={setTipoDoc}>
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -277,7 +302,7 @@ export default function ComprasPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Folio</Label>
+                                        <Label>Folio</Label>
                                         <Input
                                             placeholder="N° Docto."
                                             value={folio}
@@ -287,7 +312,7 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Fecha de compra</Label>
+                                    <Label>Fecha de compra</Label>
                                     <div className="relative">
                                         <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -300,7 +325,7 @@ export default function ComprasPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Observaciones</Label>
+                                    <Label>Observaciones</Label>
                                     <textarea
                                         className="w-full min-h-[80px] rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                                         placeholder="Notas adicionales..."
@@ -472,61 +497,99 @@ export default function ComprasPage() {
                             </Card>
                         </div>
                     </div>
-                </TabsContent>
+                </div>
+            ) : (
+                <>
+                    {!loadingPurchases && (
+                        <Resumen datos={[
+                            {
+                                etiqueta: `Compraste en ${NOMBRE_MES.format(new Date())}`,
+                                valor: formatCLP(delMes.reduce((t, p) => t + Number(p.monto_total), 0)),
+                                nota: delMes.length
+                                    ? `${delMes.length} ${delMes.length === 1 ? 'compra' : 'compras'} a ${new Set(delMes.map((p) => p.provider_id)).size} ${new Set(delMes.map((p) => p.provider_id)).size === 1 ? 'proveedor' : 'proveedores'}`
+                                    : 'Todavía no hay compras este mes',
+                            },
+                            {
+                                etiqueta: 'IVA de tus compras del mes',
+                                valor: formatCLP(delMes.reduce((t, p) => t + Number(p.iva), 0)),
+                                nota: 'Se descuenta del IVA que pagas en el F29',
+                            },
+                            {
+                                etiqueta: 'Última compra',
+                                valor: ultima ? <span className="first-letter:uppercase inline-block">{diaEnPalabras(ultima.fecha_compra)}</span> : 'Ninguna',
+                                nota: ultima ? `${ultima.provider?.razon_social}, ${formatCLP(ultima.monto_total)}` : 'Regístrala con el botón de arriba',
+                            },
+                        ]} />
+                    )}
 
-                <TabsContent data-section="compras.historial" value="historial" className="space-y-4">
-                    <Card>
-                        <CardHeader className="py-4">
-                            <CardTitle className="text-base">Historial de compras</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Documento</TableHead>
-                                        <TableHead>Proveedor</TableHead>
-                                        <TableHead className="text-right">Total</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loadingPurchases ? (
-                                        <TableEmpty colSpan={5} loading />
-                                    ) : purchases.length === 0 ? (
-                                        <TableEmpty colSpan={5}>No hay compras registradas</TableEmpty>
-                                    ) : (
-                                        purchases.map(p => (
-                                            <TableRow key={p.id} className="hover:bg-accent/50 transition-colors">
-                                                <TableCell className="text-xs">
-                                                    {new Date(p.fecha_compra).toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })}
-                                                </TableCell>
-                                                <TableCell className="text-xs">
-                                                    <div className="font-medium">{p.tipo_documento}</div>
-                                                    <div className="text-muted-foreground font-mono">#{p.folio || 'S/N'}</div>
-                                                </TableCell>
-                                                <TableCell className="text-xs">
-                                                    {p.provider?.razon_social}
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium font-tabular">
-                                                    {formatCLP(p.monto_total)}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <AccionFila icon={Printer} label="Imprimir comprobante" onClick={() => verPdfCompra(p.id)} />
-                                                        <AccionFila icon={Search} label="Ver detalle" onClick={() => setSelectedPurchase(p)} />
-                                                        <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(p.id)} peligro />
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                    <ListToolbar
+                        busqueda={buscar}
+                        onBusqueda={setBuscar}
+                        placeholder="Proveedor o número de factura"
+                        visibles={visibles.length}
+                        total={enPeriodo.length}
+                        unidad="compras"
+                        filtros={
+                            <FiltrosRapidos
+                                etiqueta="Período"
+                                valor={periodo}
+                                onChange={setPeriodo}
+                                opciones={[
+                                    { valor: 'mes', etiqueta: 'Este mes' },
+                                    { valor: 'pasado', etiqueta: 'Mes pasado' },
+                                    { valor: 'todas', etiqueta: 'Todas' },
+                                ]}
+                            />
+                        }
+                    />
+
+                    <div data-section="compras.historial" className="overflow-hidden rounded-xl border border-border bg-card">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Proveedor</TableHead>
+                                    <TableHead>Documento</TableHead>
+                                    <TableHead className="hidden md:table-cell">Productos</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                    <TableHead><span className="sr-only">Acciones</span></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loadingPurchases ? (
+                                    <TableEmpty colSpan={6} loading />
+                                ) : visibles.length === 0 ? (
+                                    <TableEmpty colSpan={6}>
+                                        {buscar ? 'Ninguna compra coincide con la búsqueda.' : 'No hay compras en este período.'}
+                                    </TableEmpty>
+                                ) : (
+                                    visibles.map(p => (
+                                        <TableRow key={p.id}>
+                                            <TableCell className="text-[15px] first-letter:uppercase">{diaEnPalabras(p.fecha_compra)}</TableCell>
+                                            <TableCell className="text-[15px]">
+                                                <p className="text-foreground">{p.provider?.razon_social}</p>
+                                                <p className="text-sm text-muted-foreground">{p.provider?.rut}</p>
+                                            </TableCell>
+                                            <TableCell className="text-[15px]">{NOMBRE_DOC[p.tipo_documento] ?? p.tipo_documento}{p.folio ? ` ${p.folio}` : ''}</TableCell>
+                                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                                                {p.details.length} {p.details.length === 1 ? 'producto' : 'productos'}
+                                            </TableCell>
+                                            <TableCell className="text-right text-[15px] font-semibold font-tabular">{formatCLP(p.monto_total)}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button variant="outline" size="sm" onClick={() => setSelectedPurchase(p)}>Ver</Button>
+                                                    <AccionFila icon={Printer} label="Imprimir comprobante" onClick={() => verPdfCompra(p.id)} />
+                                                    <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(p.id)} peligro />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </>
+            )}
 
             {/* Purchase Detail Modal */}
             <Dialog open={!!selectedPurchase} onOpenChange={() => { setSelectedPurchase(null); setErrorDetalle(null) }}>
@@ -549,16 +612,16 @@ export default function ComprasPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Fecha de compra</p>
+                                    <p className="text-sm text-muted-foreground">Fecha de compra</p>
                                     <p>{new Date(selectedPurchase.fecha_compra).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold">Monto total</p>
+                                    <p className="text-sm text-muted-foreground">Monto total</p>
                                     <p className="font-bold text-foreground text-lg">{formatCLP(selectedPurchase.monto_total)}</p>
                                 </div>
                                 {selectedPurchase.observacion && (
                                     <div className="col-span-2">
-                                        <p className="text-xs text-muted-foreground uppercase font-bold">Observación</p>
+                                        <p className="text-sm text-muted-foreground">Observación</p>
                                         <p className="italic">&ldquo;{selectedPurchase.observacion}&rdquo;</p>
                                     </div>
                                 )}

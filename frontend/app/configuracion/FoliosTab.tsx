@@ -17,6 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import api, { getApiErrorDetail } from "@/services/api";
 import { AlertaError } from "@/components/ui/alerta-error";
+import { Progress } from "@/components/ui/progress";
+import Estado from "@/components/layout/Estado";
 import { useSessionStore } from "@/lib/store/sessionStore";
 import { avisar } from "@/lib/store/uiStore";
 
@@ -37,14 +39,17 @@ type Certificado = {
 };
 
 const DTE_NAMES: Record<number, string> = {
-    33: "Factura Electrónica",
-    34: "Factura Exenta",
-    39: "Boleta Electrónica",
-    41: "Boleta Exenta",
-    52: "Guía de Despacho",
-    56: "Nota de Débito",
-    61: "Nota de Crédito",
+    33: "Factura",
+    34: "Factura exenta",
+    39: "Boleta",
+    41: "Boleta exenta",
+    52: "Guía de despacho",
+    56: "Nota de débito",
+    61: "Nota de crédito",
 };
+
+const fechaLarga = (iso: string) =>
+    new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
 
 /**
  * Folios (CAF) y certificado digital. Ambos viven en dte-torn; el backend
@@ -153,18 +158,19 @@ export default function FoliosTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold tracking-tight">Gestión de folios (CAF)</h2>
+                    <h2 className="text-xl font-semibold tracking-tight">Folios y certificado</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {AYUDA_AMBIENTE[ambiente ?? 'CERT']}
+                        Los folios son los números que el SII te autoriza para cada documento. Cuando se acaban, no puedes emitir ese documento hasta subir más.
                     </p>
+                    <p className="text-sm text-muted-foreground mt-1">{AYUDA_AMBIENTE[ambiente ?? 'CERT']}</p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
                     <input ref={cafInput} type="file" accept=".xml" className="hidden" onChange={handleCaf} />
                     <Button variant="secondary" onClick={() => cafInput.current?.click()} disabled={subiendo || ambiente === 'DEV'}>
                         {subiendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-                        Cargar CAF manual
+                        Subir folios (archivo CAF)
                     </Button>
                     <Dialog open={autoOpen} onOpenChange={(o) => { setAutoOpen(o); setErrorAuto(null); }}>
                         <DialogTrigger asChild>
@@ -217,52 +223,23 @@ export default function FoliosTab() {
                     stocks.map((stock) => {
                         const isLow = stock.available < 20;
                         const percentage = stock.total > 0 ? (stock.available / stock.total) * 100 : 0;
-
                         return (
-                            <Card key={stock.dte_type} className={isLow ? "border-destructive/30" : ""}>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg">
-                                        {DTE_NAMES[stock.dte_type] || `Documento ${stock.dte_type}`}
-                                        <span className="text-sm text-muted-foreground ml-2">({stock.dte_type})</span>
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className={`text-4xl font-bold ${isLow ? "text-destructive" : ""}`}>
-                                                {stock.available}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                Folios disponibles
-                                            </p>
-                                        </div>
-
-                                        <div className="relative h-16 w-16">
-                                            <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 36 36">
-                                                <circle
-                                                    className="text-muted"
-                                                    cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" strokeWidth="4"
-                                                />
-                                                <circle
-                                                    className={isLow ? "text-destructive" : "text-primary"}
-                                                    strokeDasharray={`${percentage}, 100`}
-                                                    cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" strokeWidth="4"
-                                                />
-                                            </svg>
-                                        </div>
+                            <Card key={stock.dte_type} className={isLow ? "border-destructive/40" : ""}>
+                                <CardContent className="space-y-3 p-5">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <h3 className="text-base font-semibold text-foreground">{DTE_NAMES[stock.dte_type] || `Documento ${stock.dte_type}`}</h3>
+                                        <Estado tono={stock.available === 0 ? "mal" : isLow ? "mal" : "bien"}>
+                                            {stock.available === 0 ? "Sin folios" : isLow ? "Se acaban" : "Al día"}
+                                        </Estado>
                                     </div>
-                                    {stock.total > 0 && (
-                                        <div className="flex flex-col gap-1 mt-4">
-                                            <p className="text-xs text-muted-foreground">
-                                                Rango actual: {stock.latest_folio_desde} - {stock.latest_folio_hasta}
-                                            </p>
-                                            {stock.fecha_vencimiento && (
-                                                <p className="text-xs text-muted-foreground font-medium">
-                                                    Vence: {new Date(stock.fecha_vencimiento + 'T00:00:00').toLocaleDateString("es-CL")}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
+                                    <p className="text-[15px] text-foreground">
+                                        Te quedan <strong className={`text-2xl font-tabular ${isLow ? "text-destructive" : ""}`}>{stock.available.toLocaleString("es-CL")}</strong>
+                                        {stock.total > 0 && <> de {stock.total.toLocaleString("es-CL")}</>}
+                                    </p>
+                                    <Progress value={percentage} className={isLow ? "h-2 [&>div]:bg-destructive" : "h-2"} />
+                                    <p className="text-sm text-muted-foreground">
+                                        {isLow ? "Pide más en el sitio del SII y súbelos aquí." : stock.fecha_vencimiento ? `Vencen el ${fechaLarga(stock.fecha_vencimiento)}.` : `Números del ${stock.latest_folio_desde} al ${stock.latest_folio_hasta}.`}
+                                    </p>
                                 </CardContent>
                             </Card>
                         );
@@ -273,9 +250,9 @@ export default function FoliosTab() {
             <Card>
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                     <div>
-                        <CardTitle>Certificado digital</CardTitle>
+                        <CardTitle className="text-base">Certificado digital</CardTitle>
                         <CardDescription>
-                            Con él se firman los documentos. Se guarda cifrado.
+                            Firma cada documento que envías al SII. Se guarda cifrado.
                         </CardDescription>
                     </div>
                     <Dialog open={certOpen} onOpenChange={(o) => { setCertOpen(o); setErrorCert(null); }}>
@@ -319,15 +296,11 @@ export default function FoliosTab() {
                     ) : !certificado ? (
                         <p className="text-sm text-destructive">Sin certificado: no se pueden emitir documentos.</p>
                     ) : (
-                        <div className="text-sm space-y-1">
-                            <p>Titular: <span className="font-medium">{certificado.titular_rut ?? "-"}</span></p>
-                            {certificado.not_after && (
-                                <p className={certificado.dias_restantes !== null && certificado.dias_restantes < 30 ? "text-destructive font-medium" : ""}>
-                                    Vence: {new Date(certificado.not_after).toLocaleDateString("es-CL")}
-                                    {certificado.dias_restantes !== null && ` (${certificado.dias_restantes} días)`}
-                                </p>
-                            )}
-                        </div>
+                        <p className={`text-[15px] ${certificado.dias_restantes !== null && certificado.dias_restantes < 30 ? "font-medium text-destructive" : "text-foreground"}`}>
+                            A nombre del RUT {certificado.titular_rut ?? "sin informar"}.
+                            {certificado.not_after && <> Vence el {fechaLarga(certificado.not_after)}
+                                {certificado.dias_restantes !== null && (certificado.dias_restantes < 0 ? ", ya vencido" : `, en ${certificado.dias_restantes} días`)}.</>}
+                        </p>
                     )}
                 </CardContent>
             </Card>
