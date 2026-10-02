@@ -195,7 +195,7 @@ export default function ConfigurationPage() {
 
             <Tabs value={pestana} onValueChange={setPestana} orientation="vertical"
                 className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-                <TabsList className="h-auto flex-col items-stretch gap-1 bg-transparent p-0">
+                <TabsList className="h-auto flex-col items-stretch justify-start gap-1 self-start bg-transparent p-0 md:sticky md:top-4">
                     {secciones.map((sec) => (
                         <TabsTrigger key={sec.valor} value={sec.valor}
                             className="flex flex-col items-start whitespace-normal rounded-lg px-3 py-2.5 text-left data-[state=active]:bg-muted data-[state=active]:shadow-none">
