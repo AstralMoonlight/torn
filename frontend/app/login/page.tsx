@@ -26,6 +26,7 @@ const VARIANTES = [
 ]
 
 type Documento = {
+    emisor: string
     titulo: string
     numero: string
     receptor?: string
@@ -34,39 +35,51 @@ type Documento = {
     total: string
 }
 
-// De rubros distintos, para no parecer de una sola empresa. Cada documento lleva
-// uno gracioso y dos normales.
-const ITEMS: [string, number][] = [
-    ['Pan amasado x2', 2400],
-    ['Martillo carpintero', 8990],
-    ['Corte de pelo', 7000],
-    ['Cuaderno universitario', 1990],
-    ['Completo italiano', 2500],
-    ['Tornillos x50', 1890],
-    ['Lavado de auto', 8000],
-    ['Shampoo 750 ml', 3990],
-    ['Alimento perro 3 kg', 12990],
-    ['Bolsa de hielo', 1500],
-    ['Empanada de pino', 2800],
-    ['Ampolleta LED 9 W', 1290],
-]
+type Item = [string, number]
 
-const ITEMS_GRACIOSOS: [string, number][] = [
-    ['Calcetín sin su par', 500],
-    ['Paciencia para el lunes', 990],
-    ['Tupper con su tapa', 4990],
-    ['Cargador que sí carga', 6990],
-    ['Planta que no se muere', 7990],
-    ['Café para el cierre', 1800],
-    ['Paraguas pa la sequía', 5990],
-    ['Control remoto perdido', 3490],
-]
-
-const CLIENTES = [
-    'Almacén Doña Rosa - 76.123.456-0',
-    'Ferretería El Clavo Feliz - 77.845.210-3',
-    'Peluquería Tijeras Locas - 76.550.319-1',
-    'Minimarket Don Lucho - 78.012.664-7',
+// Negocios de rubros distintos, para no parecer de una sola empresa. Cada documento
+// sale de uno y lleva dos productos normales y uno gracioso de ese mismo rubro.
+const NEGOCIOS: { nombre: string; rut: string; items: Item[]; graciosos: Item[] }[] = [
+    {
+        nombre: 'Almacén Doña Rosa', rut: '76.123.456-0',
+        items: [['Pan amasado x2', 2400], ['Leche entera 1 L', 1190], ['Arroz grado 1 kg', 1590], ['Aceite 1 L', 2690], ['Huevos x12', 3990]],
+        graciosos: [['Fiado hasta el viernes', 5000], ['Copucha del barrio', 0], ['Bolsa para las bolsas', 100], ['Vuelto en dulces', 50], ['Marraqueta con conversa', 350]],
+    },
+    {
+        nombre: 'Ferretería El Clavo Feliz', rut: '77.845.210-3',
+        items: [['Martillo carpintero', 8990], ['Tornillos x50', 1890], ['Silicona transparente', 3490], ['Huincha de medir 5 m', 4290], ['Cinta aislante', 990]],
+        graciosos: [['Tornillo que sobra', 50], ['Manual que nadie lee', 0], ['Llave que no es de nada', 1200], ['Clavo pal cuadro chueco', 150], ['Silicona pa todo', 2990]],
+    },
+    {
+        nombre: 'Peluquería Tijeras Locas', rut: '76.550.319-1',
+        items: [['Corte de pelo', 7000], ['Lavado y secado', 5000], ['Tintura', 18000], ['Corte niño', 5500], ['Barba perfilada', 4000]],
+        graciosos: [['Solo las puntitas', 7000], ['Copucha incluida', 0], ['Flequillo arrepentido', 3500], ['Cara de quedó lindo', 0], ['Café mientras seca', 1000]],
+    },
+    {
+        nombre: 'Panadería La Hallulla', rut: '78.012.664-7',
+        items: [['Marraqueta 1 kg', 2290], ['Hallulla 1 kg', 2290], ['Kuchen de nuez', 6990], ['Empanada de pino', 2800], ['Berlín', 900]],
+        graciosos: [['Pan pa la once eterna', 2290], ['Miga para las palomas', 0], ['Calugas para la abuela', 1500], ['Pan comido en el camino', 1150], ['Berlín sin manjar', 900]],
+    },
+    {
+        nombre: 'Librería La Goma', rut: '76.345.678-1',
+        items: [['Cuaderno universitario', 1990], ['Lápiz pasta azul', 350], ['Corrector', 1290], ['Block de dibujo', 1890], ['Pegamento en barra', 990]],
+        graciosos: [['Goma que no borra', 300], ['Lápiz que se roban', 350], ['Tarea de último minuto', 2990], ['Cartulina pa mañana', 590], ['Regla que no es recta', 490]],
+    },
+    {
+        nombre: 'Veterinaria Patitas', rut: '77.112.233-7',
+        items: [['Alimento perro 3 kg', 12990], ['Consulta', 15000], ['Antipulgas', 9990], ['Arena gato 5 kg', 4990], ['Collar ajustable', 3990]],
+        graciosos: [['Juguete que ignorará', 3990], ['Cama que no usará', 14990], ['Snack por portarse bien', 990], ['Caja de cartón favorita', 0], ['Disculpas al cartero', 0]],
+    },
+    {
+        nombre: 'Taller El Pistón', rut: '76.998.120-9',
+        items: [['Cambio de aceite', 25000], ['Pastillas de freno', 32000], ['Alineación', 15000], ['Ampolleta foco', 3990], ['Lavado de auto', 8000]],
+        graciosos: [['Revisar ese ruidito', 9990], ['Ruidito que se fue solo', 0], ['Aromatizante pino', 1490], ['Apagar la luz del check', 4990], ['Paciencia para el taco', 990]],
+    },
+    {
+        nombre: 'Bazar El Cachureo', rut: '77.501.402-4',
+        items: [['Cargador USB-C', 4990], ['Pilas AA x4', 2490], ['Ampolleta LED 9 W', 1290], ['Alargador 3 tomas', 3990], ['Audífonos', 5990]],
+        graciosos: [['Cargador que sí carga', 6990], ['Control remoto perdido', 3490], ['Calcetín sin su par', 500], ['Tupper con su tapa', 4990], ['Paraguas pa la sequía', 5990]],
+    },
 ]
 
 const sortear = <T,>(lista: T[]) => lista[Math.floor(Math.random() * lista.length)]
@@ -75,18 +88,21 @@ const barajar = <T,>(lista: T[]) => [...lista].sort(() => Math.random() - 0.5)
 const folio = () => `N° ${(100 + Math.floor(Math.random() * 3000)).toLocaleString('es-CL')}`
 
 function armarDocumento(): Documento {
-    const items = barajar([sortear(ITEMS_GRACIOSOS), ...barajar(ITEMS).slice(0, 2)])
+    const [negocio, cliente] = barajar(NEGOCIOS)
+    const items = barajar([sortear(negocio.graciosos), ...barajar(negocio.items).slice(0, 2)])
     const lineas = items.map(([n, p]): [string, string] => [n, formatCLP(p)])
     const suma = items.reduce((t, [, p]) => t + p, 0)
+    const emisor = `${negocio.nombre} - ${negocio.rut}`
     if (Math.random() < 0.5) {
-        return { titulo: 'Boleta electrónica', numero: folio(), lineas, total: formatCLP(suma) }
+        return { emisor, titulo: 'Boleta electrónica', numero: folio(), lineas, total: formatCLP(suma) }
     }
     // En la factura los precios son netos.
     const iva = Math.round(suma * 0.19)
     return {
+        emisor,
         titulo: 'Factura electrónica',
         numero: folio(),
-        receptor: sortear(CLIENTES),
+        receptor: `Cliente: ${cliente.nombre} - ${cliente.rut}`,
         lineas,
         subtotales: [['Neto', formatCLP(suma)], ['IVA 19%', formatCLP(iva)]],
         total: formatCLP(suma + iva),
@@ -116,6 +132,7 @@ function Impresion({ doc, variante }: { doc: Documento; variante: (typeof VARIAN
                         }}
                     />
                     <div className="bg-white px-6 pt-4 pb-6 font-mono text-[13px] leading-6" style={{ color: TINTA }}>
+                        <p className="mb-2 text-center text-[11px] leading-5">{doc.emisor}</p>
                         <p className="text-center font-semibold">{doc.titulo}</p>
                         <p className="text-center opacity-60">{doc.numero}</p>
                         {doc.receptor && <p className="mt-1 text-center text-[11px] leading-5 opacity-60">{doc.receptor}</p>}
