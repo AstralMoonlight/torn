@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { AlertaError } from '@/components/ui/alerta-error'
-import { Check, Loader2, Plus, Settings, Percent, Printer, LayoutGrid, Layers, FileText, Palette, Landmark, Users, Building2 } from 'lucide-react'
+import { Check, Loader2, Plus, Percent, Printer, LayoutGrid, Layers, Palette, Landmark, Users, Building2 } from 'lucide-react'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useEsAdmin } from '@/lib/store/sessionStore'
 import { useSettingsStore } from '@/lib/store/settingsStore'
@@ -92,11 +92,10 @@ export default function ConfigurationPage() {
     const guardar = useSettingsStore((s) => s.guardar)
     const [taxes, setTaxes] = useState<Tax[]>([])
     // `?tab=folios` abre esa pestaña (el aviso de pocos folios del panel enlaza ahí).
-    const [pestana, setPestana] = useState('general')
-    useEffect(() => {
+    const [pestana, setPestana] = useState(() => {
         const tab = new URLSearchParams(window.location.search).get('tab')
-        if (tab) setPestana(tab)
-    }, [])
+        return !tab || tab === 'general' ? 'impresion' : tab
+    })
     const [loadingTaxes, setLoadingTaxes] = useState(true)
     const posVariantDisplay = useUIStore((s) => s.posVariantDisplay)
     const setPosVariantDisplay = useUIStore((s) => s.setPosVariantDisplay)
@@ -171,34 +170,42 @@ export default function ConfigurationPage() {
         )
     }
 
+    // Las de administración solo las ve quien las puede cambiar.
+    const secciones = [
+        { valor: 'impresion', titulo: 'Impresión', detalle: 'Ticket de 80 o 58 mm, o carta' },
+        ...(isAdmin ? [
+            { valor: 'caja', titulo: 'Caja y descuentos', detalle: 'Control de caja y descuento máximo' },
+            { valor: 'color', titulo: 'Color', detalle: 'El color de botones y menú' },
+        ] : []),
+        { valor: 'impuestos', titulo: 'Impuestos', detalle: 'IVA y otros impuestos' },
+        { valor: 'folios', titulo: 'Folios y certificado', detalle: 'Lo que necesitas para emitir' },
+    ]
+
     const modos: { value: ColorMode; label: string; detalle: string; icon: typeof Users }[] = [
         { value: 'empresa', label: 'Por empresa', detalle: 'Eliges un color y lo ven todos.', icon: Building2 },
         { value: 'usuario', label: 'Libre por usuario', detalle: 'Cada uno elige el suyo en el menú lateral.', icon: Users },
     ]
 
     return (
-        <PageContainer className="max-w-4xl">
+        <PageContainer className="max-w-6xl">
             <PageHeader
-                icon={Settings}
                 title="Configuración"
-                description="Administra las preferencias generales y los parámetros del sistema."
+                description="Cómo trabaja Factureando en tu negocio. Los cambios se guardan solos al elegir cada opción."
             />
 
-            <Tabs value={pestana} onValueChange={setPestana} className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="general" className="gap-2">
-                        <Settings className="h-4 w-4" /> General
-                    </TabsTrigger>
-                    <TabsTrigger value="impuestos" className="gap-2">
-                        <Percent className="h-4 w-4" /> Impuestos
-                    </TabsTrigger>
-                    <TabsTrigger value="folios" className="gap-2">
-                        <FileText className="h-4 w-4" /> Folios (CAF)
-                    </TabsTrigger>
+            <Tabs value={pestana} onValueChange={setPestana} orientation="vertical"
+                className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+                <TabsList className="h-auto flex-col items-stretch gap-1 bg-transparent p-0">
+                    {secciones.map((sec) => (
+                        <TabsTrigger key={sec.valor} value={sec.valor}
+                            className="flex flex-col items-start whitespace-normal rounded-lg px-3 py-2.5 text-left data-[state=active]:bg-muted data-[state=active]:shadow-none">
+                            <span className="text-[15px] font-medium text-foreground">{sec.titulo}</span>
+                            <span className="text-sm font-normal text-muted-foreground">{sec.detalle}</span>
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
-                <TabsContent data-section="configuracion.general" value="general" className="space-y-6">
-                    <p className="text-xs text-muted-foreground">Los cambios se guardan solos al elegir cada opción.</p>
+                <TabsContent data-section="configuracion.impresion" value="impresion" className="mt-0 space-y-6">
 
                     <Card>
                         <CardHeader>
@@ -283,6 +290,9 @@ export default function ConfigurationPage() {
                         </CardContent>
                     </Card>
 
+                </TabsContent>
+
+                <TabsContent data-section="configuracion.caja" value="caja" className="mt-0 space-y-6">
                     {isAdmin && (
                         <Card data-section="configuracion.general.caja">
                             <CardHeader>
@@ -347,6 +357,9 @@ export default function ConfigurationPage() {
                         </Card>
                     )}
 
+                </TabsContent>
+
+                <TabsContent data-section="configuracion.color" value="color" className="mt-0 space-y-6">
                     {isAdmin && (
                         <Card data-section="configuracion.general.color">
                             <CardHeader>
@@ -393,7 +406,7 @@ export default function ConfigurationPage() {
                     )}
                 </TabsContent>
 
-                <TabsContent data-section="configuracion.impuestos" value="impuestos">
+                <TabsContent data-section="configuracion.impuestos" value="impuestos" className="mt-0">
                     <Card>
                         <CardHeader>
                             <CardTitle>Gestión de impuestos</CardTitle>
@@ -469,12 +482,8 @@ export default function ConfigurationPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent data-section="configuracion.folios" value="folios">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <FoliosTab />
-                        </CardContent>
-                    </Card>
+                <TabsContent data-section="configuracion.folios" value="folios" className="mt-0">
+                    <FoliosTab />
                 </TabsContent>
             </Tabs>
         </PageContainer>
