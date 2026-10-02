@@ -12,6 +12,8 @@ Dos modos:
   las facturas) para la etapa de muestras impresas. No toca el SII.
 - `libro`: arma, firma y sube el libro de ventas o de compras del set
   (`DTE_LIBRO=ventas|compras|guias`) y muestra el N° de envío para declararlo.
+- `rcof`: arma, firma y sube el Reporte de Consumo de Folios del día del set de
+  boletas (lo pide la certificación de boletas, junto con el set).
 - `revisar-set`: lee el set de pruebas del SII y muestra, caso por caso, qué se
   va a emitir y con qué montos. No toca el SII ni la base de datos.
 - `enviar`: emite **un documento de prueba real** al SII de certificación y
@@ -35,6 +37,7 @@ Variables (en `.env`; la clave nunca en el comando ni en un chat):
     DTE_SET                   archivo del set de pruebas del SII (`set`, `revisar-set`, `muestras`)
     DTE_SET_NOMBRE            set a usar del archivo (por defecto `SET BASICO`; p. ej. `SET FACTURA EXENTA`, `SET DE SIMULACION`)
     DTE_SET_INTENTO           2, 3...: reenvía un set rechazado con folios nuevos (`set`, `muestras`, `libro`)
+    DTE_RCOF_SEC              2, 3...: secuencia del RCOF al reenviar el mismo día corregido (`rcof`)
 
 Uso:
 
@@ -900,6 +903,75 @@ async def modo_libro() -> int:
     return 1 if rechazado else 0
 
 
+# --------------------------------------------------------------------- rcof --
+
+
+async def modo_rcof() -> int:
+    """Arma, firma y sube el RCOF del día del set de boletas (`DTE_SET`).
+
+    `DTE_RCOF_SEC=2` (3, ...) reenvía el día corregido: el SII exige que la
+    secuencia suba en cada reenvío. Guarda una copia del XML en `DTE_MUESTRAS`.
+    """
+    from pathlib import Path
+
+    from app.dte.rcof import Consumido, construir_rcof, firmar_rcof
+
+    _, _, cert = _certificado()
+    set_ = _leer_set()
+    if any(c.tipo_dte not in BOLETAS for c in set_.casos):
+        sys.exit("El RCOF es solo de boletas: DTE_SET debe ser el set de boletas.")
+    tenant, docs = await _documentos_del_set(
+        [_prefijo_set(set_.numero_atencion) + c.id for c in set_.casos], "set de boletas"
+    )
+    dias = {d.fecha_emision for d in docs}
+    if len(dias) != 1:
+        sys.exit(f"Las boletas del set son de días distintos ({sorted(dias)}): un RCOF es de un solo día.")
+    dia = dias.pop()
+
+    arbol = construir_rcof(
+        tenant.rut_emisor, cert.rut, tenant.resolucion_fecha, tenant.resolucion_numero, dia,
+        [Consumido(d.tipo_dte, d.folio, d.monto_neto, d.monto_iva, d.monto_exento, d.monto_total) for d in docs],
+        sec_envio=int(os.environ.get("DTE_RCOF_SEC") or 1),
+    )
+    xml = firmar_rcof(arbol, cert)
+    carpeta = Path(os.environ.get("DTE_MUESTRAS", "/tmp/muestras"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / f"rcof_{dia:%Y%m%d}.xml").write_bytes(xml)
+    print(f"RCOF del {dia:%d-%m-%Y}, {len(docs)} boletas: guardado en {carpeta / f'rcof_{dia:%Y%m%d}.xml'}")
+
+    s = get_settings()
+    redis = Redis.from_url(s.redis_url)
+    resultado = None
+    async with crear_http(s.sii_timeout_segundos) as http:
+        sii = ClienteSii(http, redis, ambiente="CERT", ttl_token=s.sii_token_ttl_segundos)
+        track = await sii.enviar(Canal.DTE, tenant.id, cert, tenant.rut_emisor, xml, f"rcof-{dia:%Y%m%d}.xml")
+        subido = datetime.now(ZONA_CHILE)
+        print(f"Envío del RCOF: track {track}, subido {subido:%H:%M:%S} hora de Chile")
+        while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
+            await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
+            try:
+                resultado = await sii.consultar(Canal.DTE, tenant.id, cert, tenant.rut_emisor, track)
+            except SiiError as exc:
+                print(f"   ({_transcurrido(subido)})  consulta falló: {exc}")
+                continue
+            print(f"   ({_transcurrido(subido)})  {resultado.estado}: {resultado.glosa or ''}")
+            if resultado.estado not in ("REC", "SOK", "CRT", "FOK", "PDR", "PRD", "-"):
+                break
+    await redis.aclose()
+    await get_engine().dispose()
+
+    if resultado is None:
+        print(f"El SII todavía no responde. Consultar el track {track} más tarde.")
+        return 1
+    # ponytail: los estados finales del RCOF no están documentados; se trata como
+    # rechazo lo que empieza con R y se muestra la respuesta completa.
+    print(resultado.crudo)
+    rechazado = resultado.estado.startswith("R")
+    if not rechazado:
+        print(f"RCOF recibido: track {track}, fecha {subido:%d-%m-%Y}")
+    return 1 if rechazado else 0
+
+
 # ---------------------------------------------------------------- verificar --
 
 
@@ -1018,7 +1090,7 @@ if __name__ == "__main__":
     if modo == "revisar-set":
         sys.exit(modo_revisar_set())
     modos = {"token": modo_token, "enviar": modo_enviar, "verificar": modo_verificar, "set": modo_set,
-             "muestras": modo_muestras, "libro": modo_libro}
+             "muestras": modo_muestras, "libro": modo_libro, "rcof": modo_rcof}
     if modo not in modos:
-        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set', 'muestras', 'libro' o 'revisar-set'.")
+        sys.exit(f"Modo desconocido: {modo!r}. Usar 'token', 'enviar', 'verificar', 'set', 'muestras', 'libro', 'rcof' o 'revisar-set'.")
     sys.exit(asyncio.run(modos[modo]()))

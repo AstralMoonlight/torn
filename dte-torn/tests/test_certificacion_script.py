@@ -494,7 +494,7 @@ async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, m
                 "estado": "EPR",
                 "estadistica": [{"tipo": 39, "informados": 5, "aceptados": 5, "rechazados": 0, "reparos": 0}],
             })
-        raise AssertionError(f"URL inesperada: {url}")
+        return entorno(pedido)  # canal DTE (el RCOF): el SII simulado de siempre
 
     monkeypatch.setattr(certificacion, "crear_http", lambda timeout: httpx.AsyncClient(transport=httpx.MockTransport(sii)))
     assert await certificacion.modo_set() == 0
@@ -508,3 +508,16 @@ async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, m
     assert sorted(d.monto_total for d in docs) == [2040, 3500, 4100, 14720, 29800]
     assert {d.estado for d in docs} == {"ACEPTADO"}
     assert {d.receptor_rut for d in docs} == {None}
+
+
+async def test_rcof_del_set_de_boletas(entorno, tmp_path, monkeypatch, capsys) -> None:
+    """El RCOF sale de las boletas aceptadas del set y va por el canal DTE."""
+    await test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, monkeypatch, capsys)
+    monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path / "muestras"))
+
+    assert await certificacion.modo_rcof() == 0
+
+    assert "RCOF recibido: track 0123456789" in capsys.readouterr().out
+    assert entorno.llamadas.count("upload") == 1
+    rcof = next((tmp_path / "muestras").glob("rcof_*.xml")).read_bytes()
+    assert b"<MntTotal>54160</MntTotal>" in rcof and b"<FoliosEmitidos>5</FoliosEmitidos>" in rcof
