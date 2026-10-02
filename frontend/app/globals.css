@@ -188,3 +188,15 @@ html[data-ver-secciones] [data-section]::before {
   color: hsl(var(--primary-foreground));
   pointer-events: none;
 }
+
+/* Login: el documento sale de la impresora una sola vez al cargar. */
+@keyframes imprimir-boleta {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.boleta-imprime {
+  animation: imprimir-boleta 1.6s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boleta-imprime { animation: none; }
+}
