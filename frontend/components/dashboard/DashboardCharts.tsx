@@ -73,7 +73,7 @@ export default function DashboardCharts({ salesData, paymentData }: Props) {
             </div>
 
             <div className="rounded-xl border border-border bg-card p-4 ">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Medios de pago de hoy</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Cómo te pagan hoy</h3>
                 {paymentData.length > 0 ? (
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
