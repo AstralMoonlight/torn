@@ -189,9 +189,9 @@ html[data-ver-secciones] [data-section]::before {
   pointer-events: none;
 }
 
-/* Login: la boleta sale de la impresora una sola vez al cargar. */
+/* Login: el documento sale de la impresora una sola vez al cargar. */
 @keyframes imprimir-boleta {
-  from { transform: translateY(-100%); }
+  from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
 .boleta-imprime {
