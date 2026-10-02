@@ -43,6 +43,7 @@ from app.dte.set_pruebas import (
 )
 from app.dte.signer import firmar_dte
 from tests.factories import CLAVE_PFX, caf_xml, pfx
+from tests.test_builder_xsd import esquema_boleta  # noqa: F401 (fixture)
 
 T = "\t"
 SET_BASICO = "\r\n".join(
@@ -672,3 +673,125 @@ def test_simulacion_receptor_por_caso_y_sin_referencia_al_set() -> None:
 def test_receptor_con_columnas_de_menos() -> None:
     with pytest.raises(SetInvalidoError, match="RECEPTOR"):
         parsear_set(SET_SIMULACION.replace("\tCONCEPCION\tCONCEPCION", "", 1), "SET DE SIMULACION")
+
+
+# ------------------------------------------------------------ set de boletas --
+
+#: Copia del set de boletas que entrega el SII (el mismo para todos: no trae
+#: número de atención), con sus tabulaciones y espacios sobrantes.
+SET_BOLETAS = "\r\n".join(
+    [
+        "SII SET DE PRUEBA DE BOLETA ELECTRONICA DE VENTAS Y SERVICIOS",
+        "",
+        "INDICACIONES GENERALES:",
+        "Ademas se le recomienda no utilizar abreviaciones en los giros.",
+        "",
+        "CASO-1",
+        "==========",
+        "",
+        "Item" + T * 5 + "Cantidad" + T + "Precio Unitario con IVA",
+        "Cambio de aceite" + T * 3 + "1" + T * 3 + "19900",
+        "Alineacion y balanceo " + T * 3 + "1" + T * 3 + "9900",
+        "",
+        "CASO-2",
+        "=========",
+        "Item" + T * 5 + "Cantidad" + T + "Precio Unitario con IVA",
+        "Papel de regalo" + T * 4 + "17" + T * 3 + "120",
+        "",
+        "CASO-3",
+        "=========",
+        "Item" + T * 5 + "Cantidad" + T + "Precio Unitario con IVA",
+        "Sandwic" + T * 5 + "2" + T * 3 + "1500",
+        "Bebida" + T * 5 + "2" + T * 3 + "550",
+        "",
+        "CASO-4",
+        "=========",
+        "Item" + T * 5 + "Cantidad" + T + "Precio Unitario con IVA",
+        "item afecto 1" + T * 4 + "8" + T * 3 + "1590",
+        "item exento 2" + T * 4 + "2" + T * 3 + "1000",
+        "",
+        'OBSERVACION: "El item 1 es un servicio afecto. El item 2 es un servicio exento."',
+        "",
+        "CASO-5",
+        "=========",
+        "Item" + T * 5 + "Cantidad" + T + "Precio Unitario con IVA",
+        "Arroz" + T * 5 + "5" + T * 3 + "700",
+        "",
+        'OBSERVACION: "Se debe informar en el XML Unidad de medida en Kg."',
+        "",
+        "=" * 74,
+        "",
+        "OBSERVACIONES GENERALES",
+        "-----------------------",
+        "Debe referenciar el caso correspondiente a cada boleta en el XML. Ejemplo:",
+        "",
+        "<CodRef> SET",
+        "<RazonRef> CASO-1",
+    ]
+)
+
+#: (neto, exento, IVA, total), a mano. El precio trae IVA: neto = bruto / 1,19
+#: redondeado, IVA = bruto - neto. Caso 1: 29.800 / 1,19 = 25.042,02. Caso 2:
+#: 17 x 120 = 2.040 -> 1.714,29. Caso 3: 3.000 + 1.100 = 4.100 -> 3.445,38.
+#: Caso 4: 8 x 1.590 = 12.720 -> 10.689,08, más 2.000 exento. Caso 5: 3.500 -> 2.941,18.
+ESPERADOS_BOLETAS = {
+    "1": (25042, 0, 4758, 29800),
+    "2": (1714, 0, 326, 2040),
+    "3": (3445, 0, 655, 4100),
+    "4": (10689, 2000, 2031, 14720),
+    "5": (2941, 0, 559, 3500),
+}
+
+
+def _boletas() -> dict[str, DatosDocumento]:
+    set_ = parsear_set(SET_BOLETAS)
+    resueltos = resolver_lineas(set_)
+    return {c.id: armar_documento(set_, c, *resueltos[c.id], RECEPTOR, FECHA, folios={}) for c in set_.casos}
+
+
+def test_boletas_lee_los_cinco_casos() -> None:
+    set_ = parsear_set(SET_BOLETAS)
+    assert [c.id for c in set_.casos] == ["1", "2", "3", "4", "5"]
+    assert {c.tipo_dte for c in set_.casos} == {39}
+    assert folios_necesarios(set_) == {39: 5}
+    # Los nombres van tal cual el set, sin el espacio sobrante.
+    assert [l.nombre for l in set_.caso("1").lineas] == ["Cambio de aceite", "Alineacion y balanceo"]
+
+
+def test_boletas_aplica_las_observaciones() -> None:
+    set_ = parsear_set(SET_BOLETAS)
+    assert [l.exento for l in set_.caso("4").lineas] == [False, True]
+    assert [l.unidad for l in set_.caso("5").lineas] == ["Kg"]
+    assert all(l.unidad is None for l in set_.caso("4").lineas)
+
+
+def test_boletas_observacion_desconocida_detiene_la_lectura() -> None:
+    texto = SET_BOLETAS.replace("Unidad de medida en Kg", "precio con descuento del 10%")
+    with pytest.raises(SetInvalidoError, match="observación no soportada"):
+        parsear_set(texto)
+
+
+@pytest.mark.parametrize("caso", ESPERADOS_BOLETAS)
+def test_boletas_totales_calculados_a_mano(caso: str) -> None:
+    d = _boletas()[caso]
+    t = calcular_totales(d.tipo_dte, d.items, d.descuentos_globales)
+    assert (t.neto, t.exento, t.iva, t.total) == ESPERADOS_BOLETAS[caso]
+
+
+def test_boletas_van_a_consumidor_final_y_referencian_el_caso_con_guion() -> None:
+    for caso, d in _boletas().items():
+        assert d.receptor is None
+        assert [(r.tipo_doc, r.razon) for r in d.referencias] == [("SET", f"CASO-{caso}")]
+
+
+@pytest.mark.parametrize("caso", ESPERADOS_BOLETAS)
+def test_boletas_cumplen_el_esquema(caso: str, esquema_boleta) -> None:
+    from tests.test_builder_xsd import _completar
+
+    arbol = _completar(construir_dte(EMISOR, _boletas()[caso], 1))
+    assert esquema_boleta.validate(arbol), "\n".join(str(e) for e in esquema_boleta.error_log)
+    ref = arbol.find(".//{%s}Referencia" % NS)
+    assert [(e.tag.split("}")[1], e.text) for e in ref] == [
+        ("NroLinRef", "1"), ("CodRef", "SET"), ("RazonRef", f"CASO-{caso}"),
+    ]
+    assert arbol.findtext(".//{%s}MntTotal" % NS) == str(ESPERADOS_BOLETAS[caso][3])

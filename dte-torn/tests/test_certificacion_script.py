@@ -464,3 +464,47 @@ async def test_reenviar_un_set_rechazado_emite_con_folios_nuevos(entorno_set, mo
     nuevos = [d for d in docs if d.external_id.startswith("set-1234567-r2-")]
     assert len(nuevos) == 8 and {d.estado for d in nuevos} == {"ACEPTADO"}
     assert len({d.folio for d in docs if d.tipo_dte == 33}) == 8  # ningún folio repetido
+
+
+async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, monkeypatch, capsys) -> None:
+    """Un solo `EnvioBOLETA` por el REST de boletas, y el estado se consulta por ahí mismo."""
+    from tests.test_set_pruebas import SET_BOLETAS
+    from tests.test_sii_client import SEMILLA_BOLETA, TOKEN_OK
+
+    ruta_set = tmp_path / "set_boletas.txt"
+    ruta_set.write_bytes(SET_BOLETAS.encode("latin-1"))
+    ruta_caf = tmp_path / "caf_39.xml"
+    ruta_caf.write_bytes(caf_xml(rut="76543210-3", tipo_dte=39, desde=1, hasta=10))
+    monkeypatch.setenv("DTE_SET", str(ruta_set))
+    monkeypatch.setenv("DTE_CAFS", str(ruta_caf))
+
+    sobres: list[bytes] = []
+
+    def sii(pedido: httpx.Request) -> httpx.Response:
+        url = str(pedido.url)
+        if url.endswith("boleta.electronica.semilla"):
+            return httpx.Response(200, content=SEMILLA_BOLETA)
+        if url.endswith("boleta.electronica.token"):
+            return httpx.Response(200, content=TOKEN_OK)
+        if pedido.method == "POST" and url.endswith("boleta.electronica.envio"):
+            sobres.append(pedido.content)
+            return httpx.Response(200, json={"trackid": 123456789012345, "estado": "REC"})
+        if url.endswith("boleta.electronica.envio/76543210-3-123456789012345"):
+            return httpx.Response(200, json={
+                "estado": "EPR",
+                "estadistica": [{"tipo": 39, "informados": 5, "aceptados": 5, "rechazados": 0, "reparos": 0}],
+            })
+        raise AssertionError(f"URL inesperada: {url}")
+
+    monkeypatch.setattr(certificacion, "crear_http", lambda timeout: httpx.AsyncClient(transport=httpx.MockTransport(sii)))
+    assert await certificacion.modo_set() == 0
+
+    assert "N° de envío: 123456789012345" in capsys.readouterr().out
+    assert len(sobres) == 1 and b"<EnvioBOLETA" in sobres[0]
+    async with control_session() as s:
+        tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
+    async with tenant_session(tenant_id) as s:
+        docs = (await s.execute(select(Document))).scalars().all()
+    assert sorted(d.monto_total for d in docs) == [2040, 3500, 4100, 14720, 29800]
+    assert {d.estado for d in docs} == {"ACEPTADO"}
+    assert {d.receptor_rut for d in docs} == {None}

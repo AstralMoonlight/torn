@@ -4,8 +4,8 @@ Issue: [#49](https://github.com/AstralMoonlight/torn/issues/49). Empresa: DISTRI
 (76.398.956-9), la misma que certificó factura. JCB emite **sobre todo boletas**, así que sin esta
 certificación el piloto en el local cubre solo una parte de las ventas (ver [`lanzamiento.md`](lanzamiento.md)).
 
-> **Estado (2026-09-25):** se llegó a la pantalla de generación del set, pero **todavía no se pide**. Se
-> retoma la semana del 2026-09-28.
+> **Estado (2026-10-02):** set pedido y descargado (`setDePruebas/Set Prueba BE.txt`); dte-torn ya lo
+> lee y lo envía por el canal de boletas (`certificacion set`). Falta el CAF 39 de certificación (5 folios).
 
 ## Dónde está en el SII (verificado 2026-09-25)
 
@@ -62,22 +62,30 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 ### Fase 1: pedir el set (lo hace el usuario o la representante)
 
 - [x] Ubicar dónde se pide el set (ver "Dónde está en el SII").
-- [ ] Pedir el set en `?SET=1` **una sola vez**:
+- [x] Pedir el set en `?SET=1` **una sola vez** (2026-10-02):
       - marcar "SET DE BOLETA ELECTRÓNICA AFECTA";
       - en "Correo electrónico Proveedor de Software Boleta Electrónica" poner un correo que se lea
         seguido (JCB es su propio proveedor): llegan ahí las instrucciones y el visto bueno;
       - bajar el archivo con el enlace de la misma página.
-- [ ] Guardar el archivo en `setDePruebas/` (fuera de git) y anotar aquí el N° de atención de cada caso.
-- [ ] Leer las instrucciones del set: casos, si pide RVD, si pide muestras impresas y en qué formato.
+- [x] Guardar el archivo en `setDePruebas/` (fuera de git): `Set Prueba BE.txt`. **No trae N° de
+      atención**: es el mismo set para todos.
+- [x] Leer las instrucciones del set. Lo que dice:
+      - 5 casos, todos boleta afecta (39), precios con IVA. Caso 4: el item 2 es un servicio exento.
+        Caso 5: unidad de medida `Kg` en el XML.
+      - Cada boleta referencia su caso: `CodRef` = `SET`, `RazonRef` = `CASO-1` (con guion). En el
+        esquema de boleta la `Referencia` no lleva `TpoDocRef`/`FolioRef`/`FchRef`.
+      - "Informar las cifras con separador de miles" y los textos tal cual el set (p. ej. "Sandwic").
+      - **No pide RVD** ni dice nada de muestras impresas.
 
 ### Fase 2: emitir el set
 
-- [ ] `set_pruebas.py` lee el set de boletas (tipo 39, montos IVA incluido; 41 solo si el set lo trae).
-- [ ] Modo `certificacion set` para boletas: un solo envío por el canal REST, con el track de 15 dígitos
-      y el estado consultado por REST.
-- [ ] Pedir CAF de certificación 39 (y 41 si el set lo trae) en maullín.
+- [x] `set_pruebas.py` lee el set de boletas (rama `feat/set-boletas`). Una observación que no entiende
+      detiene la lectura en vez de adivinar.
+- [x] Modo `certificacion set` para boletas: un solo `EnvioBOLETA` por el canal REST, estado por REST.
+      Las boletas del set van a consumidor final (66666666-6).
+- [ ] Pedir CAF de certificación 39 en maullín: **5 folios** (el set no trae 41).
 - [ ] Enviar, revisar el estado y dejar la tabla de tracks aquí, como en `todo.md`.
-- [ ] Si el set pide RVD: generarlo (mismo schema del ex RCOF, sin detalle de folios) y enviarlo.
+- [x] ~~Si el set pide RVD~~: no lo pide. El RCOF pendiente de dte-torn se descarta.
 
 ### Fase 3: impreso y declaración
 

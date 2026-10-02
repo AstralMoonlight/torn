@@ -19,6 +19,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.dte.builder import (
+    BOLETAS,
     DTE_EXENTOS,
     GUIA_DESPACHO,
     TASA_IVA,
@@ -159,6 +160,8 @@ def parsear_set(texto: str, nombre: str = "SET BASICO") -> SetPruebas:
     Raises:
         SetInvalidoError: No se encontró el set, el número de atención o ningún caso.
     """
+    if SET_BOLETA in texto:
+        return _parsear_set_boletas(texto)
     texto = _seccion(texto, nombre)
     simulacion = nombre == SIMULACION
     atencion = _ATENCION.search(texto)
@@ -323,7 +326,8 @@ def armar_documento(
         emisor_como_receptor: Los datos del emisor. En una guía de traslado
             interno el SII exige que el receptor coincida con el emisor.
     """
-    receptor = caso.receptor or receptor
+    # La boleta del set va a consumidor final: sin receptor, el builder pone el RUT genérico.
+    receptor = None if caso.tipo_dte in BOLETAS else caso.receptor or receptor
     if caso.ind_traslado == TRASLADO_INTERNO:
         if emisor_como_receptor is None:
             raise SetInvalidoError(f"Caso {caso.id}: el traslado interno necesita los datos del emisor como receptor")
@@ -331,9 +335,9 @@ def armar_documento(
     # Todo documento del set se identifica con una referencia de tipo SET cuya
     # razón es el número de caso. ponytail: FolioRef "0" es la convención más
     # difundida para esta referencia; a confirmar con el primer set enviado.
-    referencias = (
-        [] if set_.simulacion else [Referencia(tipo_doc="SET", folio="0", fecha=fecha, razon=f"CASO {caso.id}")]
-    )
+    # La boleta escribe el caso con guion, como lo pide su set ("CASO-1").
+    razon = f"CASO-{caso.id}" if caso.tipo_dte in BOLETAS else f"CASO {caso.id}"
+    referencias = [] if set_.simulacion else [Referencia(tipo_doc="SET", folio="0", fecha=fecha, razon=razon)]
     if caso.referencia:
         if caso.referencia not in folios:
             raise SetInvalidoError(
@@ -374,6 +378,61 @@ def armar_documento(
         ind_traslado=caso.ind_traslado,
         tipo_despacho=caso.tipo_despacho,
     )
+
+
+# ---------------------------------------------------------- set de boletas --
+
+#: Título del set de boletas. Su formato es otro: no trae número de atención ni
+#: dice qué documento emitir (todo caso es una boleta afecta, 39), los casos se
+#: escriben `CASO-1` y lo que no cabe en la tabla viene en una `OBSERVACION`.
+SET_BOLETA = "SET DE PRUEBA DE BOLETA ELECTRONICA"
+_CASO_BOLETA = re.compile(r"^CASO-(\d+)$")
+#: Observaciones que se entienden. Otra cualquiera detiene la lectura: mejor
+#: preguntar que emitir un caso distinto al que pide el SII.
+_ITEM_EXENTO = re.compile(r"el item (\d+) es un servicio exento", re.IGNORECASE)
+_ITEM_AFECTO = re.compile(r"el item \d+ es un servicio afecto", re.IGNORECASE)
+_UNIDAD = re.compile(r"unidad de medida en (\w+)", re.IGNORECASE)
+
+
+def _parsear_set_boletas(texto: str) -> SetPruebas:
+    casos: list[Caso] = []
+    actual: Caso | None = None
+    for cruda in texto.splitlines():
+        limpia = cruda.strip()
+        if limpia.upper().startswith("OBSERVACIONES GENERALES"):
+            break  # instrucciones de la referencia, ya resueltas en `armar_documento`
+        if m := _CASO_BOLETA.match(limpia):
+            actual = Caso(id=m.group(1), tipo_dte=39)
+            casos.append(actual)
+            continue
+        if actual is None or not limpia or limpia.startswith("==="):
+            continue
+        if limpia.upper().startswith("OBSERVACION"):
+            exentos = [int(n) for n in _ITEM_EXENTO.findall(limpia)]
+            unidad = _UNIDAD.search(limpia)
+            if not (exentos or unidad or _ITEM_AFECTO.search(limpia)):
+                raise SetInvalidoError(f"Caso {actual.id}: observación no soportada: {limpia!r}")
+            for n in exentos:
+                if not 1 <= n <= len(actual.lineas):
+                    raise SetInvalidoError(f"Caso {actual.id}: la observación nombra el item {n}, que no existe")
+                actual.lineas[n - 1].exento = True
+            if unidad:
+                for l in actual.lineas:
+                    l.unidad = unidad.group(1)
+            continue
+        partes = [p.strip() for p in cruda.split("\t") if p.strip()]
+        if partes[0].upper() == "ITEM":
+            continue  # encabezado de la tabla: item, cantidad, precio con IVA
+        if len(partes) != 3:
+            raise SetInvalidoError(f"Caso {actual.id}: la línea no tiene item, cantidad y precio: {limpia!r}")
+        actual.lineas.append(Linea(nombre=partes[0], cantidad=_numero(partes[1]), precio=_numero(partes[2])))
+
+    if not casos:
+        raise SetInvalidoError("El set de boletas no tiene casos")
+    for c in casos:
+        if not c.lineas:
+            raise SetInvalidoError(f"Caso {c.id}: no tiene items")
+    return SetPruebas(numero_atencion="boletas", casos=casos)
 
 
 def folios_necesarios(set_: SetPruebas) -> dict[int, int]:

@@ -479,6 +479,11 @@ async def modo_set() -> int:
         await _cargar_caf_si_falta(tenant_id, caf_bytes)
 
     claves = {c.id: _prefijo_set(set_.numero_atencion) + c.id for c in set_.casos}
+    # Un sobre lleva un solo canal: el set de boletas va entero por el REST de boletas.
+    canales = {pipeline.canal_de(c.tipo_dte) for c in set_.casos}
+    if len(canales) != 1:
+        sys.exit("El set mezcla boletas con otros documentos: no cabe en un solo envío.")
+    canal = canales.pop()
     async with tenant_session(tenant_id) as sesion:
         existentes = {
             d.external_id: d
@@ -529,7 +534,7 @@ async def modo_set() -> int:
                             tipo_dte=datos.tipo_dte,
                             fecha_emision=datos.fecha_emision,
                             payload=datos.model_dump(mode="json"),
-                            receptor_rut=datos.receptor.rut,
+                            receptor_rut=datos.receptor.rut if datos.receptor else None,
                             monto_neto=t.neto, monto_exento=t.exento, monto_iva=t.iva, monto_total=t.total,
                         ),
                     )
@@ -585,7 +590,7 @@ async def modo_set() -> int:
                 for d in docs
             ]
             sobre = firmar_sobre(
-                firmados, canal="DTE", rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
+                firmados, canal=canal.value, rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
                 fecha_resolucion=tenant.resolucion_fecha.isoformat(),
                 numero_resolucion=tenant.resolucion_numero, cert=cert,
             )
@@ -598,7 +603,7 @@ async def modo_set() -> int:
             subido = datetime.now(ZONA_CHILE)
             try:
                 track = await ctx.sii("CERT").enviar(
-                    Canal.DTE, tenant_id, cert, tenant.rut_emisor, sobre, f"set-{set_.numero_atencion}.xml"
+                    canal, tenant_id, cert, tenant.rut_emisor, sobre, f"set-{set_.numero_atencion}.xml"
                 )
             except SiiError as exc:
                 print(f"La subida del set falló ({type(exc).__name__}): {exc}")
@@ -613,7 +618,7 @@ async def modo_set() -> int:
                           "le pregunta al SII por cada folio antes de reenviar.")
                 return 1
             async with tenant_session(tenant_id) as sesion:
-                sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio="DTE", track_id=track,
+                sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio=canal.value, track_id=track,
                                  xml_key=clave_s3, xml_sha256=sha, estado=EstadoEnvio.ENVIADO))
                 await sesion.flush()
                 await sesion.execute(
@@ -635,7 +640,7 @@ async def modo_set() -> int:
         while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
             await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
             try:
-                resultado = await ctx.sii("CERT").consultar(Canal.DTE, tenant_id, cert, tenant.rut_emisor, track)
+                resultado = await ctx.sii("CERT").consultar(canal, tenant_id, cert, tenant.rut_emisor, track)
             except SiiError as exc:
                 print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({_transcurrido(subido)})  consulta falló: {exc}")
                 continue
@@ -969,7 +974,7 @@ def modo_revisar_set() -> int:
 
     set_ = _leer_set()
     resueltos = resolver_lineas(set_)
-    nombres = {33: "Factura", 34: "Factura exenta", 52: "Guía de despacho", 56: "Nota de débito", 61: "Nota de crédito"}
+    nombres = {39: "Boleta", 33: "Factura", 34: "Factura exenta", 52: "Guía de despacho", 56: "Nota de débito", 61: "Nota de crédito"}
     traslados = {1: "venta", 5: "traslado interno (receptor = emisor)"}
     despachos = {1: "por cuenta del cliente", 2: "del emisor al local del cliente", 3: "del emisor a otras instalaciones"}
     codigos = {1: "anula", 2: "corrige texto", 3: "corrige montos"}
@@ -995,7 +1000,8 @@ def modo_revisar_set() -> int:
         for item in datos.items:
             desc = f" - {item.descuento_pct}% ({_pesos(descuento_linea(item))})" if item.descuento_pct else ""
             exe = " [exento]" if item.exento else ""
-            print(f"  {item.nombre:28} {item.cantidad:>5} x {_pesos(int(item.precio)):>9}{desc} = {_pesos(monto_linea(item))}{exe}")
+            unidad = f" {item.unidad}" if item.unidad else ""
+            print(f"  {item.nombre:28} {item.cantidad:>5}{unidad} x {_pesos(int(item.precio)):>9}{desc} = {_pesos(monto_linea(item))}{exe}")
         for d in datos.descuentos_globales:
             print(f"  descuento global {d.valor}% sobre afectos")
         t = calcular_totales(datos.tipo_dte, datos.items, datos.descuentos_globales)

@@ -522,10 +522,16 @@ def _descuentos_globales(documento: etree._Element, datos: DatosDocumento) -> No
             _sub(nodo, "IndExeDR", 1)
 
 
-def _referencias(documento: etree._Element, referencias: list[Referencia]) -> None:
+def _referencias(documento: etree._Element, referencias: list[Referencia], tipo_dte: int) -> None:
     for numero, ref in enumerate(referencias, start=1):
         nodo = _nodo(documento, "Referencia")
         _sub(nodo, "NroLinRef", numero)
+        if tipo_dte in BOLETAS:
+            # La boleta no referencia otros documentos: su `Referencia` es solo
+            # un código de texto y una razón (`SET` / `CASO-1` en certificación).
+            _sub(nodo, "CodRef", ref.tipo_doc)
+            _sub(nodo, "RazonRef", texto_sii(ref.razon, 90))
+            continue
         _sub(nodo, "TpoDocRef", ref.tipo_doc)
         _sub(nodo, "FolioRef", ref.folio)
         _sub(nodo, "FchRef", ref.fecha.isoformat())
@@ -553,7 +559,7 @@ def construir_dte(emisor: Emisor, datos: DatosDocumento, folio: int) -> etree._E
 
     _detalle(documento, datos)
     _descuentos_globales(documento, datos)
-    _referencias(documento, datos.referencias)
+    _referencias(documento, datos.referencias, datos.tipo_dte)
     return dte
 
 
