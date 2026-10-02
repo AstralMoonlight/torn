@@ -4,7 +4,7 @@ import { getApiErrorDetail } from '@/services/api'
 import { useEffect, useRef, useState, Fragment } from 'react'
 import { getSales, actualizarEstadosDte, getPaymentMethods, getFoliosStatus, getFoliosPorAnular, imprimirVenta, type SaleOut, type PaymentMethod, type FolioStockOut, type FiltroVentas } from '@/services/sales'
 import { Button } from '@/components/ui/button'
-import { AccionFila } from '@/components/ui/accion-fila'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
@@ -13,14 +13,11 @@ import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 import {
-    History,
-    RotateCcw,
-    ExternalLink,
     FileText,
-    PencilLine,
-    Mail,
     RefreshCw,
     FileWarning,
+    MoreVertical,
+    Printer,
 } from 'lucide-react'
 import {
     Table,
@@ -31,13 +28,14 @@ import {
     TableRow,
     TableEmpty,
 } from '@/components/ui/table'
-import { formatCLP, getTodayChile } from '@/lib/format'
+import { formatCLP, getTodayChile, hora } from '@/lib/format'
+import FiltrosRapidos from '@/components/layout/FiltrosRapidos'
+import Estado, { type TonoEstado } from '@/components/layout/Estado'
 import FacturarGuiasDialog from '@/components/pos/FacturarGuiasDialog'
 import CorregirTextoDialog from '@/components/pos/CorregirTextoDialog'
 import DevolucionDialog from '@/components/pos/DevolucionDialog'
 import ReenviarXmlDialog, { ESTADOS_XML } from '@/components/pos/ReenviarXmlDialog'
 import ReemitirDialog from '@/components/pos/ReemitirDialog'
-import { DteBadge } from '@/components/pos/DteBadge'
 import Link from 'next/link'
 
 
@@ -46,20 +44,33 @@ const POR_PAGINA = 50
 // Los que el SII no reconoce: se vuelven a emitir, no se devuelven ni se corrigen.
 const RECHAZADOS = ['RECHAZADO', 'ERROR_VALIDACION']
 
-const ESTADOS_SII: Record<string, { label: string; color: string }> = {
-    ACEPTADO: { label: 'Aceptado', color: 'bg-emerald-600' },
-    REPAROS: { label: 'Con reparos', color: 'bg-amber-500' },
-    RECHAZADO: { label: 'Rechazado', color: 'bg-destructive' },
-    ERROR_VALIDACION: { label: 'Error', color: 'bg-destructive' },
-    ANULADO: { label: 'Anulado', color: 'bg-muted-foreground' },
-    SIMULADO: { label: 'Prueba', color: 'bg-amber-600' },
+const ESTADOS_SII: Record<string, { label: string; tono: TonoEstado }> = {
+    ACEPTADO: { label: 'Aceptado', tono: 'bien' },
+    REPAROS: { label: 'Con reparos', tono: 'alerta' },
+    RECHAZADO: { label: 'Rechazado', tono: 'mal' },
+    ERROR_VALIDACION: { label: 'Con error', tono: 'mal' },
+    ANULADO: { label: 'Anulado', tono: 'neutro' },
+    SIMULADO: { label: 'De prueba', tono: 'alerta' },
 }
 
-function SiiBadge({ estado, glosa }: { estado: string | null; glosa: string | null }) {
-    if (!estado) return <span className="text-xs text-muted-foreground">-</span>
-    const info = ESTADOS_SII[estado] || { label: 'En proceso', color: 'bg-sky-600' }
-    return <Badge title={glosa || estado} className={`${info.color} text-xs px-1.5`}>{info.label}</Badge>
+function SiiEstado({ estado, glosa }: { estado: string | null; glosa: string | null }) {
+    if (!estado) return <span className="text-sm text-muted-foreground">Sin datos</span>
+    const info = ESTADOS_SII[estado] || { label: 'En revisión', tono: 'neutro' as const }
+    return <span title={glosa || undefined}><Estado tono={info.tono}>{info.label}</Estado></span>
 }
+
+const NOMBRE_DTE: Record<number, string> = {
+    33: 'Factura', 34: 'Factura exenta', 39: 'Boleta', 41: 'Boleta exenta',
+    52: 'Guía de despacho', 56: 'Nota de débito', 61: 'Nota de crédito',
+}
+
+/** Resta días a una fecha aaaa-mm-dd sin pasar por la zona horaria. */
+function restarDias(fecha: string, dias: number): string {
+    const [y, m, d] = fecha.split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, d - dias)).toISOString().slice(0, 10)
+}
+
+type Periodo = 'hoy' | 'ayer' | 'semana' | 'fechas'
 
 export default function HistorialPage() {
     const [sales, setSales] = useState<SaleOut[]>([])
@@ -76,6 +87,14 @@ export default function HistorialPage() {
     const [desde, setDesde] = useState(getTodayChile)
     const [hasta, setHasta] = useState(getTodayChile)
     const [hayMas, setHayMas] = useState(false)
+    const [periodo, setPeriodo] = useState<Periodo>('hoy')
+    const elegirPeriodo = (p: Periodo) => {
+        setPeriodo(p)
+        const hoy = getTodayChile()
+        if (p === 'hoy') { setDesde(hoy); setHasta(hoy) }
+        if (p === 'ayer') { setDesde(restarDias(hoy, 1)); setHasta(restarDias(hoy, 1)) }
+        if (p === 'semana') { setDesde(restarDias(hoy, 6)); setHasta(hoy) }
+    }
     // Rechazados por emitir de nuevo más números por anular en el SII, en todas las fechas.
     const [pendientesSii, setPendientesSii] = useState(0)
 
@@ -149,6 +168,10 @@ export default function HistorialPage() {
         groupedSales[dateKey].push(sale)
     })
 
+    /** Lo vendido en la lista, con las notas de crédito restando. */
+    const totalNeto = (ventas: SaleOut[]) =>
+        ventas.reduce((t, v) => t + (v.tipo_dte === 61 ? -1 : v.tipo_dte === 52 ? 0 : 1) * Number(v.monto_total), 0)
+
     const verPdf = async (saleId: number) => {
         try {
             await imprimirVenta(saleId)
@@ -160,15 +183,19 @@ export default function HistorialPage() {
     return (
         <PageContainer>
             <PageHeader
-                icon={History}
                 title="Historial de ventas"
-                description="Revisa, reimprime y anula los documentos emitidos."
+                description="Todos los documentos que emitiste. Desde aquí los reimprimes, devuelves o reenvías al correo del cliente."
+                actions={
+                    <Button variant="outline" className="h-11" onClick={() => setFacturarOpen(true)}>
+                        <FileText className="h-4 w-4" /> Facturar guías
+                    </Button>
+                }
             />
 
             <ListToolbar
                 busqueda={search}
                 onBusqueda={setSearch}
-                placeholder="Buscar por número, cliente o RUT..."
+                placeholder="Folio, cliente o RUT (busca en todas las fechas)"
                 visibles={sales.length}
                 total={sales.length}
                 unidad="documentos"
@@ -176,118 +203,147 @@ export default function HistorialPage() {
                     <span className="text-sm text-muted-foreground">Buscando en todas las fechas</span>
                 ) : (
                     <>
-                        <Label className="flex items-center gap-2 text-sm font-normal">
-                            Desde
-                            <Input type="date" value={desde} max={hasta}
-                                onChange={(e) => e.target.value && setDesde(e.target.value)} className="h-9 w-auto" />
-                        </Label>
-                        <Label className="flex items-center gap-2 text-sm font-normal">
-                            Hasta
-                            <Input type="date" value={hasta} min={desde}
-                                onChange={(e) => e.target.value && setHasta(e.target.value)} className="h-9 w-auto" />
-                        </Label>
-                        {(desde !== getTodayChile() || hasta !== getTodayChile()) && (
-                            <Button variant="outline" size="sm" onClick={() => { setDesde(getTodayChile()); setHasta(getTodayChile()) }}>
-                                Hoy
-                            </Button>
+                        <FiltrosRapidos
+                            etiqueta="Período"
+                            valor={periodo}
+                            onChange={elegirPeriodo}
+                            opciones={[
+                                { valor: 'hoy', etiqueta: 'Hoy' },
+                                { valor: 'ayer', etiqueta: 'Ayer' },
+                                { valor: 'semana', etiqueta: 'Últimos 7 días' },
+                                { valor: 'fechas', etiqueta: 'Elegir fechas' },
+                            ]}
+                        />
+                        {periodo === 'fechas' && (
+                            <>
+                                <Label className="flex items-center gap-2 text-sm font-normal">
+                                    Desde
+                                    <Input type="date" value={desde} max={hasta}
+                                        onChange={(e) => e.target.value && setDesde(e.target.value)} className="h-9 w-auto" />
+                                </Label>
+                                <Label className="flex items-center gap-2 text-sm font-normal">
+                                    Hasta
+                                    <Input type="date" value={hasta} min={desde}
+                                        onChange={(e) => e.target.value && setHasta(e.target.value)} className="h-9 w-auto" />
+                                </Label>
+                            </>
                         )}
                     </>
                 )}
                 acciones={
-                    <>
-                        <Button asChild variant="outline" size="sm" className="gap-1.5">
-                            <Link href="/historial/rechazados">
-                                <FileWarning className="h-4 w-4" /> Rechazados
-                                {pendientesSii > 0 && (
-                                    <Badge className="bg-destructive text-xs px-1.5">{pendientesSii}</Badge>
-                                )}
-                            </Link>
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFacturarOpen(true)}>
-                            <FileText className="h-4 w-4" /> Facturar guías
-                        </Button>
-                    </>
+                    <Button asChild variant="outline" size="sm"
+                        className={pendientesSii > 0 ? 'border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive' : undefined}>
+                        <Link href="/historial/rechazados">
+                            <FileWarning className="h-4 w-4" /> Rechazados por el SII
+                            {pendientesSii > 0 && <span className="font-semibold font-tabular">{pendientesSii}</span>}
+                        </Link>
+                    </Button>
                 }
             />
+
+            {!loading && !search.trim() && sales.length > 0 && !hayMas && (
+                <p className="text-[15px] text-foreground">
+                    {periodo === 'hoy' ? 'Hoy emitiste' : periodo === 'ayer' ? 'Ayer emitiste' : 'Emitiste'}{' '}
+                    <strong>{sales.length} {sales.length === 1 ? 'documento' : 'documentos'}</strong> por{' '}
+                    <strong className="font-tabular">{formatCLP(totalNeto(sales))}</strong>
+                    {sales.some((v) => v.tipo_dte === 61) && ', ya descontadas las devoluciones'}.
+                </p>
+            )}
 
             {/* Table */}
             <div data-section="historial.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow className="border-b border-border">
-                            <TableHead>N°</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>SII</TableHead>
-                            <TableHead className="hidden sm:table-cell text-center">Hora</TableHead>
+                        <TableRow>
+                            <TableHead className="w-16">Hora</TableHead>
+                            <TableHead>Documento</TableHead>
                             <TableHead className="hidden lg:table-cell">Cliente</TableHead>
+                            <TableHead>SII</TableHead>
                             <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                            <TableHead><span className="sr-only">Acciones</span></TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-border">
+                    <TableBody>
                         {loading ? (
-                            <TableEmpty colSpan={7} loading />
+                            <TableEmpty colSpan={6} loading />
                         ) : sales.length === 0 ? (
-                            <TableEmpty colSpan={7}>
-                                {search.trim() ? 'Ninguna venta coincide con la búsqueda' : 'Sin ventas en estas fechas'}
+                            <TableEmpty colSpan={6}>
+                                {search.trim() ? 'Ningún documento coincide con la búsqueda.' : 'No hay ventas en estas fechas.'}
                             </TableEmpty>
                         ) : (
                             Object.entries(groupedSales).map(([date, daySales]) => (
                                 <Fragment key={date}>
-                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell colSpan={7} className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground border-y border-border">
-                                            {date}
-                                        </TableCell>
-                                    </TableRow>
-                                    {daySales.map((sale) => (
-                                        <TableRow key={sale.id} className="group">
-                                            <TableCell className="font-mono text-xs font-semibold text-foreground">
-                                                #{sale.folio}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DteBadge tipo={sale.tipo_dte} />
-                                                {sale.tipo_dte === 52 && [1, 2, 3].includes(sale.ind_traslado ?? 0) && (
-                                                    <span className={`ml-1 text-xs ${sale.facturada_por_id ? 'text-muted-foreground' : 'text-amber-600'}`}>
-                                                        {sale.facturada_por_id ? 'facturada' : 'por facturar'}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <SiiBadge estado={sale.dte_estado} glosa={sale.dte_glosa} />
-                                                {sale.intercambio_estado && ESTADOS_XML[sale.intercambio_estado] && (
-                                                    <Badge className={`${ESTADOS_XML[sale.intercambio_estado].color} ml-1 text-xs px-1.5`}>
-                                                        {ESTADOS_XML[sale.intercambio_estado].label}
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground hidden sm:table-cell text-center font-tabular">
-                                                {new Date(sale.fecha_emision).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground dark:text-muted-foreground hidden lg:table-cell truncate max-w-[200px]">
-                                                {sale.customer?.razon_social || '-'}
-                                            </TableCell>
-                                            <TableCell className="text-right font-tabular text-xs font-semibold text-foreground">
-                                                {formatCLP(parseFloat(String(sale.monto_total)))}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <AccionFila icon={ExternalLink} label="Ver PDF" onClick={() => verPdf(sale.id)} />
-                                                    {[33, 34, 52, 56, 61].includes(sale.tipo_dte) && ['ACEPTADO', 'REPAROS'].includes(sale.dte_estado ?? '') && (
-                                                        <AccionFila icon={Mail} label="Mandar el XML al cliente" onClick={() => setXmlDialog(sale)} />
-                                                    )}
-                                                    {RECHAZADOS.includes(sale.dte_estado ?? '') && (
-                                                        <AccionFila icon={RefreshCw} label="Emitir de nuevo" onClick={() => setReemitirDialog(sale)} />
-                                                    )}
-                                                    {[33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && !RECHAZADOS.includes(sale.dte_estado ?? '') && (
-                                                        <AccionFila icon={RotateCcw} label="Devolver productos" onClick={() => setReturnDialog(sale)} peligro />
-                                                    )}
-                                                    {[33, 34].includes(sale.tipo_dte) && hayNotasCredito && !RECHAZADOS.includes(sale.dte_estado ?? '') && (
-                                                        <AccionFila icon={PencilLine} label="Corregir un dato (giro, dirección...)" onClick={() => setCorregirDialog(sale)} />
-                                                    )}
-                                                </div>
+                                    {Object.keys(groupedSales).length > 1 && (
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableCell colSpan={6} className="text-sm font-semibold text-foreground first-letter:uppercase">
+                                                {date}
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
+                                    {daySales.map((sale) => {
+                                        const rechazado = RECHAZADOS.includes(sale.dte_estado ?? '')
+                                        const puedeXml = [33, 34, 52, 56, 61].includes(sale.tipo_dte) && ['ACEPTADO', 'REPAROS'].includes(sale.dte_estado ?? '')
+                                        const puedeDevolver = [33, 34, 39, 41].includes(sale.tipo_dte) && hayNotasCredito && !rechazado
+                                        const puedeCorregir = [33, 34].includes(sale.tipo_dte) && hayNotasCredito && !rechazado
+                                        return (
+                                            <TableRow key={sale.id}>
+                                                <TableCell className="text-[15px] text-muted-foreground font-tabular">{hora(sale.fecha_emision)}</TableCell>
+                                                <TableCell className="text-[15px]">
+                                                    <p className="text-foreground">{NOMBRE_DTE[sale.tipo_dte] ?? 'Documento'} {sale.folio}</p>
+                                                    {sale.tipo_dte === 52 && [1, 2, 3].includes(sale.ind_traslado ?? 0) && (
+                                                        <p className={`text-sm ${sale.facturada_por_id ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                            {sale.facturada_por_id ? 'Ya facturada' : 'Por facturar'}
+                                                        </p>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden lg:table-cell text-[15px] text-foreground truncate max-w-[220px]">
+                                                    {sale.customer?.razon_social || 'Sin cliente'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                        <SiiEstado estado={sale.dte_estado} glosa={sale.dte_glosa} />
+                                                        {sale.intercambio_estado && ESTADOS_XML[sale.intercambio_estado] && (
+                                                            <Badge className={`${ESTADOS_XML[sale.intercambio_estado].color} text-xs px-1.5`}>
+                                                                {ESTADOS_XML[sale.intercambio_estado].label}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right text-[15px] font-semibold text-foreground font-tabular">
+                                                    {formatCLP(sale.tipo_dte === 61 ? -Number(sale.monto_total) : Number(sale.monto_total))}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {rechazado ? (
+                                                            <Button variant="outline" size="sm" onClick={() => setReemitirDialog(sale)}>
+                                                                <RefreshCw className="h-4 w-4" /> Emitir de nuevo
+                                                            </Button>
+                                                        ) : (
+                                                            <Button variant="outline" size="sm" onClick={() => verPdf(sale.id)}>
+                                                                <Printer className="h-4 w-4" /> Imprimir
+                                                            </Button>
+                                                        )}
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={`Más acciones de ${NOMBRE_DTE[sale.tipo_dte] ?? 'documento'} ${sale.folio}`}>
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-64">
+                                                                {rechazado && <DropdownMenuItem onSelect={() => verPdf(sale.id)}>Ver el documento</DropdownMenuItem>}
+                                                                {puedeDevolver && <DropdownMenuItem onSelect={() => setReturnDialog(sale)}>Devolver productos (nota de crédito)</DropdownMenuItem>}
+                                                                {puedeXml && <DropdownMenuItem onSelect={() => setXmlDialog(sale)}>Reenviar al correo del cliente</DropdownMenuItem>}
+                                                                {puedeCorregir && <DropdownMenuItem onSelect={() => setCorregirDialog(sale)}>Corregir giro o dirección</DropdownMenuItem>}
+                                                                {!rechazado && !puedeDevolver && !puedeXml && !puedeCorregir && (
+                                                                    <DropdownMenuItem disabled>No hay más acciones para este documento</DropdownMenuItem>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
                                 </Fragment>
                             ))
                         )}
