@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { avisar } from '@/lib/store/uiStore'
-import { Plus, Pencil, Trash2, Loader2, Tag, X, Users, Package, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, Loader2, X, Users, Package, CheckCircle2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
@@ -34,7 +34,10 @@ import {
 } from '@/services/price_lists'
 import { getProducts, type Product } from '@/services/products'
 import { getCustomers, type Customer } from '@/services/customers'
-import { normalizeTaxRate } from '@/lib/taxes'
+import { DEFAULT_TAX_RATE, normalizeTaxRate, precioBruto } from '@/lib/taxes'
+import { formatCLP } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import Estado from '@/components/layout/Estado'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -130,10 +133,25 @@ export default function PriceListsPage() {
 
     // ── Fetch Price Lists ──────────────────────────────────────────────────
 
+    // Lista elegida para ver sus precios, y lo necesario para contar y mostrarlos.
+    const [elegidaId, setElegidaId] = useState<number | null>(null)
+    const [detalles, setDetalles] = useState<Record<number, PriceItem[]>>({})
+    const [clientesPorLista, setClientesPorLista] = useState<Map<number, number>>(new Map())
+    const [catalogo, setCatalogo] = useState<Product[]>([])
+    const [buscarPrecio, setBuscarPrecio] = useState('')
+
     const fetchLists = useCallback(() => {
         setLoading(true)
-        getPriceLists()
-            .then(setPriceLists)
+        Promise.all([getPriceLists(), getCustomers(), getProducts()])
+            .then(async ([listas, clientes, productos]) => {
+                setPriceLists(listas)
+                setCatalogo(productos)
+                const cuenta = new Map<number, number>()
+                clientes.forEach(c => { if (c.price_list_id) cuenta.set(c.price_list_id, (cuenta.get(c.price_list_id) ?? 0) + 1) })
+                setClientesPorLista(cuenta)
+                const conItems = await Promise.all(listas.map(l => getPriceList(l.id)))
+                setDetalles(Object.fromEntries(conItems.map(d => [d.id, d.items])))
+            })
             .catch(err => avisar(getApiErrorMessage(err, 'Error cargando las listas de precios'), { reintentar: fetchLists }))
             .finally(() => setLoading(false))
     }, [])
@@ -344,83 +362,126 @@ export default function PriceListsPage() {
     // ── Render ────────────────────────────────────────────────────────────
 
     const listasVisibles = priceLists.filter(pl => pl.name.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    const elegida = priceLists.find(pl => pl.id === elegidaId) ?? listasVisibles[0]
+    const productoPorId = new Map(flattenProducts(catalogo).map(p => [p.id, p]))
+    const preciosElegida = (detalles[elegida?.id ?? -1] ?? [])
+        .map(item => {
+            const prod = productoPorId.get(item.product_id)
+            const tasa = normalizeTaxRate(prod?.tax?.rate ?? DEFAULT_TAX_RATE)
+            const normal = prod ? Number(prod.precio_bruto) : 0
+            const enLista = precioBruto(Number(item.fixed_price), tasa)
+            return { id: item.product_id, nombre: prod?.full_name ?? `Producto #${item.product_id}`, normal, enLista }
+        })
+        .filter(p => p.nombre.toLowerCase().includes(buscarPrecio.trim().toLowerCase()))
 
     return (
         <PageContainer>
             <PageHeader
-                icon={Tag}
                 title="Listas de precios"
-                description="Crea listas con precios fijos para grupos de clientes."
+                description="Precios especiales para grupos de clientes. Quien tiene una lista asignada paga esos precios en vez del normal."
                 actions={
-                    <Button onClick={openCreate} className="shadow-sm shadow-primary/20 cursor-pointer">
-                        <Plus className="h-4 w-4" /> Nueva lista
-                    </Button>
+                    <>
+                        <Button variant="outline" onClick={openEditBase} className="h-11">Cambiar precios normales</Button>
+                        <Button onClick={openCreate} className="h-11 text-base">
+                            <Plus className="h-4 w-4" /> Nueva lista
+                        </Button>
+                    </>
                 }
             />
 
-            <ListToolbar
-                busqueda={busqueda}
-                onBusqueda={setBusqueda}
-                placeholder="Buscar lista por nombre..."
-                visibles={listasVisibles.length}
-                total={priceLists.length}
-                unidad="listas"
-            />
+            {priceLists.length > 3 && (
+                <ListToolbar
+                    busqueda={busqueda}
+                    onBusqueda={setBusqueda}
+                    placeholder="Buscar lista por nombre"
+                    visibles={listasVisibles.length}
+                    total={priceLists.length}
+                    unidad="listas"
+                />
+            )}
 
-            {/* Table */}
-            <div data-section="listas-precios.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Descripción</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {/* Lista Base hardcodeada */}
-                        {!loading && (
-                            <TableRow className="hover:bg-accent/50 transition-colors">
-                                <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        Precio base (catálogo general)
+            {loading ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando listas...</p>
+            ) : priceLists.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                    <p className="text-base font-medium text-foreground">Todavía no tienes listas de precios.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Crea una para cobrarle otros precios a un grupo de clientes, por ejemplo a los mayoristas.</p>
+                    <Button onClick={openCreate} className="mt-4"><Plus className="h-4 w-4" /> Nueva lista</Button>
+                </div>
+            ) : (
+                <>
+                    <div data-section="listas-precios.tarjetas" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {listasVisibles.map(pl => {
+                            const activa = pl.id === elegida?.id
+                            const clientes = clientesPorLista.get(pl.id) ?? 0
+                            const productos = detalles[pl.id]?.length ?? 0
+                            return (
+                                <div key={pl.id} className={cn(
+                                    'flex flex-col gap-3 rounded-xl border bg-card p-5 transition-colors',
+                                    activa ? 'border-primary ring-1 ring-primary' : 'border-border',
+                                )}>
+                                    <button type="button" onClick={() => setElegidaId(pl.id)} className="text-left cursor-pointer" aria-pressed={activa}>
+                                        <h2 className="text-base font-semibold text-foreground">{pl.name}</h2>
+                                        <p className="mt-1 text-sm text-muted-foreground">{pl.description || 'Sin descripción'}</p>
+                                    </button>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Estado>{clientes} {clientes === 1 ? 'cliente' : 'clientes'}</Estado>
+                                        <Estado>{productos} {productos === 1 ? 'producto' : 'productos'}</Estado>
                                     </div>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                    Precios por defecto de todos los productos del sistema.
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <AccionFila icon={Pencil} label="Editar precios base" onClick={openEditBase} />
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {loading && <TableEmpty colSpan={3} loading />}
-                        {!loading && listasVisibles.length === 0 && (
-                            <TableEmpty colSpan={3}>{priceLists.length === 0 ? 'No hay listas personalizadas aún. Crea tu primera lista con el botón de arriba.' : 'Ninguna lista coincide con la búsqueda.'}</TableEmpty>
-                        )}
-                        {!loading && listasVisibles.map(pl => (
-                            <TableRow key={pl.id} className="border-b border-border hover:bg-accent/50 transition-colors">
-                                <TableCell className="font-medium text-foreground">
-                                    <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-primary shrink-0" />
-                                        {pl.name}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                    {pl.description || <span className="italic text-muted-foreground">Sin descripción</span>}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <AccionFila icon={Pencil} label="Editar" onClick={() => openEdit(pl.id)} />
+                                    <div className="mt-auto flex items-center gap-1">
+                                        <Button variant="outline" size="sm" onClick={() => openEdit(pl.id)}>Editar lista</Button>
                                         <AccionFila icon={Trash2} label="Eliminar" onClick={() => setDeleteId(pl.id)} peligro />
                                     </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {elegida && (
+                        <section data-section="listas-precios.precios" className="space-y-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-foreground">Precios de {elegida.name}</h2>
+                                    <p className="text-sm text-muted-foreground">Los productos que no están aquí se cobran a precio normal. Precios con impuesto.</p>
+                                </div>
+                                <SearchInput className="w-full sm:max-w-xs" placeholder="Buscar en la lista" value={buscarPrecio}
+                                    onChange={e => setBuscarPrecio(e.target.value)} onClear={() => setBuscarPrecio('')} />
+                            </div>
+                            <div className="overflow-hidden rounded-xl border border-border bg-card">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Producto</TableHead>
+                                            <TableHead className="text-right">Precio normal</TableHead>
+                                            <TableHead className="text-right">Precio en la lista</TableHead>
+                                            <TableHead className="text-right">Diferencia</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {preciosElegida.length === 0 ? (
+                                            <TableEmpty colSpan={4}>
+                                                {buscarPrecio ? 'Ningún producto coincide.' : 'Esta lista todavía no tiene productos. Agrégalos con Editar lista.'}
+                                            </TableEmpty>
+                                        ) : preciosElegida.map(p => {
+                                            const dif = p.normal > 0 ? Math.round(((p.enLista - p.normal) / p.normal) * 100) : 0
+                                            return (
+                                                <TableRow key={p.id}>
+                                                    <TableCell className="text-[15px] text-foreground">{p.nombre}</TableCell>
+                                                    <TableCell className="text-right text-[15px] text-muted-foreground font-tabular">{formatCLP(p.normal)}</TableCell>
+                                                    <TableCell className="text-right text-[15px] font-semibold text-foreground font-tabular">{formatCLP(p.enLista)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Estado tono={dif < 0 ? 'bien' : dif > 0 ? 'alerta' : 'neutro'}>{dif > 0 ? '+' : ''}{dif}%</Estado>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </section>
+                    )}
+                </>
+            )}
 
             {/* Create / Edit Modal */}
             <Dialog open={openModal} onOpenChange={(o) => { setOpenModal(o); setErrorGuardar(null) }}>

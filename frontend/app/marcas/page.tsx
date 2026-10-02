@@ -1,61 +1,49 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-    TableEmpty,
-} from '@/components/ui/table'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AccionFila } from '@/components/ui/accion-fila'
 import { Input } from '@/components/ui/input'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Label } from '@/components/ui/label'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { getBrands, createBrand, updateBrand, deleteBrand, Brand } from '@/services/brands'
+import { getProducts } from '@/services/products'
 import { getApiErrorMessage, getApiErrorDetail } from '@/services/api'
 import { avisar } from '@/lib/store/uiStore'
-import { Pencil, Trash2, Plus, Loader2, Tags } from 'lucide-react'
+import { Trash2, Plus, Loader2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ListToolbar from '@/components/layout/ListToolbar'
 
-const brandSchema = z.object({ name: z.string().trim().min(1, 'El nombre es obligatorio') })
-type BrandFormValues = z.infer<typeof brandSchema>
-
 export default function BrandsPage() {
     const [brands, setBrands] = useState<Brand[]>([])
+    const [productosPorMarca, setProductosPorMarca] = useState<Map<number, number>>(new Map())
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState('')
 
-    // Dialog state
-    const [open, setOpen] = useState(false)
-    const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
-    const form = useForm<BrandFormValues>({ resolver: zodResolver(brandSchema), defaultValues: { name: '' } })
+    // Agregar arriba, sin ventana aparte.
+    const [nueva, setNueva] = useState('')
+    const [agregando, setAgregando] = useState(false)
+    const [errorNueva, setErrorNueva] = useState<string | null>(null)
 
-    useEffect(() => {
-        loadBrands()
-    }, [])
+    // Renombrar en la misma fila.
+    const [editando, setEditando] = useState<number | null>(null)
+    const [nombreEditado, setNombreEditado] = useState('')
+    const [errorEdicion, setErrorEdicion] = useState<string | null>(null)
+    const [guardando, setGuardando] = useState(false)
+
+    const [toDelete, setToDelete] = useState<Brand | null>(null)
 
     const loadBrands = async () => {
         setLoading(true)
         try {
-            const data = await getBrands()
-            setBrands(data)
+            const [marcas, productos] = await Promise.all([getBrands(), getProducts()])
+            setBrands(marcas)
+            const cuenta = new Map<number, number>()
+            productos.filter((p) => p.parent_id === null && p.brand_id)
+                .forEach((p) => cuenta.set(p.brand_id!, (cuenta.get(p.brand_id!) ?? 0) + 1))
+            setProductosPorMarca(cuenta)
         } catch (error) {
             console.error(error)
             avisar(getApiErrorMessage(error, 'Error al cargar marcas'), { reintentar: loadBrands })
@@ -64,139 +52,141 @@ export default function BrandsPage() {
         }
     }
 
-    const filteredBrands = brands.filter(b =>
-        b.name.toLowerCase().includes(filter.toLowerCase())
-    )
+    useEffect(() => { loadBrands() }, [])
 
-    const handleOpenCreate = () => {
-        setEditingBrand(null)
-        form.reset({ name: '' })
-        setOpen(true)
-    }
-
-    const handleOpenEdit = (brand: Brand) => {
-        setEditingBrand(brand)
-        form.reset({ name: brand.name })
-        setOpen(true)
-    }
-
-    const handleSave = async ({ name }: BrandFormValues) => {
+    const agregar = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const name = nueva.trim()
+        setErrorNueva(null)
+        if (!name) {
+            setErrorNueva('Escribe el nombre de la marca.')
+            return
+        }
+        setAgregando(true)
         try {
-            if (editingBrand) {
-                const updated = await updateBrand(editingBrand.id, { name })
-                setBrands(brands.map(b => b.id === updated.id ? updated : b))
-            } else {
-                const created = await createBrand({ name })
-                setBrands([...brands, created])
-            }
-            setOpen(false)
+            const created = await createBrand({ name })
+            setBrands((bs) => [...bs, created])
+            setNueva('')
         } catch (error) {
-            console.error(error)
-            form.setError('root', { message: getApiErrorDetail(error, 'No se pudo guardar la marca.') })
+            setErrorNueva(getApiErrorDetail(error, 'No se pudo agregar la marca.'))
+        } finally {
+            setAgregando(false)
         }
     }
-    const saving = form.formState.isSubmitting
 
-    const [toDelete, setToDelete] = useState<Brand | null>(null)
+    const empezarEdicion = (brand: Brand) => {
+        setEditando(brand.id)
+        setNombreEditado(brand.name)
+        setErrorEdicion(null)
+    }
+
+    const guardarEdicion = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (editando === null) return
+        const name = nombreEditado.trim()
+        if (!name) {
+            setErrorEdicion('El nombre no puede quedar vacío.')
+            return
+        }
+        setGuardando(true)
+        try {
+            const updated = await updateBrand(editando, { name })
+            setBrands((bs) => bs.map((b) => (b.id === updated.id ? updated : b)))
+            setEditando(null)
+        } catch (error) {
+            setErrorEdicion(getApiErrorDetail(error, 'No se pudo cambiar el nombre.'))
+        } finally {
+            setGuardando(false)
+        }
+    }
 
     const handleDelete = async (brand: Brand) => {
         try {
             await deleteBrand(brand.id)
-            setBrands(brands.filter(b => b.id !== brand.id))
+            setBrands((bs) => bs.filter((b) => b.id !== brand.id))
         } catch (error) {
             console.error(error)
             avisar(getApiErrorDetail(error, 'No se pudo eliminar la marca (¿está en uso?).'))
         }
     }
 
+    const ordenadas = [...brands].sort((a, b) => a.name.localeCompare(b.name))
+    const filteredBrands = ordenadas.filter((b) => b.name.toLowerCase().includes(filter.toLowerCase()))
+
     return (
-        <PageContainer>
+        <PageContainer className="max-w-4xl">
             <PageHeader
-                icon={Tags}
                 title="Marcas"
-                description="Gestiona las marcas de tus productos."
-                actions={
-                    <Button onClick={handleOpenCreate}>
-                        <Plus className="h-4 w-4" /> Nueva marca
+                description="Agrupan tus productos para encontrarlos más rápido en el punto de venta."
+            />
+
+            <form data-section="marcas.agregar" onSubmit={agregar} className="space-y-2">
+                <Label htmlFor="nueva-marca">Agregar una marca</Label>
+                <div className="flex gap-2">
+                    <Input id="nueva-marca" value={nueva} onChange={(e) => setNueva(e.target.value)}
+                        placeholder="Escribe el nombre, por ejemplo Soprole" className="h-11 text-base" />
+                    <Button type="submit" disabled={agregando} className="h-11 text-base">
+                        {agregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Agregar
                     </Button>
-                }
-            />
+                </div>
+                <AlertaError mensaje={errorNueva} />
+            </form>
 
-            <ListToolbar
-                busqueda={filter}
-                onBusqueda={setFilter}
-                placeholder="Buscar marca..."
-                visibles={filteredBrands.length}
-                total={brands.length}
-                unidad="marcas"
-            />
+            {brands.length > 8 && (
+                <ListToolbar
+                    busqueda={filter}
+                    onBusqueda={setFilter}
+                    placeholder="Buscar marca"
+                    visibles={filteredBrands.length}
+                    total={brands.length}
+                    unidad="marcas"
+                />
+            )}
 
-            <div data-section="marcas.tabla" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[100px]">ID</TableHead>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                            <TableEmpty colSpan={3} loading />
-                        ) : filteredBrands.length === 0 ? (
-                            <TableEmpty colSpan={3}>No se encontraron marcas.</TableEmpty>
-                        ) : (
-                            filteredBrands.map((brand) => (
-                                <TableRow key={brand.id} className="hover:bg-accent/50 transition-colors">
-                                    <TableCell className="font-mono text-xs">{brand.id}</TableCell>
-                                    <TableCell className="font-medium">{brand.name}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1">
-                                            <AccionFila icon={Pencil} label="Editar" onClick={() => handleOpenEdit(brand)} />
-                                            <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(brand)} peligro />
+            <div data-section="marcas.lista" className="overflow-hidden rounded-xl border border-border bg-card">
+                {loading ? (
+                    <p className="flex items-center gap-2 px-5 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cargando marcas...</p>
+                ) : filteredBrands.length === 0 ? (
+                    <p className="px-5 py-6 text-sm text-muted-foreground">
+                        {brands.length === 0 ? 'Todavía no hay marcas. Agrega la primera arriba.' : 'Ninguna marca coincide con la búsqueda.'}
+                    </p>
+                ) : (
+                    <ul className="divide-y divide-border">
+                        {filteredBrands.map((brand) => {
+                            const n = productosPorMarca.get(brand.id) ?? 0
+                            return (
+                                <li key={brand.id} className="px-5 py-3">
+                                    {editando === brand.id ? (
+                                        <form onSubmit={guardarEdicion} className="space-y-2">
+                                            <div className="flex flex-wrap gap-2">
+                                                <Input value={nombreEditado} onChange={(e) => setNombreEditado(e.target.value)} autoFocus
+                                                    aria-label={`Nuevo nombre para ${brand.name}`} className="h-10 flex-1 text-base" />
+                                                <Button type="submit" disabled={guardando}>
+                                                    {guardando && <Loader2 className="h-4 w-4 animate-spin" />}
+                                                    Guardar
+                                                </Button>
+                                                <Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
+                                            </div>
+                                            <AlertaError mensaje={errorEdicion} />
+                                        </form>
+                                    ) : (
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex-1 text-[15px] font-medium text-foreground">{brand.name}</span>
+                                            <span className="text-sm text-muted-foreground font-tabular">{n} {n === 1 ? 'producto' : 'productos'}</span>
+                                            <span className="flex items-center gap-1">
+                                                <Button variant="outline" size="sm" onClick={() => empezarEdicion(brand)}>Renombrar</Button>
+                                                <AccionFila icon={Trash2} label="Eliminar" onClick={() => setToDelete(brand)} peligro />
+                                            </span>
                                         </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                                    )}
+                                </li>
+                            )
+                        })}
+                    </ul>
+                )}
             </div>
 
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent data-section="marcas.formulario">
-                    <DialogHeader>
-                        <DialogTitle>{editingBrand ? 'Editar marca' : 'Nueva marca'}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 py-4">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Nombre</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Ej. Nike, Adidas..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <AlertaError mensaje={form.formState.errors.root?.message} />
-                            <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-                                    Cancelar
-                                </Button>
-                                <Button type="submit" disabled={saving}>
-                                    {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    Guardar
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
             <ConfirmDialog
                 open={!!toDelete}
                 onOpenChange={(o) => !o && setToDelete(null)}
