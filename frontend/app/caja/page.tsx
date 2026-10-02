@@ -7,35 +7,43 @@ import { getApiErrorDetail, getApiErrorStatus } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmpty } from '@/components/ui/table'
 import { AlertaError } from '@/components/ui/alerta-error'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { avisar } from '@/lib/store/uiStore'
 import { useControlCaja } from '@/lib/store/settingsStore'
-import { formatCLP } from '@/lib/format'
-import {
-    Landmark,
-    DoorOpen,
-    DoorClosed,
-    Clock,
-    DollarSign,
-    Loader2,
-    AlertTriangle,
-    CheckCircle2,
-    History,
-} from 'lucide-react'
+import { diaEnPalabras, formatCLP, hora } from '@/lib/format'
+import { Loader2, Minus, Plus } from 'lucide-react'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
+import Estado, { type TonoEstado } from '@/components/layout/Estado'
 
+/** Billetes chilenos que se cuentan uno por uno; las monedas van como un solo monto. */
+const BILLETES = [20000, 10000, 5000, 2000, 1000]
+
+/** Cuánto lleva abierto un turno, en palabras. */
+function duracion(desde: string): string {
+    const min = Math.max(0, Math.round((Date.now() - new Date(desde).getTime()) / 60_000))
+    const h = Math.floor(min / 60)
+    const m = min % 60
+    if (h === 0) return `hace ${m} ${m === 1 ? 'minuto' : 'minutos'}`
+    return `hace ${h} ${h === 1 ? 'hora' : 'horas'}${m ? ` y ${m} ${m === 1 ? 'minuto' : 'minutos'}` : ''}`
+}
+
+/** Diferencia del arqueo en palabras: lo que la cajera entiende sin restar. */
+function resultado(diferencia: number): { texto: string; tono: TonoEstado } {
+    if (diferencia === 0) return { texto: 'Cuadró justo', tono: 'neutro' }
+    if (diferencia < 0) return { texto: `Faltaron ${formatCLP(-diferencia)}`, tono: 'mal' }
+    return { texto: `Sobraron ${formatCLP(diferencia)}`, tono: 'alerta' }
+}
+
+const nombre = (s: CashSessionWithUser) => s.user.full_name || s.user.name || s.user.email
 
 export default function CajaPage() {
     const { status, user, sessionId, startAmount, startTime, setSession, closeSession: clearSession } = useSessionStore()
     const esAdmin = useEsAdmin()
     const [montoInicial, setMontoInicial] = useState('')
-    const [efectivoContado, setEfectivoContado] = useState('')
+    const [billetes, setBilletes] = useState<number[]>(BILLETES.map(() => 0))
+    const [monedas, setMonedas] = useState('')
     const [opening, setOpening] = useState(false)
     const [closing, setClosing] = useState(false)
     const [errorApertura, setErrorApertura] = useState<string | null>(null)
@@ -49,18 +57,18 @@ export default function CajaPage() {
         difference: number
     } | null>(null)
 
-    // History state
     const [historySessions, setHistorySessions] = useState<CashSessionWithUser[]>([])
-    const [loadingHistory, setLoadingHistory] = useState(false)
+    const [loadingHistory, setLoadingHistory] = useState(true)
     // Turno de otro usuario que el administrador va a cerrar.
     const [turnoAjeno, setTurnoAjeno] = useState<CashSessionWithUser | null>(null)
     const [contadoAjeno, setContadoAjeno] = useState('')
 
+    const contado = BILLETES.reduce((s, b, i) => s + b * billetes[i], 0) + (parseFloat(monedas) || 0)
+
     const loadHistory = async () => {
         setLoadingHistory(true)
         try {
-            const data = await getAllSessions()
-            setHistorySessions(data)
+            setHistorySessions(await getAllSessions())
         } catch {
             avisar('No se pudo cargar el historial de turnos.', { reintentar: loadHistory })
         } finally {
@@ -68,7 +76,13 @@ export default function CajaPage() {
         }
     }
 
-    useEffect(() => { sincronizarCaja() }, [])
+    useEffect(() => {
+        sincronizarCaja()
+        getAllSessions()
+            .then(setHistorySessions)
+            .catch(() => avisar('No se pudo cargar el historial de turnos.'))
+            .finally(() => setLoadingHistory(false))
+    }, [])
 
     const handleOpen = async () => {
         const monto = parseFloat(montoInicial)
@@ -80,7 +94,7 @@ export default function CajaPage() {
         }
 
         if (!monto || monto < 0) {
-            setErrorApertura('Ingresa un monto válido.')
+            setErrorApertura('Escribe con cuánto dinero empieza la caja.')
             return
         }
         setOpening(true)
@@ -88,6 +102,7 @@ export default function CajaPage() {
             const session = await openSession(monto, user.id, false)
             setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
+            setCloseResult(null)
         } catch (err) {
             if (getApiErrorStatus(err) === 409) setForzar(monto)
             else setErrorApertura(getApiErrorDetail(err, 'No se pudo abrir la caja.'))
@@ -103,6 +118,7 @@ export default function CajaPage() {
             const session = await openSession(monto, user.id, true)
             setSession(session.id, monto, session.start_time, user.id)
             setMontoInicial('')
+            setCloseResult(null)
         } catch (err) {
             setErrorApertura(getApiErrorDetail(err, 'No se pudo forzar la apertura de caja.'))
         }
@@ -110,27 +126,27 @@ export default function CajaPage() {
 
     // Cerrar no se deshace: primero se confirma el monto contado.
     const pedirCierre = () => {
-        const declared = parseFloat(efectivoContado)
         setErrorCierre(null)
-        if (isNaN(declared) || declared < 0) {
-            setErrorCierre('Ingresa el efectivo contado.')
+        if (contado <= 0) {
+            setErrorCierre('Cuenta los billetes y monedas del cajón antes de cerrar.')
             return
         }
         setConfirmarCierre(true)
     }
 
     const handleClose = async () => {
-        const declared = parseFloat(efectivoContado)
         setClosing(true)
         try {
-            const result = await closeSession(declared)
+            const result = await closeSession(contado)
             setCloseResult({
                 final_cash_system: parseFloat(result.final_cash_system),
                 final_cash_declared: parseFloat(result.final_cash_declared),
                 difference: parseFloat(result.difference),
             })
             clearSession()
-            setEfectivoContado('')
+            setBilletes(BILLETES.map(() => 0))
+            setMonedas('')
+            await loadHistory()
         } catch (err: unknown) {
             setErrorCierre(getApiErrorDetail(err, 'No se pudo cerrar la caja.'))
         } finally {
@@ -149,256 +165,211 @@ export default function CajaPage() {
         }
     }
 
+    const cambiarBillete = (i: number, delta: number) =>
+        setBilletes((b) => b.map((n, j) => (j === i ? Math.max(0, n + delta) : n)))
+
     // Sin control de caja, AppShell saca al usuario de esta página.
     if (!controlCaja) return null
 
+    const quien = user?.full_name || user?.email || 'Tú'
+    const anteriores = historySessions.filter((s) => s.id !== sessionId)
+
     return (
-        <PageContainer className="max-w-4xl">
+        <PageContainer>
             <PageHeader
-                icon={Landmark}
-                title="Gestión de caja"
-                description="Abre y cierra turnos de caja, y audita el historial."
+                title="Caja"
+                description="Abre el turno al empezar el día y ciérralo contando el efectivo que hay en el cajón."
             />
 
-            <Tabs defaultValue="gestion" className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="gestion" className="gap-2">
-                        <Landmark className="h-4 w-4" /> Gestión diaria
-                    </TabsTrigger>
-                    <TabsTrigger value="historial" className="gap-2" onClick={loadHistory}>
-                        <History className="h-4 w-4" /> Historial de turnos
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent data-section="caja.gestion" value="gestion" className="space-y-4">
-                    {/* User Info Card */}
-                    <div className="rounded-xl border border-border bg-card p-4 flex shadow-sm items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
-                            {(user?.full_name || user?.email || '?')[0].toUpperCase()}
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-foreground">
-                                {user?.full_name || user?.email || 'Usuario'}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                                {user?.email || ''}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Status Card */}
-                    <div className="rounded-xl border border-border bg-card p-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-foreground">Estado actual</span>
-                            <Badge
-                                variant={status === 'OPEN' ? 'default' : 'destructive'}
-                                className={''}
-                            >
-                                {status === 'OPEN' ? '● Abierta' : '○ Cerrada'}
-                            </Badge>
-                        </div>
-                        {status === 'OPEN' && startTime && (
-                            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                                <p className="flex items-center gap-1.5">
-                                    <Clock className="h-3 w-3" />
-                                    Apertura: {new Date(startTime).toLocaleString('es-CL')}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                <div className="space-y-6 min-w-0">
+                    <section data-section="caja.estado" className="rounded-xl border border-border bg-card p-5 space-y-2">
+                        {status === 'OPEN' && startTime ? (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Estado tono="bien">Caja abierta</Estado>
+                                    <span className="text-sm text-muted-foreground">{duracion(startTime)}</span>
+                                </div>
+                                <p className="text-lg font-semibold leading-snug text-foreground">
+                                    {quien} abrió la caja {diaEnPalabras(startTime)} a las {hora(startTime)} con {formatCLP(startAmount)} de fondo.
                                 </p>
-                                <p className="flex items-center gap-1.5">
-                                    <DollarSign className="h-3 w-3" />
-                                    Fondo inicial: {formatCLP(startAmount)}
+                            </>
+                        ) : (
+                            <>
+                                <Estado>Caja cerrada</Estado>
+                                <p className="text-lg font-semibold leading-snug text-foreground">
+                                    Para vender, abre la caja con el dinero que tienes para dar vuelto.
                                 </p>
-                            </div>
+                            </>
                         )}
-                    </div>
+                    </section>
 
-                    {/* Open / Close Form */}
-                    {status !== 'OPEN' ? (
-                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                            <div className="flex items-center gap-2">
-                                <DoorOpen className="h-5 w-5 text-primary" />
-                                <h2 className="text-base font-bold text-foreground">Abrir turno</h2>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Ingresa el fondo de caja (billetes y monedas iniciales).</p>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-xs">Monto inicial ($)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="50000"
-                                    value={montoInicial}
-                                    onChange={(e) => setMontoInicial(e.target.value)}
-                                    className="font-tabular h-10 text-sm"
-                                    min={0}
-                                />
-                            </div>
-
-                            <AlertaError mensaje={errorApertura} />
-
-                            <Button
-                                size="lg"
-                                className="w-full gap-2 text-sm"
-                                onClick={handleOpen}
-                                disabled={opening}
-                            >
-                                {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
-                                Abrir caja
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                            <div className="flex items-center gap-2">
-                                <DoorClosed className="h-5 w-5 text-destructive" />
-                                <h2 className="text-base font-bold text-foreground">Cerrar turno (arqueo ciego)</h2>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Cuenta el efectivo en caja e ingresa el total. El sistema comparará con lo esperado.</p>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-xs">Efectivo contado ($)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="Cuánto hay en la caja..."
-                                    value={efectivoContado}
-                                    onChange={(e) => setEfectivoContado(e.target.value)}
-                                    className="font-tabular h-10 text-sm"
-                                    min={0}
-                                />
-                            </div>
-
-                            <AlertaError mensaje={errorCierre} />
-
-                            <Button
-                                size="lg"
-                                variant="destructive"
-                                className="w-full gap-2 text-sm"
-                                onClick={pedirCierre}
-                                disabled={closing}
-                            >
-                                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorClosed className="h-4 w-4" />}
-                                Cerrar caja
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Close Results */}
-                    {closeResult && (
-                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                            <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
-                                <CheckCircle2 className="h-4 w-4 text-primary" />
-                                Resultado del arqueo
-                            </h3>
-                            <Separator />
-                            <div className="space-y-1.5 text-sm font-tabular">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Sistema</span>
-                                    <span className="font-semibold text-foreground">{formatCLP(closeResult.final_cash_system)}</span>
+                    {closeResult && (() => {
+                        const r = resultado(closeResult.difference)
+                        return (
+                            <section data-section="caja.resultado" className="rounded-xl border border-border bg-card p-5 space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h2 className="text-base font-semibold text-foreground">Resultado del cierre</h2>
+                                    <Estado tono={r.tono}>{r.texto}</Estado>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Declarado</span>
-                                    <span className="font-semibold text-foreground">{formatCLP(closeResult.final_cash_declared)}</span>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="rounded-lg bg-muted/60 px-3 py-2">
+                                        <p className="text-muted-foreground">Contaste</p>
+                                        <p className="text-lg font-semibold font-tabular text-foreground">{formatCLP(closeResult.final_cash_declared)}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-muted/60 px-3 py-2">
+                                        <p className="text-muted-foreground">Debía haber</p>
+                                        <p className="text-lg font-semibold font-tabular text-foreground">{formatCLP(closeResult.final_cash_system)}</p>
+                                    </div>
                                 </div>
-                                <Separator />
-                                <div className="flex justify-between">
-                                    <span className="font-medium text-foreground">Diferencia</span>
-                                    <span className={`font-bold text-base ${closeResult.difference === 0 ? 'text-foreground' : closeResult.difference > 0 ? 'text-primary' : 'text-destructive'}`}>
-                                        {closeResult.difference > 0 ? '+' : ''}{formatCLP(closeResult.difference)}
-                                    </span>
-                                </div>
-                            </div>
-                            {closeResult.difference !== 0 && (
-                                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                                    {closeResult.difference > 0 ? 'Sobrante en caja' : 'Faltante en caja'}
-                                </div>
+                            </section>
+                        )
+                    })()}
+
+                    <section data-section="caja.historial" className="space-y-3">
+                        <h2 className="text-base font-semibold text-foreground">Turnos anteriores</h2>
+                        <div className="rounded-xl border border-border bg-card overflow-hidden">
+                            {loadingHistory ? (
+                                <p className="flex items-center gap-2 px-5 py-6 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando turnos...
+                                </p>
+                            ) : anteriores.length === 0 ? (
+                                <p className="px-5 py-6 text-sm text-muted-foreground">Todavía no hay turnos cerrados.</p>
+                            ) : (
+                                <ul className="divide-y divide-border">
+                                    {anteriores.map((s) => {
+                                        const abierto = s.status === 'OPEN'
+                                        const r = resultado(parseFloat(s.difference))
+                                        return (
+                                            <li key={s.id} className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3 text-sm sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_7rem_7rem_minmax(0,1.2fr)] sm:items-center">
+                                                <span className="text-foreground first-letter:uppercase">
+                                                    {diaEnPalabras(s.start_time)}
+                                                    <span className="block text-muted-foreground">
+                                                        {hora(s.start_time)}{s.end_time ? ` a ${hora(s.end_time)}` : ', sigue abierto'}
+                                                    </span>
+                                                </span>
+                                                <span className="truncate text-foreground">{nombre(s)}</span>
+                                                <span className="font-tabular text-muted-foreground sm:text-right">
+                                                    <span className="sm:hidden">Fondo </span>{formatCLP(parseFloat(s.start_amount))}
+                                                </span>
+                                                <span className="font-tabular text-foreground sm:text-right">
+                                                    {abierto ? '' : <><span className="sm:hidden">Contado </span>{formatCLP(parseFloat(s.final_cash_declared))}</>}
+                                                </span>
+                                                <span className="flex items-center gap-2 sm:justify-end">
+                                                    {abierto ? (
+                                                        <>
+                                                            <Estado tono="bien">Abierto</Estado>
+                                                            {esAdmin && (
+                                                                <Button size="sm" variant="outline" onClick={() => setTurnoAjeno(s)}>Cerrar turno</Button>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <Estado tono={r.tono}>{r.texto}</Estado>
+                                                    )}
+                                                </span>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
                             )}
                         </div>
-                    )}
-                </TabsContent>
+                    </section>
+                </div>
 
-                {/* Historial Tab */}
-                <TabsContent data-section="caja.historial" value="historial" className="space-y-4">
-                    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha/hora de apertura</TableHead>
-                                        <TableHead>Cajero</TableHead>
-                                        <TableHead className="text-right">Fondo inicial</TableHead>
-                                        <TableHead className="text-right">Al cierre (sistema)</TableHead>
-                                        <TableHead className="text-right">Diferencia</TableHead>
-                                        <TableHead className="text-center">Estado</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loadingHistory ? (
-                                        <TableEmpty colSpan={6} loading />
-                                    ) : historySessions.length === 0 ? (
-                                        <TableEmpty colSpan={6}>No hay turnos registrados</TableEmpty>
-                                    ) : (
-                                        historySessions.map((session) => (
-                                            <TableRow key={session.id}>
-                                                <TableCell className="text-xs">
-                                                    {new Date(session.start_time).toLocaleString('es-CL')}
-                                                    {session.end_time && (
-                                                        <div className="text-xs text-muted-foreground mt-1">
-                                                            Cierre: {new Date(session.end_time).toLocaleString('es-CL')}
-                                                        </div>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-xs">
-                                                    <div className="font-medium text-foreground">
-                                                        {session.user.full_name || session.user.name || session.user.email}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground font-mono">
-                                                        {session.user.rut || ''}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right text-xs font-tabular font-medium">
-                                                    {formatCLP(parseFloat(session.start_amount))}
-                                                </TableCell>
-                                                <TableCell className="text-right text-xs font-tabular">
-                                                    {session.status === 'OPEN' ? (
-                                                        <span className="text-muted-foreground italic">-</span>
-                                                    ) : (
-                                                        <span>{formatCLP(parseFloat(session.final_cash_system))}</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right text-xs font-tabular">
-                                                    {session.status === 'OPEN' ? (
-                                                        <span className="text-muted-foreground italic">-</span>
-                                                    ) : (
-                                                        <span className={`font-semibold ${parseFloat(session.difference) === 0 ? 'text-foreground' : parseFloat(session.difference) > 0 ? 'text-primary' : 'text-destructive'}`}>
-                                                            {parseFloat(session.difference) > 0 ? '+' : ''}{formatCLP(parseFloat(session.difference))}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge
-                                                        variant={session.status === 'OPEN' ? 'default' : 'secondary'}
-                                                        className={'text-xs'}
-                                                    >
-                                                        {session.status === 'OPEN' ? 'ABIERTA' : 'CERRADA'}
-                                                    </Badge>
-                                                    {session.status === 'OPEN' && esAdmin && session.id !== sessionId && (
-                                                        <Button size="sm" variant="outline" className="mt-1.5 h-7 text-xs"
-                                                            onClick={() => setTurnoAjeno(session)}>
-                                                            Cerrar turno
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
+                {status !== 'OPEN' ? (
+                    <section data-section="caja.abrir" className="rounded-xl border border-border bg-card p-5 space-y-4 self-start">
+                        <div>
+                            <h2 className="text-lg font-semibold text-foreground">Abrir caja</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">Escribe cuánto dinero hay en el cajón para dar vuelto.</p>
                         </div>
-                    </div>
-                </TabsContent>
-            </Tabs>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="monto-inicial">Fondo inicial</Label>
+                            <Input
+                                id="monto-inicial"
+                                type="number"
+                                inputMode="numeric"
+                                placeholder="20000"
+                                value={montoInicial}
+                                onChange={(e) => setMontoInicial(e.target.value)}
+                                className="h-11 text-base font-tabular"
+                                min={0}
+                            />
+                        </div>
+                        <AlertaError mensaje={errorApertura} />
+                        <Button size="lg" className="h-12 w-full text-base" onClick={handleOpen} disabled={opening}>
+                            {opening && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Abrir caja
+                        </Button>
+                    </section>
+                ) : (
+                    <section data-section="caja.cerrar" className="rounded-xl border border-border bg-card p-5 space-y-4 self-start">
+                        <div>
+                            <h2 className="text-lg font-semibold text-foreground">Cerrar caja</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Cuenta los billetes y monedas del cajón. Lo que debería haber se muestra después de cerrar, para que el conteo sea honesto.
+                            </p>
+                        </div>
+                        <div className="space-y-1.5">
+                            {BILLETES.map((b, i) => (
+                                <div key={b} className="grid grid-cols-[5.5rem_1fr_6.5rem] items-center gap-2 text-sm">
+                                    <span className="font-medium text-foreground font-tabular">{formatCLP(b)}</span>
+                                    <span className="flex items-center gap-1.5">
+                                        <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                                            onClick={() => cambiarBillete(i, -1)} aria-label={`Un billete de ${formatCLP(b)} menos`}>
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                        <Input
+                                            type="number"
+                                            inputMode="numeric"
+                                            min={0}
+                                            value={billetes[i] || ''}
+                                            placeholder="0"
+                                            onChange={(e) => {
+                                                const n = Math.max(0, parseInt(e.target.value) || 0)
+                                                setBilletes((bs) => bs.map((v, j) => (j === i ? n : v)))
+                                            }}
+                                            className="h-9 w-14 px-1 text-center font-semibold font-tabular"
+                                            aria-label={`Billetes de ${formatCLP(b)}`}
+                                        />
+                                        <Button type="button" variant="outline" size="icon" className="h-9 w-9"
+                                            onClick={() => cambiarBillete(i, 1)} aria-label={`Un billete de ${formatCLP(b)} más`}>
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </span>
+                                    <span className="text-right text-muted-foreground font-tabular">{formatCLP(b * billetes[i])}</span>
+                                </div>
+                            ))}
+                            <div className="grid grid-cols-[5.5rem_1fr] items-center gap-2 pt-1">
+                                <Label htmlFor="monedas" className="text-sm">Monedas</Label>
+                                <Input
+                                    id="monedas"
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    placeholder="Total en monedas"
+                                    value={monedas}
+                                    onChange={(e) => setMonedas(e.target.value)}
+                                    className="h-9 font-tabular"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline justify-between rounded-lg bg-muted/60 px-4 py-3">
+                            <span className="text-sm text-muted-foreground">Contaste</span>
+                            <span className="text-2xl font-bold tracking-tight font-tabular text-foreground">{formatCLP(contado)}</span>
+                        </div>
+                        <AlertaError mensaje={errorCierre} />
+                        <Button size="lg" className="h-12 w-full text-base" onClick={pedirCierre} disabled={closing}>
+                            {closing && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Cerrar caja con {formatCLP(contado)}
+                        </Button>
+                    </section>
+                )}
+            </div>
+
             <ConfirmDialog
                 open={confirmarCierre}
                 onOpenChange={setConfirmarCierre}
-                title={`¿Cerrar la caja con ${formatCLP(parseFloat(efectivoContado) || 0)} contados?`}
+                title={`¿Cerrar la caja con ${formatCLP(contado)} contados?`}
                 description="Revisa el monto. Una vez cerrada, la caja no se puede reabrir ni corregir."
                 confirmLabel="Sí, cerrar caja"
                 onConfirm={handleClose}
@@ -406,10 +377,10 @@ export default function CajaPage() {
             <ConfirmDialog
                 open={turnoAjeno !== null}
                 onOpenChange={(o) => !o && setTurnoAjeno(null)}
-                title={`¿Cerrar el turno de ${turnoAjeno?.user.full_name || turnoAjeno?.user.email || ''}?`}
+                title={`¿Cerrar el turno de ${turnoAjeno ? nombre(turnoAjeno) : ''}?`}
                 description={
                     <>
-                        Ingresa el efectivo contado en esa caja (abierta el {turnoAjeno && new Date(turnoAjeno.start_time).toLocaleString('es-CL')}).
+                        Escribe el efectivo contado en esa caja (abierta {turnoAjeno && `${diaEnPalabras(turnoAjeno.start_time)} a las ${hora(turnoAjeno.start_time)}`}).
                         Una vez cerrado, el turno no se puede reabrir.
                         <Input
                             type="number"
@@ -435,4 +406,3 @@ export default function CajaPage() {
         </PageContainer>
     )
 }
-

@@ -84,3 +84,20 @@ export function fechaHora(value: string | number | Date): string {
         hourCycle: 'h23', timeZone: CHILE_TIMEZONE,
     }).format(new Date(value))
 }
+
+/** Hora de Chile en formato 24 h (`hh:mm`). */
+export function hora(value: string | number | Date): string {
+    return new Intl.DateTimeFormat('es-CL', {
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: CHILE_TIMEZONE,
+    }).format(new Date(value))
+}
+
+/** Día en palabras, como se dice: "hoy", "ayer" o "martes 30 de septiembre". */
+export function diaEnPalabras(value: string | number | Date): string {
+    const dia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: CHILE_TIMEZONE }).format(d)
+    const fecha = new Date(value)
+    const hoy = new Date()
+    if (dia(fecha) === dia(hoy)) return 'hoy'
+    if (dia(fecha) === dia(new Date(hoy.getTime() - 86_400_000))) return 'ayer'
+    return new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: CHILE_TIMEZONE }).format(fecha)
+}
