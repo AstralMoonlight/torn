@@ -14,6 +14,9 @@ import { formatCLP } from '@/lib/format'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 const marca = Bricolage_Grotesque({ subsets: ['latin'], weight: ['600', '800'] })
+// Bricolage es variable en tamaño óptico: sin fijar 'opsz' cada tamaño se dibuja con
+// otro corte y "Factureando", "¡Hazla simple!" y "Hola de nuevo" parecen tres fuentes.
+const titular = `${marca.className} font-extrabold tracking-tight [font-variation-settings:'opsz'_96]`
 
 const TINTA = '#16173A'
 
@@ -179,6 +182,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [verPassword, setVerPassword] = useState(false)
+    const [ayudaClave, setAyudaClave] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [variante] = useState(() => sortear(VARIANTES))
@@ -223,7 +227,7 @@ export default function LoginPage() {
                 className="relative flex flex-col justify-between gap-2 overflow-hidden px-6 py-8 lg:gap-8 lg:px-14 lg:py-12"
                 style={{ background: variante.fondo, color: variante.texto }}
             >
-                <p className={`${marca.className} text-3xl font-extrabold tracking-tight lg:text-4xl`}>
+                <p className={`${titular} text-3xl lg:text-4xl`}>
                     Factureando
                 </p>
 
@@ -231,7 +235,7 @@ export default function LoginPage() {
                     <Impresion doc={documento} variante={variante} />
                 </div>
 
-                <p className={`${marca.className} text-right text-2xl font-extrabold leading-none tracking-tight lg:text-7xl`}>
+                <p className={`${titular} text-right text-2xl leading-none lg:text-7xl`}>
                     ¡Hazla simple!
                 </p>
             </section>
@@ -239,7 +243,7 @@ export default function LoginPage() {
             <main className="flex items-center justify-center px-6 py-10 lg:px-14">
                 <div data-section="login.formulario" className="w-full max-w-sm space-y-8">
                     <div className="space-y-2">
-                        <h1 className={`${marca.className} text-3xl font-extrabold tracking-tight text-foreground`}>
+                        <h1 className={`${titular} text-3xl text-foreground`}>
                             Hola de nuevo
                         </h1>
                         <p className="text-base text-muted-foreground">
@@ -263,7 +267,18 @@ export default function LoginPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-base">Contraseña</Label>
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <Label htmlFor="password" className="text-base">Contraseña</Label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAyudaClave(v => !v)}
+                                        aria-expanded={ayudaClave}
+                                        aria-controls="ayuda-clave"
+                                        className="rounded text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                        ¿La olvidaste?
+                                    </button>
+                                </div>
                                 <div className="relative">
                                     <Input
                                         id="password"
@@ -284,6 +299,14 @@ export default function LoginPage() {
                                         {verPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                     </button>
                                 </div>
+                                {/* ponytail: sin correo saliente todavía; el reseteo lo hace quien
+                                    administra (Personal) o soporte. Enlace por correo cuando exista el dominio. */}
+                                {ayudaClave && (
+                                    <p id="ayuda-clave" className="rounded-xl bg-muted px-4 py-3 text-sm leading-6 text-foreground">
+                                        Pídele a quien administra tu negocio que te ponga una nueva desde Personal.
+                                        Si quien administra eres tú, llama a soporte de Factureando.
+                                    </p>
+                                )}
                             </div>
                         </div>
 
