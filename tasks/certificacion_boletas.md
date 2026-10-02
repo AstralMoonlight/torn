@@ -114,7 +114,10 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
 - [ ] El ticket 58/80 mm de la boleta lleva timbre, la resolución y el sitio de verificación
       (el que indique el SII para boletas). Revisar también la boleta en carta.
-      El correo del SII exige que el sitio esté **en la boleta impresa y funcionando en la web**.
+      ~~Sitio web propio de consulta~~: **no hace falta**. El formato vigente (Formato Boletas
+      Electrónicas v4.2, 2025-09-08, pág. 7) dice que, una vez obligatoria la boleta electrónica, la
+      leyenda es "verifique en www.sii.cl" y el sitio propio es opcional. El correo y el instructivo de
+      certificación repiten la regla antigua. El ticket ya imprime "Verifique documento: www.sii.cl".
 - [x] ~~Muestras impresas~~: el SII no las pidió; el V°B° llegó sin ellas.
 - [x] ~~Declarar el avance en maullín~~: en boletas se reemplaza por la solicitud de revisión (`?SET=2`).
 - [x] V°B° del SII (correo del 2026-10-02).
