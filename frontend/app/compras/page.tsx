@@ -43,7 +43,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { type Provider } from '@/services/providers'
+import { getProviders, type Provider } from '@/services/providers'
 import { getProducts, type Product } from '@/services/products'
 import { productTaxRate } from '@/lib/taxes'
 import { createPurchase, getPurchases, deletePurchase, getPurchasePdfPath, type Purchase, type PurchaseCreate } from '@/services/purchases'
@@ -94,7 +94,8 @@ export default function ComprasPage() {
     const [deleteId, setDeleteId] = useState<number | null>(null)
 
     // La lista de compras es la vista principal; el formulario se abre al registrar.
-    const [registrando, setRegistrando] = useState(false)
+    // Desde Proveedores se llega con ?registrar=<id> para abrir el formulario con ese proveedor.
+    const [registrando, setRegistrando] = useState(() => new URLSearchParams(window.location.search).has('registrar'))
     const [periodo, setPeriodo] = useState<'mes' | 'pasado' | 'todas'>('mes')
     const [buscar, setBuscar] = useState('')
 
@@ -111,6 +112,8 @@ export default function ComprasPage() {
 
     useEffect(() => {
         loadInitialData()
+        const proveedor = Number(new URLSearchParams(window.location.search).get('registrar'))
+        if (proveedor) getProviders().then((ps) => setSelectedProvider(ps.find((p) => p.id === proveedor) ?? null)).catch(() => null)
     }, [])
 
     const loadInitialData = () => {
