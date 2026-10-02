@@ -131,7 +131,7 @@ export default function InventarioPage() {
 
             {!loading && (
                 <Resumen datos={[
-                    { etiqueta: 'Productos a la venta', valor: activos.length, nota: desactivados.length ? `${desactivados.length} desactivados` : 'Ninguno desactivado' },
+                    { etiqueta: 'Productos a la venta', valor: activos.length, nota: desactivados.length === 0 ? 'Ninguno desactivado' : desactivados.length === 1 ? '1 desactivado' : `${desactivados.length} desactivados` },
                     { etiqueta: 'Con poco stock', valor: pocos.length, nota: 'Quedan menos de los que pediste avisar' },
                     { etiqueta: 'Agotados', valor: agotados.length, nota: 'No se pueden vender hasta reponer', tono: agotados.length ? 'mal' : undefined },
                 ]} />

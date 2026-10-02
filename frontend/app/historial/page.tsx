@@ -130,7 +130,7 @@ export default function HistorialPage() {
             .then(([s, m, f]) => {
                 const rechazadas = s.filter(v => RECHAZADOS.includes(v.dte_estado ?? ''))
                 if (rechazadas.length > 0) {
-                    avisar(`El SII rechazó ${rechazadas.length} documento(s): N° ${rechazadas.map(v => v.folio).join(', ')}. Véalos en "Rechazados", arriba a la derecha.`)
+                    avisar(`El SII rechazó ${rechazadas.length === 1 ? 'un documento' : `${rechazadas.length} documentos`}: N° ${rechazadas.map(v => v.folio).join(', ')}. ${rechazadas.length === 1 ? 'No tiene validez: emítelo' : 'No tienen validez: emítelos'} de nuevo con el botón de su fila.`)
                 }
                 setMethods(m)
                 setHayNotasCredito(f.some((d: FolioStockOut) => d.dte_type === 61 && d.available > 0))
@@ -170,7 +170,8 @@ export default function HistorialPage() {
 
     /** Lo vendido en la lista, con las notas de crédito restando. */
     const totalNeto = (ventas: SaleOut[]) =>
-        ventas.reduce((t, v) => t + (v.tipo_dte === 61 ? -1 : v.tipo_dte === 52 ? 0 : 1) * Number(v.monto_total), 0)
+        ventas.filter((v) => !RECHAZADOS.includes(v.dte_estado ?? ''))
+            .reduce((t, v) => t + (v.tipo_dte === 61 ? -1 : v.tipo_dte === 52 ? 0 : 1) * Number(v.monto_total), 0)
 
     const verPdf = async (saleId: number) => {
         try {
@@ -246,7 +247,8 @@ export default function HistorialPage() {
                     {periodo === 'hoy' ? 'Hoy emitiste' : periodo === 'ayer' ? 'Ayer emitiste' : 'Emitiste'}{' '}
                     <strong>{sales.length} {sales.length === 1 ? 'documento' : 'documentos'}</strong> por{' '}
                     <strong className="font-tabular">{formatCLP(totalNeto(sales))}</strong>
-                    {sales.some((v) => v.tipo_dte === 61) && ', ya descontadas las devoluciones'}.
+                    {sales.some((v) => v.tipo_dte === 61) && ', ya descontadas las devoluciones'}
+                    {sales.some((v) => RECHAZADOS.includes(v.dte_estado ?? '')) && ' (sin contar los rechazados)'}.
                 </p>
             )}
 
