@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
-    AlertTriangle, ArrowDown, ArrowUp, BarChart3, CreditCard, FileText, Printer, Receipt,
-    ShoppingBag, Undo2, Users, Wallet, type LucideIcon,
+    AlertTriangle, ArrowDown, ArrowUp, BarChart3, CreditCard, FileText, Printer,
+    ShoppingBag, Users, type LucideIcon,
 } from 'lucide-react'
 import { getReporteVentas, type ReporteVentas } from '@/services/stats'
 import { formatCLP, getTodayChile } from '@/lib/format'
@@ -20,12 +20,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SearchInput } from '@/components/ui/search-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import PageContainer from '@/components/layout/PageContainer'
 import PageHeader from '@/components/layout/PageHeader'
 import ReporteImpreso from '@/components/reportes/ReporteImpreso'
+import Resumen from '@/components/layout/Resumen'
+import FiltrosRapidos from '@/components/layout/FiltrosRapidos'
 
 const GraficoVentas = dynamic(() => import('@/components/reportes/GraficoVentas'), {
     ssr: false,
@@ -59,26 +62,8 @@ function Variacion({ actual, anterior }: { actual: number; anterior: number }) {
     return (
         <span className={cn('inline-flex items-center gap-1 font-semibold', sube ? 'text-primary' : 'text-destructive')}>
             <Icono className="h-4 w-4" aria-hidden />
-            {sube ? '+' : ''}{pct.toFixed(0)}%
-            <span className="sr-only">{sube ? 'más' : 'menos'} que el periodo anterior</span>
+            {Math.abs(pct).toFixed(0)}% {sube ? 'más' : 'menos'} que antes
         </span>
-    )
-}
-
-function Indicador({ icono: Icono, titulo, valor, detalle, children }: {
-    icono: LucideIcon; titulo: string; valor: string; detalle?: React.ReactNode; children?: React.ReactNode
-}) {
-    return (
-        <Card className="shadow-sm">
-            <CardContent className="p-5 space-y-2">
-                <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Icono className="h-4 w-4 text-primary" aria-hidden /> {titulo}
-                </p>
-                <p className="text-3xl font-bold tracking-tight text-foreground">{valor}</p>
-                {detalle && <p className="text-sm text-muted-foreground">{detalle}</p>}
-                {children && <div className="text-sm">{children}</div>}
-            </CardContent>
-        </Card>
     )
 }
 
@@ -178,9 +163,8 @@ export default function ReporteVentasPage() {
             <div className="space-y-6 print:hidden">
                 <div className="space-y-4">
                     <PageHeader
-                        icon={BarChart3}
                         title="Reporte de ventas"
-                        description="Cuánto vendió, cuánto ganó y cómo le pagaron."
+                        description="Cuánto vendiste, cuánto ganaste y cómo te pagaron, en el período que elijas."
                         actions={
                             <Button variant="outline" size="lg" onClick={() => window.print()} className="gap-2 px-5">
                                 <Printer className="h-4 w-4" /> Imprimir
@@ -189,14 +173,12 @@ export default function ReporteVentasPage() {
                     />
 
                     <div data-section="reporte-diario.periodo" className="flex flex-col xl:flex-row xl:items-end gap-4">
-                        <div role="group" aria-label="Periodo" className="flex flex-wrap gap-2">
-                            {opciones.map((o) => (
-                                <Button key={o.id} size="lg" className="px-5" variant={atajo?.id === o.id ? 'default' : 'outline'}
-                                    aria-pressed={atajo?.id === o.id} onClick={() => setRango(o.rango)}>
-                                    {o.texto}
-                                </Button>
-                            ))}
-                        </div>
+                        <FiltrosRapidos
+                            etiqueta="Período"
+                            valor={atajo?.id ?? ''}
+                            onChange={(id) => { const o = opciones.find((x) => x.id === id); if (o) setRango(o.rango) }}
+                            opciones={opciones.map((o) => ({ valor: o.id, etiqueta: o.texto }))}
+                        />
                         <div className="flex flex-wrap items-end gap-3 xl:ml-auto">
                             <div className="space-y-1">
                                 <Label htmlFor="desde">Desde</Label>
@@ -235,24 +217,29 @@ export default function ReporteVentasPage() {
                     </Alert>
                 )}
 
-                <div data-section="reporte-diario.indicadores" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Indicador icono={Wallet} titulo="Ventas (con IVA)" valor={formatCLP(r.venta_total)}
-                        detalle={`Antes: ${formatCLP(a.venta_total)}`}>
-                        <Variacion actual={r.venta_total} anterior={a.venta_total} />
-                    </Indicador>
-                    <Indicador icono={BarChart3} titulo="Ganancia" valor={formatCLP(r.margen)}
-                        detalle={r.neto ? `${porcentaje(r.margen, r.neto)} de la venta sin IVA` : 'Sin ventas'}>
-                        <Variacion actual={r.margen} anterior={a.margen} />
-                    </Indicador>
-                    <Indicador icono={Receipt} titulo="Ventas realizadas" valor={cantidad.format(r.num_ventas)}
-                        detalle={`Promedio por venta: ${formatCLP(r.ticket_promedio)}`}>
-                        <Variacion actual={r.num_ventas} anterior={a.num_ventas} />
-                    </Indicador>
-                    <Indicador icono={Undo2} titulo="Devoluciones" valor={formatCLP(r.devoluciones.total)}
-                        detalle={r.devoluciones.num === 0 ? 'Sin notas de crédito'
-                            : r.devoluciones.num === 1 ? '1 nota de crédito' : `${r.devoluciones.num} notas de crédito`}>
-                        <span className="text-muted-foreground">Descuentos dados: {formatCLP(r.descuentos)}</span>
-                    </Indicador>
+                <div data-section="reporte-diario.indicadores" className="space-y-2">
+                    <Resumen datos={[
+                        {
+                            etiqueta: 'Vendiste',
+                            valor: formatCLP(r.venta_total),
+                            nota: <>{cantidad.format(r.num_ventas)} {r.num_ventas === 1 ? 'venta' : 'ventas'}, promedio {formatCLP(r.ticket_promedio)}. <Variacion actual={r.venta_total} anterior={a.venta_total} /></>,
+                        },
+                        {
+                            etiqueta: 'Ganaste',
+                            valor: formatCLP(r.margen),
+                            nota: <>{r.neto ? `El ${porcentaje(r.margen, r.neto)} de la venta sin IVA.` : 'Sin ventas.'} <Variacion actual={r.margen} anterior={a.margen} /></>,
+                        },
+                        {
+                            etiqueta: 'IVA de tus ventas',
+                            valor: formatCLP(r.iva),
+                            nota: 'Va al F29 junto con el de tus compras',
+                        },
+                    ]} />
+                    <p className="text-sm text-muted-foreground">
+                        Devoluciones: {formatCLP(r.devoluciones.total)}
+                        {r.devoluciones.num === 0 ? ', sin notas de crédito' : r.devoluciones.num === 1 ? ' en 1 nota de crédito' : ` en ${r.devoluciones.num} notas de crédito`}.
+                        {' '}Descuentos dados: {formatCLP(r.descuentos)}.
+                    </p>
                 </div>
 
                 <Seccion icono={BarChart3} titulo={`Ventas por ${unidad}`}
@@ -289,113 +276,16 @@ export default function ReporteVentasPage() {
                     )}
                 </Seccion>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Seccion icono={CreditCard} titulo="Cómo le pagaron" extra={<span className="font-tabular">{formatCLP(totalCobrado)}</span>}>
-                        {reporte.medios_pago.length ? (
-                            <ul className="space-y-4">
-                                {reporte.medios_pago.map((m) => (
-                                    <li key={m.codigo} className="space-y-1.5">
-                                        <div className="flex items-baseline gap-3">
-                                            <span className="font-medium text-foreground">{m.nombre}</span>
-                                            <span className="text-sm text-muted-foreground">{m.num} {m.num === 1 ? 'pago' : 'pagos'}</span>
-                                            <span className="ml-auto font-semibold font-tabular">{formatCLP(m.total)}</span>
-                                            <span className="w-12 text-right text-sm text-muted-foreground font-tabular">{porcentaje(m.total, totalCobrado)}</span>
-                                        </div>
-                                        <Progress value={totalCobrado > 0 ? Math.max(0, (m.total / totalCobrado) * 100) : 0} className="h-2" />
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : <p className="text-muted-foreground">Sin pagos en este periodo.</p>}
-                        <p className="mt-4 text-xs text-muted-foreground">El efectivo ya descuenta el vuelto. Las devoluciones restan del medio con que se devolvió.</p>
-                    </Seccion>
-
-                    <Seccion icono={FileText} titulo="Documentos emitidos">
-                        {hayVentas ? (
-                            <Table>
-                                <TableHeader><TableRow>
-                                    <TableHead>Documento</TableHead>
-                                    <TableHead className="text-right">Cant.</TableHead>
-                                    <TableHead className="text-right">Neto</TableHead>
-                                    <TableHead className="text-right">IVA</TableHead>
-                                    <TableHead className="text-right">Total</TableHead>
-                                </TableRow></TableHeader>
-                                <TableBody>
-                                    {reporte.documentos.map((d) => (
-                                        <TableRow key={d.tipo_dte}>
-                                            <TableCell className="font-medium">{nombreDte(d.tipo_dte)}</TableCell>
-                                            <TableCell className="text-right font-tabular">{d.num}</TableCell>
-                                            <TableCell className="text-right font-tabular">{formatCLP(d.neto)}</TableCell>
-                                            <TableCell className="text-right font-tabular">{formatCLP(d.iva)}</TableCell>
-                                            <TableCell className="text-right font-tabular font-semibold">{formatCLP(d.total)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                                <TableFooter><TableRow>
-                                    <TableCell>Total</TableCell>
-                                    <TableCell />
-                                    <TableCell className="text-right font-tabular">{formatCLP(r.neto)}</TableCell>
-                                    <TableCell className="text-right font-tabular">{formatCLP(r.iva)}</TableCell>
-                                    <TableCell className="text-right font-tabular">{formatCLP(r.venta_total)}</TableCell>
-                                </TableRow></TableFooter>
-                            </Table>
-                        ) : <p className="text-muted-foreground">No se emitieron documentos en este periodo.</p>}
-                        <p className="mt-4 text-xs text-muted-foreground">Las notas de crédito restan. Las guías de despacho no se cuentan: la venta es la factura que las cobra.</p>
-                    </Seccion>
-                </div>
-
-                {(reporte.vendedores.length > 1 || reporte.clientes.length > 0) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {reporte.vendedores.length > 1 && (
-                            <Seccion icono={Users} titulo="Por vendedor">
-                                <Table>
-                                    <TableHeader><TableRow>
-                                        <TableHead>Vendedor</TableHead>
-                                        <TableHead className="text-right">Ventas</TableHead>
-                                        <TableHead className="text-right">Monto</TableHead>
-                                        <TableHead className="text-right">Ganancia</TableHead>
-                                    </TableRow></TableHeader>
-                                    <TableBody>
-                                        {reporte.vendedores.map((v) => (
-                                            <TableRow key={v.nombre}>
-                                                <TableCell className="font-medium">{v.nombre}</TableCell>
-                                                <TableCell className="text-right font-tabular">{v.num}</TableCell>
-                                                <TableCell className="text-right font-tabular">{formatCLP(v.total)}</TableCell>
-                                                <TableCell className="text-right font-tabular">{formatCLP(v.margen)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </Seccion>
-                        )}
-                        {reporte.clientes.length > 0 && (
-                            <Seccion icono={Users} titulo="Clientes que más compraron"
-                                className={reporte.vendedores.length > 1 ? undefined : 'lg:col-span-2'}>
-                                <Table>
-                                    <TableHeader><TableRow>
-                                        <TableHead>Cliente</TableHead>
-                                        <TableHead className="text-right">Compras</TableHead>
-                                        <TableHead className="text-right">Monto</TableHead>
-                                    </TableRow></TableHeader>
-                                    <TableBody>
-                                        {reporte.clientes.map((c) => (
-                                            <TableRow key={c.rut}>
-                                                <TableCell>
-                                                    <div className="font-medium">{c.razon_social}</div>
-                                                    <div className="text-xs text-muted-foreground font-tabular">{c.rut}</div>
-                                                </TableCell>
-                                                <TableCell className="text-right font-tabular">{c.num}</TableCell>
-                                                <TableCell className="text-right font-tabular">{formatCLP(c.total)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <p className="mt-4 text-xs text-muted-foreground">Sin las boletas a consumidor final.</p>
-                            </Seccion>
-                        )}
-                    </div>
-                )}
-
-                <Seccion icono={ShoppingBag} titulo="Productos vendidos"
+                <Tabs data-section="reporte-diario.detalle" defaultValue="productos" className="space-y-4">
+                    <TabsList className="h-auto flex-wrap">
+                        <TabsTrigger value="productos">Por producto</TabsTrigger>
+                        {reporte.vendedores.length > 1 && <TabsTrigger value="vendedores">Por vendedor</TabsTrigger>}
+                        {reporte.clientes.length > 0 && <TabsTrigger value="clientes">Por cliente</TabsTrigger>}
+                        <TabsTrigger value="documentos">Por documento</TabsTrigger>
+                        <TabsTrigger value="pagos">Medios de pago</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="productos">
+                    <Seccion icono={ShoppingBag} titulo="Productos vendidos"
                     extra={<SearchInput className="w-full sm:w-72 font-normal" placeholder="Buscar producto o código"
                         value={busqueda} onChange={(e) => setBusqueda(e.target.value)} onClear={() => setBusqueda('')} />}>
                     {sinCosto > 0 && (
@@ -439,7 +329,12 @@ export default function ReporteVentasPage() {
                                             {p.margen < 0 && <span className="sr-only"> (vendido bajo el costo)</span>}
                                         </TableCell>
                                         <TableCell className="text-right font-tabular text-muted-foreground">
-                                            {p.costo === 0 && p.venta > 0 ? 'sin costo' : porcentaje(p.margen, p.venta)}
+                                            {p.costo === 0 && p.venta > 0 ? 'sin costo' : (
+                                                <span className="inline-flex items-center justify-end gap-2">
+                                                    <Progress value={p.venta > 0 ? Math.max(0, Math.min(100, (p.margen / p.venta) * 100)) : 0} className="hidden h-2 w-24 sm:block" />
+                                                    <span className="w-12">{porcentaje(p.margen, p.venta)}</span>
+                                                </span>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -461,6 +356,112 @@ export default function ReporteVentasPage() {
                         </Button>
                     )}
                 </Seccion>
+                    </TabsContent>
+                    {reporte.vendedores.length > 1 && (
+                        <TabsContent value="vendedores">
+                        <Seccion icono={Users} titulo="Por vendedor">
+                                <Table>
+                                    <TableHeader><TableRow>
+                                        <TableHead>Vendedor</TableHead>
+                                        <TableHead className="text-right">Ventas</TableHead>
+                                        <TableHead className="text-right">Monto</TableHead>
+                                        <TableHead className="text-right">Ganancia</TableHead>
+                                    </TableRow></TableHeader>
+                                    <TableBody>
+                                        {reporte.vendedores.map((v) => (
+                                            <TableRow key={v.nombre}>
+                                                <TableCell className="font-medium">{v.nombre}</TableCell>
+                                                <TableCell className="text-right font-tabular">{v.num}</TableCell>
+                                                <TableCell className="text-right font-tabular">{formatCLP(v.total)}</TableCell>
+                                                <TableCell className="text-right font-tabular">{formatCLP(v.margen)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </Seccion>
+                        </TabsContent>
+                    )}
+                    {reporte.clientes.length > 0 && (
+                        <TabsContent value="clientes">
+                        <Seccion icono={Users} titulo="Clientes que más compraron">
+                                <Table>
+                                    <TableHeader><TableRow>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead className="text-right">Compras</TableHead>
+                                        <TableHead className="text-right">Monto</TableHead>
+                                    </TableRow></TableHeader>
+                                    <TableBody>
+                                        {reporte.clientes.map((c) => (
+                                            <TableRow key={c.rut}>
+                                                <TableCell>
+                                                    <div className="font-medium">{c.razon_social}</div>
+                                                    <div className="text-xs text-muted-foreground font-tabular">{c.rut}</div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-tabular">{c.num}</TableCell>
+                                                <TableCell className="text-right font-tabular">{formatCLP(c.total)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                <p className="mt-4 text-xs text-muted-foreground">Sin las boletas a consumidor final.</p>
+                            </Seccion>
+                        </TabsContent>
+                    )}
+                    <TabsContent value="documentos">
+                    <Seccion icono={FileText} titulo="Documentos emitidos">
+                        {hayVentas ? (
+                            <Table>
+                                <TableHeader><TableRow>
+                                    <TableHead>Documento</TableHead>
+                                    <TableHead className="text-right">Cant.</TableHead>
+                                    <TableHead className="text-right">Neto</TableHead>
+                                    <TableHead className="text-right">IVA</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                </TableRow></TableHeader>
+                                <TableBody>
+                                    {reporte.documentos.map((d) => (
+                                        <TableRow key={d.tipo_dte}>
+                                            <TableCell className="font-medium">{nombreDte(d.tipo_dte)}</TableCell>
+                                            <TableCell className="text-right font-tabular">{d.num}</TableCell>
+                                            <TableCell className="text-right font-tabular">{formatCLP(d.neto)}</TableCell>
+                                            <TableCell className="text-right font-tabular">{formatCLP(d.iva)}</TableCell>
+                                            <TableCell className="text-right font-tabular font-semibold">{formatCLP(d.total)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                                <TableFooter><TableRow>
+                                    <TableCell>Total</TableCell>
+                                    <TableCell />
+                                    <TableCell className="text-right font-tabular">{formatCLP(r.neto)}</TableCell>
+                                    <TableCell className="text-right font-tabular">{formatCLP(r.iva)}</TableCell>
+                                    <TableCell className="text-right font-tabular">{formatCLP(r.venta_total)}</TableCell>
+                                </TableRow></TableFooter>
+                            </Table>
+                        ) : <p className="text-muted-foreground">No se emitieron documentos en este periodo.</p>}
+                        <p className="mt-4 text-xs text-muted-foreground">Las notas de crédito restan. Las guías de despacho no se cuentan: la venta es la factura que las cobra.</p>
+                    </Seccion>
+                    </TabsContent>
+                    <TabsContent value="pagos">
+                    <Seccion icono={CreditCard} titulo="Cómo te pagaron" extra={<span className="font-tabular">{formatCLP(totalCobrado)}</span>}>
+                        {reporte.medios_pago.length ? (
+                            <ul className="space-y-4">
+                                {reporte.medios_pago.map((m) => (
+                                    <li key={m.codigo} className="space-y-1.5">
+                                        <div className="flex items-baseline gap-3">
+                                            <span className="font-medium text-foreground">{m.nombre}</span>
+                                            <span className="text-sm text-muted-foreground">{m.num} {m.num === 1 ? 'pago' : 'pagos'}</span>
+                                            <span className="ml-auto font-semibold font-tabular">{formatCLP(m.total)}</span>
+                                            <span className="w-12 text-right text-sm text-muted-foreground font-tabular">{porcentaje(m.total, totalCobrado)}</span>
+                                        </div>
+                                        <Progress value={totalCobrado > 0 ? Math.max(0, (m.total / totalCobrado) * 100) : 0} className="h-2" />
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : <p className="text-muted-foreground">Sin pagos en este periodo.</p>}
+                        <p className="mt-4 text-xs text-muted-foreground">El efectivo ya descuenta el vuelto. Las devoluciones restan del medio con que se devolvió.</p>
+                    </Seccion>
+                    </TabsContent>
+                </Tabs>
 
                 <p className="text-xs text-muted-foreground">
                     Ganancia = venta sin IVA, con descuentos, menos el costo de lo vendido (el costo que tenía cada producto al momento
