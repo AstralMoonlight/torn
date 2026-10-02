@@ -173,7 +173,7 @@ export default function LoginPage() {
                     <Impresion doc={documento} variante={variante} />
                 </div>
 
-                <p className={`${marca.className} text-2xl font-extrabold leading-none tracking-tight lg:text-7xl`}>
+                <p className={`${marca.className} text-right text-2xl font-extrabold leading-none tracking-tight lg:text-7xl`}>
                     ¡Hazla simple!
                 </p>
             </section>
