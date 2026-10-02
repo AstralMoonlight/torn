@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertaError } from '@/components/ui/alerta-error'
+import { formatCLP } from '@/lib/format'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 const marca = Bricolage_Grotesque({ subsets: ['latin'], weight: ['600', '800'] })
@@ -17,7 +18,7 @@ const marca = Bricolage_Grotesque({ subsets: ['latin'], weight: ['600', '800'] }
 const TINTA = '#16173A'
 
 // El login no sabe quién entra, así que no usa el color que cada usuario elige en
-// Configuración: sortea uno de estos (y un documento) en cada carga.
+// Configuración: sortea uno de estos (y arma un documento) en cada carga.
 const VARIANTES = [
     { fondo: '#3B35E0', texto: '#FFFFFF', impresora: '#F1F2FA' },
     { fondo: '#C6F432', texto: TINTA, impresora: TINTA },
@@ -33,24 +34,64 @@ type Documento = {
     total: string
 }
 
-const DOCUMENTOS: Documento[] = [
-    {
-        titulo: 'Boleta electrónica',
-        numero: 'N° 1.204',
-        lineas: [['Pan amasado x2', '$2.400'], ['Café en grano 250 g', '$8.990'], ['Queso mantecoso', '$4.650']],
-        total: '$16.040',
-    },
-    {
-        titulo: 'Factura electrónica',
-        numero: 'N° 587',
-        receptor: 'Almacén Doña Rosa - 76.123.456-7',
-        lineas: [['Harina 25 kg x2', '$31.000'], ['Aceite 5 L x3', '$26.700']],
-        subtotales: [['Neto', '$57.700'], ['IVA 19%', '$10.963']],
-        total: '$68.663',
-    },
+// De rubros distintos, para no parecer de una sola empresa. Cada documento lleva
+// uno gracioso y dos normales.
+const ITEMS: [string, number][] = [
+    ['Pan amasado x2', 2400],
+    ['Martillo carpintero', 8990],
+    ['Corte de pelo', 7000],
+    ['Cuaderno universitario', 1990],
+    ['Completo italiano', 2500],
+    ['Tornillos x50', 1890],
+    ['Lavado de auto', 8000],
+    ['Shampoo 750 ml', 3990],
+    ['Alimento perro 3 kg', 12990],
+    ['Bolsa de hielo', 1500],
+    ['Empanada de pino', 2800],
+    ['Ampolleta LED 9 W', 1290],
+]
+
+const ITEMS_GRACIOSOS: [string, number][] = [
+    ['Calcetín sin su par', 500],
+    ['Paciencia para el lunes', 990],
+    ['Tupper con su tapa', 4990],
+    ['Cargador que sí carga', 6990],
+    ['Planta que no se muere', 7990],
+    ['Café para el cierre', 1800],
+    ['Paraguas pa la sequía', 5990],
+    ['Control remoto perdido', 3490],
+]
+
+const CLIENTES = [
+    'Almacén Doña Rosa - 76.123.456-0',
+    'Ferretería El Clavo Feliz - 77.845.210-3',
+    'Peluquería Tijeras Locas - 76.550.319-1',
+    'Minimarket Don Lucho - 78.012.664-7',
 ]
 
 const sortear = <T,>(lista: T[]) => lista[Math.floor(Math.random() * lista.length)]
+// ponytail: sort aleatorio sesgado, da igual para un adorno
+const barajar = <T,>(lista: T[]) => [...lista].sort(() => Math.random() - 0.5)
+const folio = () => `N° ${(100 + Math.floor(Math.random() * 3000)).toLocaleString('es-CL')}`
+
+function armarDocumento(): Documento {
+    const items = barajar([sortear(ITEMS_GRACIOSOS), ...barajar(ITEMS).slice(0, 2)])
+    const lineas = items.map(([n, p]): [string, string] => [n, formatCLP(p)])
+    const suma = items.reduce((t, [, p]) => t + p, 0)
+    if (Math.random() < 0.5) {
+        return { titulo: 'Boleta electrónica', numero: folio(), lineas, total: formatCLP(suma) }
+    }
+    // En la factura los precios son netos.
+    const iva = Math.round(suma * 0.19)
+    return {
+        titulo: 'Factura electrónica',
+        numero: folio(),
+        receptor: sortear(CLIENTES),
+        lineas,
+        subtotales: [['Neto', formatCLP(suma)], ['IVA 19%', formatCLP(iva)]],
+        total: formatCLP(suma + iva),
+    }
+}
 
 function Fila({ izq, der }: { izq: string; der: string }) {
     return (
@@ -124,7 +165,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [variante] = useState(() => sortear(VARIANTES))
-    const [documento] = useState(() => sortear(DOCUMENTOS))
+    const [documento] = useState(armarDocumento)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
