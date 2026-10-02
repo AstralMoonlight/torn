@@ -4,8 +4,8 @@ Issue: [#49](https://github.com/AstralMoonlight/torn/issues/49). Empresa: DISTRI
 (76.398.956-9), la misma que certificó factura. JCB emite **sobre todo boletas**, así que sin esta
 certificación el piloto en el local cubre solo una parte de las ventas (ver [`lanzamiento.md`](lanzamiento.md)).
 
-> **Estado (2026-10-02):** set pedido y descargado (`setDePruebas/Set Prueba BE.txt`); dte-torn ya lo
-> lee y lo envía por el canal de boletas (`certificacion set`). Falta el CAF 39 de certificación (5 folios).
+> **Estado (2026-10-02):** set enviado y **aceptado: track 32479202, EPR 5/5, 0 reparos** (01:58).
+> Falta declararlo en el SII y esperar el visto bueno.
 
 ## Dónde está en el SII (verificado 2026-09-25)
 
@@ -83,8 +83,16 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
       detiene la lectura en vez de adivinar.
 - [x] Modo `certificacion set` para boletas: un solo `EnvioBOLETA` por el canal REST, estado por REST.
       Las boletas del set van a consumidor final (66666666-6).
-- [ ] Pedir CAF de certificación 39 en maullín: **5 folios** (el set no trae 41).
-- [ ] Enviar, revisar el estado y dejar la tabla de tracks aquí, como en `todo.md`.
+- [x] Pedir CAF de certificación 39 en maullín: folios 1-5 (2026-10-02 01:56, `dte-torn/folios/`).
+      El SII autorizó los 5 de una vez.
+- [x] Enviar y revisar el estado:
+
+      | Set | Folios 39 | Track | Resultado |
+      |---|---|---|---|
+      | Boleta afecta | 1-5 (casos 1 a 5) | 32479202 | EPR, 5 aceptados, 0 reparos (02-10-2026 01:58) |
+
+      El track del envío de boletas tuvo **8 dígitos**, no los 15 que dice el instructivo. El SII
+      respondió en unos 15 segundos (REC -> SOK -> EPR).
 - [x] ~~Si el set pide RVD~~: no lo pide. El RCOF pendiente de dte-torn se descarta.
 
 ### Fase 3: impreso y declaración
