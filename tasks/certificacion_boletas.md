@@ -93,7 +93,14 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
       El track del envío de boletas tuvo **8 dígitos**, no los 15 que dice el instructivo. El SII
       respondió en unos 15 segundos (REC -> SOK -> EPR).
-- [x] ~~Si el set pide RVD~~: no lo pide. El RCOF pendiente de dte-torn se descarta.
+- [x] ~~Si el set pide RVD~~: el set no lo nombra, pero **el correo del SII sí pide el RCOF**, junto con
+      el set y dentro de 24 horas desde que se bajan los folios (CAF bajado el 02-10 01:56, plazo 03-10
+      ~01:56). Modo `certificacion rcof` (`app/dte/rcof.py`, XSD oficial `ConsumoFolio_v10.xsd`).
+      - SecEnvio 1 (02:05): subida ambigua, maullín cortó la conexión sin track.
+      - SecEnvio 2 (02:06): **track 0261203192, RPR "Aceptado con Reparos"**. El detalle del reparo
+        llega por correo al buzón de contacto (cPanel), no en la consulta.
+- [ ] Paso 4 del correo: pedir la revisión del set informando el track **32479202** en el apartado
+      de boletas del sitio del SII.
 
 ### Fase 3: impreso y declaración
 
