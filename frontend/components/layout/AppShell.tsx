@@ -10,6 +10,7 @@ import { useSessionStore } from '@/lib/store/sessionStore'
 import { avisar, useUIStore } from '@/lib/store/uiStore'
 import { useColorEfectivo, useControlCaja, useSettingsStore } from '@/lib/store/settingsStore'
 import { aplicarColor, leerColorUsuario } from '@/lib/colores'
+import { cn } from '@/lib/utils'
 import { sincronizarCaja } from '@/services/cash'
 import { validateSession } from '@/services/auth'
 import { useHydrated } from '@/lib/hooks/useHydrated'
@@ -213,7 +214,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-[100dvh] overflow-hidden">
             <Sidebar />
-            <main data-section="contenido" className="flex-1 overflow-auto bg-background pb-16 md:pb-0">
+            {/* El espacio de la barra de scroll queda reservado aunque no haga falta: si no, el
+                contenido centrado se corre al pasar de una pantalla corta a una larga. El POS no
+                hace scroll y no necesita ese margen. */}
+            <main data-section="contenido" className={cn('flex-1 overflow-auto bg-background pb-16 md:pb-0', pathname !== '/pos' && '[scrollbar-gutter:stable]')}>
                 {/* El POS pone el aviso dentro de su propia zona, para no correr su alto fijo. */}
                 {pathname !== '/pos' && aviso}
                 {children}
