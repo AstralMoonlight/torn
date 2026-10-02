@@ -303,8 +303,9 @@ export default function LoginPage() {
                                     administra (Personal) o soporte. Enlace por correo cuando exista el dominio. */}
                                 {ayudaClave && (
                                     <p id="ayuda-clave" className="rounded-xl bg-muted px-4 py-3 text-sm leading-6 text-foreground">
-                                        Pídele a quien administra tu negocio que te ponga una nueva desde Personal.
-                                        Si quien administra eres tú, llama a soporte de Factureando.
+                                        Solicita a la persona que administra tu negocio que restablezca tu contraseña
+                                        desde Personal. Si eres tú quien lo administra, ponte en contacto con el
+                                        soporte de Factureando.
                                     </p>
                                 )}
                             </div>
@@ -323,7 +324,7 @@ export default function LoginPage() {
                         </Button>
                     </form>
 
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-right text-sm text-muted-foreground">
                         &copy; {new Date().getFullYear()} Factureando
                     </p>
                 </div>
