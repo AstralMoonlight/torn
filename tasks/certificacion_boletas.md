@@ -98,7 +98,8 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
       ~01:56). Modo `certificacion rcof` (`app/dte/rcof.py`, XSD oficial `ConsumoFolio_v10.xsd`).
       - SecEnvio 1 (02:05): subida ambigua, maullín cortó la conexión sin track.
       - SecEnvio 2 (02:06): **track 0261203192, RPR "Aceptado con Reparos"**. El detalle del reparo
-        llega por correo al buzón de contacto (cPanel), no en la consulta.
+        llega por correo al buzón de contacto (cPanel), no en la consulta: **0 errores, 1 reparo, el
+        250 "Envío de RVD no es obligatorio desde agosto 2022"**. Es solo un aviso; no se corrige.
 - [ ] Paso 4 del correo: pedir la revisión del set informando el track **32479202** en el apartado
       de boletas del sitio del SII.
 

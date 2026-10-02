@@ -69,7 +69,7 @@ from app.dte.caf import guardar_caf, parsear_caf
 from app.dte.folios import DatosEmision, emitir_documento
 from app.dte.set_pruebas import VENTA
 from app.dte.signer import ZONA_CHILE, hoy_chile
-from app.dte.sii_client import Canal, ClienteSii, SiiError, crear_http
+from app.dte.sii_client import RECHAZO_TOTAL, Canal, ClienteSii, SiiError, crear_http
 from app.models import CAF, Certificate, Document, Envio, Tenant
 
 #: Tenant ficticio del modo token: su clave en Redis queda aislada de las reales.
@@ -963,10 +963,11 @@ async def modo_rcof() -> int:
     if resultado is None:
         print(f"El SII todavía no responde. Consultar el track {track} más tarde.")
         return 1
-    # ponytail: los estados finales del RCOF no están documentados; se trata como
-    # rechazo lo que empieza con R y se muestra la respuesta completa.
+    # Visto en certificación (2026-10-02): RPR "Aceptado con Reparos" con el reparo
+    # 250 ("RVD no es obligatorio desde 2022-08-01"), que es solo un aviso. El
+    # detalle de los reparos llega por correo, no en esta respuesta.
     print(resultado.crudo)
-    rechazado = resultado.estado.startswith("R")
+    rechazado = resultado.estado in RECHAZO_TOTAL
     if not rechazado:
         print(f"RCOF recibido: track {track}, fecha {subido:%d-%m-%Y}")
     return 1 if rechazado else 0
