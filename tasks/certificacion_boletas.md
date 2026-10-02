@@ -15,6 +15,7 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 | Paso | URL | Qué muestra |
 |---|---|---|
 | Pedir el set | https://www4.sii.cl/certBolElectDteInternet/?SET=1 | "Generación de nuevo set de pruebas" |
+| Pedir la revisión del set (con el track) | https://www4.sii.cl/certBolElectDteInternet/?SET=2 | "Solicitud de Revisión" |
 | Declaración de cumplimiento | https://www4.sii.cl/certBolElectDteInternet/ | Pide el RUT de la empresa |
 
 - Sin `?SET=1` abre la declaración, y con 76398956-9 responde "La empresa no se encuentra en estado
@@ -101,7 +102,8 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
         llega por correo al buzón de contacto (cPanel), no en la consulta: **0 errores, 1 reparo, el
         250 "Envío de RVD no es obligatorio desde agosto 2022"**. Es solo un aviso; no se corrige.
 - [ ] Paso 4 del correo: pedir la revisión del set informando el track **32479202** en el apartado
-      de boletas del sitio del SII.
+      de boletas del sitio del SII: https://www4.sii.cl/certBolElectDteInternet/?SET=2 (sin `?SET=2`
+      abre la declaración de cumplimiento, que responde "no autorizada" hasta el V°B°).
 
 ### Fase 3: impreso y declaración
 
