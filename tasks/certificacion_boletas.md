@@ -4,8 +4,8 @@ Issue: [#49](https://github.com/AstralMoonlight/torn/issues/49). Empresa: DISTRI
 (76.398.956-9), la misma que certificó factura. JCB emite **sobre todo boletas**, así que sin esta
 certificación el piloto en el local cubre solo una parte de las ventas (ver [`lanzamiento.md`](lanzamiento.md)).
 
-> **Estado (2026-10-02):** set enviado y **aceptado: track 32479202, EPR 5/5, 0 reparos** (01:58).
-> Falta declararlo en el SII y esperar el visto bueno.
+> **Estado (2026-10-02):** **V°B° del SII en la certificación de boletas.** Falta la Declaración de
+> Cumplimiento de la representante (va junto con la de factura, #48).
 
 ## Dónde está en el SII (verificado 2026-09-25)
 
@@ -90,7 +90,12 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
       | Set | Folios 39 | Track | Resultado |
       |---|---|---|---|
-      | Boleta afecta | 1-5 (casos 1 a 5) | 32479202 | EPR, 5 aceptados, 0 reparos (02-10-2026 01:58) |
+      | Boleta afecta | 1-5 (casos 1 a 5) | 32479202 (REST de boletas) | EPR 5/5, pero la revisión: **SRH**, "El Documento no está en el envío" en los 5 casos |
+      | Boleta afecta | 1-5, el mismo sobre | **0261205238** (upload de maullín) | EPR 5/5, 0 reparos (02:38). Revisión: **V°B°** |
+
+      **Lección:** el set se sube por el **upload de maullín** (canal DTE, track de 10 dígitos), como dice
+      el correo del SII ("opción de UPLOAD"). El REST de boletas acepta el envío, pero el revisor del set
+      no lo ve. `certificacion set` ya sube siempre por maullín.
 
       El track del envío de boletas tuvo **8 dígitos**, no los 15 que dice el instructivo. El SII
       respondió en unos 15 segundos (REC -> SOK -> EPR).
@@ -101,7 +106,7 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
       - SecEnvio 2 (02:06): **track 0261203192, RPR "Aceptado con Reparos"**. El detalle del reparo
         llega por correo al buzón de contacto (cPanel), no en la consulta: **0 errores, 1 reparo, el
         250 "Envío de RVD no es obligatorio desde agosto 2022"**. Es solo un aviso; no se corrige.
-- [ ] Paso 4 del correo: pedir la revisión del set informando el track **32479202** en el apartado
+- [x] Paso 4 del correo: pedir la revisión del set informando el track (**0261205238**) en el apartado
       de boletas del sitio del SII: https://www4.sii.cl/certBolElectDteInternet/?SET=2 (sin `?SET=2`
       abre la declaración de cumplimiento, que responde "no autorizada" hasta el V°B°).
 
@@ -109,10 +114,12 @@ aplicación, `certBolElectDteInternet`, con login de RUT y clave:
 
 - [ ] El ticket 58/80 mm de la boleta lleva timbre, la resolución y el sitio de verificación
       (el que indique el SII para boletas). Revisar también la boleta en carta.
-- [ ] Muestras impresas, si el SII las pide (upload en https://www4.sii.cl/pdfdteInternet/).
-- [ ] Declarar el avance en maullín con el track del set.
-- [ ] Visto bueno del SII y declaración de cumplimiento de la representante, en
-      https://www4.sii.cl/certBolElectDteInternet/ (sin `?SET=1`).
+      El correo del SII exige que el sitio esté **en la boleta impresa y funcionando en la web**.
+- [x] ~~Muestras impresas~~: el SII no las pidió; el V°B° llegó sin ellas.
+- [x] ~~Declarar el avance en maullín~~: en boletas se reemplaza por la solicitud de revisión (`?SET=2`).
+- [x] V°B° del SII (correo del 2026-10-02).
+- [ ] Declaración de cumplimiento de la representante, en https://www4.sii.cl/certBolElectDteInternet/
+      (sin parámetro). Se firma junto con la de factura (#48).
 
 ### Fase 4: después de certificar
 

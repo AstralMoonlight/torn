@@ -482,11 +482,15 @@ async def modo_set() -> int:
         await _cargar_caf_si_falta(tenant_id, caf_bytes)
 
     claves = {c.id: _prefijo_set(set_.numero_atencion) + c.id for c in set_.casos}
-    # Un sobre lleva un solo canal: el set de boletas va entero por el REST de boletas.
+    # El sobre es EnvioDTE o EnvioBOLETA según los documentos, pero el set siempre
+    # se sube por el upload de maullin (canal DTE): el revisor del set busca el
+    # track ahí. Visto el 2026-10-02: el set de boletas subido por el REST de
+    # boletas salió aceptado, pero la revisión respondió "El Documento no está en
+    # el envío" en todos los casos.
     canales = {pipeline.canal_de(c.tipo_dte) for c in set_.casos}
     if len(canales) != 1:
         sys.exit("El set mezcla boletas con otros documentos: no cabe en un solo envío.")
-    canal = canales.pop()
+    sobre_de = canales.pop()
     async with tenant_session(tenant_id) as sesion:
         existentes = {
             d.external_id: d
@@ -593,7 +597,7 @@ async def modo_set() -> int:
                 for d in docs
             ]
             sobre = firmar_sobre(
-                firmados, canal=canal.value, rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
+                firmados, canal=sobre_de.value, rut_emisor=tenant.rut_emisor, rut_envia=cert.rut,
                 fecha_resolucion=tenant.resolucion_fecha.isoformat(),
                 numero_resolucion=tenant.resolucion_numero, cert=cert,
             )
@@ -606,7 +610,7 @@ async def modo_set() -> int:
             subido = datetime.now(ZONA_CHILE)
             try:
                 track = await ctx.sii("CERT").enviar(
-                    canal, tenant_id, cert, tenant.rut_emisor, sobre, f"set-{set_.numero_atencion}.xml"
+                    Canal.DTE, tenant_id, cert, tenant.rut_emisor, sobre, f"set-{set_.numero_atencion}.xml"
                 )
             except SiiError as exc:
                 print(f"La subida del set falló ({type(exc).__name__}): {exc}")
@@ -621,7 +625,7 @@ async def modo_set() -> int:
                           "le pregunta al SII por cada folio antes de reenviar.")
                 return 1
             async with tenant_session(tenant_id) as sesion:
-                sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio=canal.value, track_id=track,
+                sesion.add(Envio(id=envio_id, tenant_id=tenant_id, tipo_envio="DTE", track_id=track,
                                  xml_key=clave_s3, xml_sha256=sha, estado=EstadoEnvio.ENVIADO))
                 await sesion.flush()
                 await sesion.execute(
@@ -643,7 +647,7 @@ async def modo_set() -> int:
         while (datetime.now(ZONA_CHILE) - subido).total_seconds() < _ESPERA_TOTAL_SEGUNDOS:
             await asyncio.sleep(_CONSULTA_RAPIDA_SEGUNDOS)
             try:
-                resultado = await ctx.sii("CERT").consultar(canal, tenant_id, cert, tenant.rut_emisor, track)
+                resultado = await ctx.sii("CERT").consultar(Canal.DTE, tenant_id, cert, tenant.rut_emisor, track)
             except SiiError as exc:
                 print(f"   {datetime.now(ZONA_CHILE):%H:%M:%S}  ({_transcurrido(subido)})  consulta falló: {exc}")
                 continue

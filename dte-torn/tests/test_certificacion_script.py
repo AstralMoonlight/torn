@@ -466,10 +466,10 @@ async def test_reenviar_un_set_rechazado_emite_con_folios_nuevos(entorno_set, mo
     assert len({d.folio for d in docs if d.tipo_dte == 33}) == 8  # ningún folio repetido
 
 
-async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, monkeypatch, capsys) -> None:
-    """Un solo `EnvioBOLETA` por el REST de boletas, y el estado se consulta por ahí mismo."""
+async def test_el_set_de_boletas_va_por_el_upload_de_maullin(entorno, tmp_path, monkeypatch, capsys) -> None:
+    """Un solo `EnvioBOLETA`, pero subido por el upload de maullin (canal DTE): el
+    revisor del set busca el track ahí, no en el REST de boletas."""
     from tests.test_set_pruebas import SET_BOLETAS
-    from tests.test_sii_client import SEMILLA_BOLETA, TOKEN_OK
 
     ruta_set = tmp_path / "set_boletas.txt"
     ruta_set.write_bytes(SET_BOLETAS.encode("latin-1"))
@@ -477,30 +477,14 @@ async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, m
     ruta_caf.write_bytes(caf_xml(rut="76543210-3", tipo_dte=39, desde=1, hasta=10))
     monkeypatch.setenv("DTE_SET", str(ruta_set))
     monkeypatch.setenv("DTE_CAFS", str(ruta_caf))
+    entorno.estados = [_estado("EPR", aceptados=5)]
 
-    sobres: list[bytes] = []
-
-    def sii(pedido: httpx.Request) -> httpx.Response:
-        url = str(pedido.url)
-        if url.endswith("boleta.electronica.semilla"):
-            return httpx.Response(200, content=SEMILLA_BOLETA)
-        if url.endswith("boleta.electronica.token"):
-            return httpx.Response(200, content=TOKEN_OK)
-        if pedido.method == "POST" and url.endswith("boleta.electronica.envio"):
-            sobres.append(pedido.content)
-            return httpx.Response(200, json={"trackid": 123456789012345, "estado": "REC"})
-        if url.endswith("boleta.electronica.envio/76543210-3-123456789012345"):
-            return httpx.Response(200, json={
-                "estado": "EPR",
-                "estadistica": [{"tipo": 39, "informados": 5, "aceptados": 5, "rechazados": 0, "reparos": 0}],
-            })
-        return entorno(pedido)  # canal DTE (el RCOF): el SII simulado de siempre
-
-    monkeypatch.setattr(certificacion, "crear_http", lambda timeout: httpx.AsyncClient(transport=httpx.MockTransport(sii)))
     assert await certificacion.modo_set() == 0
 
-    assert "N° de envío: 123456789012345" in capsys.readouterr().out
-    assert len(sobres) == 1 and b"<EnvioBOLETA" in sobres[0]
+    assert "N° de envío: 0123456789" in capsys.readouterr().out
+    subidas = [p for p in entorno.pedidos if str(p.url).endswith("DTEUpload")]
+    assert len(subidas) == 1 and b"<EnvioBOLETA" in subidas[0].content
+    assert not any("boleta.electronica" in str(p.url) for p in entorno.pedidos)
     async with control_session() as s:
         tenant_id = (await s.execute(select(Tenant.id))).scalar_one()
     async with tenant_session(tenant_id) as s:
@@ -512,12 +496,14 @@ async def test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, m
 
 async def test_rcof_del_set_de_boletas(entorno, tmp_path, monkeypatch, capsys) -> None:
     """El RCOF sale de las boletas aceptadas del set y va por el canal DTE."""
-    await test_el_set_de_boletas_va_por_el_canal_de_boletas(entorno, tmp_path, monkeypatch, capsys)
+    await test_el_set_de_boletas_va_por_el_upload_de_maullin(entorno, tmp_path, monkeypatch, capsys)
+    entorno.uploads = [(200, _upload("0", "0123456790"))]
+    entorno.estados = [_estado("EPR", aceptados=0)]
     monkeypatch.setenv("DTE_MUESTRAS", str(tmp_path / "muestras"))
 
     assert await certificacion.modo_rcof() == 0
 
-    assert "RCOF recibido: track 0123456789" in capsys.readouterr().out
-    assert entorno.llamadas.count("upload") == 1
+    assert "RCOF recibido: track 0123456790" in capsys.readouterr().out
+    assert entorno.llamadas.count("upload") == 2  # el set y el RCOF
     rcof = next((tmp_path / "muestras").glob("rcof_*.xml")).read_bytes()
     assert b"<MntTotal>54160</MntTotal>" in rcof and b"<FoliosEmitidos>5</FoliosEmitidos>" in rcof
